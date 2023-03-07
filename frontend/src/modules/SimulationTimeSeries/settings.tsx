@@ -1,12 +1,14 @@
 import React from "react";
-import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
-import { ModuleFCProps } from "@framework/Module";
 import { Frequency, VectorDescription } from "@api";
 import { apiService } from "@framework/ApiService";
+import { ModuleFCProps } from "@framework/Module";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
+import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
 import { ListBox, ListBoxItem } from "@lib/components/ListBox/list-box";
+import { Select } from "@lib/components/Select";
+import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { sortBy, sortedUniq } from "lodash";
 
@@ -101,6 +103,9 @@ export function settings({ moduleContext, workbenchServices }: ModuleFCProps<Sta
 
     return (
         <>
+            <select>
+                <option>A very very long label that will trigger overflow</option>
+            </select>
             <label>Vector:</label>
             <ListBox
                 items={makeVectorListItems(vectorsQuery)}
@@ -114,6 +119,10 @@ export function settings({ moduleContext, workbenchServices }: ModuleFCProps<Sta
                 items={makeFrequencyListItems()}
                 selectedItem={resampleFrequency ?? "RAW"}
                 onSelect={handleFrequencySelectionChange}
+            />
+            <Dropdown
+                options={[{ value: "test", label: "A very very long label that will trigger overflow" }]}
+                value={"test"}
             />
 
             <br />

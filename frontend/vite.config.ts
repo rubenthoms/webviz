@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 
 import path from "path";
 import { defineConfig } from "vite";
+import glsl from "vite-plugin-glsl";
 
 import aliases from "./aliases.json";
 
@@ -13,7 +14,7 @@ const paths = {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [glsl(), react()],
     build: {
         rollupOptions: {
             input: {
@@ -30,7 +31,14 @@ export default defineConfig({
                     aliases.compilerOptions.paths[current][0].replace("/*", "")
                 ),
             }),
-            {}
+            {
+                "!style-loader!": "",
+                "!css-loader!": "",
+                "!sass-loader!": "",
+                "!style-loader!css-loader!": "",
+                "!vue-style-loader!css-loader!sass-loader!": "",
+                "!!raw-loader!": "",
+            }
         ),
     },
     server: {
@@ -38,8 +46,8 @@ export default defineConfig({
         proxy: {
             "/api": {
                 target: "http://backend:5000",
-                rewrite: (path) => path.replace(/^\/api/, '')
+                rewrite: (path) => path.replace(/^\/api/, ""),
             },
-        }
+        },
     },
 });

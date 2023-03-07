@@ -1,5 +1,4 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 
 import { apiService } from "@framework/ApiService";
 import { useStoreState } from "@framework/StateStore";
@@ -9,6 +8,7 @@ import { CircularProgress } from "@lib/components/CircularProgress";
 import { Dropdown } from "@lib/components/Dropdown";
 // import { useWorkbenchActiveModuleName } from "@framework/hooks/useWorkbenchActiveModuleName";
 import { ToggleButton } from "@lib/components/ToggleButton";
+import { useQuery } from "@tanstack/react-query";
 
 import { LoginButton } from "../LoginButton";
 
@@ -72,6 +72,10 @@ export const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                         onChange={handleCaseChange}
                     />
                 </ApiStateWrapper>
+                <Dropdown
+                    options={[{ value: "Drogon", label: "Drogon testsd dgsgdsgdsg dsgdsgdsg sdgdsgdsgdsg dgdsgdsg" }]}
+                    value={"Drogon"}
+                />
                 <ToggleButton active={modulesListOpen} onToggle={(active: boolean) => handleToggleModulesList(active)}>
                     Add modules
                 </ToggleButton>

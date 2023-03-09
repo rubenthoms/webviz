@@ -18,4 +18,5 @@ module.exports = {
             version: "detect",
         },
     },
+    ignorePatterns: ["webpack.config.cjs", "node_modules/", "dist/", "build/"],
 };

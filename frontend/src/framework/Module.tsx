@@ -90,7 +90,7 @@ export class Module<StateType extends StateBaseType> {
 
         this.setImportState(ImportState.Importing);
 
-        import(`@modules/${this._name}/loadModule.tsx`)
+        import(`../modules/${this._name}/loadModule.tsx`)
             .then(() => {
                 this.setImportState(ImportState.Imported);
                 this.moduleInstances.forEach((instance) => {

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ImportState } from "@framework/Module";
+import { ImportState } from "@framework/ModuleBase";
 import { ModuleInstance } from "@framework/ModuleInstance";
 import { Workbench } from "@framework/Workbench";
 import { Point, pointRelativeToDomRect, pointerEventToPoint } from "@framework/utils/geometry";
@@ -108,6 +108,12 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
     const handleModuleHeaderClick = React.useCallback(
         function handleModuleHeaderClick() {
             if (props.isActive) return;
+
+            const parentModuleInstance = props.moduleInstance.getParentModuleInstance();
+            if (parentModuleInstance) {
+                props.workbench.setActiveModuleId(parentModuleInstance.getId());
+                return;
+            }
             props.workbench.setActiveModuleId(props.moduleInstance.getId());
         },
         [props.moduleInstance, props.workbench, props.isActive]

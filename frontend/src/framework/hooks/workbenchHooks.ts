@@ -3,7 +3,7 @@ import React from "react";
 import { ModuleInstance } from "../ModuleInstance";
 import { Workbench, WorkbenchEvents } from "../Workbench";
 
-export function useActiveModuleId(workbench: Workbench): string {
+export function useActiveModuleInstanceId(workbench: Workbench): string {
     const [activeModuleId, setActiveModuleId] = React.useState<string>("");
 
     React.useEffect(() => {
@@ -17,6 +17,22 @@ export function useActiveModuleId(workbench: Workbench): string {
     }, []);
 
     return activeModuleId;
+}
+
+export function useActiveModuleInstance(workbench: Workbench): ModuleInstance<any> | null {
+    const [activeModuleInstance, setActiveModuleInstance] = React.useState<ModuleInstance<any> | null>(null);
+
+    React.useEffect(() => {
+        function handleActiveModuleChange() {
+            setActiveModuleInstance(workbench.getActiveModuleInstance());
+        }
+
+        const unsubscribeFunc = workbench.subscribe(WorkbenchEvents.ActiveModuleChanged, handleActiveModuleChange);
+
+        return unsubscribeFunc;
+    }, []);
+
+    return activeModuleInstance;
 }
 
 export function useModuleInstances(workbench: Workbench): ModuleInstance<any>[] {

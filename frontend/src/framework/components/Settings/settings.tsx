@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Workbench } from "@framework/Workbench";
-import { useActiveModuleId, useModuleInstances } from "@framework/hooks/workbenchHooks";
+import { useActiveModuleInstanceId, useModuleInstances } from "@framework/hooks/workbenchHooks";
 
 import { Setting } from "./private-components/setting";
 
@@ -11,7 +11,7 @@ type SettingsProps = {
 
 export const Settings: React.FC<SettingsProps> = (props) => {
     const moduleInstances = useModuleInstances(props.workbench);
-    const activeModuleId = useActiveModuleId(props.workbench);
+    const activeModuleId = useActiveModuleInstanceId(props.workbench);
 
     return (
         <div className="bg-white p-4">

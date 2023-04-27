@@ -1,6 +1,7 @@
 import { Ensemble } from "@shared-types/ensemble";
 
-import { ImportState } from "./Module";
+import { Module } from "./Module";
+import { ImportState, ModuleType } from "./ModuleBase";
 import { ModuleInstance } from "./ModuleInstance";
 import { ModuleRegistry } from "./ModuleRegistry";
 import { StateStore } from "./StateStore";
@@ -16,6 +17,7 @@ export enum WorkbenchEvents {
 export type LayoutElement = {
     moduleInstanceId?: string;
     moduleName: string;
+    parentModuleInstanceId?: string;
     relX: number;
     relY: number;
     relHeight: number;
@@ -89,6 +91,10 @@ export class Workbench {
         );
     }
 
+    public getActiveModuleInstance(): ModuleInstance<any> | null {
+        return this.moduleInstances.find((moduleInstance) => moduleInstance.getId() === this._activeModuleId) || null;
+    }
+
     public setActiveModuleId(id: string) {
         this._activeModuleId = id;
         this.notifySubscribers(WorkbenchEvents.ActiveModuleChanged);
@@ -119,18 +125,33 @@ export class Workbench {
     public makeLayout(layout: LayoutElement[]): void {
         this.moduleInstances = [];
         this.setLayout(layout);
-        layout.forEach((element, index: number) => {
-            const module = ModuleRegistry.getModule(element.moduleName);
-            if (!module) {
-                throw new Error(`Module ${element.moduleName} not found`);
-            }
+        layout
+            .sort(
+                (a, b) =>
+                    (a.parentModuleInstanceId === undefined ? -1 : 1) -
+                    (b.parentModuleInstanceId === undefined ? -1 : 1)
+            )
+            .forEach((element, index: number) => {
+                const module = ModuleRegistry.getModule(element.moduleName);
+                if (!module) {
+                    throw new Error(`Module ${element.moduleName} not found`);
+                }
 
-            const moduleInstance = module.makeInstance();
-            this.moduleInstances.push(moduleInstance);
-            this.layout[index] = { ...this.layout[index], moduleInstanceId: moduleInstance.getId() };
-            this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
-            module.setWorkbench(this);
-        });
+                const moduleInstance = module.makeInstance(element.moduleInstanceId);
+                if (element.parentModuleInstanceId) {
+                    const parentModuleInstance = this.moduleInstances.find(
+                        (instance) => instance.getId() === element.parentModuleInstanceId
+                    );
+                    if (parentModuleInstance) {
+                        moduleInstance.setParentModuleInstance(parentModuleInstance);
+                        parentModuleInstance.addSubModuleInstance(moduleInstance);
+                    }
+                }
+                this.moduleInstances.push(moduleInstance);
+                this.layout[index] = { ...this.layout[index] };
+                this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
+                module.setWorkbench(this);
+            });
     }
 
     public makeAndAddModuleInstance(moduleName: string, layout: LayoutElement): ModuleInstance<any> {
@@ -142,7 +163,23 @@ export class Workbench {
         const moduleInstance = module.makeInstance();
         this.moduleInstances.push(moduleInstance);
 
-        this.layout.push({ ...layout, moduleInstanceId: moduleInstance.getId() });
+        const currentlyActiveModuleInstance = this.getActiveModuleInstance();
+
+        if (
+            currentlyActiveModuleInstance &&
+            currentlyActiveModuleInstance.getModule() instanceof Module &&
+            module.getType() === ModuleType.SubModule
+        ) {
+            currentlyActiveModuleInstance.addSubModuleInstance(moduleInstance);
+            moduleInstance.setParentModuleInstance(currentlyActiveModuleInstance);
+            this.layout.push({
+                ...layout,
+                moduleInstanceId: moduleInstance.getId(),
+                parentModuleInstanceId: currentlyActiveModuleInstance.getId(),
+            });
+        } else {
+            this.layout.push({ ...layout, moduleInstanceId: moduleInstance.getId() });
+        }
         this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
         module.setWorkbench(this);
         this._activeModuleId = moduleInstance.getId();
@@ -165,10 +202,7 @@ export class Workbench {
         this.layout = layout;
         this.notifySubscribers(WorkbenchEvents.FullModuleRerenderRequested);
 
-        const modifiedLayout = layout.map((el) => {
-            return { ...el, moduleInstanceId: undefined };
-        });
-        localStorage.setItem("layout", JSON.stringify(modifiedLayout));
+        localStorage.setItem("layout", JSON.stringify(layout));
     }
 
     public maybeMakeFirstModuleInstanceActive(): void {

@@ -54,6 +54,7 @@ export class LayoutBox {
     private _children: LayoutBox[];
     private _level: number;
     private _moduleInstanceId: string | undefined;
+    private _parentModuleInstanceId: string | undefined;
     private _moduleName: string;
     private _isWrapper: boolean;
     private _parent: LayoutBox | null;
@@ -72,6 +73,7 @@ export class LayoutBox {
         this._isWrapper = true;
 
         this._moduleInstanceId = "";
+        this._parentModuleInstanceId = "";
         this._moduleName = "";
         this._parent = parent;
         this._layoutDirection = direction;
@@ -83,6 +85,10 @@ export class LayoutBox {
 
     public getModuleInstanceId(): string | undefined {
         return this._moduleInstanceId;
+    }
+
+    public getParentModuleInstanceId(): string | undefined {
+        return this._parentModuleInstanceId;
     }
 
     public getRectWithMargin(realSizeFactor: Size): Rect {
@@ -192,6 +198,7 @@ export class LayoutBox {
             this._isWrapper = false;
             if (containedElements.length === 1) {
                 this._moduleInstanceId = containedElements[0].moduleInstanceId;
+                this._parentModuleInstanceId = containedElements[0].parentModuleInstanceId;
                 this._moduleName = containedElements[0].moduleName;
                 this._layoutDirection = LayoutDirection.SINGLE;
             }
@@ -589,6 +596,7 @@ export class LayoutBox {
     private clone(parent: LayoutBox | null = null): LayoutBox {
         const clone = new LayoutBox(this._rectRelativeToParent, this._layoutDirection, parent, this._level);
         clone._moduleInstanceId = this._moduleInstanceId;
+        clone._parentModuleInstanceId = this._parentModuleInstanceId;
         clone._moduleName = this._moduleName;
         clone._children = this._children.map((child) => child.clone(clone));
         clone._isWrapper = this._isWrapper;
@@ -666,11 +674,13 @@ export class LayoutBox {
         );
 
         newLayoutBox._moduleInstanceId = this._moduleInstanceId;
+        newLayoutBox._parentModuleInstanceId = this._parentModuleInstanceId;
         newLayoutBox._isWrapper = false;
         newLayoutBox._moduleName = this._moduleName;
 
         this.setChildren([newLayoutBox]);
         this._moduleInstanceId = "";
+        this._parentModuleInstanceId = "";
         this._moduleName = "";
         this._isWrapper = true;
         this._layoutDirection = convertTo;
@@ -821,7 +831,8 @@ export class LayoutBox {
                 relY: absoluteRect.y,
                 relWidth: absoluteRect.width,
                 relHeight: absoluteRect.height,
-                moduleInstanceId: this._moduleInstanceId || undefined,
+                moduleInstanceId: this._moduleInstanceId,
+                parentModuleInstanceId: this._parentModuleInstanceId,
                 moduleName: this._moduleName,
             });
         }

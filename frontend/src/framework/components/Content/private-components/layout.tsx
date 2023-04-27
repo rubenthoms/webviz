@@ -1,5 +1,6 @@
 import React from "react";
 
+import { ModuleInstance } from "@framework/ModuleInstance";
 import { LayoutElement, Workbench } from "@framework/Workbench";
 import { useModuleInstances } from "@framework/hooks/workbenchHooks";
 import {
@@ -314,6 +315,18 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         );
     };
 
+    function checkIfActive(moduleInstance: ModuleInstance<any>): boolean {
+        if (moduleInstance.getId() === props.activeModuleId) {
+            return true;
+        }
+
+        if (moduleInstance.getParentModuleInstance()?.getId() === props.activeModuleId) {
+            return true;
+        }
+
+        return false;
+    }
+
     return (
         <div ref={mainRef} className="relative flex h-full w-full">
             <div ref={ref} className="h-full flex-grow">
@@ -338,7 +351,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                             key={instance.getId()}
                             moduleInstance={instance}
                             workbench={props.workbench}
-                            isActive={props.activeModuleId === instance.getId()}
+                            isActive={checkIfActive(instance)}
                             width={rect.width}
                             height={rect.height}
                             x={rect.x}

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ImportState } from "@framework/Module";
+import { ImportState } from "@framework/ModuleBase";
 import { ModuleInstance } from "@framework/ModuleInstance";
 import { Workbench } from "@framework/Workbench";
 import { useImportState } from "@framework/hooks/moduleHooks";
@@ -19,6 +19,11 @@ export const Setting: React.FC<SettingProps> = (props) => {
     }
 
     const Settings = props.moduleInstance.getSettingsFC();
+
+    if (!Settings) {
+        return null;
+    }
+
     return (
         <div
             key={props.moduleInstance.getId()}

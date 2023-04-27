@@ -1,8 +1,11 @@
 import React from "react";
 
+import { Module } from "@framework/Module";
+import { ModuleType } from "@framework/ModuleBase";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 import { useStoreValue } from "@framework/StateStore";
 import { Workbench } from "@framework/Workbench";
+import { useActiveModuleInstance } from "@framework/hooks/workbenchHooks";
 import {
     MANHATTAN_LENGTH,
     Point,
@@ -128,13 +131,13 @@ const ModulesListItem: React.FC<ModulesListItemProps> = (props) => {
             {isDragged && <div ref={mainRef} className="bg-red-500 w-full h-40 mb-4" />}
             <div
                 ref={isDragged ? undefined : mainRef}
-                className="mb-4 border box-border border-slate-600 border-solid text-sm text-gray-700 w-full h-40 select-none"
+                className="flex flex-col mb-4 border box-border border-slate-600 border-solid text-sm text-gray-700 w-full h-40 select-none"
                 style={makeStyle(isDragged, dragSize, dragPosition)}
             >
                 <div ref={ref} className="bg-slate-100 p-4 cursor-move">
                     {props.moduleName}
                 </div>
-                <div className="p-4">Preview</div>
+                <div className="p-4 bg-white flex-grow">Preview</div>
             </div>
         </>
     );
@@ -152,11 +155,18 @@ type ModulesListProps = {
 */
 export const ModulesList: React.FC<ModulesListProps> = (props) => {
     const visible = useStoreValue(props.workbench.getGuiStateStore(), "modulesListOpen");
+    const activeModuleInstance = useActiveModuleInstance(props.workbench);
     const [searchQuery, setSearchQuery] = React.useState("");
 
     const handleSearchQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
     };
+
+    const module = activeModuleInstance?.getModule();
+    let subModules: string[] = [];
+    if (module && module instanceof Module) {
+        subModules = module.getCompatibleSubModuleNames();
+    }
 
     return (
         <div className={`flex flex-col bg-white p-4 w-96 min-h-0 h-full${visible ? "" : " hidden"}`}>
@@ -166,6 +176,18 @@ export const ModulesList: React.FC<ModulesListProps> = (props) => {
                 onChange={handleSearchQueryChange}
             />
             <div className="mt-4 flex-grow min-h-0 overflow-y-auto max-h-full h-0">
+                {subModules.length > 0 && (
+                    <div className="border-b mb-4 bg-indigo-100 p-4">
+                        <div className="text-gray-700 mb-4 text-md">Compatible submodules</div>
+                        {subModules.map((moduleName) => (
+                            <ModulesListItem
+                                relContainer={props.relContainer}
+                                key={moduleName}
+                                moduleName={moduleName}
+                            />
+                        ))}
+                    </div>
+                )}
                 {Object.keys(ModuleRegistry.getRegisteredModules())
                     .filter((module) => module.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map((moduleName) => (

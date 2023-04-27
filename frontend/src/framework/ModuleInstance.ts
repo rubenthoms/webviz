@@ -1,4 +1,5 @@
-import { ImportState, Module, ModuleFC } from "./Module";
+import { ImportState, ModuleFC } from "./ModuleBase";
+import { ModuleBase } from "./ModuleBase";
 import { StateBaseType, StateOptions, StateStore, useSetStoreValue, useStoreState, useStoreValue } from "./StateStore";
 
 export type ModuleContext<S extends StateBaseType> = {
@@ -13,18 +14,34 @@ export class ModuleInstance<StateType extends StateBaseType> {
     private name: string;
     private initialised: boolean;
     private stateStore: StateStore<StateType> | null;
-    private module: Module<StateType>;
+    private module: ModuleBase<StateType>;
     private context: ModuleContext<StateType> | null;
     private importStateSubscribers: Set<() => void>;
+    private subModules: ModuleInstance<any>[];
+    private parentModuleInstance: ModuleInstance<any> | null;
 
-    constructor(module: Module<StateType>, instanceNumber: number) {
-        this.id = `${module.getName()}-${instanceNumber}`;
+    constructor(module: ModuleBase<StateType>, instanceNumber: number, id?: string) {
+        this.id = id ?? `${module.getName()}-${instanceNumber}`;
         this.name = module.getName();
         this.stateStore = null;
         this.module = module;
         this.importStateSubscribers = new Set();
         this.context = null;
         this.initialised = false;
+        this.subModules = [];
+        this.parentModuleInstance = null;
+    }
+
+    public addSubModuleInstance(subModuleInstance: ModuleInstance<any>): void {
+        this.subModules.push(subModuleInstance);
+    }
+
+    public setParentModuleInstance(parentModuleInstance: ModuleInstance<any>): void {
+        this.parentModuleInstance = parentModuleInstance;
+    }
+
+    public getParentModuleInstance(): ModuleInstance<any> | null {
+        return this.parentModuleInstance;
     }
 
     public setInitialState(initialState: StateType, options?: StateOptions<StateType>): void {
@@ -52,11 +69,11 @@ export class ModuleInstance<StateType extends StateBaseType> {
     }
 
     public getViewFC(): ModuleFC<StateType> {
-        return this.module.viewFC;
+        return this.module.getViewFC();
     }
 
-    public getSettingsFC(): ModuleFC<StateType> {
-        return this.module.settingsFC;
+    public getSettingsFC(): ModuleFC<StateType> | null {
+        return this.module.getSettingsFC();
     }
 
     public getImportState(): ImportState {
@@ -76,6 +93,10 @@ export class ModuleInstance<StateType extends StateBaseType> {
 
     public getName(): string {
         return this.name;
+    }
+
+    public getModule(): ModuleBase<StateType> {
+        return this.module;
     }
 
     public subscribeToImportStateChange(cb: () => void) {

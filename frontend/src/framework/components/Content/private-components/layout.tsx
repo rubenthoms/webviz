@@ -1,6 +1,7 @@
 import React from "react";
 
-import { ModuleInstance } from "@framework/ModuleInstance";
+import { ModuleType } from "@framework/ModuleBase";
+import { SubModuleInstance } from "@framework/SubModuleInstance";
 import { LayoutElement, Workbench } from "@framework/Workbench";
 import { useModuleInstances } from "@framework/hooks/workbenchHooks";
 import {
@@ -25,7 +26,6 @@ import { addMarginToRect, rectContainsPoint } from "../../../utils/geometry";
 
 type LayoutProps = {
     workbench: Workbench;
-    activeModuleId: string | null;
 };
 
 export enum LayoutEventTypes {
@@ -98,6 +98,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         let pointerToElementDiff: Point = { x: 0, y: 0 };
         let dragging = false;
         let moduleInstanceId: string | null = null;
+        let moduleParentInstanceId: string | null = null;
         let moduleName: string | null = null;
         setLayout(props.workbench.getLayout());
         let originalLayout: LayoutElement[] = props.workbench.getLayout();
@@ -116,6 +117,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                     relativePointerPosition,
                     size,
                     moduleInstanceId,
+                    moduleParentInstanceId || "",
                     isNewModule
                 );
                 if (preview) {
@@ -158,6 +160,10 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                     if (layoutElement) {
                         const instance = props.workbench.makeAndAddModuleInstance(moduleName, layoutElement);
                         layoutElement.moduleInstanceId = instance.getId();
+                        layoutElement.parentModuleInstanceId =
+                            instance.getModule().getType() === ModuleType.SubModule
+                                ? (instance as SubModuleInstance<any, any>).getParentModuleInstance()?.getId() ?? ""
+                                : "";
                         layoutElement.moduleName = instance.getName();
                     }
                 }
@@ -315,18 +321,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         );
     };
 
-    function checkIfActive(moduleInstance: ModuleInstance<any>): boolean {
-        if (moduleInstance.getId() === props.activeModuleId) {
-            return true;
-        }
-
-        if (moduleInstance.getParentModuleInstance()?.getId() === props.activeModuleId) {
-            return true;
-        }
-
-        return false;
-    }
-
     return (
         <div ref={mainRef} className="relative flex h-full w-full">
             <div ref={ref} className="h-full flex-grow">
@@ -351,7 +345,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                             key={instance.getId()}
                             moduleInstance={instance}
                             workbench={props.workbench}
-                            isActive={checkIfActive(instance)}
                             width={rect.width}
                             height={rect.height}
                             x={rect.x}

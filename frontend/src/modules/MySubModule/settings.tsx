@@ -1,14 +1,9 @@
-import { ModuleFCProps } from "@framework/Module";
-import { Button } from "@lib/components/Button";
+import { ModuleContext } from "@framework/ModuleContext";
+import { SubModuleFCProps } from "@framework/SubModule";
 
+import { CallbackInterface } from "./callbackInterface";
 import { State } from "./state";
 
-export const settings = (props: ModuleFCProps<State>) => {
-    const setCount = props.moduleContext.useSetStoreValue("count");
-
-    return (
-        <div>
-            <Button onClick={() => setCount((prev: number) => prev + 1)}>Count</Button>
-        </div>
-    );
+export const settings = (props: SubModuleFCProps<State, CallbackInterface>) => {
+    return null;
 };

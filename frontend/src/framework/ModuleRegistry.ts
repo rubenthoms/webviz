@@ -1,11 +1,10 @@
 import { Module } from "./Module";
-import { ModuleBase } from "./ModuleBase";
 import { StateBaseType, StateOptions } from "./StateStore";
-import { SubModule } from "./SubModule";
+import { CallbackInterfaceBase, SubModule } from "./SubModule";
 
 export class ModuleRegistry {
     private static _registeredModules: Record<string, Module<any>> = {};
-    private static _registeredSubModules: Record<string, SubModule<any>> = {};
+    private static _registeredSubModules: Record<string, SubModule<any, any>> = {};
     /* eslint-disable-next-line @typescript-eslint/no-empty-function */
     private constructor() {}
 
@@ -18,8 +17,11 @@ export class ModuleRegistry {
         return module;
     }
 
-    public static registerSubModule(subModuleName: string): SubModule<Record<string, never>> {
-        const subModule = new SubModule<Record<string, never>>(subModuleName);
+    public static registerSubModule<
+        SubModuleStateType extends StateBaseType,
+        CallbackInterface extends CallbackInterfaceBase
+    >(subModuleName: string): SubModule<SubModuleStateType, CallbackInterface> {
+        const subModule = new SubModule<SubModuleStateType, CallbackInterface>(subModuleName);
         this._registeredSubModules[subModuleName] = subModule;
         return subModule;
     }
@@ -37,15 +39,23 @@ export class ModuleRegistry {
         throw "Did you forget to register your module in 'src/modules/registerAllModules.ts'?";
     }
 
-    public static initSubModule(moduleName: string): SubModule<Record<string, never>> {
+    public static initSubModule<
+        SubModuleStateType extends StateBaseType,
+        CallbackInterface extends CallbackInterfaceBase
+    >(
+        moduleName: string,
+        initialState: SubModuleStateType,
+        options?: StateOptions<SubModuleStateType>
+    ): SubModule<SubModuleStateType, CallbackInterface> {
         const module = this._registeredSubModules[moduleName];
         if (module) {
-            return module as SubModule<Record<string, never>>;
+            module.setInitialState(initialState);
+            return module as SubModule<SubModuleStateType, CallbackInterface>;
         }
         throw "Did you forget to register your sub module in 'src/modules/registerAllModules.ts'?";
     }
 
-    public static getModule(moduleName: string): ModuleBase<any> {
+    public static getModule(moduleName: string): Module<any> | SubModule<any, any> {
         const module = this._registeredModules[moduleName] ?? this._registeredSubModules[moduleName];
         if (module) {
             return module;
@@ -57,8 +67,8 @@ export class ModuleRegistry {
         return this._registeredModules;
     }
 
-    public static getRegisteredSubModulesForModule(module: Module<any>): Record<string, SubModule<any>> {
-        const subModules: Record<string, SubModule<any>> = {};
+    public static getRegisteredSubModulesForModule(module: Module<any>): Record<string, SubModule<any, any>> {
+        const subModules: Record<string, SubModule<any, any>> = {};
 
         for (const moduleName in this._registeredSubModules) {
             if (module.getCompatibleSubModuleNames().includes(moduleName)) {

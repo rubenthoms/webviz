@@ -1,18 +1,10 @@
-import React from "react";
-
 import { cloneDeep } from "lodash";
 
-import { ModuleContext, ModuleInstance } from "./ModuleInstance";
+import { ModuleInstance } from "./ModuleInstance";
+import { ModuleInstanceBase } from "./ModuleInstanceBase";
 import { StateBaseType, StateOptions } from "./StateStore";
+import { SubModuleInstance } from "./SubModuleInstance";
 import { Workbench } from "./Workbench";
-import { WorkbenchServices } from "./WorkbenchServices";
-
-export type ModuleFCProps<S extends StateBaseType> = {
-    moduleContext: ModuleContext<S>;
-    workbenchServices: WorkbenchServices;
-};
-
-export type ModuleFC<S extends StateBaseType> = React.FC<ModuleFCProps<S>>;
 
 export enum ImportState {
     NotImported = "NotImported",
@@ -28,14 +20,12 @@ export enum ModuleType {
 
 export class ModuleBase<StateType extends StateBaseType> {
     private _name: string;
-    private numInstances: number;
+    protected numInstances: number;
     private importState: ImportState;
-    private moduleInstances: ModuleInstance<StateType>[];
+    protected moduleInstances: ModuleInstanceBase<StateType>[];
     protected initialState: StateType | null;
     protected stateOptions: StateOptions<StateType> | undefined;
     private workbench: Workbench | null;
-    public viewFC: ModuleFC<StateType>;
-    public settingsFC: ModuleFC<StateType> | null;
 
     constructor(name: string) {
         this._name = name;
@@ -44,8 +34,12 @@ export class ModuleBase<StateType extends StateBaseType> {
         this.moduleInstances = [];
         this.workbench = null;
         this.initialState = null;
-        this.viewFC = () => <div>Not defined</div>;
-        this.settingsFC = null;
+    }
+
+    public setInitialState(initialState: StateType, options?: StateOptions<StateType>): void {
+        this.initialState = initialState;
+        this.stateOptions = options;
+        this.initModuleInstances();
     }
 
     public getImportState(): ImportState {
@@ -64,19 +58,8 @@ export class ModuleBase<StateType extends StateBaseType> {
         this.workbench = workbench;
     }
 
-    public getViewFC(): ModuleFC<StateType> {
-        return this.viewFC;
-    }
-
-    public getSettingsFC(): ModuleFC<StateType> | null {
-        return this.settingsFC;
-    }
-
-    public makeInstance(id?: string): ModuleInstance<StateType> {
-        const instance = new ModuleInstance<StateType>(this, this.numInstances++, id);
-        this.moduleInstances.push(instance);
-        this.maybeImportSelf();
-        return instance;
+    public makeInstance(id?: string): ModuleInstance<StateType> | SubModuleInstance<any, any> {
+        throw new Error("Method not implemented.");
     }
 
     private setImportState(state: ImportState): void {
@@ -98,7 +81,7 @@ export class ModuleBase<StateType extends StateBaseType> {
         });
     }
 
-    private maybeImportSelf(): void {
+    protected maybeImportSelf(): void {
         if (this.importState !== ImportState.NotImported) {
             if (this.initialState && this.importState === ImportState.Imported) {
                 this.initModuleInstances();

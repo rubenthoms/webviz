@@ -607,6 +607,7 @@ export class LayoutBox {
         pointerPoint: Point,
         realSize: Size,
         draggedModuleInstanceId: string,
+        draggedModuleParentInstanceId: string,
         isNewModule: boolean
     ): LayoutBox | null {
         if (this._parent) {
@@ -649,6 +650,7 @@ export class LayoutBox {
                     preview._level + 1
                 );
                 draggedBox._moduleInstanceId = draggedModuleInstanceId;
+                draggedBox._parentModuleInstanceId = draggedModuleParentInstanceId;
                 draggedBox._isWrapper = false;
                 preview.addLayoutElement(draggedBox, layoutBox, edge);
             } else {

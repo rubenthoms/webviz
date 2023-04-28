@@ -1,6 +1,9 @@
 import React from "react";
 
-import { ModuleInstance } from "../ModuleInstance";
+import { ModuleInstance } from "@framework/ModuleInstance";
+import { SubModuleInstance } from "@framework/SubModuleInstance";
+
+import { ModuleInstanceBase } from "../ModuleInstanceBase";
 import { Workbench, WorkbenchEvents } from "../Workbench";
 
 export function useActiveModuleInstanceId(workbench: Workbench): string {
@@ -19,8 +22,8 @@ export function useActiveModuleInstanceId(workbench: Workbench): string {
     return activeModuleId;
 }
 
-export function useActiveModuleInstance(workbench: Workbench): ModuleInstance<any> | null {
-    const [activeModuleInstance, setActiveModuleInstance] = React.useState<ModuleInstance<any> | null>(null);
+export function useActiveModuleInstance(workbench: Workbench): ModuleInstanceBase<any> | null {
+    const [activeModuleInstance, setActiveModuleInstance] = React.useState<ModuleInstanceBase<any> | null>(null);
 
     React.useEffect(() => {
         function handleActiveModuleChange() {
@@ -35,8 +38,10 @@ export function useActiveModuleInstance(workbench: Workbench): ModuleInstance<an
     return activeModuleInstance;
 }
 
-export function useModuleInstances(workbench: Workbench): ModuleInstance<any>[] {
-    const [moduleInstances, setModuleInstances] = React.useState<ModuleInstance<any>[]>([]);
+export function useModuleInstances(workbench: Workbench): (ModuleInstance<any> | SubModuleInstance<any, any>)[] {
+    const [moduleInstances, setModuleInstances] = React.useState<(ModuleInstance<any> | SubModuleInstance<any, any>)[]>(
+        []
+    );
 
     React.useEffect(() => {
         function handleModuleInstancesChange() {

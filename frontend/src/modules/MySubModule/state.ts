@@ -1,3 +1,1 @@
-export type State = {
-    count: number;
-};
+export type State = {};

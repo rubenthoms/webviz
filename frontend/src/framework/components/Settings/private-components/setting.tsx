@@ -1,12 +1,14 @@
 import React from "react";
 
-import { ImportState } from "@framework/ModuleBase";
+import { ImportState, ModuleType } from "@framework/ModuleBase";
 import { ModuleInstance } from "@framework/ModuleInstance";
+import { ModuleInstanceBase } from "@framework/ModuleInstanceBase";
+import { SubModuleInstance } from "@framework/SubModuleInstance";
 import { Workbench } from "@framework/Workbench";
 import { useImportState } from "@framework/hooks/moduleHooks";
 
 type SettingProps = {
-    moduleInstance: ModuleInstance<any>;
+    moduleInstance: ModuleInstance<any> | SubModuleInstance<any, any>;
     activeModuleId: string;
     workbench: Workbench;
 };
@@ -18,11 +20,31 @@ export const Setting: React.FC<SettingProps> = (props) => {
         return null;
     }
 
-    const Settings = props.moduleInstance.getSettingsFC();
+    let Settings = props.moduleInstance.getSettingsFC();
 
     if (!Settings) {
         return null;
     }
+
+    const makeContent = () => {
+        if (props.moduleInstance.getModule().getType() === ModuleType.MainModule) {
+            Settings = (props.moduleInstance as ModuleInstance<any>).getSettingsFC();
+            return (
+                <Settings
+                    moduleContext={(props.moduleInstance as ModuleInstance<any>).getContext()}
+                    workbenchServices={props.workbench.getWorkbenchServices()}
+                />
+            );
+        } else {
+            Settings = (props.moduleInstance as SubModuleInstance<any, any>).getSettingsFC();
+            return (
+                <Settings
+                    moduleContext={(props.moduleInstance as SubModuleInstance<any, any>).getContext()}
+                    workbenchServices={props.workbench.getWorkbenchServices()}
+                />
+            );
+        }
+    };
 
     return (
         <div
@@ -32,10 +54,7 @@ export const Setting: React.FC<SettingProps> = (props) => {
             }}
             className="flex-col gap-4"
         >
-            <Settings
-                moduleContext={props.moduleInstance.getContext()}
-                workbenchServices={props.workbench.getWorkbenchServices()}
-            />
+            {makeContent()}
         </div>
     );
 };

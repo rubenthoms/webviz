@@ -3,8 +3,10 @@ import { Ensemble } from "@shared-types/ensemble";
 import { Module } from "./Module";
 import { ImportState, ModuleType } from "./ModuleBase";
 import { ModuleInstance } from "./ModuleInstance";
+import { ModuleInstanceBase } from "./ModuleInstanceBase";
 import { ModuleRegistry } from "./ModuleRegistry";
 import { StateStore } from "./StateStore";
+import { SubModuleInstance } from "./SubModuleInstance";
 import { WorkbenchServices } from "./WorkbenchServices";
 import { PrivateWorkbenchServices } from "./internal/PrivateWorkbenchServices";
 
@@ -33,7 +35,7 @@ export type WorkbenchGuiState = {
 };
 
 export class Workbench {
-    private moduleInstances: ModuleInstance<any>[];
+    private moduleInstances: (ModuleInstance<any> | SubModuleInstance<any, any>)[];
     private _activeModuleId: string;
     private guiStateStore: StateStore<WorkbenchGuiState>;
     private dataStateStore: StateStore<WorkbenchDataState>;
@@ -91,7 +93,7 @@ export class Workbench {
         );
     }
 
-    public getActiveModuleInstance(): ModuleInstance<any> | null {
+    public getActiveModuleInstance(): ModuleInstanceBase<any> | null {
         return this.moduleInstances.find((moduleInstance) => moduleInstance.getId() === this._activeModuleId) || null;
     }
 
@@ -118,7 +120,7 @@ export class Workbench {
         };
     }
 
-    public getModuleInstances(): ModuleInstance<any>[] {
+    public getModuleInstances(): (ModuleInstance<any> | SubModuleInstance<any, any>)[] {
         return this.moduleInstances;
     }
 
@@ -143,8 +145,12 @@ export class Workbench {
                         (instance) => instance.getId() === element.parentModuleInstanceId
                     );
                     if (parentModuleInstance) {
-                        moduleInstance.setParentModuleInstance(parentModuleInstance);
-                        parentModuleInstance.addSubModuleInstance(moduleInstance);
+                        (moduleInstance as SubModuleInstance<any, any>).setParentModuleInstance(
+                            parentModuleInstance as ModuleInstance<any>
+                        );
+                        (parentModuleInstance as ModuleInstance<any>).addSubModuleInstance(
+                            moduleInstance as SubModuleInstance<any, any>
+                        );
                     }
                 }
                 this.moduleInstances.push(moduleInstance);
@@ -154,7 +160,7 @@ export class Workbench {
             });
     }
 
-    public makeAndAddModuleInstance(moduleName: string, layout: LayoutElement): ModuleInstance<any> {
+    public makeAndAddModuleInstance(moduleName: string, layout: LayoutElement): ModuleInstanceBase<any> {
         const module = ModuleRegistry.getModule(moduleName);
         if (!module) {
             throw new Error(`Module ${moduleName} not found`);
@@ -170,8 +176,12 @@ export class Workbench {
             currentlyActiveModuleInstance.getModule() instanceof Module &&
             module.getType() === ModuleType.SubModule
         ) {
-            currentlyActiveModuleInstance.addSubModuleInstance(moduleInstance);
-            moduleInstance.setParentModuleInstance(currentlyActiveModuleInstance);
+            (currentlyActiveModuleInstance as ModuleInstance<any>).addSubModuleInstance(
+                moduleInstance as SubModuleInstance<any, any>
+            );
+            (moduleInstance as SubModuleInstance<any, any>).setParentModuleInstance(
+                currentlyActiveModuleInstance as ModuleInstance<any>
+            );
             this.layout.push({
                 ...layout,
                 moduleInstanceId: moduleInstance.getId(),

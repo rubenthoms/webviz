@@ -1,8 +1,10 @@
 import React from "react";
 
-import { ImportState } from "@framework/ModuleBase";
+import { ImportState, ModuleType } from "@framework/ModuleBase";
 import { ModuleInstance } from "@framework/ModuleInstance";
+import { SubModuleInstance } from "@framework/SubModuleInstance";
 import { Workbench } from "@framework/Workbench";
+import { useActiveModuleInstanceId } from "@framework/hooks/workbenchHooks";
 import { Point, pointRelativeToDomRect, pointerEventToPoint } from "@framework/utils/geometry";
 import { XMarkIcon } from "@heroicons/react/20/solid";
 
@@ -12,8 +14,7 @@ import { ViewWrapperPlaceholder } from "./viewWrapperPlaceholder";
 import { pointDifference } from "../../../utils/geometry";
 
 type ViewWrapperProps = {
-    isActive: boolean;
-    moduleInstance: ModuleInstance<any>;
+    moduleInstance: ModuleInstance<any> | SubModuleInstance<any, any>;
     workbench: Workbench;
     width: number;
     height: number;
@@ -26,6 +27,8 @@ type ViewWrapperProps = {
 export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
     const [importState, setImportState] = React.useState<ImportState>(ImportState.NotImported);
     const ref = React.useRef<HTMLDivElement>(null);
+
+    const activeModuleInstanceId = useActiveModuleInstanceId(props.workbench);
 
     React.useEffect(() => {
         setImportState(props.moduleInstance.getImportState());
@@ -60,13 +63,25 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
                 );
             }
 
-            const View = props.moduleInstance.getViewFC();
-            return (
-                <View
-                    moduleContext={props.moduleInstance.getContext()}
-                    workbenchServices={props.workbench.getWorkbenchServices()}
-                />
-            );
+            if (props.moduleInstance.getModule().getType() === ModuleType.MainModule) {
+                const moduleInstance = props.moduleInstance as ModuleInstance<any>;
+                const View = moduleInstance.getViewFC();
+                return (
+                    <View
+                        moduleContext={moduleInstance.getContext()}
+                        workbenchServices={props.workbench.getWorkbenchServices()}
+                    />
+                );
+            } else {
+                const moduleInstance = props.moduleInstance as SubModuleInstance<any, any>;
+                const View = moduleInstance.getViewFC();
+                return (
+                    <View
+                        moduleContext={moduleInstance.getContext()}
+                        workbenchServices={props.workbench.getWorkbenchServices()}
+                    />
+                );
+            }
         },
         [props.moduleInstance, props.workbench, importState]
     );
@@ -107,17 +122,31 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
 
     const handleModuleHeaderClick = React.useCallback(
         function handleModuleHeaderClick() {
-            if (props.isActive) return;
-
-            const parentModuleInstance = props.moduleInstance.getParentModuleInstance();
-            if (parentModuleInstance) {
-                props.workbench.setActiveModuleId(parentModuleInstance.getId());
-                return;
-            }
+            if (activeModuleInstanceId === props.moduleInstance.getId()) return;
             props.workbench.setActiveModuleId(props.moduleInstance.getId());
         },
-        [props.moduleInstance, props.workbench, props.isActive]
+        [props.moduleInstance, props.workbench, activeModuleInstanceId]
     );
+
+    function checkIfSubModules(): boolean {
+        if (props.moduleInstance.getId() === activeModuleInstanceId) {
+            return true;
+        }
+
+        if (props.moduleInstance instanceof SubModuleInstance) {
+            if (props.moduleInstance.getParentModuleInstance()?.getId() === activeModuleInstanceId) {
+                return true;
+            }
+        }
+
+        if (props.moduleInstance instanceof ModuleInstance) {
+            if (props.moduleInstance.getSubModuleInstances().some((m) => m.getId() === activeModuleInstanceId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     return (
         <>
@@ -138,10 +167,12 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
             >
                 <div
                     className={`bg-white h-full w-full flex flex-col ${
-                        props.isActive ? "border-blue-500" : ""
-                    } border-solid border-2 box-border shadow ${
-                        props.isDragged ? "cursor-grabbing select-none" : "cursor-grab"
-                    }}`}
+                        activeModuleInstanceId === props.moduleInstance.getId()
+                            ? "border-blue-500 border-solid"
+                            : checkIfSubModules()
+                            ? "border-blue-500 border-dotted"
+                            : ""
+                    } border-2 box-border shadow ${props.isDragged ? "cursor-grabbing select-none" : "cursor-grab"}}`}
                     onClick={handleModuleHeaderClick}
                 >
                     <div

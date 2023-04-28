@@ -1,9 +1,9 @@
 import React from "react";
 
 import { ImportState } from "@framework/Module";
-import { ModuleInstance } from "@framework/ModuleInstance";
+import { ModuleInstanceBase } from "@framework/ModuleInstanceBase";
 
-export const useImportState = (moduleInstance: ModuleInstance<any>): ImportState => {
+export const useImportState = (moduleInstance: ModuleInstanceBase<any>): ImportState => {
     const [importState, setImportState] = React.useState<ImportState>(moduleInstance.getImportState());
 
     React.useEffect(() => {

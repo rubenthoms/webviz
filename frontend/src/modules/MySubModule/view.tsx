@@ -9,8 +9,8 @@ export const view = (props: SubModuleFCProps<State, CallbackInterface>) => {
     const [leaderCount, setLeaderCount] = React.useState(0);
 
     React.useEffect(() => {
-        const cb = (newCount: number) => {
-            setLeaderCount(newCount);
+        const cb = (data: CallbackInterface) => {
+            setLeaderCount(data.count);
         };
 
         const unregisterCallback = props.moduleContext.registerSubModuleCallbackFunction(cb);

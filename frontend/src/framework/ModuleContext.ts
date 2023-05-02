@@ -44,13 +44,13 @@ export class ModuleContext<S extends StateBaseType> extends ModuleContextBase<S>
         return this._moduleInstance.getId();
     }
 
-    getSubModuleInstances(): { subModuleName: string; callback: Function }[] {
+    getSubModuleInstances(): { subModuleName: string; callback: (data: CallbackInterfaceBase) => void }[] {
         return this._moduleInstance
             .getSubModuleInstances()
             .filter((instance) => instance.getSubModuleInstanceCallbackFunction() !== null)
             .map((instance) => ({
                 subModuleName: instance.getName(),
-                callback: instance.getSubModuleInstanceCallbackFunction() as Function,
+                callback: instance.getSubModuleInstanceCallbackFunction() as (data: CallbackInterfaceBase) => void,
             }));
     }
 }

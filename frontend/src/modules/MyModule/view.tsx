@@ -10,7 +10,7 @@ export const view = (props: ModuleFCProps<State>) => {
     React.useEffect(() => {
         props.moduleContext.getSubModuleInstances().forEach((subModuleInstance) => {
             if (subModuleInstance.subModuleName === "MySubModule") {
-                subModuleInstance.callback(count);
+                subModuleInstance.callback({ count });
             }
         });
     }, [count]);

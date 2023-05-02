@@ -30,7 +30,7 @@ export class SubModuleInstance<
         return this.parentModuleInstance;
     }
 
-    public getSubModuleInstanceCallbackFunction(): Function | null {
+    public getSubModuleInstanceCallbackFunction(): ((data: CallbackInterface) => void) | null {
         return this.subModuleInstanceCallbackFunction;
     }
 

@@ -1,3 +1,3 @@
-export type CallbackInterface = {
+export type CallbackProperties = {
     count: number;
 };

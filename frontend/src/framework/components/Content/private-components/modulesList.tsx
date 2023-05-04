@@ -1,7 +1,6 @@
 import React from "react";
 
-import { Module } from "@framework/Module";
-import { ModuleType } from "@framework/ModuleBase";
+import { MainModule } from "@framework/MainModule";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 import { useStoreValue } from "@framework/StateStore";
 import { Workbench } from "@framework/Workbench";
@@ -164,7 +163,7 @@ export const ModulesList: React.FC<ModulesListProps> = (props) => {
 
     const module = activeModuleInstance?.getModule();
     let subModules: string[] = [];
-    if (module && module instanceof Module) {
+    if (module && module instanceof MainModule) {
         subModules = module.getCompatibleSubModuleNames();
     }
 

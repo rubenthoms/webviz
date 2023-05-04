@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Frequency, VectorDescription } from "@api";
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { ApiStateWrapper } from "@lib/components/ApiStateWrapper";
 import { Checkbox } from "@lib/components/Checkbox";
@@ -17,7 +17,7 @@ import { useVectorsQuery } from "./queryHooks";
 import { State } from "./state";
 
 //-----------------------------------------------------------------------------------------------------------
-export function settings({ moduleContext, workbenchServices }: ModuleFCProps<State>) {
+export function settings({ moduleContext, workbenchServices }: MainModuleFCProps<State>) {
     console.log("render SimulationTimeSeries settings");
 
     const ensembles = useSubscribedValue("navigator.ensembles", workbenchServices);

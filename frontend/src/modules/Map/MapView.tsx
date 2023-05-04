@@ -1,14 +1,15 @@
 import React from "react";
 
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useElementSize } from "@lib/hooks/useElementSize";
+import { SubsurfaceViewer } from "@webviz/subsurface-components";
 
 import { useSurfaceDataQueryByAddress } from "./MapQueryHooks";
 import { MapState } from "./MapState";
 import { makeSurfAddrString } from "./SurfAddr";
-import {SubsurfaceViewer} from "@webviz/subsurface-components"
+
 //-----------------------------------------------------------------------------------------------------------
-export function MapView({ moduleContext }: ModuleFCProps<MapState>) {
+export function MapView({ moduleContext }: MainModuleFCProps<MapState>) {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
     const surfAddr = moduleContext.useStoreValue("surfaceAddress");
@@ -24,46 +25,32 @@ export function MapView({ moduleContext }: ModuleFCProps<MapState>) {
     const surfAddrAsAny = surfAddr as any;
     if (surfDataQuery.data) {
         return (
-        <div className="relative w-full h-full flex flex-col">
-            <SubsurfaceViewer 
-                id="deckgl" 
-                layers={[   {
-                    "@@type": "MapLayer",
-                    "id": "mesh-layer",
-                    "meshData": JSON.parse(surfDataQuery.data?.mesh_data),
-                    "frame": {
-                      "origin": [
-                        surfDataQuery.data?.x_ori,
-                        surfDataQuery.data?.y_ori
-                      ],
-                      "count": [
-                        surfDataQuery.data?.x_count,
-                        surfDataQuery.data?.y_count
-                      ],
-                      "increment": [
-                        surfDataQuery.data?.x_inc,
-                        surfDataQuery.data?.y_inc
-                      ],
-                      "rotDeg": surfDataQuery.data?.rot_deg,
-                      
-                    },
-                    
-                    "contours": [
-                      0,
-                      100
-                    ],
-                    "isContoursDepth": true,
-                    "gridLines": false,
-                    "material": true,
-                    "smoothShading": true,
-                    "colorMapName": "Physics"
-                  }, 
-                ]}
-            />
-           
+            <div className="relative w-full h-full flex flex-col">
+                <SubsurfaceViewer
+                    id="deckgl"
+                    layers={[
+                        {
+                            "@@type": "MapLayer",
+                            id: "mesh-layer",
+                            meshData: JSON.parse(surfDataQuery.data?.mesh_data),
+                            frame: {
+                                origin: [surfDataQuery.data?.x_ori, surfDataQuery.data?.y_ori],
+                                count: [surfDataQuery.data?.x_count, surfDataQuery.data?.y_count],
+                                increment: [surfDataQuery.data?.x_inc, surfDataQuery.data?.y_inc],
+                                rotDeg: surfDataQuery.data?.rot_deg,
+                            },
 
-        </div>
-    );
-            }
-    return (<div/>)
+                            contours: [0, 100],
+                            isContoursDepth: true,
+                            gridLines: false,
+                            material: true,
+                            smoothShading: true,
+                            colorMapName: "Physics",
+                        },
+                    ]}
+                />
+            </div>
+        );
+    }
+    return <div />;
 }

@@ -2,14 +2,14 @@ import React from "react";
 
 import { SubModuleFCProps } from "@framework/SubModule";
 
-import { CallbackInterface } from "./callbackInterface";
+import { CallbackProperties } from "./callbackInterface";
 import { State } from "./state";
 
-export const view = (props: SubModuleFCProps<State, CallbackInterface>) => {
+export const view = (props: SubModuleFCProps<State, CallbackProperties>) => {
     const [leaderCount, setLeaderCount] = React.useState(0);
 
     React.useEffect(() => {
-        const cb = (data: CallbackInterface) => {
+        const cb = (data: CallbackProperties) => {
             setLeaderCount(data.count);
         };
 

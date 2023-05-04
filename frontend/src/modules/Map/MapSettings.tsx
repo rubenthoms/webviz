@@ -2,7 +2,7 @@ import React from "react";
 
 import { StaticSurfaceDirectory } from "@api";
 import { SurfaceStatisticFunction } from "@api";
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { ApiStateWrapper } from "@lib/components/ApiStateWrapper";
 import { Checkbox } from "@lib/components/Checkbox";
@@ -17,7 +17,7 @@ import { SurfAddr, SurfAddrFactory } from "./SurfAddr";
 import { AggregationDropdown } from "./UiComponents";
 
 //-----------------------------------------------------------------------------------------------------------
-export function MapSettings({ moduleContext, workbenchServices }: ModuleFCProps<MapState>) {
+export function MapSettings({ moduleContext, workbenchServices }: MainModuleFCProps<MapState>) {
     console.log("render MapSettings");
 
     const ensembles = useSubscribedValue("navigator.ensembles", workbenchServices);
@@ -36,21 +36,39 @@ export function MapSettings({ moduleContext, workbenchServices }: ModuleFCProps<
 
     const firstEnsemble = ensembles?.at(0) ?? null;
 
-    const dynamicSurfDirQuery = useDynamicSurfaceDirectoryQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName, surfaceType === "dynamic");
-    const staticSurfDirQuery = useStaticSurfaceDirectoryQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName, surfaceType === "static");
+    const dynamicSurfDirQuery = useDynamicSurfaceDirectoryQuery(
+        firstEnsemble?.caseUuid,
+        firstEnsemble?.ensembleName,
+        surfaceType === "dynamic"
+    );
+    const staticSurfDirQuery = useStaticSurfaceDirectoryQuery(
+        firstEnsemble?.caseUuid,
+        firstEnsemble?.ensembleName,
+        surfaceType === "static"
+    );
 
     let computedSurfaceName: string | null = null;
     let computedSurfaceAttribute: string | null = null;
     let computedTimeOrInterval: string | null = null;
     if (surfaceType == "static" && staticSurfDirQuery.data) {
         computedSurfaceName = fixupStringValueFromList(selectedSurfaceName, staticSurfDirQuery.data.names);
-        computedSurfaceAttribute = fixupStaticSurfAttribute(computedSurfaceName, selectedSurfaceAttribute, staticSurfDirQuery.data);
+        computedSurfaceAttribute = fixupStaticSurfAttribute(
+            computedSurfaceName,
+            selectedSurfaceAttribute,
+            staticSurfDirQuery.data
+        );
         computedTimeOrInterval = null;
     }
     if (surfaceType == "dynamic" && dynamicSurfDirQuery.data) {
         computedSurfaceName = fixupStringValueFromList(selectedSurfaceName, dynamicSurfDirQuery.data.names);
-        computedSurfaceAttribute = fixupStringValueFromList(selectedSurfaceAttribute, dynamicSurfDirQuery.data.attributes);
-        computedTimeOrInterval = fixupStringValueFromList(selectedTimeOrInterval, dynamicSurfDirQuery.data.time_or_interval_strings);
+        computedSurfaceAttribute = fixupStringValueFromList(
+            selectedSurfaceAttribute,
+            dynamicSurfDirQuery.data.attributes
+        );
+        computedTimeOrInterval = fixupStringValueFromList(
+            selectedTimeOrInterval,
+            dynamicSurfDirQuery.data.time_or_interval_strings
+        );
     }
 
     // Possibly update our surface selection states
@@ -149,7 +167,10 @@ export function MapSettings({ moduleContext, workbenchServices }: ModuleFCProps<
     } else if (surfaceType == "dynamic" && dynamicSurfDirQuery.data) {
         surfNameOptions = dynamicSurfDirQuery.data.names.map((name) => ({ value: name, label: name }));
         surfAttributeOptions = dynamicSurfDirQuery.data.attributes.map((attr) => ({ value: attr, label: attr }));
-        timeOrIntervalOptions = dynamicSurfDirQuery.data.time_or_interval_strings.map((time) => ({ value: time, label: time }));
+        timeOrIntervalOptions = dynamicSurfDirQuery.data.time_or_interval_strings.map((time) => ({
+            value: time,
+            label: time,
+        }));
     }
 
     let chooseTimeOrIntervalElement: JSX.Element | null = null;

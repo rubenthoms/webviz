@@ -1,7 +1,7 @@
 import React from "react";
 
-import { ImportState, ModuleType } from "@framework/ModuleBase";
-import { ModuleInstance } from "@framework/ModuleInstance";
+import { MainModuleInstance } from "@framework/MainModuleInstance";
+import { ImportState, ModuleType } from "@framework/Module";
 import { SubModuleInstance } from "@framework/SubModuleInstance";
 import { Workbench } from "@framework/Workbench";
 import { useActiveModuleInstanceId } from "@framework/hooks/workbenchHooks";
@@ -14,7 +14,7 @@ import { ViewWrapperPlaceholder } from "./viewWrapperPlaceholder";
 import { pointDifference } from "../../../utils/geometry";
 
 type ViewWrapperProps = {
-    moduleInstance: ModuleInstance<any> | SubModuleInstance<any, any>;
+    moduleInstance: MainModuleInstance<any> | SubModuleInstance<any, any>;
     workbench: Workbench;
     width: number;
     height: number;
@@ -64,7 +64,7 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
             }
 
             if (props.moduleInstance.getModule().getType() === ModuleType.MainModule) {
-                const moduleInstance = props.moduleInstance as ModuleInstance<any>;
+                const moduleInstance = props.moduleInstance as MainModuleInstance<any>;
                 const View = moduleInstance.getViewFC();
                 return (
                     <View
@@ -139,7 +139,7 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
             }
         }
 
-        if (props.moduleInstance instanceof ModuleInstance) {
+        if (props.moduleInstance instanceof MainModuleInstance) {
             if (props.moduleInstance.getSubModuleInstances().some((m) => m.getId() === activeModuleInstanceId)) {
                 return true;
             }

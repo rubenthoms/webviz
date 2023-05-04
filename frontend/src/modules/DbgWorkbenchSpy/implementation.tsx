@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { AllTopicDefinitions, WorkbenchServices } from "@framework/WorkbenchServices";
 import { Button } from "@lib/components/Button";
 
@@ -9,7 +9,7 @@ export type SharedState = {
 };
 
 //-----------------------------------------------------------------------------------------------------------
-export function WorkbenchSpySettings({ moduleContext, workbenchServices }: ModuleFCProps<SharedState>) {
+export function WorkbenchSpySettings({ moduleContext }: MainModuleFCProps<SharedState>) {
     const setRefreshCounter = moduleContext.useSetStoreValue("triggeredRefreshCounter");
     return (
         <div>
@@ -19,7 +19,7 @@ export function WorkbenchSpySettings({ moduleContext, workbenchServices }: Modul
 }
 
 //-----------------------------------------------------------------------------------------------------------
-export function WorkbenchSpyView({ moduleContext, workbenchServices }: ModuleFCProps<SharedState>) {
+export function WorkbenchSpyView({ moduleContext, workbenchServices }: MainModuleFCProps<SharedState>) {
     const [selectedEnsembles, selectedEnsembles_TS] = useServiceValueWithTS("navigator.ensembles", workbenchServices);
     const [hoverRealization, hoverRealization_TS] = useServiceValueWithTS("global.hoverRealization", workbenchServices);
     const [hoverTimestamp, hoverTimestamp_TS] = useServiceValueWithTS("global.hoverTimestamp", workbenchServices);

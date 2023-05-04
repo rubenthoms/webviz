@@ -1,28 +1,28 @@
-import { ModuleBase, ModuleType } from "./ModuleBase";
+import { Module, ModuleType } from "./Module";
 import { SubModuleContext } from "./ModuleContext";
 import { StateBaseType } from "./StateStore";
 import { SubModuleInstance } from "./SubModuleInstance";
 import { WorkbenchServices } from "./WorkbenchServices";
 
-export type CallbackInterfaceBase = {
+export type CallbackPropertiesBase = {
     [key: string]: any;
 };
 
-export type SubModuleFCProps<S extends StateBaseType, CallbackInterface extends CallbackInterfaceBase> = {
-    moduleContext: SubModuleContext<S, CallbackInterface>;
+export type SubModuleFCProps<S extends StateBaseType, CallbackProperties extends CallbackPropertiesBase> = {
+    moduleContext: SubModuleContext<S, CallbackProperties>;
     workbenchServices: WorkbenchServices;
 };
 
-export type SubModuleFC<S extends StateBaseType, CallbackInterface extends CallbackInterfaceBase> = React.FC<
-    SubModuleFCProps<S, CallbackInterface>
+export type SubModuleFC<S extends StateBaseType, CallbackProperties extends CallbackPropertiesBase> = React.FC<
+    SubModuleFCProps<S, CallbackProperties>
 >;
 
 export class SubModule<
     StateType extends StateBaseType,
-    CallbackInterface extends CallbackInterfaceBase
-> extends ModuleBase<StateType> {
-    public viewFC: SubModuleFC<StateType, CallbackInterface>;
-    public settingsFC: SubModuleFC<StateType, CallbackInterface>;
+    CallbackProperties extends CallbackPropertiesBase
+> extends Module<StateType> {
+    public viewFC: SubModuleFC<StateType, CallbackProperties>;
+    public settingsFC: SubModuleFC<StateType, CallbackProperties>;
 
     constructor(name: string) {
         super(name);
@@ -34,18 +34,18 @@ export class SubModule<
         return ModuleType.SubModule;
     }
 
-    public makeInstance(id?: string): SubModuleInstance<StateType, CallbackInterface> | SubModuleInstance<any, any> {
-        const instance = new SubModuleInstance<StateType, CallbackInterface>(this, this.numInstances++, id);
+    public makeInstance(id?: string): SubModuleInstance<StateType, CallbackProperties> | SubModuleInstance<any, any> {
+        const instance = new SubModuleInstance<StateType, CallbackProperties>(this, this.numInstances++, id);
         this.moduleInstances.push(instance);
         this.maybeImportSelf();
         return instance;
     }
 
-    public getViewFC(): SubModuleFC<StateType, CallbackInterface> {
+    public getViewFC(): SubModuleFC<StateType, CallbackProperties> {
         return this.viewFC;
     }
 
-    public getSettingsFC(): SubModuleFC<StateType, CallbackInterface> {
+    public getSettingsFC(): SubModuleFC<StateType, CallbackProperties> {
         return this.settingsFC;
     }
 }

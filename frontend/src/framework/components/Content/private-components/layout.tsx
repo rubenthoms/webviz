@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ModuleType } from "@framework/ModuleBase";
+import { ModuleType } from "@framework/Module";
 import { SubModuleInstance } from "@framework/SubModuleInstance";
 import { LayoutElement, Workbench } from "@framework/Workbench";
 import { useModuleInstances } from "@framework/hooks/workbenchHooks";
@@ -98,7 +98,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         let pointerToElementDiff: Point = { x: 0, y: 0 };
         let dragging = false;
         let moduleInstanceId: string | null = null;
-        let moduleParentInstanceId: string | null = null;
         let moduleName: string | null = null;
         setLayout(props.workbench.getLayout());
         let originalLayout: LayoutElement[] = props.workbench.getLayout();
@@ -117,7 +116,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                     relativePointerPosition,
                     size,
                     moduleInstanceId,
-                    moduleParentInstanceId || "",
+                    "",
                     isNewModule
                 );
                 if (preview) {

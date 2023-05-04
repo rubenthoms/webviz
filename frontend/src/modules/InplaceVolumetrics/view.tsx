@@ -1,7 +1,7 @@
 import React from "react";
 import Plot from "react-plotly.js";
 
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { ApiStateWrapper } from "@lib/components/ApiStateWrapper";
 import { CircularProgress } from "@lib/components/CircularProgress";
@@ -15,7 +15,7 @@ import { State } from "./state";
 
 import { Body_get_realizations_response } from "../../api/models/Body_get_realizations_response";
 
-export const view = (props: ModuleFCProps<State>) => {
+export const view = (props: MainModuleFCProps<State>) => {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
     const ensemble = props.moduleContext.useStoreValue("ensemble");

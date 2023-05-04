@@ -1,10 +1,9 @@
-import { ModuleInstance } from "./ModuleInstance";
-import { ModuleInstanceBase } from "./ModuleInstanceBase";
+import { MainModuleInstance } from "./MainModuleInstance";
 import { StateBaseType, StateStore, useSetStoreValue, useStoreState, useStoreValue } from "./StateStore";
-import { CallbackInterfaceBase } from "./SubModule";
+import { CallbackPropertiesBase } from "./SubModule";
 import { SubModuleInstance } from "./SubModuleInstance";
 
-export class ModuleContextBase<S extends StateBaseType> {
+export class ModuleContext<S extends StateBaseType> {
     private _stateStore: StateStore<S>;
 
     constructor(stateStore: StateStore<S>) {
@@ -32,10 +31,10 @@ export class ModuleContextBase<S extends StateBaseType> {
     }
 }
 
-export class ModuleContext<S extends StateBaseType> extends ModuleContextBase<S> {
-    protected _moduleInstance: ModuleInstance<S>;
+export class MainModuleContext<S extends StateBaseType> extends ModuleContext<S> {
+    protected _moduleInstance: MainModuleInstance<S>;
 
-    constructor(moduleInstance: ModuleInstance<S>, stateStore: StateStore<S>) {
+    constructor(moduleInstance: MainModuleInstance<S>, stateStore: StateStore<S>) {
         super(stateStore);
         this._moduleInstance = moduleInstance;
     }
@@ -44,13 +43,13 @@ export class ModuleContext<S extends StateBaseType> extends ModuleContextBase<S>
         return this._moduleInstance.getId();
     }
 
-    getSubModuleInstances(): { subModuleName: string; callback: (data: CallbackInterfaceBase) => void }[] {
+    getSubModuleInstances(): { subModuleName: string; callback: (data: CallbackPropertiesBase) => void }[] {
         return this._moduleInstance
             .getSubModuleInstances()
             .filter((instance) => instance.getSubModuleInstanceCallbackFunction() !== null)
             .map((instance) => ({
                 subModuleName: instance.getName(),
-                callback: (data: CallbackInterfaceBase) => {
+                callback: (data: CallbackPropertiesBase) => {
                     this._moduleInstance.cacheSubModuleCallbackFunctionData(instance.getName(), data);
                     const cb = instance.getSubModuleInstanceCallbackFunction();
                     if (cb) {
@@ -61,7 +60,7 @@ export class ModuleContext<S extends StateBaseType> extends ModuleContextBase<S>
     }
 }
 
-export class SubModuleContext<S extends StateBaseType, I extends CallbackInterfaceBase> extends ModuleContextBase<S> {
+export class SubModuleContext<S extends StateBaseType, I extends CallbackPropertiesBase> extends ModuleContext<S> {
     protected _subModuleInstance: SubModuleInstance<S, I>;
 
     constructor(subModuleInstance: SubModuleInstance<S, I>, stateStore: StateStore<S>) {

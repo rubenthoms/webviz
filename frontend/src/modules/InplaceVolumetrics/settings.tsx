@@ -1,7 +1,7 @@
 import React from "react";
 
 import { InplaceVolumetricsCategoricalMetaData, InplaceVolumetricsTableMetaData } from "@api";
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { ApiStateWrapper } from "@lib/components/ApiStateWrapper/apiStateWrapper";
 import { CircularProgress } from "@lib/components/CircularProgress";
@@ -130,7 +130,7 @@ function ensembleToString(ensemble: Ensemble): string {
     return `${ensemble.caseUuid}-${ensemble.ensembleName}`;
 }
 
-export function settings({ moduleContext, workbenchServices }: ModuleFCProps<State>) {
+export function settings({ moduleContext, workbenchServices }: MainModuleFCProps<State>) {
     const selectedEnsembles = useSubscribedValue("navigator.ensembles", workbenchServices);
     const [ensemble, setEnsemble] = moduleContext.useStoreState("ensemble");
     const [tableName, setTableName] = moduleContext.useStoreState("tableName");

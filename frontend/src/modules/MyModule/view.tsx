@@ -1,10 +1,10 @@
 import React from "react";
 
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 
 import { State } from "./state";
 
-export const view = (props: ModuleFCProps<State>) => {
+export const view = (props: MainModuleFCProps<State>) => {
     const count = props.moduleContext.useStoreValue("count");
 
     React.useEffect(() => {

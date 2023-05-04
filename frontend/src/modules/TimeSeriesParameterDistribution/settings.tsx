@@ -1,24 +1,19 @@
 import React from "react";
 
 import { EnsembleParameterDescription, VectorDescription } from "@api";
-import { ModuleFCProps } from "@framework/Module";
+import { MainModuleFCProps } from "@framework/MainModule";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { ApiStateWrapper } from "@lib/components/ApiStateWrapper";
-import { Checkbox } from "@lib/components/Checkbox";
 import { CircularProgress } from "@lib/components/CircularProgress";
-import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
-import { Input } from "@lib/components/Input";
+import { Dropdown } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
 import { Select, SelectOption } from "@lib/components/Select";
 
-
-import { useVectorsQuery, useGetParameterNamesQuery, useTimeStepsQuery } from "./queryHooks";
+import { useGetParameterNamesQuery, useTimeStepsQuery, useVectorsQuery } from "./queryHooks";
 import { State } from "./state";
 
-
 //-----------------------------------------------------------------------------------------------------------
-export function settings({ moduleContext, workbenchServices }: ModuleFCProps<State>) {
-
+export function settings({ moduleContext, workbenchServices }: MainModuleFCProps<State>) {
     const ensembles = useSubscribedValue("navigator.ensembles", workbenchServices);
     const [selectedVectorName, setSelectedVectorName] = React.useState<string>("");
     const [timeStep, setTimeStep] = moduleContext.useStoreState("timeStep");
@@ -26,7 +21,7 @@ export function settings({ moduleContext, workbenchServices }: ModuleFCProps<Sta
     const firstEnsemble = ensembles?.at(0) ?? null;
     const vectorsQuery = useVectorsQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName);
     const timeStepsQuery = useTimeStepsQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName);
-    const parameterNamesQuery = useGetParameterNamesQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName)
+    const parameterNamesQuery = useGetParameterNamesQuery(firstEnsemble?.caseUuid, firstEnsemble?.ensembleName);
     const computedVectorName = fixupVectorName(selectedVectorName, vectorsQuery.data);
 
     if (computedVectorName && computedVectorName !== selectedVectorName) {
@@ -55,7 +50,6 @@ export function settings({ moduleContext, workbenchServices }: ModuleFCProps<Sta
         setSelectedVectorName(newName);
     }
 
-
     return (
         <>
             <ApiStateWrapper
@@ -83,7 +77,6 @@ export function settings({ moduleContext, workbenchServices }: ModuleFCProps<Sta
                         options={makeTimeStepsOptions(timeStepsQuery.data)}
                         value={timeStep ? timeStep : undefined}
                         onChange={setTimeStep}
-
                     />
                 </Label>
             </ApiStateWrapper>

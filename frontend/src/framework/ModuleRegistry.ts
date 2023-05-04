@@ -1,9 +1,9 @@
-import { Module } from "./Module";
+import { MainModule } from "./MainModule";
 import { StateBaseType, StateOptions } from "./StateStore";
-import { CallbackInterfaceBase, SubModule } from "./SubModule";
+import { CallbackPropertiesBase, SubModule } from "./SubModule";
 
 export class ModuleRegistry {
-    private static _registeredModules: Record<string, Module<any>> = {};
+    private static _registeredModules: Record<string, MainModule<any>> = {};
     private static _registeredSubModules: Record<string, SubModule<any, any>> = {};
     /* eslint-disable-next-line @typescript-eslint/no-empty-function */
     private constructor() {}
@@ -11,17 +11,17 @@ export class ModuleRegistry {
     public static registerModule<ModuleStateType extends StateBaseType>(
         moduleName: string,
         compatibleSubModules: string[] = []
-    ): Module<ModuleStateType> {
-        const module = new Module<ModuleStateType>(moduleName, compatibleSubModules);
+    ): MainModule<ModuleStateType> {
+        const module = new MainModule<ModuleStateType>(moduleName, compatibleSubModules);
         this._registeredModules[moduleName] = module;
         return module;
     }
 
     public static registerSubModule<
         SubModuleStateType extends StateBaseType,
-        CallbackInterface extends CallbackInterfaceBase
-    >(subModuleName: string): SubModule<SubModuleStateType, CallbackInterface> {
-        const subModule = new SubModule<SubModuleStateType, CallbackInterface>(subModuleName);
+        CallbackProperties extends CallbackPropertiesBase
+    >(subModuleName: string): SubModule<SubModuleStateType, CallbackProperties> {
+        const subModule = new SubModule<SubModuleStateType, CallbackProperties>(subModuleName);
         this._registeredSubModules[subModuleName] = subModule;
         return subModule;
     }
@@ -30,32 +30,32 @@ export class ModuleRegistry {
         moduleName: string,
         initialState: ModuleStateType,
         options?: StateOptions<ModuleStateType>
-    ): Module<ModuleStateType> {
+    ): MainModule<ModuleStateType> {
         const module = this._registeredModules[moduleName];
         if (module) {
             module.setInitialState(initialState, options);
-            return module as Module<ModuleStateType>;
+            return module as MainModule<ModuleStateType>;
         }
         throw "Did you forget to register your module in 'src/modules/registerAllModules.ts'?";
     }
 
     public static initSubModule<
         SubModuleStateType extends StateBaseType,
-        CallbackInterface extends CallbackInterfaceBase
+        CallbackProperties extends CallbackPropertiesBase
     >(
         moduleName: string,
         initialState: SubModuleStateType,
         options?: StateOptions<SubModuleStateType>
-    ): SubModule<SubModuleStateType, CallbackInterface> {
+    ): SubModule<SubModuleStateType, CallbackProperties> {
         const module = this._registeredSubModules[moduleName];
         if (module) {
             module.setInitialState(initialState);
-            return module as SubModule<SubModuleStateType, CallbackInterface>;
+            return module as SubModule<SubModuleStateType, CallbackProperties>;
         }
         throw "Did you forget to register your sub module in 'src/modules/registerAllModules.ts'?";
     }
 
-    public static getModule(moduleName: string): Module<any> | SubModule<any, any> {
+    public static getModule(moduleName: string): MainModule<any> | SubModule<any, any> {
         const module = this._registeredModules[moduleName] ?? this._registeredSubModules[moduleName];
         if (module) {
             return module;
@@ -63,11 +63,11 @@ export class ModuleRegistry {
         throw "Did you forget to register your module in 'src/modules/registerAllModules.ts'?";
     }
 
-    public static getRegisteredModules(): Record<string, Module<any>> {
+    public static getRegisteredModules(): Record<string, MainModule<any>> {
         return this._registeredModules;
     }
 
-    public static getRegisteredSubModulesForModule(module: Module<any>): Record<string, SubModule<any, any>> {
+    public static getRegisteredSubModulesForModule(module: MainModule<any>): Record<string, SubModule<any, any>> {
         const subModules: Record<string, SubModule<any, any>> = {};
 
         for (const moduleName in this._registeredSubModules) {

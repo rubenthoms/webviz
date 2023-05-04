@@ -1,6 +1,6 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
-import { CallbackInterface } from "./callbackInterface";
+import { CallbackProperties } from "./callbackInterface";
 import { State } from "./state";
 
-ModuleRegistry.registerSubModule<State, CallbackInterface>("MySubModule");
+ModuleRegistry.registerSubModule<State, CallbackProperties>("MySubModule");

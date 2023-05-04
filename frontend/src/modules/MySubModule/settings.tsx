@@ -1,9 +1,9 @@
-import { ModuleContext } from "@framework/ModuleContext";
+import { MainModuleContext } from "@framework/ModuleContext";
 import { SubModuleFCProps } from "@framework/SubModule";
 
-import { CallbackInterface } from "./callbackInterface";
+import { CallbackProperties } from "./callbackInterface";
 import { State } from "./state";
 
-export const settings = (props: SubModuleFCProps<State, CallbackInterface>) => {
+export const settings = (props: SubModuleFCProps<State, CallbackProperties>) => {
     return null;
 };

@@ -26,7 +26,7 @@ export class SubModuleInstance<
         this.parentModuleInstance = parentModuleInstance;
     }
 
-    public getParentModuleInstance(): ModuleInstanceBase<any> | null {
+    public getParentModuleInstance(): ModuleInstance<any> | null {
         return this.parentModuleInstance;
     }
 

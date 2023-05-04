@@ -8,12 +8,14 @@ export class ModuleInstance<StateType extends StateBaseType> extends ModuleInsta
     private context: ModuleContext<StateType> | null;
     private subModuleInstances: SubModuleInstance<any, any>[];
     private module: Module<StateType>;
+    private subModuleCallbackCache: Map<string, any>;
 
     constructor(module: Module<StateType>, instanceNumber: number, id?: string) {
         super(module, instanceNumber, id);
         this.subModuleInstances = [];
         this.context = null;
         this.module = module;
+        this.subModuleCallbackCache = new Map<string, any>();
     }
 
     public addSubModuleInstance(subModuleInstance: SubModuleInstance<any, any>): void {
@@ -22,6 +24,14 @@ export class ModuleInstance<StateType extends StateBaseType> extends ModuleInsta
 
     public getSubModuleInstances(): SubModuleInstance<any, any>[] {
         return this.subModuleInstances;
+    }
+
+    public cacheSubModuleCallbackFunctionData(subModuleName: string, data: any): void {
+        this.subModuleCallbackCache.set(subModuleName, data);
+    }
+
+    public getCachedSubModuleCallbackFunctionData(subModuleName: string): any {
+        return this.subModuleCallbackCache.get(subModuleName);
     }
 
     public setInitialState(initialState: StateType, options?: StateOptions<StateType>): void {

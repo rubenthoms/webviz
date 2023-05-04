@@ -50,7 +50,13 @@ export class ModuleContext<S extends StateBaseType> extends ModuleContextBase<S>
             .filter((instance) => instance.getSubModuleInstanceCallbackFunction() !== null)
             .map((instance) => ({
                 subModuleName: instance.getName(),
-                callback: instance.getSubModuleInstanceCallbackFunction() as (data: CallbackInterfaceBase) => void,
+                callback: (data: CallbackInterfaceBase) => {
+                    this._moduleInstance.cacheSubModuleCallbackFunctionData(instance.getName(), data);
+                    const cb = instance.getSubModuleInstanceCallbackFunction();
+                    if (cb) {
+                        cb(data);
+                    }
+                },
             }));
     }
 }
@@ -69,6 +75,15 @@ export class SubModuleContext<S extends StateBaseType, I extends CallbackInterfa
 
     registerSubModuleCallbackFunction(callback: (data: I) => void): () => void {
         this._subModuleInstance.setSubModuleInstanceCallbackFunction(callback);
+
+        const parent = this._subModuleInstance.getParentModuleInstance();
+        if (parent) {
+            const data = parent.getCachedSubModuleCallbackFunctionData(this._subModuleInstance.getName());
+            if (data) {
+                callback(data);
+            }
+        }
+
         return () => {
             this._subModuleInstance.clearSubModuleInstanceCallbackFunction();
         };

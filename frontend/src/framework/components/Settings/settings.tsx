@@ -18,6 +18,8 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     const syncSettingsActive = useStoreValue(props.workbench.getGuiStateStore(), "syncSettingsActive");
 
     return (
+        <>
+        <button onClick={() => {throw Error("World is broken!")}}>Break the world</button>;
         <div className={resolveClassNames("bg-white", "p-4", { hidden: syncSettingsActive })}>
             {moduleInstances.map((instance) => (
                 <Setting
@@ -28,5 +30,6 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 />
             ))}
         </div>
+        </>
     );
 };

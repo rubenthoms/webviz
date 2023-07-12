@@ -1,6 +1,8 @@
+import typescript from "@rollup/plugin-typescript";
 import react from "@vitejs/plugin-react";
 
 import path from "path";
+import ttypescript from "ttypescript";
 import { defineConfig } from "vite";
 import vitePluginChecker from "vite-plugin-checker";
 
@@ -25,7 +27,11 @@ export default defineConfig(({ mode }) => {
     }
 
     return {
-        plugins: [react(), vitePluginChecker({ typescript: true })],
+        plugins: [
+            react(),
+            vitePluginChecker({ typescript: true }),
+            typescript({ typescript: ttypescript, tsconfig: path.resolve(__dirname, "tsconfig.json"), noLib: false }),
+        ],
         build: {
             rollupOptions: {
                 input: {

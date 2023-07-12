@@ -1,6 +1,7 @@
 import React from "react";
 
 import { cloneDeep } from "lodash";
+import { reflect } from "typescript-rtti";
 
 export type InitialSettingsSupportedTypes = {
     string: string;
@@ -59,12 +60,15 @@ export class InitialSettings {
         return this.get(settingName, type) !== undefined;
     }
 
-    applyToState(settingName: string, type: keyof InitialSettingsSupportedTypes, setter: (value: any) => void): void {
+    applyToState<T>(settingName: string, setter: (value: T) => void): void {
         React.useEffect(() => {
-            const setting = this.get(settingName, type);
-            if (setting !== undefined) {
-                setter(setting);
+            const setting = this._initialSettings[settingName];
+            if (reflect<T>().matchesValue(setting)) {
+                setter(setting as T);
             }
+            throw new Error(
+                `Setting "${settingName}" cannot be passed to setter "${setter}" (value: ${JSON.stringify(setting)})`
+            );
         }, []);
     }
 }

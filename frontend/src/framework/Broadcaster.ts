@@ -59,6 +59,7 @@ function checkValueIsExpectedType(value: any, type: Type): boolean {
 export type BroadcastChannelDef = {
     key: BroadcastChannelKeyCategory;
     value: BroadcastChannelValueType;
+    attributes?: Record<string, string | number>;
 };
 
 export type BroadcastChannelsDef = {
@@ -200,11 +201,7 @@ export class Broadcaster {
         this._subscribers = new Set();
     }
 
-    registerChannel(
-        channelName: string,
-        channelDef: BroadcastChannelDef,
-        moduleInstanceId: string
-    ): BroadcastChannel {
+    registerChannel(channelName: string, channelDef: BroadcastChannelDef, moduleInstanceId: string): BroadcastChannel {
         const channel = new BroadcastChannel(channelName, channelDef, moduleInstanceId);
         this._channels.push(channel);
         this.notifySubscribersAboutChannelsChanges();

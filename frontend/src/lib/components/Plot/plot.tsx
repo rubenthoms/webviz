@@ -2,7 +2,7 @@ import React from "react";
 import PlotlyPlot, { Figure, PlotParams } from "react-plotly.js";
 
 import { cloneDeep, isEqual } from "lodash";
-import Plotly from "plotly.js";
+import { restyle } from "plotly.js";
 import { v4 } from "uuid";
 
 export const Plot: React.FC<PlotParams> = (props) => {
@@ -50,6 +50,12 @@ export const Plot: React.FC<PlotParams> = (props) => {
         if (element) {
             element.addEventListener("wheel", handleWheel);
             element.addEventListener("touchmove", handleTouchZoom);
+
+            const update = {
+                opacity: 0.4,
+                "marker.color": "red",
+            };
+            restyle(element, update);
         }
 
         return () => {

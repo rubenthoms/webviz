@@ -5,7 +5,7 @@ import { State } from "./state";
 import { view } from "./view";
 
 const defaultState: State = {
-    count: 0,
+    numCurves: 100,
 };
 
 const module = ModuleRegistry.initModule<State>("MyModule", defaultState);

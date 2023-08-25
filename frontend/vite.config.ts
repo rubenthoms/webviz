@@ -1,3 +1,4 @@
+import { NodeGlobalsPolyfillPlugin } from "@esbuild-plugins/node-globals-polyfill";
 import react from "@vitejs/plugin-react";
 
 import path from "path";
@@ -46,6 +47,16 @@ export default defineConfig(({ mode }) => {
                 }),
                 {}
             ),
+        },
+        optimizeDeps: {
+            exclude: ["plotly.js"],
+            esbuildOptions: {
+                plugins: [
+                    NodeGlobalsPolyfillPlugin({
+                        buffer: true,
+                    }),
+                ],
+            },
         },
         server: {
             port: 8080,

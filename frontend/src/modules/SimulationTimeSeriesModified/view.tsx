@@ -1,10 +1,11 @@
 import React from "react";
-import Plot from "react-plotly.js";
 
 import { VectorHistoricalData_api, VectorRealizationData_api, VectorStatisticData_api } from "@api";
 import { BroadcastChannelMeta } from "@framework/Broadcaster";
 import { ModuleFCProps } from "@framework/Module";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
+import { AdvancedPlot } from "@lib/components/AdvancedPlot";
+import { Plot } from "@lib/components/Plot";
 import { useElementSize } from "@lib/hooks/useElementSize";
 
 import { Layout, PlotData, PlotHoverEvent } from "plotly.js";
@@ -101,7 +102,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
 
     const subscribedPlotlyTimeStamp = useSubscribedValue("global.hoverTimestamp", workbenchServices);
     const subscribedPlotlyRealization = useSubscribedValue("global.hoverRealization", workbenchServices);
-    // const highlightedTrace
+
     const handleHover = (e: PlotHoverEvent) => {
         if (e.xvals.length > 0 && typeof e.xvals[0]) {
             workbenchServices.publishGlobalData("global.hoverTimestamp", { timestamp: e.xvals[0] as number });
@@ -118,69 +119,76 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
 
     function handleUnHover() {
         workbenchServices.publishGlobalData("global.hoverRealization", { realization: -1 });
+        workbenchServices.publishGlobalData("global.hoverTimestamp", { timestamp: -1 });
     }
 
-    const tracesDataArr: MyPlotData[] = [];
+    let hoveredCurveNumber: number | null = null;
 
-    if (showRealizations && vectorQuery.data && vectorQuery.data.length > 0) {
-        let highlightedTrace: MyPlotData | null = null;
-        for (let i = 0; i < vectorQuery.data.length; i++) {
-            const vec = vectorQuery.data[i];
-            const isHighlighted = vec.realization === subscribedPlotlyRealization?.realization ? true : false;
-            const curveColor = vec.realization === subscribedPlotlyRealization?.realization ? "red" : "green";
-            const lineWidth = vec.realization === subscribedPlotlyRealization?.realization ? 3 : 1;
-            const lineShape = vec.is_rate ? "vh" : "linear";
-            const trace: MyPlotData = {
-                x: vec.timestamps,
-                y: vec.values,
-                name: `real-${vec.realization}`,
-                realizationNumber: vec.realization,
-                legendrank: vec.realization,
-                type: "scatter",
-                mode: "lines",
-                line: { color: curveColor, width: lineWidth, shape: lineShape },
-            };
+    const tracesArray: MyPlotData[] = React.useMemo(
+        function makeTracesArray() {
+            const tracesDataArr: MyPlotData[] = [];
+            if (showRealizations && vectorQuery.data && vectorQuery.data.length > 0) {
+                for (let i = 0; i < vectorQuery.data.length; i++) {
+                    const vec = vectorQuery.data[i];
+                    const curveColor = "green";
+                    const lineWidth = 1;
+                    const lineShape = vec.is_rate ? "vh" : "linear";
+                    const trace: MyPlotData = {
+                        x: vec.timestamps,
+                        y: vec.values,
+                        name: `real-${vec.realization}`,
+                        realizationNumber: vec.realization,
+                        legendrank: vec.realization,
+                        type: "scatter",
+                        mode: "lines",
+                        line: { color: curveColor, width: lineWidth, shape: lineShape },
+                    };
+                    tracesDataArr.push(trace);
+                }
+            }
 
-            if (isHighlighted) {
-                highlightedTrace = trace;
-            } else {
+            if (showStatistics && statisticsQuery.data) {
+                const lineShape = statisticsQuery.data.is_rate ? "vh" : "linear";
+                for (const statValueObj of statisticsQuery.data.value_objects) {
+                    const trace: MyPlotData = {
+                        x: statisticsQuery.data.timestamps,
+                        y: statValueObj.values,
+                        name: statValueObj.statistic_function,
+                        legendrank: -1,
+                        type: "scatter",
+                        mode: "lines",
+                        line: { color: "lightblue", width: 2, dash: "dot", shape: lineShape },
+                    };
+                    tracesDataArr.push(trace);
+                }
+            }
+
+            if (showHistorical && historicalQuery.data) {
+                const lineShape = historicalQuery.data.is_rate ? "vh" : "linear";
+                const trace: MyPlotData = {
+                    x: historicalQuery.data.timestamps,
+                    y: historicalQuery.data.values,
+                    name: "History",
+                    legendrank: -1,
+                    type: "scatter",
+                    mode: "lines",
+                    line: { color: "black", width: 2, shape: lineShape },
+                };
                 tracesDataArr.push(trace);
             }
-        }
+            return tracesDataArr;
+        },
+        [showRealizations, vectorQuery.data, showStatistics, statisticsQuery.data, showHistorical, historicalQuery.data]
+    );
 
-        if (highlightedTrace) {
-            tracesDataArr.push(highlightedTrace);
+    if (subscribedPlotlyRealization?.realization) {
+        if (tracesArray.length > 0) {
+            for (let i = 0; i < tracesArray.length; i++) {
+                if (tracesArray[i].realizationNumber === subscribedPlotlyRealization?.realization) {
+                    hoveredCurveNumber = i;
+                }
+            }
         }
-    }
-
-    if (showStatistics && statisticsQuery.data) {
-        const lineShape = statisticsQuery.data.is_rate ? "vh" : "linear";
-        for (const statValueObj of statisticsQuery.data.value_objects) {
-            const trace: MyPlotData = {
-                x: statisticsQuery.data.timestamps,
-                y: statValueObj.values,
-                name: statValueObj.statistic_function,
-                legendrank: -1,
-                type: "scatter",
-                mode: "lines",
-                line: { color: "lightblue", width: 2, dash: "dot", shape: lineShape },
-            };
-            tracesDataArr.push(trace);
-        }
-    }
-
-    if (showHistorical && historicalQuery.data) {
-        const lineShape = historicalQuery.data.is_rate ? "vh" : "linear";
-        const trace: MyPlotData = {
-            x: historicalQuery.data.timestamps,
-            y: historicalQuery.data.values,
-            name: "History",
-            legendrank: -1,
-            type: "scatter",
-            mode: "lines",
-            line: { color: "black", width: 2, shape: lineShape },
-        };
-        tracesDataArr.push(trace);
     }
 
     const hasGotAnyRequestedData = !!(
@@ -205,37 +213,22 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
         [hasGotAnyRequestedData, ensemble, vectorSpec, moduleContext]
     );
 
-    const layout: Partial<Layout> = {
-        width: wrapperDivSize.width,
-        height: wrapperDivSize.height,
-        title: plotTitle,
-        margin: { t: 30, r: 0, l: 40, b: 40 },
-    };
-
-    if (subscribedPlotlyTimeStamp) {
-        layout["shapes"] = [
-            {
-                type: "line",
-                xref: "x",
-                yref: "paper",
-                x0: new Date(subscribedPlotlyTimeStamp.timestamp),
-                y0: 0,
-                x1: new Date(subscribedPlotlyTimeStamp.timestamp),
-                y1: 1,
-                line: {
-                    color: "#ccc",
-                    width: 1,
-                },
-            },
-        ];
-    }
+    const layout: Partial<Layout> = React.useMemo(() => {
+        return {
+            width: wrapperDivSize.width,
+            height: wrapperDivSize.height,
+            title: plotTitle,
+            margin: { t: 30, r: 0, l: 40, b: 40 },
+        };
+    }, [wrapperDivSize.width, wrapperDivSize.height, plotTitle]);
 
     return (
         <div className="w-full h-full" ref={wrapperDivRef}>
-            <Plot
-                data={tracesDataArr}
+            <AdvancedPlot
+                data={tracesArray}
                 layout={layout}
                 config={{ scrollZoom: true }}
+                highlightedCurves={hoveredCurveNumber ? [{ curveNumber: hoveredCurveNumber, color: "red" }] : []}
                 onHover={handleHover}
                 onUnhover={handleUnHover}
             />

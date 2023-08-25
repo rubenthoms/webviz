@@ -48,16 +48,6 @@ export default defineConfig(({ mode }) => {
                 {}
             ),
         },
-        optimizeDeps: {
-            exclude: ["plotly.js"],
-            esbuildOptions: {
-                plugins: [
-                    NodeGlobalsPolyfillPlugin({
-                        buffer: true,
-                    }),
-                ],
-            },
-        },
         server: {
             port: 8080,
             proxy: {

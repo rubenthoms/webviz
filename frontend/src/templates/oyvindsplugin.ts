@@ -2,7 +2,7 @@ import { BroadcastChannelKeyCategory } from "@framework/Broadcaster";
 import { SyncSettingKey } from "@framework/SyncSettings";
 import { Template, TemplateRegistry } from "@framework/TemplateRegistry";
 import { PlotType } from "@modules/DistributionPlot/state";
-import { BroadcastChannelNames } from "@modules/SimulationTimeSeries/channelDefs";
+import { BroadcastChannelNames } from "@modules/SimulationTimeSeriesModified/channelDefs";
 
 const template: Template = {
     description:

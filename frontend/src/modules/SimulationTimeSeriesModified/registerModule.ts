@@ -6,8 +6,8 @@ import { preview } from "./preview";
 import { State } from "./state";
 
 ModuleRegistry.registerModule<State>({
-    moduleName: "SimulationTimeSeries",
-    defaultTitle: "Simulation time series",
+    moduleName: "SimulationTimeSeriesModified",
+    defaultTitle: "Simulation time series (modified)",
     syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.TIME_SERIES],
     broadcastChannelsDef,
     preview,

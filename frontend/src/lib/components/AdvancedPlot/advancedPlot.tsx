@@ -49,15 +49,27 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const timeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    if (!isEqual(props.data, prevData) || !isEqual(props.layout, prevLayout) || !isEqual(props.frames, prevFrames)) {
+    let changes = false;
+
+    if (props.data !== prevData) {
+        changes = true;
         setData(props.data);
         setPrevData(props.data);
+    }
+
+    if (!isEqual(props.layout, prevLayout)) {
+        changes = true;
         setLayout(props.layout);
         setPrevLayout(props.layout);
-        setPrevFrames(props.frames);
+    }
 
+    if (!isEqual(props.frames, prevFrames)) {
+        changes = true;
+        setPrevFrames(props.frames);
+    }
+
+    if (changes) {
         updatePlotly(props.data, props.layout, props.highlightedCurves, prevHighlightedCurves);
-        console.debug("Plotly updated");
     } else if (!isEqual(props.highlightedCurves, prevHighlightedCurves)) {
         setPrevHighlightedCurves(cloneDeep(props.highlightedCurves));
         updateHighlightedCurves(props.highlightedCurves, prevHighlightedCurves);

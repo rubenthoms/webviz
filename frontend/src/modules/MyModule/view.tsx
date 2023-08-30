@@ -445,23 +445,3 @@ export const view = (props: ModuleFCProps<State>) => {
         </div>
     );
 };
-
-type PlotlyBenchmarkProps = {
-    numCurves: number;
-    data: Partial<PlotData>[];
-    layout: Partial<Layout>;
-    strategy: string;
-    onBenchmarkDone: (strategy: string, numCurves: number, timems: number) => void;
-};
-
-const PlotlyBenchmark: React.FC<PlotlyBenchmarkProps> = (props) => {
-    const timestampRef = React.useRef<number>(0);
-
-    function handleAfterPlot() {
-        props.onBenchmarkDone(props.strategy, props.numCurves, Date.now() - timestampRef.current);
-    }
-
-    timestampRef.current = Date.now();
-
-    return <Plot data={props.data} layout={props.layout} onAfterPlot={handleAfterPlot} />;
-};

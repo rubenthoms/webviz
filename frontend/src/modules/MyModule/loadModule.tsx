@@ -11,7 +11,6 @@ const defaultState: State = {
     min: 0,
     max: 18,
     divMidPoint: 9,
-    numCurves: 100,
 };
 
 const module = ModuleRegistry.initModule<State>("MyModule", defaultState);

@@ -1,7 +1,6 @@
 import React from "react";
 
 import { ModuleFCProps } from "@framework/Module";
-import { Input } from "@lib/components/Input";
 import { ColorGradient } from "@lib/components/ColorGradient/colorGradient";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
@@ -11,7 +10,6 @@ import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { State } from "./state";
 
 export const settings = (props: ModuleFCProps<State>) => {
-    const [numCurves, setNumCurves] = props.moduleContext.useStoreState("numCurves");
     const [type, setType] = props.moduleContext.useStoreState("type");
     const [gradientType, setGradientType] = props.moduleContext.useStoreState("gradientType");
     const [min, setMin] = props.moduleContext.useStoreState("min");
@@ -37,7 +35,6 @@ export const settings = (props: ModuleFCProps<State>) => {
 
     return (
         <div className="flex flex-col gap-4">
-            <Input type="number" defaultValue={numCurves} onChange={(e) => setNumCurves(parseInt(e.target.value))} />
             <Label text="Type">
                 <RadioGroup
                     value={type}

@@ -2,6 +2,8 @@ import React from "react";
 
 import { Plot } from "@lib/components/Plot";
 
+import { ColorSet } from "@lib/utils/ColorSet";
+
 import { Layout, PlotData, PlotHoverEvent } from "plotly.js";
 
 export type HistogramProps = {
@@ -13,6 +15,7 @@ export type HistogramProps = {
     onHoverData?: (data: any) => void;
     height?: number | 100;
     width?: number | 100;
+    colorSet: ColorSet;
 };
 
 interface TraceData extends Partial<PlotData> {
@@ -20,11 +23,16 @@ interface TraceData extends Partial<PlotData> {
 }
 
 export const Histogram: React.FC<HistogramProps> = (props) => {
+    const color = props.colorSet.getFirstColor();
+
     const dataArray: TraceData[] = [
         {
             y: props.y,
             x: props.x,
             type: "bar",
+            marker: {
+                color: color,
+            },
         },
     ];
 

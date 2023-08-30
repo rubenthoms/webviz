@@ -2,6 +2,8 @@ import React from "react";
 
 import { Plot } from "@lib/components/Plot";
 
+import { ColorSet } from "@lib/utils/ColorSet";
+
 import { Layout, PlotData, PlotHoverEvent } from "plotly.js";
 
 export type BarChartProps = {
@@ -16,6 +18,7 @@ export type BarChartProps = {
     width?: number | 100;
     orientation?: "h" | "v";
     highlightedKey?: number;
+    colorSet: ColorSet;
 };
 
 interface TraceData extends Partial<PlotData> {
@@ -23,8 +26,11 @@ interface TraceData extends Partial<PlotData> {
 }
 
 export const BarChart: React.FC<BarChartProps> = (props) => {
+    const color1 = props.colorSet.getFirstColor();
+    const color2 = props.colorSet.getNextColor();
+
     const colors = props.keyData.map((real) => {
-        return real == props.highlightedKey ? "red" : "blue";
+        return real == props.highlightedKey ? color1 : color2;
     });
     const dataArray: TraceData[] = [
         {

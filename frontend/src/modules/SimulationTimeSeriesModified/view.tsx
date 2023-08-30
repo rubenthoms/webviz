@@ -186,6 +186,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
             for (let i = 0; i < tracesArray.length; i++) {
                 if (tracesArray[i].realizationNumber === subscribedPlotlyRealization?.realization) {
                     hoveredCurveNumber = i;
+                    break;
                 }
             }
         }

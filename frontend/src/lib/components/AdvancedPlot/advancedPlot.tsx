@@ -44,6 +44,8 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const [prevFrames, setPrevFrames] = React.useState<Plotly.Frame[] | undefined>(props.frames || undefined);
     const [prevHighlightedCurves, setPrevHighlightedCurves] = React.useState<HighlightedCurve[] | undefined>(undefined);
 
+    const prevHighlightedCurvesRef = React.useRef<HighlightedCurve[]>([]);
+
     const divRef = React.useRef<HTMLDivElement>(null);
     const promiseRef = React.useRef<Promise<void>>(Promise.resolve());
     const timeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,17 +71,20 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     }
 
     if (changes) {
-        updatePlotly(props.data, props.layout, props.highlightedCurves, prevHighlightedCurves);
+        console.debug("update data");
+        updatePlotly(props.data, props.layout, props.highlightedCurves, prevHighlightedCurvesRef.current);
     } else if (!isEqual(props.highlightedCurves, prevHighlightedCurves)) {
+        console.debug("update highlighted curves");
         setPrevHighlightedCurves(cloneDeep(props.highlightedCurves));
-        updateHighlightedCurves(props.highlightedCurves, prevHighlightedCurves);
+        updateHighlightedCurves(props.highlightedCurves, prevHighlightedCurvesRef.current);
+        prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     }
 
     function updatePlotly(
         data: Data[],
         layout: Partial<Plotly.Layout>,
-        highlightedCurves?: HighlightedCurve[],
-        prevHighlightedCurves?: HighlightedCurve[]
+        newHighlightedCurves?: HighlightedCurve[],
+        oldHighlightedCurves?: HighlightedCurve[]
     ) {
         promiseRef.current = promiseRef.current
             .then(() => {
@@ -94,8 +99,9 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                 return Plotly.react(graphDiv, data, layout, props.config);
             })
             .then(() => {
-                updateHighlightedCurves(highlightedCurves, prevHighlightedCurves);
-                setPrevHighlightedCurves(cloneDeep(highlightedCurves));
+                setPrevHighlightedCurves(cloneDeep(newHighlightedCurves));
+                updateHighlightedCurves(newHighlightedCurves, oldHighlightedCurves, true);
+                prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
             })
             .catch((error) => {
                 console.error(error);
@@ -103,8 +109,9 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     }
 
     function updateHighlightedCurves(
-        highlightedCurves?: HighlightedCurve[],
-        prevHighlightedCurves?: HighlightedCurve[]
+        newHighlightedCurves?: HighlightedCurve[],
+        oldHighlightedCurves?: HighlightedCurve[],
+        plotlyUpdated = false
     ) {
         if (isUnmounting) {
             return;
@@ -115,21 +122,23 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
             return;
         }
 
-        const highlightedCurveNumbers = (highlightedCurves ?? []).map(
+        const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
             (highlightedCurve) => highlightedCurve.curveNumber
         );
 
-        if (prevHighlightedCurves && prevHighlightedCurves.length > 0) {
-            Plotly.deleteTraces(
-                graphDiv,
-                prevHighlightedCurves.map((_, index) => -index - 1)
-            );
+        if (!plotlyUpdated && oldHighlightedCurves && oldHighlightedCurves.length > 0) {
+            const tracesToBeDeleted = [];
+            for (let i = 0; i < oldHighlightedCurves.length; i++) {
+                tracesToBeDeleted.push(-i - 1);
+            }
+            console.debug("delete traces", tracesToBeDeleted);
+            Plotly.deleteTraces(graphDiv, tracesToBeDeleted);
         }
 
-        if (highlightedCurves) {
+        if (newHighlightedCurves) {
             if (highlightedCurveNumbers.length > 0) {
                 const traces: Data[] = [];
-                highlightedCurves.forEach((highlightedCurve) => {
+                newHighlightedCurves.forEach((highlightedCurve) => {
                     const dataObj: Data = data[highlightedCurve.curveNumber];
                     if (dataObj && dataObj.type === "scatter") {
                         traces.push({
@@ -142,7 +151,10 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                             },
                             showlegend: false,
                         });
+                    } else {
+                        console.warn("highlighted curve is not a scatter plot", dataObj);
                     }
+                    console.debug("add traces", traces);
                     Plotly.addTraces(graphDiv, traces);
                 });
             }
@@ -162,7 +174,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     if (props.onHover && event.points[0].data.showlegend !== false) {
                         props.onHover(event);
                     }
-                }, 100);
+                }, 50);
             }
         }
 
@@ -172,7 +184,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     clearTimeout(hoverTimeout.current);
                 }
 
-                hoverTimeout.current = setTimeout(() => props.onUnhover && props.onUnhover(), 100);
+                hoverTimeout.current = setTimeout(() => props.onUnhover && props.onUnhover(), 50);
             }
         }
 

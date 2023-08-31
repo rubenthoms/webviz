@@ -41,6 +41,7 @@ export type LayoutElement = {
 export type WorkbenchGuiState = {
     drawerContent: DrawerContent;
     settingsPanelWidthInPercent: number;
+    loadingEnsembleSet: boolean;
 };
 
 export class Workbench {
@@ -60,6 +61,7 @@ export class Workbench {
         this._guiStateStore = new StateStore<WorkbenchGuiState>({
             drawerContent: DrawerContent.ModuleSettings,
             settingsPanelWidthInPercent: parseFloat(localStorage.getItem("settingsPanelWidthInPercent") || "20"),
+            loadingEnsembleSet: false,
         });
         this._workbenchSession = new WorkbenchSessionPrivate();
         this._workbenchServices = new PrivateWorkbenchServices(this);
@@ -146,6 +148,7 @@ export class Workbench {
     }
 
     makeLayout(layout: LayoutElement[]): void {
+        this.clearLayout();
         this._moduleInstances = [];
         this.setLayout(layout);
         layout.forEach((element, index: number) => {
@@ -226,6 +229,8 @@ export class Workbench {
         queryClient: QueryClient,
         specifiedEnsembleIdents: EnsembleIdent[]
     ): Promise<void> {
+        this.storeEnsembleSetInLocalStorage(specifiedEnsembleIdents);
+
         const ensembleIdentsToLoad: EnsembleIdent[] = [];
         for (const ensSpec of specifiedEnsembleIdents) {
             ensembleIdentsToLoad.push(new EnsembleIdent(ensSpec.getCaseUuid(), ensSpec.getEnsembleName()));
@@ -237,6 +242,21 @@ export class Workbench {
 
         console.debug("loadAndSetupEnsembleSetInSession - publishing");
         return this._workbenchSession.setEnsembleSet(newEnsembleSet);
+    }
+
+    private storeEnsembleSetInLocalStorage(specifiedEnsembleIdents: EnsembleIdent[]): void {
+        const ensembleIdentsToStore = specifiedEnsembleIdents.map((el) => el.toString());
+        localStorage.setItem("ensembleIdents", JSON.stringify(ensembleIdentsToStore));
+    }
+
+    maybeLoadEnsembleSetFromLocalStorage(): EnsembleIdent[] | null {
+        const ensembleIdentsString = localStorage.getItem("ensembleIdents");
+        if (!ensembleIdentsString) return null;
+
+        const ensembleIdents = JSON.parse(ensembleIdentsString) as string[];
+        const ensembleIdentsParsed = ensembleIdents.map((el) => EnsembleIdent.fromString(el));
+
+        return ensembleIdentsParsed;
     }
 
     applyTemplate(template: Template): void {

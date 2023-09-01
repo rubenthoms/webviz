@@ -11,6 +11,7 @@ import "./Pvt/registerModule";
 import "./Sensitivity/registerModule";
 import "./SimulationTimeSeries/registerModule";
 import "./SimulationTimeSeriesModified/registerModule";
+import "./WellCompletion/registerModule"
 import "./SimulationTimeSeriesSensitivity/registerModule";
 import "./TimeSeriesParameterDistribution/registerModule";
 import "./TopographicMap/registerModule";

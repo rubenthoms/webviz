@@ -105,7 +105,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
 
     const handleHover = (e: PlotHoverEvent) => {
         if (e.xvals.length > 0 && typeof e.xvals[0]) {
-            workbenchServices.publishGlobalData("global.hoverTimestamp", { timestamp: e.xvals[0] as number });
+            workbenchServices.publishGlobalData("global.hoverTimestamp", { timestampUtcMs: e.xvals[0] as number });
         }
         const curveData = e.points[0].data as MyPlotData;
         if (typeof curveData.realizationNumber === "number") {
@@ -119,7 +119,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
 
     function handleUnHover() {
         workbenchServices.publishGlobalData("global.hoverRealization", { realization: -1 });
-        workbenchServices.publishGlobalData("global.hoverTimestamp", { timestamp: -1 });
+        workbenchServices.publishGlobalData("global.hoverTimestamp", { timestampUtcMs: -1 });
     }
 
     let hoveredCurveNumber: number | null = null;
@@ -134,7 +134,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
                     const lineWidth = 1;
                     const lineShape = vec.is_rate ? "vh" : "linear";
                     const trace: MyPlotData = {
-                        x: vec.timestamps,
+                        x: vec.timestamps_utc_ms,
                         y: vec.values,
                         name: `real-${vec.realization}`,
                         realizationNumber: vec.realization,
@@ -151,7 +151,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
                 const lineShape = statisticsQuery.data.is_rate ? "vh" : "linear";
                 for (const statValueObj of statisticsQuery.data.value_objects) {
                     const trace: MyPlotData = {
-                        x: statisticsQuery.data.timestamps,
+                        x: statisticsQuery.data.timestamps_utc_ms,
                         y: statValueObj.values,
                         name: statValueObj.statistic_function,
                         legendrank: -1,
@@ -166,7 +166,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
             if (showHistorical && historicalQuery.data) {
                 const lineShape = historicalQuery.data.is_rate ? "vh" : "linear";
                 const trace: MyPlotData = {
-                    x: historicalQuery.data.timestamps,
+                    x: historicalQuery.data.timestamps_utc_ms,
                     y: historicalQuery.data.values,
                     name: "History",
                     legendrank: -1,

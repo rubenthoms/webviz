@@ -144,9 +144,11 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                         traces.push({
                             ...dataObj,
                             marker: {
+                                ...dataObj.marker,
                                 color: highlightedCurve.color,
                             },
                             line: {
+                                ...dataObj.line,
                                 color: highlightedCurve.color,
                             },
                             showlegend: false,
@@ -164,6 +166,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     React.useEffect(function handleMount() {
         let interactionDisabled = false;
         const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
+        setIsUnmounting(false);
 
         function handleHover(event: Plotly.PlotHoverEvent) {
             if (!interactionDisabled) {
@@ -174,7 +177,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     if (props.onHover && event.points[0].data.showlegend !== false) {
                         props.onHover(event);
                     }
-                }, 50);
+                }, 100);
             }
         }
 
@@ -184,7 +187,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     clearTimeout(hoverTimeout.current);
                 }
 
-                hoverTimeout.current = setTimeout(() => props.onUnhover && props.onUnhover(), 50);
+                hoverTimeout.current = setTimeout(() => props.onUnhover && props.onUnhover(), 100);
             }
         }
 

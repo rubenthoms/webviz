@@ -10,11 +10,13 @@ import "./Map/registerModule";
 import "./Pvt/registerModule";
 import "./Sensitivity/registerModule";
 import "./SimulationTimeSeries/registerModule";
+import "./SimulationTimeSeriesMatrix/registerModule";
 import "./SimulationTimeSeriesModified/registerModule";
 import "./WellCompletion/registerModule"
 import "./SimulationTimeSeriesSensitivity/registerModule";
 import "./TimeSeriesParameterDistribution/registerModule";
 import "./TopographicMap/registerModule";
+import "./WellCompletion/registerModule";
 
 if (isDevMode()) {
     await import("./MyModule/registerModule");

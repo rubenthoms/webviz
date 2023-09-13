@@ -1,12 +1,11 @@
 import React from "react";
 
-import { cloneDeep, isEqual, set } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import Plotly, { PlotlyHTMLElement } from "plotly.js-dist-min";
 
 export type HighlightedCurve = {
     curveNumber: number;
     width?: number;
-    color: string;
 };
 
 export type Data =
@@ -34,16 +33,19 @@ export type AdvancedPlotProps = {
 
     height?: number;
     width?: number;
+    revisionNumber?: number;
 };
 
 export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const [isUnmounting, setIsUnmounting] = React.useState<boolean>(false);
+    const [hoverDisabled, setHoverDisabled] = React.useState<boolean>(false);
     const [data, setData] = React.useState<Data[]>(props.data);
     const [layout, setLayout] = React.useState<Partial<Plotly.Layout>>(cloneDeep(props.layout));
     const [prevData, setPrevData] = React.useState<Data[]>(props.data);
     const [prevLayout, setPrevLayout] = React.useState<Partial<Plotly.Layout>>(cloneDeep(props.layout));
     const [prevFrames, setPrevFrames] = React.useState<Plotly.Frame[] | undefined>(props.frames || undefined);
     const [prevHighlightedCurves, setPrevHighlightedCurves] = React.useState<HighlightedCurve[] | undefined>(undefined);
+    const [prevRevisionNumber, setPrevRevisionNumber] = React.useState<number | undefined>(undefined);
 
     const prevHighlightedCurvesRef = React.useRef<HighlightedCurve[]>([]);
 
@@ -53,14 +55,21 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const hoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const unhoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    const highlightedCurvesToCurveNumbersMapping = React.useRef<Map<number, number>>(new Map());
+    const interactionDisabled = React.useRef<boolean>(false);
+
     let changes = false;
     let currentData = data;
     let currentLayout = layout;
 
-    if (props.data !== prevData) {
+    let dataHasChanged = props.revisionNumber === undefined && props.data !== prevData;
+    dataHasChanged = dataHasChanged || props.revisionNumber !== prevRevisionNumber;
+
+    if (dataHasChanged) {
         changes = true;
         setData(props.data);
         setPrevData(props.data);
+        setPrevRevisionNumber(props.revisionNumber);
         currentData = props.data;
     }
 
@@ -78,12 +87,13 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
 
     if (changes) {
         console.debug("data or layout changed");
+        setHoverDisabled(true);
         updatePlotly(currentData, currentLayout, props.highlightedCurves, prevHighlightedCurvesRef.current);
         setPrevHighlightedCurves(cloneDeep(props.highlightedCurves));
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     } else if (!isEqual(props.highlightedCurves, prevHighlightedCurves)) {
-        console.debug("highlighted curves changed");
-        setPrevHighlightedCurves(cloneDeep(props.highlightedCurves));
+        console.debug("highlighted curves changed", props.highlightedCurves);
+        setPrevHighlightedCurves(props.highlightedCurves);
         updateHighlightedCurves(props.highlightedCurves, prevHighlightedCurvesRef.current);
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     }
@@ -111,6 +121,9 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
             })
             .catch((error) => {
                 console.error(error);
+            })
+            .finally(() => {
+                setHoverDisabled(false);
             });
     }
 
@@ -119,90 +132,87 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
         oldHighlightedCurves?: HighlightedCurve[],
         plotlyUpdated = false
     ) {
-        if (isUnmounting) {
-            return;
-        }
+        promiseRef.current = promiseRef.current
+            .then(() => {
+                if (isUnmounting) {
+                    return;
+                }
 
-        const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
-        if (!graphDiv) {
-            return;
-        }
+                const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
+                if (!graphDiv) {
+                    return;
+                }
 
-        const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
-            (highlightedCurve) => highlightedCurve.curveNumber
-        );
-
-        /*
-
-        const oldHighlightedCurveNumbers = (oldHighlightedCurves ?? []).map(
-            (highlightedCurve) => highlightedCurve.curveNumber
-        );
-
-        if (oldHighlightedCurveNumbers.length > 0) {
-            Plotly.restyle(
-                graphDiv,
-                {
-                    "line.width": 1,
-                },
-                oldHighlightedCurveNumbers
-            );
-        }
-
-        const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
-            (highlightedCurve) => highlightedCurve.curveNumber
-        );
-
-        if (highlightedCurveNumbers.length > 0) {
-            Plotly.restyle(
-                graphDiv,
-                {
-                    "line.width": 4,
-                },
-                highlightedCurveNumbers
-            );
-        }
-        */
-
-        if (!plotlyUpdated && oldHighlightedCurves && oldHighlightedCurves.length > 0) {
-            const tracesToBeDeleted = [];
-            for (let i = 0; i < oldHighlightedCurves.length; i++) {
-                tracesToBeDeleted.push(-i - 1);
-            }
-            console.debug("delete traces", tracesToBeDeleted);
-            Plotly.deleteTraces(graphDiv, tracesToBeDeleted);
-        }
-
-        if (newHighlightedCurves) {
-            if (highlightedCurveNumbers.length > 0) {
-                const traces: Data[] = [];
-                newHighlightedCurves.forEach((highlightedCurve) => {
-                    const dataObj: Data = data[highlightedCurve.curveNumber];
-                    if (!dataObj) {
-                        return;
+                if (!plotlyUpdated && oldHighlightedCurves && oldHighlightedCurves.length > 0) {
+                    const tracesToBeDeleted = [];
+                    for (let i = 0; i < oldHighlightedCurves.length; i++) {
+                        tracesToBeDeleted.push(-i - 1);
                     }
-                    if (dataObj.type === "scatter" || dataObj.type === "scattergl") {
-                        traces.push({
-                            ...dataObj,
-                            marker: {
-                                ...dataObj.marker,
-                                color: highlightedCurve.color,
-                            },
-                            line: {
-                                ...dataObj.line,
-                                color: highlightedCurve.color,
-                                width: highlightedCurve.width,
-                            },
-                            showlegend: false,
-                            hoverinfo: "skip",
+                    console.debug("delete traces", tracesToBeDeleted);
+                    highlightedCurvesToCurveNumbersMapping.current.clear();
+                    return Plotly.deleteTraces(graphDiv, tracesToBeDeleted);
+                }
+            })
+            .then(() => {
+                if (isUnmounting) {
+                    return;
+                }
+
+                const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
+                    (highlightedCurve) => highlightedCurve.curveNumber
+                );
+
+                const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
+                if (!graphDiv) {
+                    return;
+                }
+
+                if (newHighlightedCurves) {
+                    if (highlightedCurveNumbers.length > 0) {
+                        Plotly.restyle(graphDiv, {
+                            opacity: 0.5,
+                        }).then(() => {
+                            interactionDisabled.current = true;
+                            const traces: Data[] = [];
+                            newHighlightedCurves.forEach((highlightedCurve) => {
+                                const dataObj: Data = data[highlightedCurve.curveNumber];
+                                if (!dataObj) {
+                                    return;
+                                }
+                                if (dataObj.type === "scatter" || dataObj.type === "scattergl") {
+                                    traces.push({
+                                        ...dataObj,
+                                        opacity: 1,
+                                        marker: {
+                                            ...dataObj.marker,
+                                            width: highlightedCurve.width,
+                                        },
+                                        line: {
+                                            ...dataObj.line,
+                                            width: highlightedCurve.width,
+                                        },
+                                        showlegend: false,
+                                    });
+                                    highlightedCurvesToCurveNumbersMapping.current.set(
+                                        data.length + traces.length - 1,
+                                        highlightedCurve.curveNumber
+                                    );
+                                } else {
+                                    console.warn("highlighted curve is not a scatter plot", dataObj);
+                                }
+                                console.debug("add traces", traces);
+                                Plotly.addTraces(graphDiv, traces).then(() => {
+                                    interactionDisabled.current = false;
+                                });
+                            });
                         });
                     } else {
-                        console.warn("highlighted curve is not a scatter plot", dataObj);
+                        Plotly.restyle(graphDiv, {
+                            opacity: 1,
+                        });
                     }
-                    console.debug("add traces", traces);
-                    Plotly.addTraces(graphDiv, traces);
-                });
-            }
-        }
+                }
+            });
     }
 
     React.useEffect(function handleMount() {
@@ -233,25 +243,36 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
 
     React.useEffect(
         function addHoverEventHandlers() {
-            let interactionDisabled = false;
             const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
 
             function handleHover(event: Plotly.PlotHoverEvent) {
-                if (!interactionDisabled) {
+                if (!interactionDisabled.current && !hoverDisabled) {
                     console.debug("hover");
                     if (hoverTimeout.current) {
                         clearTimeout(hoverTimeout.current);
                     }
                     hoverTimeout.current = setTimeout(() => {
                         if (props.onHover) {
-                            props.onHover(event);
+                            const points = event.points.map((point) => {
+                                const curveNumber = highlightedCurvesToCurveNumbersMapping.current.get(
+                                    point.curveNumber
+                                );
+                                if (curveNumber !== undefined) {
+                                    return {
+                                        ...point,
+                                        curveNumber,
+                                    };
+                                }
+                                return point;
+                            });
+                            props.onHover({ ...event, points });
                         }
                     }, 100);
                 }
             }
 
             function handleUnHover() {
-                if (!interactionDisabled) {
+                if (!interactionDisabled.current && !hoverDisabled) {
                     console.debug("unhover");
                     if (unhoverTimeout.current) {
                         clearTimeout(unhoverTimeout.current);
@@ -272,9 +293,9 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                 if (timeout.current) {
                     clearTimeout(timeout.current);
                 }
-                interactionDisabled = true;
+                interactionDisabled.current = true;
                 timeout.current = setTimeout(() => {
-                    interactionDisabled = false;
+                    interactionDisabled.current = false;
                 }, 500);
             }
 
@@ -311,7 +332,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                 }
             };
         },
-        [props.onHover, props.onUnhover, isUnmounting]
+        [props.onHover, props.onUnhover, isUnmounting, hoverDisabled]
     );
 
     return <div ref={divRef} style={{ width: props.width, height: props.height }} />;

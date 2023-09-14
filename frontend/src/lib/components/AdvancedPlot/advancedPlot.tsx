@@ -88,13 +88,11 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     if (changes) {
         console.debug("data or layout changed");
         setHoverDisabled(true);
-        updatePlotly(currentData, currentLayout, props.highlightedCurves, prevHighlightedCurvesRef.current);
-        setPrevHighlightedCurves(cloneDeep(props.highlightedCurves));
+        updatePlotly(currentData, currentLayout, props.highlightedCurves, cloneDeep(prevHighlightedCurvesRef.current));
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
-    } else if (!isEqual(props.highlightedCurves, prevHighlightedCurves)) {
-        console.debug("highlighted curves changed", props.highlightedCurves);
-        setPrevHighlightedCurves(props.highlightedCurves);
-        updateHighlightedCurves(props.highlightedCurves, prevHighlightedCurvesRef.current);
+    } else if (!isEqual(props.highlightedCurves, prevHighlightedCurvesRef.current)) {
+        console.debug("highlighted curves changed", props.highlightedCurves, prevHighlightedCurvesRef.current);
+        updateHighlightedCurves(props.highlightedCurves, cloneDeep(prevHighlightedCurvesRef.current));
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     }
 
@@ -158,19 +156,19 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     return;
                 }
 
-                const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
-                    (highlightedCurve) => highlightedCurve.curveNumber
-                );
-
                 const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
                 if (!graphDiv) {
                     return;
                 }
 
+                const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
+                    (highlightedCurve) => highlightedCurve.curveNumber
+                );
+
                 if (newHighlightedCurves) {
                     if (highlightedCurveNumbers.length > 0) {
                         Plotly.restyle(graphDiv, {
-                            opacity: 0.5,
+                            opacity: 0.2,
                         }).then(() => {
                             interactionDisabled.current = true;
                             const traces: Data[] = [];
@@ -212,6 +210,9 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                         });
                     }
                 }
+            })
+            .finally(() => {
+                prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
             });
     }
 
@@ -247,7 +248,6 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
 
             function handleHover(event: Plotly.PlotHoverEvent) {
                 if (!interactionDisabled.current && !hoverDisabled) {
-                    console.debug("hover");
                     if (hoverTimeout.current) {
                         clearTimeout(hoverTimeout.current);
                     }
@@ -273,7 +273,6 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
 
             function handleUnHover() {
                 if (!interactionDisabled.current && !hoverDisabled) {
-                    console.debug("unhover");
                     if (unhoverTimeout.current) {
                         clearTimeout(unhoverTimeout.current);
                     }

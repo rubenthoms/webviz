@@ -6,6 +6,8 @@ import Plotly, { PlotlyHTMLElement } from "plotly.js-dist-min";
 export type HighlightedCurve = {
     curveNumber: number;
     width?: number;
+    color?: string;
+    opacityDiff?: number;
 };
 
 export type Data =
@@ -166,9 +168,17 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                 );
 
                 if (newHighlightedCurves) {
+                    let mainOpacity = 100;
+                    const highlightedCurveNumbers: number[] = [];
+                    newHighlightedCurves.forEach(
+                        (highlightedCurve) => {
+                            mainOpacity = Math.min(mainOpacity, 100 - (highlightedCurve.opacityDiff ?? 0));
+                            highlightedCurveNumbers.push(highlightedCurve.curveNumber);
+                        }
+                    );
                     if (highlightedCurveNumbers.length > 0) {
                         Plotly.restyle(graphDiv, {
-                            opacity: 0.2,
+                            opacity: mainOpacity / 100,
                         }).then(() => {
                             interactionDisabled.current = true;
                             const traces: Data[] = [];
@@ -180,7 +190,6 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                                 if (dataObj.type === "scatter" || dataObj.type === "scattergl") {
                                     traces.push({
                                         ...dataObj,
-                                        opacity: 1,
                                         marker: {
                                             ...dataObj.marker,
                                             width: highlightedCurve.width,
@@ -189,6 +198,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                                             ...dataObj.line,
                                             width: highlightedCurve.width,
                                         },
+                                        opacity: highlightedCurve.opacityDiff !== undefined ? (mainOpacity + highlightedCurve.opacityDiff) / 100 : 1,
                                         showlegend: false,
                                     });
                                     highlightedCurvesToCurveNumbersMapping.current.set(
@@ -267,21 +277,21 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                             });
                             props.onHover({ ...event, points });
                         }
-                    }, 100);
+                    }, 50);
                 }
             }
 
             function handleUnHover() {
                 if (!interactionDisabled.current && !hoverDisabled) {
-                    if (unhoverTimeout.current) {
-                        clearTimeout(unhoverTimeout.current);
+                    if (hoverTimeout.current) {
+                        clearTimeout(hoverTimeout.current);
                     }
 
-                    unhoverTimeout.current = setTimeout(() => {
+                    hoverTimeout.current = setTimeout(() => {
                         if (props.onUnhover) {
                             props.onUnhover();
                         }
-                    }, 100);
+                    }, 200);
                 }
             }
 

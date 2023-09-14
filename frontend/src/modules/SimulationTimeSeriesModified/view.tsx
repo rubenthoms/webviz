@@ -229,7 +229,7 @@ export const view = ({ moduleContext, workbenchSession, workbenchServices }: Mod
                 data={tracesArray}
                 layout={layout}
                 config={{ scrollZoom: true }}
-                highlightedCurves={hoveredCurveNumber ? [{ curveNumber: hoveredCurveNumber, color: "red" }] : []}
+                highlightedCurves={hoveredCurveNumber ? [{ curveNumber: hoveredCurveNumber, opacityDiff: 60 }] : []}
                 onHover={handleHover}
                 onUnhover={handleUnHover}
             />

@@ -28,15 +28,33 @@ export type AdvancedPlotProps = {
     highlightedCurves?: HighlightedCurve[];
 
     onHover?: (event: Plotly.PlotHoverEvent) => void;
-    onUnhover?: () => void;
+    onUnhover?: (event: Plotly.PlotMouseEvent) => void;
 
-    onSelect?: (curveNumbers: number[]) => void;
-    onDeselect?: () => void;
+    onClick?: (event: Plotly.PlotMouseEvent) => void;
+
+    onSelect?: (event: Plotly.PlotSelectionEvent) => void;
+    onUnselect?: () => void;
 
     height?: number;
     width?: number;
     revisionNumber?: number;
 };
+
+function filterDataItems(data: Data[], curveNumbers: number[]) {
+    const filteredData: Data[] = [];
+    for (const curveNumber of curveNumbers) {
+        const dataItem = data[curveNumber];
+        if (!dataItem) {
+            continue;
+        }
+        if (dataItem.type === "scatter" || dataItem.type === "scattergl") {
+            filteredData.push({
+                ...dataItem,
+            });
+        }
+    }
+    return filteredData;
+}
 
 export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const [isUnmounting, setIsUnmounting] = React.useState<boolean>(false);
@@ -46,7 +64,6 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const [prevData, setPrevData] = React.useState<Data[]>(props.data);
     const [prevLayout, setPrevLayout] = React.useState<Partial<Plotly.Layout>>(cloneDeep(props.layout));
     const [prevFrames, setPrevFrames] = React.useState<Plotly.Frame[] | undefined>(props.frames || undefined);
-    const [prevHighlightedCurves, setPrevHighlightedCurves] = React.useState<HighlightedCurve[] | undefined>(undefined);
     const [prevRevisionNumber, setPrevRevisionNumber] = React.useState<number | undefined>(undefined);
 
     const prevHighlightedCurvesRef = React.useRef<HighlightedCurve[]>([]);
@@ -55,7 +72,6 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     const promiseRef = React.useRef<Promise<void>>(Promise.resolve());
     const timeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const hoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const unhoverTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const highlightedCurvesToCurveNumbersMapping = React.useRef<Map<number, number>>(new Map());
     const interactionDisabled = React.useRef<boolean>(false);
@@ -88,12 +104,10 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
     }
 
     if (changes) {
-        console.debug("data or layout changed");
         setHoverDisabled(true);
         updatePlotly(currentData, currentLayout, props.highlightedCurves, cloneDeep(prevHighlightedCurvesRef.current));
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     } else if (!isEqual(props.highlightedCurves, prevHighlightedCurvesRef.current)) {
-        console.debug("highlighted curves changed", props.highlightedCurves, prevHighlightedCurvesRef.current);
         updateHighlightedCurves(props.highlightedCurves, cloneDeep(prevHighlightedCurvesRef.current));
         prevHighlightedCurvesRef.current = cloneDeep(props.highlightedCurves || []);
     }
@@ -129,7 +143,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
 
     function updateHighlightedCurves(
         newHighlightedCurves?: HighlightedCurve[],
-        oldHighlightedCurves?: HighlightedCurve[],
+        prevHighlightedCurves?: HighlightedCurve[],
         plotlyUpdated = false
     ) {
         promiseRef.current = promiseRef.current
@@ -143,14 +157,19 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     return;
                 }
 
-                if (!plotlyUpdated && oldHighlightedCurves && oldHighlightedCurves.length > 0) {
-                    const tracesToBeDeleted = [];
-                    for (let i = 0; i < oldHighlightedCurves.length; i++) {
-                        tracesToBeDeleted.push(-i - 1);
+                if (!plotlyUpdated && prevHighlightedCurves) {
+                    const prevHighlightedCurveNumbers = prevHighlightedCurves.map((curve) => curve.curveNumber);
+                    const filteredDataItems = filterDataItems(data, prevHighlightedCurveNumbers);
+                    if (filteredDataItems.length > 0) {
+                        const tracesToBeDeleted = [];
+                        for (let i = 0; i < filteredDataItems.length; i++) {
+                            tracesToBeDeleted.push(-i - 1);
+                        }
+                        highlightedCurvesToCurveNumbersMapping.current.clear();
+                        if (tracesToBeDeleted.length > 0) {
+                            return Plotly.deleteTraces(graphDiv, tracesToBeDeleted);
+                        }
                     }
-                    console.debug("delete traces", tracesToBeDeleted);
-                    highlightedCurvesToCurveNumbersMapping.current.clear();
-                    return Plotly.deleteTraces(graphDiv, tracesToBeDeleted);
                 }
             })
             .then(() => {
@@ -163,19 +182,13 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                     return;
                 }
 
-                const highlightedCurveNumbers = (newHighlightedCurves ?? []).map(
-                    (highlightedCurve) => highlightedCurve.curveNumber
-                );
-
                 if (newHighlightedCurves) {
                     let mainOpacity = 100;
                     const highlightedCurveNumbers: number[] = [];
-                    newHighlightedCurves.forEach(
-                        (highlightedCurve) => {
-                            mainOpacity = Math.min(mainOpacity, 100 - (highlightedCurve.opacityDiff ?? 0));
-                            highlightedCurveNumbers.push(highlightedCurve.curveNumber);
-                        }
-                    );
+                    newHighlightedCurves.forEach((highlightedCurve) => {
+                        mainOpacity = Math.min(mainOpacity, 100 - (highlightedCurve.opacityDiff ?? 0));
+                        highlightedCurveNumbers.push(highlightedCurve.curveNumber);
+                    });
                     if (highlightedCurveNumbers.length > 0) {
                         Plotly.restyle(graphDiv, {
                             opacity: mainOpacity / 100,
@@ -183,35 +196,37 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                             interactionDisabled.current = true;
                             const traces: Data[] = [];
                             newHighlightedCurves.forEach((highlightedCurve) => {
-                                const dataObj: Data = data[highlightedCurve.curveNumber];
-                                if (!dataObj) {
+                                const dataItem: Data = data[highlightedCurve.curveNumber];
+                                if (!dataItem) {
                                     return;
                                 }
-                                if (dataObj.type === "scatter" || dataObj.type === "scattergl") {
+                                if (dataItem.type === "scatter" || dataItem.type === "scattergl") {
                                     traces.push({
-                                        ...dataObj,
+                                        ...dataItem,
                                         marker: {
-                                            ...dataObj.marker,
+                                            ...dataItem.marker,
                                             width: highlightedCurve.width,
+                                            color: highlightedCurve.color ?? dataItem.marker?.color,
                                         },
                                         line: {
-                                            ...dataObj.line,
+                                            ...dataItem.line,
                                             width: highlightedCurve.width,
+                                            color: highlightedCurve.color ?? dataItem.line?.color,
                                         },
-                                        opacity: highlightedCurve.opacityDiff !== undefined ? (mainOpacity + highlightedCurve.opacityDiff) / 100 : 1,
+                                        opacity:
+                                            highlightedCurve.opacityDiff !== undefined
+                                                ? (mainOpacity + highlightedCurve.opacityDiff) / 100
+                                                : 1,
                                         showlegend: false,
                                     });
                                     highlightedCurvesToCurveNumbersMapping.current.set(
                                         data.length + traces.length - 1,
                                         highlightedCurve.curveNumber
                                     );
-                                } else {
-                                    console.warn("highlighted curve is not a scatter plot", dataObj);
                                 }
-                                console.debug("add traces", traces);
-                                Plotly.addTraces(graphDiv, traces).then(() => {
-                                    interactionDisabled.current = false;
-                                });
+                            });
+                            Plotly.addTraces(graphDiv, traces).then(() => {
+                                interactionDisabled.current = false;
                             });
                         });
                     } else {
@@ -237,17 +252,43 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
             }));
         }
 
+        // When zooming in, the relayout function is only called once there hasn't been a wheel event in a certain time.
+        // However, the hover event would still be sent and might update the data, causing a layout change and, hence,
+        // a jump in the plot's zoom. To prevent this, we disable the hover event for a certain time after a wheel event.
+        function handleWheel() {
+            if (timeout.current) {
+                clearTimeout(timeout.current);
+            }
+            interactionDisabled.current = true;
+            timeout.current = setTimeout(() => {
+                interactionDisabled.current = false;
+            }, 500);
+        }
+
+        function handleTouchZoom(e: TouchEvent) {
+            if (e.touches.length === 2) {
+                handleWheel();
+            }
+        }
+
         if (graphDiv) {
             Plotly.newPlot(graphDiv, data, layout, props.config);
             graphDiv.on("plotly_relayout", handleRelayout);
+            graphDiv.addEventListener("wheel", handleWheel);
+            graphDiv.addEventListener("touchmove", handleTouchZoom);
         }
 
         return function handleUnmount() {
             if (graphDiv) {
+                graphDiv.removeEventListener("wheel", handleWheel);
+                graphDiv.removeEventListener("touchmove", handleTouchZoom);
                 setIsUnmounting(true);
                 // Purge should remove all event listeners
                 // https://github.com/plotly/plotly.js/blob/a5577d994ea06785be100f9e7decff3e6cd8ab1f/src/plots/plots.js#L1817
                 Plotly.purge(graphDiv);
+            }
+            if (timeout.current) {
+                clearTimeout(timeout.current);
             }
         };
     }, []);
@@ -257,7 +298,7 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
             const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
 
             function handleHover(event: Plotly.PlotHoverEvent) {
-                if (!interactionDisabled.current && !hoverDisabled) {
+                if (!interactionDisabled.current && !hoverDisabled && !isUnmounting) {
                     if (hoverTimeout.current) {
                         clearTimeout(hoverTimeout.current);
                     }
@@ -281,60 +322,32 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
                 }
             }
 
-            function handleUnHover() {
-                if (!interactionDisabled.current && !hoverDisabled) {
+            function handleUnhover(event: Plotly.PlotMouseEvent) {
+                if (!interactionDisabled.current && !hoverDisabled && !isUnmounting) {
                     if (hoverTimeout.current) {
                         clearTimeout(hoverTimeout.current);
                     }
 
                     hoverTimeout.current = setTimeout(() => {
                         if (props.onUnhover) {
-                            props.onUnhover();
+                            props.onUnhover(event);
                         }
                     }, 200);
                 }
             }
 
-            // When zooming in, the relayout function is only called once there hasn't been a wheel event in a certain time.
-            // However, the hover event would still be sent and might update the data, causing a layout change and, hence,
-            // a jump in the plot's zoom. To prevent this, we disable the hover event for a certain time after a wheel event.
-            function handleWheel() {
-                if (timeout.current) {
-                    clearTimeout(timeout.current);
-                }
-                interactionDisabled.current = true;
-                timeout.current = setTimeout(() => {
-                    interactionDisabled.current = false;
-                }, 500);
-            }
-
-            function handleTouchZoom(e: TouchEvent) {
-                if (e.touches.length === 2) {
-                    handleWheel();
-                }
-            }
-
-            if (graphDiv && divRef.current) {
+            if (graphDiv && !isUnmounting) {
                 graphDiv.on("plotly_hover", handleHover);
-                graphDiv.on("plotly_unhover", handleUnHover);
-                graphDiv.addEventListener("wheel", handleWheel);
-                graphDiv.addEventListener("touchmove", handleTouchZoom);
+                graphDiv.on("plotly_unhover", handleUnhover);
             }
 
             return function removeHoverEventHandlers() {
-                // It should be safe to ignore the "on" properties here, since they are a properties that are going to
-                // be replaced the next time a handler is assigned (as long as it works like "onClick" etc.).
                 if (graphDiv) {
-                    graphDiv.removeEventListener("wheel", handleWheel);
-                    graphDiv.removeEventListener("touchmove", handleTouchZoom);
                     if (graphDiv.removeAllListeners) {
                         // Doc is pretty bad, but "handler" is probably the event name
                         graphDiv.removeAllListeners("plotly_hover");
                         graphDiv.removeAllListeners("plotly_unhover");
                     }
-                }
-                if (timeout.current) {
-                    clearTimeout(timeout.current);
                 }
                 if (hoverTimeout.current) {
                     clearTimeout(hoverTimeout.current);
@@ -342,6 +355,92 @@ export const AdvancedPlot: React.FC<AdvancedPlotProps> = (props) => {
             };
         },
         [props.onHover, props.onUnhover, isUnmounting, hoverDisabled]
+    );
+
+    React.useEffect(
+        function addSelectEventHandlers() {
+            const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
+
+            function handleSelect(event: Plotly.PlotSelectionEvent) {
+                if (!interactionDisabled.current && !isUnmounting) {
+                    if (props.onSelect) {
+                        const points = event.points.map((point) => {
+                            const curveNumber = highlightedCurvesToCurveNumbersMapping.current.get(point.curveNumber);
+                            if (curveNumber !== undefined) {
+                                return {
+                                    ...point,
+                                    curveNumber,
+                                };
+                            }
+                            return point;
+                        });
+                        props.onSelect({ ...event, points });
+                    }
+                }
+            }
+
+            function handleUnselect() {
+                if (!interactionDisabled.current && !isUnmounting) {
+                    if (props.onUnselect) {
+                        props.onUnselect();
+                    }
+                }
+            }
+
+            if (graphDiv && !isUnmounting) {
+                graphDiv.on("plotly_selected", handleSelect);
+                graphDiv.on("plotly_deselect", handleUnselect);
+            }
+
+            return function removeSelectEventHandlers() {
+                if (graphDiv) {
+                    if (graphDiv.removeAllListeners) {
+                        // Doc is pretty bad, but "handler" is probably the event name
+                        graphDiv.removeAllListeners("plotly_selected");
+                        graphDiv.removeAllListeners("plotly_deselect");
+                    }
+                }
+            };
+        },
+        [props.onSelect, props.onUnselect, isUnmounting]
+    );
+
+    React.useEffect(
+        function addClickEventHandlers() {
+            const graphDiv = divRef.current as unknown as PlotlyHTMLElement;
+
+            function handleClick(event: Plotly.PlotMouseEvent) {
+                if (!interactionDisabled.current && !isUnmounting) {
+                    if (props.onClick) {
+                        const points = event.points.map((point) => {
+                            const curveNumber = highlightedCurvesToCurveNumbersMapping.current.get(point.curveNumber);
+                            if (curveNumber !== undefined) {
+                                return {
+                                    ...point,
+                                    curveNumber,
+                                };
+                            }
+                            return point;
+                        });
+                        props.onClick({ ...event, points });
+                    }
+                }
+            }
+
+            if (graphDiv && !isUnmounting) {
+                graphDiv.on("plotly_click", handleClick);
+            }
+
+            return function removeClickEventHandlers() {
+                if (graphDiv) {
+                    if (graphDiv.removeAllListeners) {
+                        // Doc is pretty bad, but "handler" is probably the event name
+                        graphDiv.removeAllListeners("plotly_click");
+                    }
+                }
+            };
+        },
+        [props.onSelect, props.onUnselect, isUnmounting]
     );
 
     return <div ref={divRef} style={{ width: props.width, height: props.height }} />;

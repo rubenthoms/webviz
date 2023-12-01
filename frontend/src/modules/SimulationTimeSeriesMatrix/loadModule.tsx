@@ -1,6 +1,7 @@
 import { Frequency_api, StatisticFunction_api } from "@api";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
+import { ChannelDefs } from "./channelDefs";
 import { settings } from "./settings";
 import { FanchartStatisticOption, GroupBy, State, VisualizationMode } from "./state";
 import { view } from "./view";
@@ -21,7 +22,7 @@ const defaultState: State = {
     realizationsToInclude: null,
 };
 
-const module = ModuleRegistry.initModule<State>("SimulationTimeSeriesMatrix", defaultState);
+const module = ModuleRegistry.initModule<State, ChannelDefs>("SimulationTimeSeriesMatrix", defaultState);
 
 module.viewFC = view;
 module.settingsFC = settings;

@@ -26,6 +26,7 @@ import { FilterAlt } from "@mui/icons-material";
 
 import { isEqual } from "lodash";
 
+import { ChannelDefs } from "./channelDefs";
 import { useVectorListQueries } from "./queryHooks";
 import {
     FanchartStatisticOption,
@@ -47,7 +48,7 @@ enum StatisticsType {
     FANCHART = "Fanchart",
 }
 
-export function settings({ moduleContext, workbenchSession }: ModuleFCProps<State>) {
+export function settings({ moduleContext, workbenchSession }: ModuleFCProps<State, ChannelDefs>) {
     const ensembleSet = useEnsembleSet(workbenchSession);
     const statusWriter = useSettingsStatusWriter(moduleContext);
 

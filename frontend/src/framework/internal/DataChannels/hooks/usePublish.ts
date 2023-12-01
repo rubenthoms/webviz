@@ -9,7 +9,7 @@ import { ContentDefinition } from "../Content";
 export function usePublish<
     TGenre extends Genre,
     TContentType extends Type,
-    TMetaData extends Record<string, Type> | undefined
+    TMetaData extends Record<string, Type>
 >(options: {
     channel: Channel<TGenre, TContentType, TMetaData>;
     dependencies: any[];

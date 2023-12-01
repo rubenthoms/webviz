@@ -1,7 +1,7 @@
 import { Channel, ChannelDefinitions } from "./Channel";
 import { Subscriber, SubscriberDefinitions } from "./Subscriber";
 
-import { Genre } from "../../DataChannelTypes";
+import { Genre, Type } from "../../DataChannelTypes";
 
 export enum BroadcastServiceTopic {
     ChannelsChange = "channels-change",
@@ -26,7 +26,11 @@ export class PublishSubscribeBroker<
 
     getChannel<T extends Extract<keyof TChannelDefs, string>>(
         ident: T
-    ): Channel<TChannelDefs[T]["genre"], TChannelDefs[T]["dataType"], TChannelDefs[T]["metaData"]> | null {
+    ): Channel<
+        TChannelDefs[T]["genre"],
+        TChannelDefs[T]["dataType"],
+        TChannelDefs[T] extends { metaData: Record<string, Type> } ? TChannelDefs[T]["metaData"] : never
+    > | null {
         return this._channels.find((c) => c.getIdent() === ident) ?? null;
     }
 

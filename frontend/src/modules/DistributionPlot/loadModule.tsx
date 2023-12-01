@@ -2,7 +2,7 @@ import { ModuleRegistry } from "@framework/ModuleRegistry";
 
 import { settings } from "./settings";
 import { PlotType, State } from "./state";
-import { subscriberDefs } from "./subscriberDefs";
+import { SubscriberDefs } from "./subscriberDefs";
 import { view } from "./view";
 
 const defaultState: State = {
@@ -11,7 +11,7 @@ const defaultState: State = {
     orientation: "h",
 };
 
-const module = ModuleRegistry.initModule<State, never, typeof subscriberDefs>("DistributionPlot", defaultState);
+const module = ModuleRegistry.initModule<State, never, SubscriberDefs>("DistributionPlot", defaultState);
 
 module.viewFC = view;
 module.settingsFC = settings;

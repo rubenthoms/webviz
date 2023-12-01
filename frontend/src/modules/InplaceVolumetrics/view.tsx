@@ -11,12 +11,12 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 
 import { Layout, PlotData, PlotHoverEvent } from "plotly.js";
 
-import { BroadcastChannelNames, channelDefs } from "./channelDefs";
+import { BroadcastChannelNames, ChannelDefs } from "./channelDefs";
 import { useRealizationsResponseQuery } from "./queryHooks";
 import { VolumetricResponseAbbreviations } from "./settings";
 import { State } from "./state";
 
-export const view = (props: ModuleFCProps<State, typeof channelDefs>) => {
+export const view = (props: ModuleFCProps<State, ChannelDefs>) => {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
     const ensembleIdent = props.moduleContext.useStoreValue("ensembleIdent");

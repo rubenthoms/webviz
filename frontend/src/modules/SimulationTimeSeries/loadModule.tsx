@@ -1,6 +1,7 @@
 import { Frequency_api } from "@api";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
+import { ChannelDefs } from "./channelDefs";
 import { settings } from "./settings";
 import { State } from "./state";
 import { view } from "./view";
@@ -14,7 +15,7 @@ const defaultState: State = {
     realizationsToInclude: null,
 };
 
-const module = ModuleRegistry.initModule<State>("SimulationTimeSeries", defaultState);
+const module = ModuleRegistry.initModule<State, ChannelDefs>("SimulationTimeSeries", defaultState);
 
 module.viewFC = view;
 module.settingsFC = settings;

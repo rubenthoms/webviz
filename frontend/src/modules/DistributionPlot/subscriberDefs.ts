@@ -1,4 +1,4 @@
-import { Genre, SubscriberDefinitions } from "@framework/DataChannelTypes";
+import { Genre } from "@framework/DataChannelTypes";
 
 export const subscriberDefs = {
     ["channelX"]: {
@@ -26,3 +26,5 @@ export const subscriberDefs = {
         supportedGenres: [Genre.Realization],
     },
 } as const;
+
+export type SubscriberDefs = typeof subscriberDefs;

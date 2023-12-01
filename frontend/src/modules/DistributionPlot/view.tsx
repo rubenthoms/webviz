@@ -15,7 +15,7 @@ import { Histogram } from "./components/histogram";
 import { ScatterPlot } from "./components/scatterPlot";
 import { ScatterPlotWithColorMapping } from "./components/scatterPlotWithColorMapping";
 import { PlotType, State } from "./state";
-import { subscriberDefs } from "./subscriberDefs";
+import { SubscriberDefs } from "./subscriberDefs";
 
 function nFormatter(num: number, digits: number): string {
     const lookup = [
@@ -225,7 +225,7 @@ export const view = ({
     workbenchServices,
     initialSettings,
     workbenchSettings,
-}: ModuleFCProps<State, never, typeof subscriberDefs>) => {
+}: ModuleFCProps<State, never, SubscriberDefs>) => {
     const [plotType, setPlotType] = moduleContext.useStoreState("plotType");
     const numBins = moduleContext.useStoreValue("numBins");
     const orientation = moduleContext.useStoreValue("orientation");

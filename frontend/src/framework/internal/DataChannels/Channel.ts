@@ -3,14 +3,22 @@ import { PublishSubscribeBroker } from "./PublishSubscribeBroker";
 
 import { Data, Genre, GenreType, Type } from "../../DataChannelTypes";
 
-export interface ChannelDefinitions {
-    [ident: string]: {
-        name: string;
-        genre: Genre;
-        dataType: Type;
-        metaData?: Record<string, Type>;
-    };
-}
+export type ChannelDefinitions =
+    | {
+          [ident: string]: {
+              name: string;
+              genre: Genre;
+              dataType: Type;
+          };
+      }
+    | {
+          [ident: string]: {
+              name: string;
+              genre: Genre;
+              dataType: Type;
+              metaData: Record<string, Type>;
+          };
+      };
 
 export enum ChannelTopic {
     ContentsChange = "contents-change",

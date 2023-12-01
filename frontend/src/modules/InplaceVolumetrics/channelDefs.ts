@@ -1,4 +1,4 @@
-import { ChannelDefinitions, Genre, Type } from "@framework/DataChannelTypes";
+import { Genre, Type } from "@framework/DataChannelTypes";
 
 export enum BroadcastChannelNames {
     Response = "Response (per realization)",
@@ -12,3 +12,5 @@ export const channelDefs = {
         metaData: undefined,
     },
 } as const;
+
+export type ChannelDefs = typeof channelDefs;

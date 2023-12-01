@@ -13,7 +13,7 @@ import { ContentError } from "@modules/_shared/components/ContentMessage";
 import { indexOf } from "lodash";
 import { Layout, PlotDatum, PlotMouseEvent } from "plotly.js";
 
-import { BroadcastChannelNames } from "./channelDefs";
+import { BroadcastChannelNames, ChannelDefs } from "./channelDefs";
 import { useHistoricalVectorDataQueries, useStatisticalVectorDataQueries, useVectorDataQueries } from "./queryHooks";
 import { GroupBy, State, VisualizationMode } from "./state";
 import { EnsemblesContinuousParameterColoring } from "./utils/ensemblesContinuousParameterColoring";
@@ -24,7 +24,7 @@ import {
     filterVectorSpecificationAndIndividualStatisticsDataArray,
 } from "./utils/vectorSpecificationsAndQueriesUtils";
 
-export const view = ({ moduleContext, workbenchSession, workbenchSettings }: ModuleFCProps<State>) => {
+export const view = ({ moduleContext, workbenchSession, workbenchSettings }: ModuleFCProps<State, ChannelDefs>) => {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
 
@@ -143,7 +143,10 @@ export const view = ({ moduleContext, workbenchSession, workbenchSettings }: Mod
             });
             return {
                 data,
-                metaData: metaData ?? undefined,
+                metaData: metaData ?? {
+                    unit: "",
+                    ensemble: "",
+                },
             };
         },
     });

@@ -7,11 +7,11 @@ import { TableHeading } from "@lib/components/Table/table";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ContentInfo } from "@modules/_shared/components/ContentMessage";
 
-import { Channels } from "./channelDefs";
+import { ChannelDefs, Channels } from "./channelDefs";
 import { useRealizationsResponses } from "./hooks/useRealizationResponses";
 import { State } from "./state";
 
-export const view = (props: ModuleFCProps<State>) => {
+export const view = (props: ModuleFCProps<State, ChannelDefs>) => {
     const responseNames = props.moduleContext.useStoreValue("selectedResponseNames");
     const tableNames = props.moduleContext.useStoreValue("selectedTableNames");
     const ensembleIdents = props.moduleContext.useStoreValue("selectedEnsembleIdents");

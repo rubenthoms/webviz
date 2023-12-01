@@ -1,5 +1,3 @@
-import { Data } from "../../DataChannelTypes";
-
 export interface ContentDefinition {
     ident: string;
     name: string;

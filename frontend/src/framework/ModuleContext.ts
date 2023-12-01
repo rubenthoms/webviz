@@ -7,6 +7,7 @@ import {
     GenreType,
     SubscriberDefinitions,
     Type,
+    TypeToTSTypeMapping,
 } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
 import { ModuleInstance } from "./ModuleInstance";
@@ -102,20 +103,33 @@ export class ModuleContext<
         channelIdent: TIdent;
         dependencies: any[];
         contents: ContentDefinition[];
-        dataGenerator: (contentIdent: string) => TChannelDefs[TIdent]["metaData"] extends undefined
-            ? Data<GenreType[TChannelDefs[TIdent]["genre"]], TChannelDefs[TIdent]["dataType"]>[]
-            : {
+        dataGenerator: (contentIdent: string) => TChannelDefs[TIdent] extends { metaData: Record<string, Type> }
+            ? {
                   data: Data<GenreType[TChannelDefs[TIdent]["genre"]], TChannelDefs[TIdent]["dataType"]>[];
-                  metaData: TChannelDefs[TIdent]["metaData"];
-              };
+                  metaData: {
+                      [K in keyof TChannelDefs[TIdent]["metaData"]]: TypeToTSTypeMapping[TChannelDefs[TIdent]["metaData"][K]];
+                  };
+              }
+            : Data<GenreType[TChannelDefs[TIdent]["genre"]], TChannelDefs[TIdent]["dataType"]>[];
     }) {
+        const { channelIdent, ...rest } = options;
         const channel = this._moduleInstance.getPublishSubscribeBroker().getChannel(options.channelIdent);
         if (!channel) {
             throw new Error(`Channel '${options.channelIdent}' does not exist`);
         }
         return usePublish({
             channel,
-            ...options,
+            ...rest,
         });
     }
 }
+
+const l = {} as const;
+
+type n = typeof l;
+
+type m = n extends { metaData: Record<string, Type> }
+    ? {
+          [K in keyof n["metaData"]]: TypeToTSTypeMapping[n["metaData"][K]];
+      }
+    : never;

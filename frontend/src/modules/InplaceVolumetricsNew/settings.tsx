@@ -13,6 +13,7 @@ import { Label } from "@lib/components/Label";
 import { LoadingStateWrapper } from "@lib/components/StateWrapper/stateWrapper";
 import { FilterAlt } from "@mui/icons-material";
 
+import { ChannelDefs } from "./channelDefs";
 import FilterSelect from "./components/filterSelect";
 import { useTableNameAndMetadataFilterOptions } from "./hooks/useTableNameAndMetadataFilterOptions";
 import { useTableNamesAndMetadata } from "./hooks/useTableNamesAndMetadata";
@@ -32,7 +33,7 @@ function findValidRealizations(ensembleIdents: EnsembleIdent[], ensembleSet: Ens
     return validRealizations;
 }
 
-export const settings = ({ workbenchSession, moduleContext }: ModuleFCProps<State>) => {
+export const settings = ({ workbenchSession, moduleContext }: ModuleFCProps<State, ChannelDefs>) => {
     const [selectedEnsembleIdents, setSelectedEnsembleIdents] = moduleContext.useStoreState("selectedEnsembleIdents");
     const [selectedResponseNames, setSelectedResponseNames] = moduleContext.useStoreState("selectedResponseNames");
     const [selectedTableNames, setSelectedTableNames] = moduleContext.useStoreState("selectedTableNames");

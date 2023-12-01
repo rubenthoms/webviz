@@ -17,11 +17,12 @@ import { Select, SelectOption } from "@lib/components/Select";
 
 import { sortBy, sortedUniq } from "lodash";
 
+import { ChannelDefs } from "./channelDefs";
 import { useVectorListQuery } from "./queryHooks";
 import { State } from "./state";
 
 //-----------------------------------------------------------------------------------------------------------
-export function settings({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State>) {
+export function settings({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State, ChannelDefs>) {
     const myInstanceIdStr = moduleContext.getInstanceIdString();
     console.debug(`${myInstanceIdStr} -- render SimulationTimeSeries settings`);
 

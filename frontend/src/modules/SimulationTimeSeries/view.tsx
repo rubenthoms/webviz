@@ -8,7 +8,7 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 
 import { Layout, PlotData, PlotDatum, PlotHoverEvent } from "plotly.js";
 
-import { BroadcastChannelNames } from "./channelDefs";
+import { BroadcastChannelNames, ChannelDefs } from "./channelDefs";
 import { useHistoricalVectorDataQuery, useStatisticalVectorDataQuery, useVectorDataQuery } from "./queryHooks";
 import { State } from "./state";
 
@@ -19,7 +19,7 @@ interface MyPlotData extends Partial<PlotData> {
     legendrank?: number;
 }
 
-export const view = ({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State>) => {
+export const view = ({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State, ChannelDefs>) => {
     // Leave this in until we get a feeling for React18/Plotly
     const renderCount = React.useRef(0);
     React.useEffect(function incrementRenderCount() {

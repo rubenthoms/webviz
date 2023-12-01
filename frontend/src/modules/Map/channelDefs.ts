@@ -1,14 +1,15 @@
-import { ChannelDefinition, DataType, Genre } from "@framework/DataChannelTypes";
+import { Genre, Type } from "@framework/DataChannelTypes";
 
 export enum Channels {
     GridIJK = "Grid IJK",
 }
 
-export const channels: ChannelDefinition[] = [
-    {
-        ident: Channels.GridIJK,
+export const channelDefs = {
+    [Channels.GridIJK]: {
         name: "Grid IJK",
         genre: Genre.GridIJK,
-        dataType: DataType.Numeric,
+        dataType: Type.Number,
     },
-];
+} as const;
+
+export type ChannelDefs = typeof channelDefs;

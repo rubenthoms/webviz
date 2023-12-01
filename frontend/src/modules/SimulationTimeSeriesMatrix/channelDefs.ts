@@ -1,18 +1,19 @@
-import { ChannelDefinition, DataType, Genre } from "@framework/DataChannelTypes";
+import { Genre, Type } from "@framework/DataChannelTypes";
 
 export enum BroadcastChannelNames {
     TimeSeries = "TimeSeries (with value per realization)",
 }
 
-export const channelDefs: ChannelDefinition[] = [
-    {
-        ident: BroadcastChannelNames.TimeSeries,
+export const channelDefs = {
+    [BroadcastChannelNames.TimeSeries]: {
         name: "TimeSeries (with value per realization)",
         genre: Genre.Realization,
-        dataType: DataType.Numeric,
+        dataType: Type.Number,
         metaData: {
-            ensemble: DataType.String,
-            unit: DataType.String,
+            ensemble: Type.String,
+            unit: Type.String,
         },
     },
-];
+} as const;
+
+export type ChannelDefs = typeof channelDefs;

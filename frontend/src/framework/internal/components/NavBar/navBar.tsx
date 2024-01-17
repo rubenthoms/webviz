@@ -120,7 +120,7 @@ export const NavBar: React.FC<NavBarProps> = (props) => {
         const selectedEnsembleIdents = selectedEnsembles.map(
             (ens) => new EnsembleIdent(ens.caseUuid, ens.ensembleName)
         );
-        return props.workbench.loadAndSetupEnsembleSetInSession(queryClient, selectedEnsembleIdents);
+        return props.workbench.loadAndSetupEnsembleSetInSession(selectedEnsembleIdents);
     }
 
     let fixedSelectedEnsembles = selectedEnsembles;

@@ -38,8 +38,9 @@ export class Workbench {
     private _subscribersMap: { [key: string]: Set<() => void> };
     private _layout: LayoutElement[];
     private _perModuleRunningInstanceNumber: Record<string, number>;
+    private _queryClient: QueryClient;
 
-    constructor() {
+    constructor(queryClient: QueryClient) {
         this._moduleInstances = [];
         this._workbenchSession = new WorkbenchSessionPrivate();
         this._workbenchServices = new PrivateWorkbenchServices(this);
@@ -49,6 +50,7 @@ export class Workbench {
         this._subscribersMap = {};
         this._layout = [];
         this._perModuleRunningInstanceNumber = {};
+        this._queryClient = queryClient;
     }
 
     loadLayoutFromLocalStorage(): boolean {
@@ -108,6 +110,10 @@ export class Workbench {
 
     getModuleInstance(id: string): ModuleInstance<any> | undefined {
         return this._moduleInstances.find((moduleInstance) => moduleInstance.getId() === id);
+    }
+
+    getQueryClient(): QueryClient {
+        return this._queryClient;
     }
 
     private getNextModuleInstanceNumber(moduleName: string): number {
@@ -212,10 +218,7 @@ export class Workbench {
         }
     }
 
-    async loadAndSetupEnsembleSetInSession(
-        queryClient: QueryClient,
-        specifiedEnsembleIdents: EnsembleIdent[]
-    ): Promise<void> {
+    async loadAndSetupEnsembleSetInSession(specifiedEnsembleIdents: EnsembleIdent[]): Promise<void> {
         this.storeEnsembleSetInLocalStorage(specifiedEnsembleIdents);
 
         const ensembleIdentsToLoad: EnsembleIdent[] = [];
@@ -225,7 +228,7 @@ export class Workbench {
 
         console.debug("loadAndSetupEnsembleSetInSession - starting load");
         this._workbenchSession.setEnsembleSetLoadingState(true);
-        const newEnsembleSet = await loadEnsembleSetMetadataFromBackend(queryClient, ensembleIdentsToLoad);
+        const newEnsembleSet = await loadEnsembleSetMetadataFromBackend(this._queryClient, ensembleIdentsToLoad);
         console.debug("loadAndSetupEnsembleSetInSession - loading done");
         console.debug("loadAndSetupEnsembleSetInSession - publishing");
         this._workbenchSession.setEnsembleSetLoadingState(false);

@@ -48,8 +48,8 @@ function App() {
     const [isMounted, setIsMounted] = React.useState<boolean>(false);
     const [initAppState, setInitAppState] = React.useState<InitAppState>(InitAppState.CheckingIfUserIsSignedIn);
 
-    const workbench = React.useRef<Workbench>(new Workbench());
     const queryClient = useQueryClient();
+    const workbench = React.useRef<Workbench>(new Workbench(queryClient));
     const { authState } = useAuthProvider();
 
     function initApp() {
@@ -82,7 +82,7 @@ function App() {
             const storedEnsembleIdents = workbench.current.maybeLoadEnsembleSetFromLocalStorage();
             if (storedEnsembleIdents) {
                 setInitAppState(InitAppState.LoadingEnsembles);
-                workbench.current.loadAndSetupEnsembleSetInSession(queryClient, storedEnsembleIdents).finally(() => {
+                workbench.current.loadAndSetupEnsembleSetInSession(storedEnsembleIdents).finally(() => {
                     initApp();
                 });
             } else {

@@ -50,6 +50,10 @@ export class WorkbenchServices {
         this._topicValueCache = new Map();
     }
 
+    getQueryClient() {
+        return this._workbench.getQueryClient();
+    }
+
     subscribe<T extends keyof AllTopicDefinitions>(topic: T, callbackFn: CallbackFunction<T>) {
         const subscribersSet = this._subscribersMap.get(topic) || new Set();
         subscribersSet.add(callbackFn);

@@ -1,111 +1,25 @@
-import React from "react";
-
+import { Frequency_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { ModuleBusinessLogic } from "@framework/ModuleBusinessLogic";
 import { WorkbenchServices } from "@framework/WorkbenchServices";
 import { WorkbenchSession, WorkbenchSessionEvent } from "@framework/WorkbenchSession";
-import { QueryClient } from "@tanstack/react-query";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 
 import { VectorDescription } from "src/api/models/VectorDescription";
-
-export type ModuleBLBaseState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> = {
-    fetchedData: TFetchedData;
-    userSelections: TUserSelections;
-    utilityStates: TUtilityStates;
-    loadingStates: TLoadingStates;
-};
-
-class ModuleBLBase<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> {
-    protected _queryClient: QueryClient;
-    _state: ModuleBLBaseState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> = {
-        fetchedData: {} as TFetchedData,
-        userSelections: {} as TUserSelections,
-        utilityStates: {} as TUtilityStates,
-        loadingStates: {} as TLoadingStates,
-    };
-    private _subscribers: Set<() => void> = new Set();
-    private _timeout: ReturnType<typeof setTimeout> | null = null;
-
-    constructor(workbenchServices: WorkbenchServices) {
-        this._queryClient = workbenchServices.getQueryClient();
-
-        this.getSnapshot = this.getSnapshot.bind(this);
-        this.subscribe = this.subscribe.bind(this);
-    }
-
-    subscribe(onStoreChangeCallback: () => void): () => void {
-        this._subscribers.add(onStoreChangeCallback);
-
-        return () => {
-            this._subscribers.delete(onStoreChangeCallback);
-        };
-    }
-
-    getSnapshot(): ModuleBLBaseState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> {
-        return this._state;
-    }
-
-    private notifySubscribers() {
-        if (this._timeout) {
-            clearTimeout(this._timeout);
-        }
-
-        this._timeout = setTimeout(() => {
-            this._timeout = null;
-            for (const subscriber of this._subscribers) {
-                subscriber();
-            }
-        }, 100);
-    }
-
-    protected updateFetchedData(newState: Partial<TFetchedData>) {
-        this._state = { ...this._state, fetchedData: { ...this._state.fetchedData, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected updateUserSelections(newState: Partial<TUserSelections>) {
-        this._state = { ...this._state, userSelections: { ...this._state.userSelections, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected updateUtilityStates(newState: Partial<TUtilityStates>) {
-        this._state = { ...this._state, utilityStates: { ...this._state.utilityStates, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected updateLoadingStates(newState: Partial<TLoadingStates>) {
-        this._state = { ...this._state, loadingStates: { ...this._state.loadingStates, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected getFetchedData(): TFetchedData {
-        return this._state.fetchedData;
-    }
-
-    protected getUserSelections(): TUserSelections {
-        return this._state.userSelections;
-    }
-
-    protected getUtilityStates(): TUtilityStates {
-        return this._state.utilityStates;
-    }
-
-    protected getLoadingStates(): TLoadingStates {
-        return this._state.loadingStates;
-    }
-}
 
 export interface UserSelections {
     ensembleIdent: EnsembleIdent | null;
     vector: string;
+    resamplingFrequency: Frequency_api | null;
+    showStatistics: boolean;
+    showRealizations: boolean;
+    showHistorical: boolean;
 }
 
 export interface FetchedData {
     vectorDescriptions: VectorDescription[];
+    vectorData: VectorRealizationData_api[];
 }
 
 export interface UtilityStates {
@@ -114,13 +28,16 @@ export interface UtilityStates {
 
 export interface LoadingStates {
     vectors: boolean;
+    vectorData: boolean;
 }
 
-export class BusinessLogic extends ModuleBLBase<FetchedData, UserSelections, UtilityStates, LoadingStates> {
-    private _workbenchSession: WorkbenchSession;
-
-    constructor(workbenchServices: WorkbenchServices, workbenchSession: WorkbenchSession) {
-        super(workbenchServices);
+export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelections, UtilityStates, LoadingStates> {
+    constructor(
+        workbenchServices: WorkbenchServices,
+        workbenchSession: WorkbenchSession,
+        workbenchSettings: WorkbenchSettings
+    ) {
+        super(workbenchServices, workbenchSession, workbenchSettings);
 
         this._workbenchSession = workbenchSession;
 
@@ -131,6 +48,10 @@ export class BusinessLogic extends ModuleBLBase<FetchedData, UserSelections, Uti
             userSelections: {
                 ensembleIdent: null,
                 vector: "",
+                resamplingFrequency: Frequency_api.MONTHLY,
+                showStatistics: true,
+                showRealizations: false,
+                showHistorical: true,
             },
             utilityStates: {
                 hasHistoricalVector: false,
@@ -141,8 +62,16 @@ export class BusinessLogic extends ModuleBLBase<FetchedData, UserSelections, Uti
         };
 
         this.handleEnsembleSetChange = this.handleEnsembleSetChange.bind(this);
+        this.handleSyncedEnsembleChange = this.handleSyncedEnsembleChange.bind(this);
 
         this._workbenchSession.subscribe(WorkbenchSessionEvent.EnsembleSetChanged, this.handleEnsembleSetChange);
+        workbenchServices.subscribe("global.syncValue.ensembles", this.handleSyncedEnsembleChange);
+    }
+
+    handleSyncedEnsembleChange(newEnsembleIdents: EnsembleIdent[] | null) {
+        if (newEnsembleIdents && newEnsembleIdents.length > 0) {
+            this.setEnsembleIdent(newEnsembleIdents[0]);
+        }
     }
 
     handleEnsembleSetChange() {
@@ -158,9 +87,26 @@ export class BusinessLogic extends ModuleBLBase<FetchedData, UserSelections, Uti
         this.fetchVectors();
     }
 
+    setResamplingFrequency(resamplingFrequency: Frequency_api | null) {
+        this.updateUserSelections({ resamplingFrequency });
+    }
+
+    setShowStatistics(showStatistics: boolean) {
+        this.updateUserSelections({ showStatistics });
+    }
+
+    setShowRealizations(showRealizations: boolean) {
+        this.updateUserSelections({ showRealizations });
+    }
+
+    setShowHistorical(showHistorical: boolean) {
+        this.updateUserSelections({ showHistorical });
+    }
+
     setVector(vector: string) {
         this.updateUtilityStates({ hasHistoricalVector: this.hasHistoricalVector(vector) });
         this.updateUserSelections({ vector });
+        this.fetchVectorData();
     }
 
     private hasHistoricalVector(nonHistoricalVectorName: string): boolean {
@@ -193,20 +139,29 @@ export class BusinessLogic extends ModuleBLBase<FetchedData, UserSelections, Uti
         this.updateFetchedData({ vectorDescriptions: vectors });
         this.updateLoadingStates({ vectors: false });
     }
-}
 
-type Class<T> = new (...args: any[]) => T;
+    private async fetchVectorData() {
+        this.updateLoadingStates({ vectorData: true });
 
-export function useBusinessLogic<T extends ModuleBLBase<any, any, any, any>>(
-    blClass: Class<T>,
-    workbenchServices: WorkbenchServices,
-    workbenchSession: WorkbenchSession
-): [T["_state"], Omit<T, "_state" | "getSnapshot">] {
-    const businessLogicClass = React.useRef<T>(new blClass(workbenchServices, workbenchSession));
-    const state = React.useSyncExternalStore<T["_state"]>(
-        businessLogicClass.current.subscribe,
-        businessLogicClass.current.getSnapshot
-    );
+        const vectorData = await this._queryClient.fetchQuery({
+            queryKey: [
+                "getVectorData",
+                this.getUserSelections().ensembleIdent,
+                this.getUserSelections().vector,
+                this.getUserSelections().resamplingFrequency,
+                this.getUserSelections().showRealizations,
+            ],
+            queryFn: () =>
+                apiService.timeseries.getRealizationsVectorData(
+                    this.getUserSelections().ensembleIdent?.getCaseUuid() ?? "",
+                    this.getUserSelections().ensembleIdent?.getEnsembleName() ?? "",
+                    this.getUserSelections().vector,
+                    this.getUserSelections().resamplingFrequency,
+                    undefined
+                ),
+        });
 
-    return [state, businessLogicClass.current];
+        this.updateFetchedData({ vectorData });
+        this.updateLoadingStates({ vectorData: false });
+    }
 }

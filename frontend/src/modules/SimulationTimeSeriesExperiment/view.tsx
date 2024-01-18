@@ -3,11 +3,13 @@ import Plot from "react-plotly.js";
 
 import { VectorHistoricalData_api, VectorRealizationData_api, VectorStatisticData_api } from "@api";
 import { ModuleFCProps } from "@framework/Module";
+import { useBusinessLogic } from "@framework/ModuleBusinessLogic";
 import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { useElementSize } from "@lib/hooks/useElementSize";
 
 import { Layout, PlotData, PlotDatum, PlotHoverEvent } from "plotly.js";
 
+import { BusinessLogic } from "./businessLogic";
 import { useHistoricalVectorDataQuery, useStatisticalVectorDataQuery, useVectorDataQuery } from "./queryHooks";
 import { State } from "./state";
 
@@ -18,44 +20,16 @@ interface MyPlotData extends Partial<PlotData> {
     legendrank?: number;
 }
 
-export const View = ({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State>) => {
+export const View = ({
+    moduleContext,
+    workbenchSession,
+    workbenchServices,
+    businessLogic,
+}: ModuleFCProps<State, BusinessLogic>) => {
+    const state = useBusinessLogic(businessLogic);
+
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
-    const vectorSpec = moduleContext.useStoreValue("vectorSpec");
-    const resampleFrequency = moduleContext.useStoreValue("resamplingFrequency");
-    const showStatistics = moduleContext.useStoreValue("showStatistics");
-    const showRealizations = moduleContext.useStoreValue("showRealizations");
-    const showHistorical = moduleContext.useStoreValue("showHistorical");
-    const realizationsToInclude = moduleContext.useStoreValue("realizationsToInclude");
-
-    const vectorQuery = useVectorDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
-        vectorSpec?.vectorName,
-        resampleFrequency,
-        realizationsToInclude,
-        showRealizations
-    );
-
-    const statisticsQuery = useStatisticalVectorDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
-        vectorSpec?.vectorName,
-        resampleFrequency,
-        realizationsToInclude,
-        showStatistics
-    );
-
-    const historicalQuery = useHistoricalVectorDataQuery(
-        vectorSpec?.ensembleIdent.getCaseUuid(),
-        vectorSpec?.ensembleIdent.getEnsembleName(),
-        vectorSpec?.vectorName,
-        resampleFrequency,
-        showHistorical && vectorSpec?.hasHistoricalVector ? true : false
-    );
-
-    const ensembleSet = workbenchSession.getEnsembleSet();
-    const ensemble = vectorSpec ? ensembleSet.findEnsemble(vectorSpec.ensembleIdent) : null;
 
     const subscribedHoverTimestamp = useSubscribedValue("global.hoverTimestamp", workbenchServices);
     const subscribedHoverRealization = useSubscribedValue("global.hoverRealization", workbenchServices);

@@ -5,6 +5,7 @@ import { cloneDeep } from "lodash";
 import { BroadcastChannel, BroadcastChannelsDef, InputBroadcastChannelDef } from "./Broadcaster";
 import { InitialSettings } from "./InitialSettings";
 import { ImportState, Module, ModuleFC } from "./Module";
+import { ModuleBusinessLogic } from "./ModuleBusinessLogic";
 import { ModuleContext } from "./ModuleContext";
 import { StateBaseType, StateOptions, StateStore } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
@@ -18,7 +19,10 @@ export enum ModuleInstanceState {
     RESETTING,
 }
 
-export class ModuleInstance<StateType extends StateBaseType> {
+export class ModuleInstance<
+    StateType extends StateBaseType,
+    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never
+> {
     private _id: string;
     private _title: string;
     private _initialised: boolean;
@@ -26,8 +30,8 @@ export class ModuleInstance<StateType extends StateBaseType> {
     private _fatalError: { err: Error; errInfo: ErrorInfo } | null;
     private _syncedSettingKeys: SyncSettingKey[];
     private _stateStore: StateStore<StateType> | null;
-    private _module: Module<StateType>;
-    private _context: ModuleContext<StateType> | null;
+    private _module: Module<StateType, any>;
+    private _context: ModuleContext<StateType, TBusinessLogic> | null;
     private _importStateSubscribers: Set<() => void>;
     private _moduleInstanceStateSubscribers: Set<(moduleInstanceState: ModuleInstanceState) => void>;
     private _syncedSettingsSubscribers: Set<(syncedSettings: SyncSettingKey[]) => void>;
@@ -42,13 +46,15 @@ export class ModuleInstance<StateType extends StateBaseType> {
     private _inputChannelDefs: InputBroadcastChannelDef[];
     private _inputChannels: Record<string, BroadcastChannel> = {};
     private _workbench: Workbench;
+    private _businessLogic: ModuleBusinessLogic<any, any, any, any> | null = null;
 
     constructor(
-        module: Module<StateType>,
+        module: Module<StateType, TBusinessLogic>,
         instanceNumber: number,
         broadcastChannelsDef: BroadcastChannelsDef,
         workbench: Workbench,
-        inputChannelDefs: InputBroadcastChannelDef[]
+        inputChannelDefs: InputBroadcastChannelDef[],
+        businessLogic: (new (...args: any[]) => TBusinessLogic) | null
     ) {
         this._id = `${module.getName()}-${instanceNumber}`;
         this._title = module.getDefaultTitle();
@@ -71,6 +77,13 @@ export class ModuleInstance<StateType extends StateBaseType> {
         this._inputChannelDefs = inputChannelDefs;
         this._inputChannels = {};
         this._workbench = workbench;
+        if (businessLogic) {
+            this._businessLogic = new businessLogic(
+                workbench.getWorkbenchServices(),
+                workbench.getWorkbenchSession(),
+                workbench.getWorkbenchSettings()
+            );
+        }
 
         this._broadcastChannels = {} as Record<string, BroadcastChannel>;
 
@@ -89,6 +102,10 @@ export class ModuleInstance<StateType extends StateBaseType> {
                     );
             });
         }
+    }
+
+    getBusinessLogic(): ModuleBusinessLogic<any, any, any, any> | null {
+        return this._businessLogic;
     }
 
     getInputChannelDefs(): InputBroadcastChannelDef[] {
@@ -145,7 +162,7 @@ export class ModuleInstance<StateType extends StateBaseType> {
         }
 
         this._stateStore = new StateStore<StateType>(cloneDeep(defaultState), options);
-        this._context = new ModuleContext<StateType>(this, this._stateStore);
+        this._context = new ModuleContext<StateType, TBusinessLogic>(this, this._stateStore);
         this._initialised = true;
         this.setModuleInstanceState(ModuleInstanceState.OK);
     }
@@ -208,11 +225,11 @@ export class ModuleInstance<StateType extends StateBaseType> {
         return this._initialised;
     }
 
-    getViewFC(): ModuleFC<StateType> {
+    getViewFC(): ModuleFC<StateType, TBusinessLogic> {
         return this._module.viewFC;
     }
 
-    getSettingsFC(): ModuleFC<StateType> {
+    getSettingsFC(): ModuleFC<StateType, TBusinessLogic> {
         return this._module.settingsFC;
     }
 
@@ -220,7 +237,7 @@ export class ModuleInstance<StateType extends StateBaseType> {
         return this._module.getImportState();
     }
 
-    getContext(): ModuleContext<StateType> {
+    getContext(): ModuleContext<StateType, TBusinessLogic> {
         if (!this._context) {
             throw `Module context is not available yet. Did you forget to init the module '${this._title}.'?`;
         }
@@ -257,7 +274,7 @@ export class ModuleInstance<StateType extends StateBaseType> {
         });
     }
 
-    getModule(): Module<StateType> {
+    getModule(): Module<StateType, TBusinessLogic> {
         return this._module;
     }
 

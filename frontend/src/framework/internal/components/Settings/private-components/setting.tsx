@@ -13,7 +13,7 @@ import { Settings as SettingsIcon } from "@mui/icons-material";
 import { DebugProfiler } from "../../DebugProfiler";
 
 type SettingProps = {
-    moduleInstance: ModuleInstance<any>;
+    moduleInstance: ModuleInstance<any, any>;
     activeModuleInstanceId: string;
     workbench: Workbench;
 };
@@ -104,6 +104,7 @@ export const Setting: React.FC<SettingProps> = (props) => {
                                 workbenchServices={props.workbench.getWorkbenchServices()}
                                 workbenchSettings={props.workbench.getWorkbenchSettings()}
                                 initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                                businessLogic={props.moduleInstance.getBusinessLogic() || undefined}
                             />
                         </DebugProfiler>
                     </div>

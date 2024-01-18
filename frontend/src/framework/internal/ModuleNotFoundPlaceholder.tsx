@@ -4,13 +4,13 @@ import { Button } from "@lib/components/Button";
 import { Tag } from "@lib/components/Tag";
 import { BugReport, Forum, WebAssetOff } from "@mui/icons-material";
 
-export class ModuleNotFoundPlaceholder extends Module<Record<string, never>> {
+export class ModuleNotFoundPlaceholder extends Module<Record<string, never>, any> {
     constructor(moduleName: string) {
         super(moduleName, moduleName, [], {}, [], null);
         this._importState = ImportState.Imported;
     }
 
-    makeInstance(instanceNumber: number): ModuleInstance<Record<string, never>> {
+    makeInstance(instanceNumber: number): ModuleInstance<Record<string, never>, any> {
         const instance = super.makeInstance(instanceNumber);
         instance.setDefaultState({});
         return instance;

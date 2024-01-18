@@ -11,7 +11,7 @@ import { CircularProgress } from "@lib/components/CircularProgress";
 import { CrashView } from "./crashView";
 
 type ViewContentProps = {
-    moduleInstance: ModuleInstance<any>;
+    moduleInstance: ModuleInstance<any, any>;
     workbench: Workbench;
 };
 
@@ -132,6 +132,7 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
                         workbenchServices={props.workbench.getWorkbenchServices()}
                         workbenchSettings={props.workbench.getWorkbenchSettings()}
                         initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                        businessLogic={props.moduleInstance.getBusinessLogic() || undefined}
                     />
                 </DebugProfiler>
             </div>

@@ -5,7 +5,7 @@ import SubsurfaceViewer, { SubsurfaceViewerProps } from "@webviz/subsurface-view
 import { ViewStateType } from "@webviz/subsurface-viewer/dist/components/Map";
 
 export type SyncedSubsurfaceViewerProps = {
-    moduleContext: ModuleContext<any>;
+    moduleContext: ModuleContext<any, any>;
     workbenchServices: WorkbenchServices;
 } & SubsurfaceViewerProps;
 

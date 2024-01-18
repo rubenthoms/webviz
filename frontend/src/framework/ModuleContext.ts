@@ -14,16 +14,20 @@ import React from "react";
 
 import { BroadcastChannel, InputBroadcastChannelDef } from "./Broadcaster";
 import { InitialSettings } from "./InitialSettings";
+import { ModuleBusinessLogic } from "./ModuleBusinessLogic";
 import { ModuleInstance } from "./ModuleInstance";
 import { ModuleInstanceStatusController } from "./ModuleInstanceStatusController";
 import { StateBaseType, StateStore, useSetStoreValue, useStoreState, useStoreValue } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 
-export class ModuleContext<S extends StateBaseType> {
-    private _moduleInstance: ModuleInstance<S>;
+export class ModuleContext<
+    S extends StateBaseType,
+    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never
+> {
+    private _moduleInstance: ModuleInstance<S, TBusinessLogic>;
     private _stateStore: StateStore<S>;
 
-    constructor(moduleInstance: ModuleInstance<S>, stateStore: StateStore<S>) {
+    constructor(moduleInstance: ModuleInstance<S, TBusinessLogic>, stateStore: StateStore<S>) {
         this._moduleInstance = moduleInstance;
         this._stateStore = stateStore;
     }

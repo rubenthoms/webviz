@@ -4,6 +4,7 @@ import { cloneDeep } from "lodash";
 
 import { BroadcastChannelsDef, InputBroadcastChannelDef } from "./Broadcaster";
 import { InitialSettings } from "./InitialSettings";
+import { ModuleBusinessLogic } from "./ModuleBusinessLogic";
 import { ModuleContext } from "./ModuleContext";
 import { ModuleInstance } from "./ModuleInstance";
 import { DrawPreviewFunc } from "./Preview";
@@ -14,15 +15,22 @@ import { WorkbenchServices } from "./WorkbenchServices";
 import { WorkbenchSession } from "./WorkbenchSession";
 import { WorkbenchSettings } from "./WorkbenchSettings";
 
-export type ModuleFCProps<S extends StateBaseType> = {
-    moduleContext: ModuleContext<S>;
+export type ModuleFCProps<
+    S extends StateBaseType,
+    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
+> = {
+    moduleContext: ModuleContext<S, TBusinessLogic>;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
     initialSettings?: InitialSettings;
+    businessLogic: TBusinessLogic;
 };
 
-export type ModuleFC<S extends StateBaseType> = React.FC<ModuleFCProps<S>>;
+export type ModuleFC<
+    S extends StateBaseType,
+    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
+> = React.FC<ModuleFCProps<S, TBusinessLogic>>;
 
 export enum ImportState {
     NotImported = "NotImported",
@@ -31,13 +39,16 @@ export enum ImportState {
     Failed = "Failed",
 }
 
-export class Module<StateType extends StateBaseType> {
+export class Module<
+    StateType extends StateBaseType,
+    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
+> {
     private _name: string;
     private _defaultTitle: string;
-    public viewFC: ModuleFC<StateType>;
-    public settingsFC: ModuleFC<StateType>;
+    public viewFC: ModuleFC<StateType, TBusinessLogic>;
+    public settingsFC: ModuleFC<StateType, TBusinessLogic>;
     protected _importState: ImportState;
-    private _moduleInstances: ModuleInstance<StateType>[];
+    private _moduleInstances: ModuleInstance<StateType, TBusinessLogic>[];
     private _defaultState: StateType | null;
     private _stateOptions: StateOptions<StateType> | undefined;
     private _workbench: Workbench | null;
@@ -46,6 +57,7 @@ export class Module<StateType extends StateBaseType> {
     private _drawPreviewFunc: DrawPreviewFunc | null;
     private _description: string | null;
     private _inputChannelDefs: InputBroadcastChannelDef[];
+    private _businessLogic: (new (...args: any[]) => TBusinessLogic) | null = null;
 
     constructor(
         name: string,
@@ -54,7 +66,8 @@ export class Module<StateType extends StateBaseType> {
         broadcastChannelsDef: BroadcastChannelsDef = {},
         inputChannelDefs: InputBroadcastChannelDef[] = [],
         drawPreviewFunc: DrawPreviewFunc | null = null,
-        description: string | null = null
+        description: string | null = null,
+        businessLogic: (new (...args: any[]) => TBusinessLogic) | null = null
     ) {
         this._name = name;
         this._defaultTitle = defaultTitle;
@@ -69,6 +82,7 @@ export class Module<StateType extends StateBaseType> {
         this._inputChannelDefs = inputChannelDefs;
         this._drawPreviewFunc = drawPreviewFunc;
         this._description = description;
+        this._businessLogic = businessLogic;
     }
 
     getDrawPreviewFunc(): DrawPreviewFunc | null {
@@ -113,17 +127,18 @@ export class Module<StateType extends StateBaseType> {
         return this._syncableSettingKeys.includes(key);
     }
 
-    makeInstance(instanceNumber: number): ModuleInstance<StateType> {
+    makeInstance(instanceNumber: number): ModuleInstance<StateType, TBusinessLogic> {
         if (!this._workbench) {
             throw new Error("Module must be added to a workbench before making an instance");
         }
 
-        const instance = new ModuleInstance<StateType>(
+        const instance = new ModuleInstance<StateType, any>(
             this,
             instanceNumber,
             this._channelsDef,
             this._workbench,
-            this._inputChannelDefs
+            this._inputChannelDefs,
+            this._businessLogic
         );
         this._moduleInstances.push(instance);
         this.maybeImportSelf();

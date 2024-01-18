@@ -3,6 +3,7 @@ import React from "react";
 import { Frequency_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleFCProps } from "@framework/Module";
+import { useBusinessLogic } from "@framework/ModuleBusinessLogic";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { SingleEnsembleSelect } from "@framework/components/SingleEnsembleSelect";
@@ -15,18 +16,19 @@ import { Select } from "@lib/components/Select";
 
 import { sortBy, sortedUniq } from "lodash";
 
-import { BusinessLogic, useBusinessLogic } from "./businessLogic";
+import { BusinessLogic } from "./businessLogic";
 import { State } from "./state";
 
 //-----------------------------------------------------------------------------------------------------------
-export function Settings({ moduleContext, workbenchSession, workbenchServices }: ModuleFCProps<State>) {
-    const [state, blClass] = useBusinessLogic(BusinessLogic, workbenchServices, workbenchSession);
+export function Settings({
+    moduleContext,
+    workbenchSession,
+    workbenchServices,
+    businessLogic,
+}: ModuleFCProps<State, BusinessLogic>) {
+    const state = useBusinessLogic(businessLogic);
 
     const ensembleSet = useEnsembleSet(workbenchSession);
-    const [resampleFrequency, setResamplingFrequency] = moduleContext.useStoreState("resamplingFrequency");
-    const [showStatistics, setShowStatistics] = moduleContext.useStoreState("showStatistics");
-    const [showRealizations, setShowRealizations] = moduleContext.useStoreState("showRealizations");
-    const [showHistorical, setShowHistorical] = moduleContext.useStoreState("showHistorical");
 
     const syncedSettingKeys = moduleContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, workbenchServices);
@@ -35,21 +37,14 @@ export function Settings({ moduleContext, workbenchSession, workbenchServices }:
         : null;
 
     function handleEnsembleSelectionChange(ensembleIdent: EnsembleIdent | null) {
-        blClass.setEnsembleIdent(ensembleIdent);
+        businessLogic.setEnsembleIdent(ensembleIdent);
         if (ensembleIdent) {
             syncHelper.publishValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles", [ensembleIdent]);
         }
     }
 
     function handleVectorSelectionChange(vectors: string[]) {
-        blClass.setVector(vectors[0]);
-        if (state.userSelections.ensembleIdent && vectors.length > 0) {
-            moduleContext.getStateStore().setValue("vectorSpec", {
-                ensembleIdent: state.userSelections.ensembleIdent,
-                vectorName: vectors[0],
-                hasHistoricalVector: state.utilityStates.hasHistoricalVector,
-            });
-        }
+        businessLogic.setVector(vectors[0]);
     }
 
     function handleFrequencySelectionChange(newFreqStr: string) {
@@ -59,19 +54,19 @@ export function Settings({ moduleContext, workbenchSession, workbenchServices }:
             newFreq = newFreqStr as Frequency_api;
         }
         console.debug(`handleFrequencySelectionChange()  newFreqStr=${newFreqStr}  newFreq=${newFreq}`);
-        setResamplingFrequency(newFreq);
+        businessLogic.setResamplingFrequency(newFreq);
     }
 
     function handleShowStatisticsCheckboxChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setShowStatistics(event.target.checked);
+        businessLogic.setShowStatistics(event.target.checked);
     }
 
     function handleShowRealizations(event: React.ChangeEvent<HTMLInputElement>) {
-        setShowRealizations(event.target.checked);
+        businessLogic.setShowRealizations(event.target.checked);
     }
 
     function handleShowHistorical(event: React.ChangeEvent<HTMLInputElement>) {
-        setShowHistorical(event.target.checked);
+        businessLogic.setShowHistorical(event.target.checked);
     }
 
     function handleRealizationRangeTextChanged(event: React.ChangeEvent<HTMLInputElement>) {
@@ -111,15 +106,23 @@ export function Settings({ moduleContext, workbenchSession, workbenchServices }:
             <Label text="Frequency">
                 <Dropdown
                     options={makeFrequencyOptionItems()}
-                    value={resampleFrequency ?? "RAW"}
+                    value={state.userSelections.resamplingFrequency ?? "RAW"}
                     onChange={handleFrequencySelectionChange}
                 />
             </Label>
-            <Checkbox label="Show statistics" checked={showStatistics} onChange={handleShowStatisticsCheckboxChange} />
-            <Checkbox label="Show realizations" checked={showRealizations} onChange={handleShowRealizations} />
+            <Checkbox
+                label="Show statistics"
+                checked={state.userSelections.showStatistics}
+                onChange={handleShowStatisticsCheckboxChange}
+            />
+            <Checkbox
+                label="Show realizations"
+                checked={state.userSelections.showRealizations}
+                onChange={handleShowRealizations}
+            />
             <Checkbox
                 label="Show historical"
-                checked={showHistorical}
+                checked={state.userSelections.showHistorical}
                 disabled={!state.utilityStates.hasHistoricalVector}
                 onChange={handleShowHistorical}
             />

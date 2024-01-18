@@ -13,7 +13,7 @@ import { InputChannelNode } from "./inputChannelNode";
 
 export type InputChannelNodesProps = {
     forwardedRef: React.RefObject<HTMLDivElement>;
-    moduleInstance: ModuleInstance<any>;
+    moduleInstance: ModuleInstance<any, any>;
     workbench: Workbench;
 };
 

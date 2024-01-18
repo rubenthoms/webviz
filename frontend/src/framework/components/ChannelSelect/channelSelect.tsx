@@ -6,7 +6,7 @@ import { BaseComponentProps } from "@lib/components/BaseComponent";
 import { Dropdown } from "@lib/components/Dropdown";
 
 export type ChannelSelectProps = {
-    moduleContext: ModuleContext<any>;
+    moduleContext: ModuleContext<any, any>;
     channelName: string;
     className?: string;
     broadcaster: Broadcaster;

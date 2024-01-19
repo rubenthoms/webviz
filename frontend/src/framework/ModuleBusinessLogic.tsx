@@ -5,21 +5,18 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { QueryClient } from "@tanstack/react-query";
 
-export type ModuleBusinessLogicState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> = {
-    fetchedData: TFetchedData;
-    userSelections: TUserSelections;
-    utilityStates: TUtilityStates;
-    loadingStates: TLoadingStates;
-};
+import { merge } from "lodash";
 
-export class ModuleBusinessLogic<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> {
+type DeepPartial<T> = T extends object
+    ? {
+          [P in keyof T]?: DeepPartial<T[P]>;
+      }
+    : T;
+
+export class ModuleBusinessLogic<TState> {
     protected _queryClient: QueryClient;
-    _state: ModuleBusinessLogicState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> = {
-        fetchedData: {} as TFetchedData,
-        userSelections: {} as TUserSelections,
-        utilityStates: {} as TUtilityStates,
-        loadingStates: {} as TLoadingStates,
-    };
+    _state: TState = {} as TState;
+
     private _subscribers: Set<() => void> = new Set();
     private _timeout: ReturnType<typeof setTimeout> | null = null;
     protected _workbenchSession: WorkbenchSession;
@@ -48,7 +45,7 @@ export class ModuleBusinessLogic<TFetchedData, TUserSelections, TUtilityStates, 
         };
     }
 
-    getSnapshot(): ModuleBusinessLogicState<TFetchedData, TUserSelections, TUtilityStates, TLoadingStates> {
+    getSnapshot(): TState {
         return this._state;
     }
 
@@ -65,48 +62,18 @@ export class ModuleBusinessLogic<TFetchedData, TUserSelections, TUtilityStates, 
         }, 100);
     }
 
-    protected updateFetchedData(newState: Partial<TFetchedData>) {
-        this._state = { ...this._state, fetchedData: { ...this._state.fetchedData, ...newState } };
+    protected updateState(newState: DeepPartial<TState>) {
+        merge(this._state, newState);
 
         this.notifySubscribers();
     }
 
-    protected updateUserSelections(newState: Partial<TUserSelections>) {
-        this._state = { ...this._state, userSelections: { ...this._state.userSelections, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected updateUtilityStates(newState: Partial<TUtilityStates>) {
-        this._state = { ...this._state, utilityStates: { ...this._state.utilityStates, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected updateLoadingStates(newState: Partial<TLoadingStates>) {
-        this._state = { ...this._state, loadingStates: { ...this._state.loadingStates, ...newState } };
-
-        this.notifySubscribers();
-    }
-
-    protected getFetchedData(): TFetchedData {
-        return this._state.fetchedData;
-    }
-
-    protected getUserSelections(): TUserSelections {
-        return this._state.userSelections;
-    }
-
-    protected getUtilityStates(): TUtilityStates {
-        return this._state.utilityStates;
-    }
-
-    protected getLoadingStates(): TLoadingStates {
-        return this._state.loadingStates;
+    protected getState(): TState {
+        return this._state;
     }
 }
 
-export function useBusinessLogic<T extends ModuleBusinessLogic<any, any, any, any>>(businessLogic: T): T["_state"] {
+export function useBusinessLogic<T extends ModuleBusinessLogic<any>>(businessLogic: T): T["_state"] {
     const state = React.useSyncExternalStore<T["_state"]>(businessLogic.subscribe, businessLogic.getSnapshot);
 
     return state;

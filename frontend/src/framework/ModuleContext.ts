@@ -20,10 +20,7 @@ import { ModuleInstanceStatusController } from "./ModuleInstanceStatusController
 import { StateBaseType, StateStore, useSetStoreValue, useStoreState, useStoreValue } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 
-export class ModuleContext<
-    S extends StateBaseType,
-    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never
-> {
+export class ModuleContext<S extends StateBaseType, TBusinessLogic extends ModuleBusinessLogic<any> | never> {
     private _moduleInstance: ModuleInstance<S, TBusinessLogic>;
     private _stateStore: StateStore<S>;
 

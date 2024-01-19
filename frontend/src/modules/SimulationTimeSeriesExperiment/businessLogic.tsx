@@ -1,4 +1,4 @@
-import { Frequency_api } from "@api";
+import { Frequency_api, VectorRealizationData_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleBusinessLogic } from "@framework/ModuleBusinessLogic";
@@ -31,7 +31,14 @@ export interface LoadingStates {
     vectorData: boolean;
 }
 
-export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelections, UtilityStates, LoadingStates> {
+export interface State {
+    fetchedData: FetchedData;
+    userSelections: UserSelections;
+    utilityStates: UtilityStates;
+    loadingStates: LoadingStates;
+}
+
+export class BusinessLogic extends ModuleBusinessLogic<State> {
     constructor(
         workbenchServices: WorkbenchServices,
         workbenchSession: WorkbenchSession,
@@ -44,6 +51,7 @@ export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelectio
         this._state = {
             fetchedData: {
                 vectorDescriptions: [],
+                vectorData: [],
             },
             userSelections: {
                 ensembleIdent: null,
@@ -58,6 +66,7 @@ export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelectio
             },
             loadingStates: {
                 vectors: false,
+                vectorData: false,
             },
         };
 
@@ -76,45 +85,50 @@ export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelectio
 
     handleEnsembleSetChange() {
         const newEnsembleSet = this._workbenchSession.getEnsembleSet();
-        const currentEnsembleIdent = this.getUserSelections().ensembleIdent;
+        const currentEnsembleIdent = this.getState().userSelections.ensembleIdent;
         if (!currentEnsembleIdent || newEnsembleSet.findEnsemble(currentEnsembleIdent)) {
-            this.updateUserSelections({ ensembleIdent: newEnsembleSet.getEnsembleArr()[0].getIdent() });
+            this.updateState({ userSelections: { ensembleIdent: newEnsembleSet.getEnsembleArr()[0].getIdent() } });
         }
     }
 
     setEnsembleIdent(ensembleIdent: EnsembleIdent | null) {
-        this.updateUserSelections({ ensembleIdent });
+        this.updateState({ userSelections: { ensembleIdent } });
         this.fetchVectors();
     }
 
     setResamplingFrequency(resamplingFrequency: Frequency_api | null) {
-        this.updateUserSelections({ resamplingFrequency });
+        this.updateState({ userSelections: { resamplingFrequency } });
     }
 
     setShowStatistics(showStatistics: boolean) {
-        this.updateUserSelections({ showStatistics });
+        this.updateState({ userSelections: { showStatistics } });
     }
 
     setShowRealizations(showRealizations: boolean) {
-        this.updateUserSelections({ showRealizations });
+        this.updateState({ userSelections: { showRealizations } });
     }
 
     setShowHistorical(showHistorical: boolean) {
-        this.updateUserSelections({ showHistorical });
+        this.updateState({ userSelections: { showHistorical } });
     }
 
     setVector(vector: string) {
-        this.updateUtilityStates({ hasHistoricalVector: this.hasHistoricalVector(vector) });
-        this.updateUserSelections({ vector });
+        this.updateState({
+            userSelections: { vector },
+            utilityStates: { hasHistoricalVector: this.hasHistoricalVector(vector) },
+        });
         this.fetchVectorData();
     }
 
     private hasHistoricalVector(nonHistoricalVectorName: string): boolean {
-        if (!this.getFetchedData().vectorDescriptions || this.getFetchedData().vectorDescriptions.length === 0) {
+        if (
+            !this.getState().fetchedData.vectorDescriptions ||
+            this.getState().fetchedData.vectorDescriptions.length === 0
+        ) {
             return false;
         }
 
-        const foundItem = this.getFetchedData().vectorDescriptions.find(
+        const foundItem = this.getState().fetchedData.vectorDescriptions.find(
             (item) => item.name === nonHistoricalVectorName
         );
         if (foundItem) {
@@ -125,43 +139,45 @@ export class BusinessLogic extends ModuleBusinessLogic<FetchedData, UserSelectio
     }
 
     private async fetchVectors() {
-        this.updateLoadingStates({ vectors: true });
+        // This should be a separate module, but for now we just do it here for testing
+        this.updateState({ loadingStates: { vectors: true } });
 
         const vectors = await this._queryClient.fetchQuery({
-            queryKey: ["getVectorList", this.getUserSelections().ensembleIdent],
+            queryKey: ["getVectorList", this.getState().userSelections.ensembleIdent],
             queryFn: () =>
                 apiService.timeseries.getVectorList(
-                    this.getUserSelections().ensembleIdent?.getCaseUuid() ?? "",
-                    this.getUserSelections().ensembleIdent?.getEnsembleName() ?? ""
+                    this.getState().userSelections.ensembleIdent?.getCaseUuid() ?? "",
+                    this.getState().userSelections.ensembleIdent?.getEnsembleName() ?? ""
                 ),
         });
 
-        this.updateFetchedData({ vectorDescriptions: vectors });
-        this.updateLoadingStates({ vectors: false });
+        this.updateState({ loadingStates: { vectors: false }, fetchedData: { vectorDescriptions: vectors } });
     }
 
     private async fetchVectorData() {
-        this.updateLoadingStates({ vectorData: true });
+        // This should be a separate module, but for now we just do it here for testing
+        this.updateState({ loadingStates: { vectorData: true } });
+
+        const userSelections = this.getState().userSelections;
 
         const vectorData = await this._queryClient.fetchQuery({
             queryKey: [
                 "getVectorData",
-                this.getUserSelections().ensembleIdent,
-                this.getUserSelections().vector,
-                this.getUserSelections().resamplingFrequency,
-                this.getUserSelections().showRealizations,
+                userSelections.ensembleIdent,
+                userSelections.vector,
+                userSelections.resamplingFrequency,
+                userSelections.showRealizations,
             ],
             queryFn: () =>
                 apiService.timeseries.getRealizationsVectorData(
-                    this.getUserSelections().ensembleIdent?.getCaseUuid() ?? "",
-                    this.getUserSelections().ensembleIdent?.getEnsembleName() ?? "",
-                    this.getUserSelections().vector,
-                    this.getUserSelections().resamplingFrequency,
+                    userSelections.ensembleIdent?.getCaseUuid() ?? "",
+                    userSelections.ensembleIdent?.getEnsembleName() ?? "",
+                    userSelections.vector,
+                    userSelections.resamplingFrequency,
                     undefined
                 ),
         });
 
-        this.updateFetchedData({ vectorData });
-        this.updateLoadingStates({ vectorData: false });
+        this.updateState({ fetchedData: { vectorData }, loadingStates: { vectorData: false } });
     }
 }

@@ -6,7 +6,7 @@ import { StateBaseType, StateOptions } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 import { ModuleNotFoundPlaceholder } from "./internal/ModuleNotFoundPlaceholder";
 
-export type RegisterModuleOptions<TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never> = {
+export type RegisterModuleOptions<TBusinessLogic extends ModuleBusinessLogic<any> | never> = {
     moduleName: string;
     defaultTitle: string;
     syncableSettingKeys?: SyncSettingKey[];
@@ -53,7 +53,7 @@ export class ModuleRegistry {
 
     static initModule<
         ModuleStateType extends StateBaseType,
-        TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
+        TBusinessLogic extends ModuleBusinessLogic<any> | never = never
     >(
         moduleName: string,
         defaultState: ModuleStateType,

@@ -19,10 +19,7 @@ export enum ModuleInstanceState {
     RESETTING,
 }
 
-export class ModuleInstance<
-    StateType extends StateBaseType,
-    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never
-> {
+export class ModuleInstance<StateType extends StateBaseType, TBusinessLogic extends ModuleBusinessLogic<any> | never> {
     private _id: string;
     private _title: string;
     private _initialised: boolean;
@@ -46,7 +43,7 @@ export class ModuleInstance<
     private _inputChannelDefs: InputBroadcastChannelDef[];
     private _inputChannels: Record<string, BroadcastChannel> = {};
     private _workbench: Workbench;
-    private _businessLogic: ModuleBusinessLogic<any, any, any, any> | null = null;
+    private _businessLogic: ModuleBusinessLogic<any> | null = null;
 
     constructor(
         module: Module<StateType, TBusinessLogic>,
@@ -104,7 +101,7 @@ export class ModuleInstance<
         }
     }
 
-    getBusinessLogic(): ModuleBusinessLogic<any, any, any, any> | null {
+    getBusinessLogic(): ModuleBusinessLogic<any> | null {
         return this._businessLogic;
     }
 

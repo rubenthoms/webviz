@@ -15,10 +15,7 @@ import { WorkbenchServices } from "./WorkbenchServices";
 import { WorkbenchSession } from "./WorkbenchSession";
 import { WorkbenchSettings } from "./WorkbenchSettings";
 
-export type ModuleFCProps<
-    S extends StateBaseType,
-    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
-> = {
+export type ModuleFCProps<S extends StateBaseType, TBusinessLogic extends ModuleBusinessLogic<any> | never = never> = {
     moduleContext: ModuleContext<S, TBusinessLogic>;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
@@ -29,7 +26,7 @@ export type ModuleFCProps<
 
 export type ModuleFC<
     S extends StateBaseType,
-    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
+    TBusinessLogic extends ModuleBusinessLogic<any> | never = never
 > = React.FC<ModuleFCProps<S, TBusinessLogic>>;
 
 export enum ImportState {
@@ -39,10 +36,7 @@ export enum ImportState {
     Failed = "Failed",
 }
 
-export class Module<
-    StateType extends StateBaseType,
-    TBusinessLogic extends ModuleBusinessLogic<any, any, any, any> | never = never
-> {
+export class Module<StateType extends StateBaseType, TBusinessLogic extends ModuleBusinessLogic<any> | never = never> {
     private _name: string;
     private _defaultTitle: string;
     public viewFC: ModuleFC<StateType, TBusinessLogic>;

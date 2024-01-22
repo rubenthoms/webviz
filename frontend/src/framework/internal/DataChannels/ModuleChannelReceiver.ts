@@ -15,6 +15,7 @@ export enum ModuleChannelReceiverNotificationTopic {
     ChannelChange = "channel-change",
 }
 
+// rename to ChannelReceiver
 export class ModuleChannelReceiver {
     private readonly _manager: ModuleChannelManager;
     private readonly _idString: string;
@@ -26,6 +27,7 @@ export class ModuleChannelReceiver {
     private _subscribersMap: Map<ModuleChannelReceiverNotificationTopic, Set<() => void>> = new Map();
     private _subscribedToAllContents = false;
 
+    // utilize the ModuleChannelReceiverDefinition interface
     constructor({
         manager,
         idString,

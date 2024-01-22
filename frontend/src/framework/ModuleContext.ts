@@ -85,6 +85,8 @@ export class ModuleContext<S extends StateBaseType> {
         });
     }
 
+    // Hmm... options object or parameters?
+    // In-place type or explicit type?
     usePublishChannelContents(options: {
         channelIdString: string;
         dependencies: any[];

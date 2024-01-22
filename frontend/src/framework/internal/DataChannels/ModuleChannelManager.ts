@@ -8,6 +8,7 @@ export enum ModuleChannelManagerNotificationTopic {
     ReceiversChange = "receivers-change",
 }
 
+// rename to ChannelManager
 export class ModuleChannelManager {
     private readonly _moduleInstanceId: string;
     private _channels: ModuleChannel[] = [];
@@ -38,6 +39,7 @@ export class ModuleChannelManager {
         return this._moduleInstanceId;
     }
 
+    // utilize the ModuleChannelDefinition interface
     registerChannels(
         channelDefinitions: {
             readonly idString: string;
@@ -56,6 +58,7 @@ export class ModuleChannelManager {
         this.notifySubscribers(ModuleChannelManagerNotificationTopic.ChannelsChange);
     }
 
+    // Utilize the ModuleChannelReceiverDefinition interface
     registerReceivers(
         receiverDefinitions: {
             readonly idString: string;

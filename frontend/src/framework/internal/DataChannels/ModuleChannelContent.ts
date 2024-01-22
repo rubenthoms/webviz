@@ -1,14 +1,17 @@
 import { DataElement, KeyType } from "@framework/DataChannelTypes";
 
+// rename to ChannelContentDefinition
 export interface ModuleChannelContentDefinition {
     idString: string;
     displayName: string;
 }
 
+// rename to ChannelContentNotificationTopic
 export enum ModuleChannelContentNotificationTopic {
     DataArrayChange = "data-array-change",
 }
 
+// rename to ChannelContentMetaData
 export interface ModuleChannelContentMetaData {
     ensembleIdentString: string;
     unit?: string;
@@ -16,11 +19,17 @@ export interface ModuleChannelContentMetaData {
     preferredColor?: string;
 }
 
+// isn't the use of KeyType here a bit strange?
+// Should this type be renamed to DataGeneratorFunc?
+// Should we have a return type for this function?, meaning a defined type?
 export type DataGenerator = () => {
     data: DataElement<KeyType>[];
     metaData: ModuleChannelContentMetaData;
 };
 
+// rename to ChannelContent
+//
+// should this class be templated on KeyType
 export class ModuleChannelContent {
     private _idString: string;
     private _displayName: string;
@@ -29,6 +38,8 @@ export class ModuleChannelContent {
     private _cachedMetaData: ModuleChannelContentMetaData | null = null;
     private _subscribersMap: Map<ModuleChannelContentNotificationTopic, Set<() => void>> = new Map();
 
+    // Not a big fan of the parameter object here, few enough parameters to use more direct signature
+    // Use ModuleChannelContentDefinition interface instead + dataGenerator
     constructor({
         idString,
         displayName,
@@ -51,6 +62,7 @@ export class ModuleChannelContent {
         return this._displayName;
     }
 
+    // Shouldn't the type of dataGenerator be DataGenerator
     publish(
         dataGenerator: () => {
             data: DataElement<KeyType>[];

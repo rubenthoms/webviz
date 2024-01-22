@@ -38,6 +38,7 @@ export class ModuleInstance<StateType extends StateBaseType> {
     private _statusController: ModuleInstanceStatusControllerInternal;
     private _channelManager: ModuleChannelManager;
 
+    // Create separate interface/type for ModuleInstanceOptions?
     constructor({
         module,
         instanceNumber,

@@ -14,11 +14,13 @@ export interface ChannelReceiverChannelContent<TKeyKinds extends KeyKind[]> {
     metaData: ModuleChannelContentMetaData;
 }
 
+// Have a look?
 export type ChannelReceiverReturnData<TKeyKinds extends KeyKind[]> = {
     idString: string;
     displayName: string;
     isPending: boolean;
     revisionNumber: number;
+    //activeChannel: ChannelWithSub | undefined; ???
 } & (
     | {
           channel: {
@@ -36,6 +38,8 @@ export type ChannelReceiverReturnData<TKeyKinds extends KeyKind[]> = {
       }
 );
 
+// Do we need an options object here? Only two parameters, could use direct signature
+// If we do, define a type/interface for it
 export function useChannelReceiver<TKeyKinds extends KeyKind[]>({
     receiver,
     expectedKindsOfKeys,

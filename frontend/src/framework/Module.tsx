@@ -47,6 +47,7 @@ export class Module<StateType extends StateBaseType> {
     private _channelDefinitions: ModuleChannelDefinition[] | null;
     private _channelReceiverDefinitions: ModuleChannelReceiverDefinition[] | null;
 
+    // Create separate interface/type for ModuleOptions
     constructor({
         name,
         defaultTitle,

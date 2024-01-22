@@ -3,18 +3,21 @@ import { KeyKind } from "@framework/DataChannelTypes";
 import { DataGenerator, ModuleChannelContent, ModuleChannelContentNotificationTopic } from "./ModuleChannelContent";
 import { ModuleChannelManager } from "./ModuleChannelManager";
 
+// rename to ChannelDefinition
 export interface ModuleChannelDefinition {
     readonly idString: string;
     readonly displayName: string;
     readonly kindOfKey: KeyKind;
 }
 
+//rename to ChannelNotificationTopic
 export enum ModuleChannelNotificationTopic {
     ContentsArrayChange = "contents-array-change",
     ContentsDataArraysChange = "contents-data-arrays-change",
     ChannelAboutToBeRemoved = "channel-about-to-be-removed",
 }
 
+// rename to Channel
 export class ModuleChannel {
     private _idString: string;
     private _displayName: string;
@@ -23,6 +26,7 @@ export class ModuleChannel {
     private _contents: ModuleChannelContent[] = [];
     private _subscribersMap: Map<ModuleChannelNotificationTopic, Set<() => void>> = new Map();
 
+    // utilize the ModuleChannelDefinition interface (+ manager)
     constructor({
         manager,
         idString,
@@ -66,6 +70,8 @@ export class ModuleChannel {
         this.notifySubscribers(ModuleChannelNotificationTopic.ContentsDataArraysChange);
     }
 
+    // Not a big fan of the parameter object here, use interface or type instead?
+    // use ModuleChannelContentDefinition interface + dataGenerator
     replaceContents(
         contentDefinitions: {
             idString: string;
@@ -118,6 +124,7 @@ export class ModuleChannel {
         }
     }
 
+    // rename to notifySubscribersOfChannelAboutToBeRemoved()
     beforeRemove(): void {
         this.notifySubscribers(ModuleChannelNotificationTopic.ChannelAboutToBeRemoved);
     }

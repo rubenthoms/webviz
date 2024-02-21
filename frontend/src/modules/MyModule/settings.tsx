@@ -7,11 +7,14 @@ import { Label } from "@lib/components/Label";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 
+import { useAtom } from "jotai";
+
+import { gradientTypeAtom } from "./atoms";
 import { State } from "./state";
 
-export const settings = (props: ModuleSettingsProps<State>) => {
+export const Settings = (props: ModuleSettingsProps<State>) => {
     const [type, setType] = props.settingsContext.useStoreState("type");
-    const [gradientType, setGradientType] = props.settingsContext.useStoreState("gradientType");
+    const [gradientType, setGradientType] = useAtom(gradientTypeAtom);
     const [min, setMin] = props.settingsContext.useStoreState("min");
     const [max, setMax] = props.settingsContext.useStoreState("max");
     const [divMidPoint, setDivMidPoint] = props.settingsContext.useStoreState("divMidPoint");

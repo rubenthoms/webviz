@@ -1,13 +1,12 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
-import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { ColorScaleType } from "@lib/utils/ColorScale";
 
-import { settings } from "./settings";
+import { Settings } from "./settings";
 import { State } from "./state";
 import { View } from "./view";
 
 const defaultState: State = {
     type: ColorScaleType.Discrete,
-    gradientType: ColorScaleGradientType.Sequential,
     min: 0,
     max: 18,
     divMidPoint: 9,
@@ -16,4 +15,4 @@ const defaultState: State = {
 const module = ModuleRegistry.initModule<State>("MyModule", defaultState);
 
 module.viewFC = View;
-module.settingsFC = settings;
+module.settingsFC = Settings;

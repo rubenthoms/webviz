@@ -13,6 +13,7 @@
 import React from "react";
 
 import { ChannelContentDefinition, KeyKind } from "./DataChannelTypes";
+import { JTDBaseType } from "./Module";
 import { ModuleInstance } from "./ModuleInstance";
 import { ModuleInstanceStatusController } from "./ModuleInstanceStatusController";
 import { StateBaseType, StateStore, useSetStoreValue, useStoreState, useStoreValue } from "./StateStore";
@@ -26,11 +27,18 @@ import {
 import { useChannelReceiver } from "./internal/DataChannels/hooks/useChannelReceiver";
 import { usePublishChannelContents } from "./internal/DataChannels/hooks/usePublishChannelContents";
 
-export class ModuleContext<TStateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> {
-    protected _moduleInstance: ModuleInstance<TStateType, TInterfaceType>;
+export class ModuleContext<
+    TStateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType,
+    TSerializedStateDef extends JTDBaseType
+> {
+    protected _moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>;
     private _stateStore: StateStore<TStateType>;
 
-    constructor(moduleInstance: ModuleInstance<TStateType, TInterfaceType>, stateStore: StateStore<TStateType>) {
+    constructor(
+        moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>,
+        stateStore: StateStore<TStateType>
+    ) {
         this._moduleInstance = moduleInstance;
         this._stateStore = stateStore;
     }
@@ -136,12 +144,14 @@ export class ModuleContext<TStateType extends StateBaseType, TInterfaceType exte
     }
 }
 
-export type ViewContext<StateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> = Omit<
-    ModuleContext<StateType, TInterfaceType>,
-    "useInterfaceState" | "useSetInterfaceValue"
->;
+export type ViewContext<
+    StateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType,
+    TSerializedStateDef extends JTDBaseType
+> = Omit<ModuleContext<StateType, TInterfaceType, TSerializedStateDef>, "useInterfaceState" | "useSetInterfaceValue">;
 
-export type SettingsContext<StateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> = ModuleContext<
-    StateType,
-    TInterfaceType
->;
+export type SettingsContext<
+    StateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType,
+    TSerializedStateDef extends JTDBaseType
+> = ModuleContext<StateType, TInterfaceType, TSerializedStateDef>;

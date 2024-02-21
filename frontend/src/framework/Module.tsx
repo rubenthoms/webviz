@@ -1,5 +1,7 @@
 import React from "react";
 
+import { JTDDataType } from "ajv/dist/core";
+import { Atom, WritableAtom } from "jotai";
 import { cloneDeep } from "lodash";
 
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
@@ -20,9 +22,10 @@ export type ModuleSettingsProps<
     TInterfaceType extends InterfaceBaseType = {
         baseStates: Record<string, never>;
         derivedStates: Record<string, never>;
-    }
+    },
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = {
-    settingsContext: SettingsContext<TTStateType, TInterfaceType>;
+    settingsContext: SettingsContext<TTStateType, TInterfaceType, TSerializedStateDef>;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
@@ -34,9 +37,10 @@ export type ModuleViewProps<
     TInterfaceType extends InterfaceBaseType = {
         baseStates: Record<string, never>;
         derivedStates: Record<string, never>;
-    }
+    },
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = {
-    viewContext: ViewContext<TTStateType, TInterfaceType>;
+    viewContext: ViewContext<TTStateType, TInterfaceType, TSerializedStateDef>;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
@@ -59,6 +63,26 @@ export type ModuleView<
     }
 > = React.FC<ModuleViewProps<TTStateType, TInterfaceType>>;
 
+export type JTDBaseType = Record<string, unknown>;
+
+export type MakeReadonly<T> = {
+    readonly [P in keyof T]: T[P];
+};
+
+export type ModuleStateSerializer<TStateType extends StateBaseType, JTDType extends JTDDataType<JTDBaseType>> = (
+    getStateValue: <T extends keyof TStateType>(key: T) => TStateType[T],
+    getAtomValue: <T>(atom: Atom<T>) => T
+) => JTDType;
+
+export type ModuleStateDeserializer<TStateType extends StateBaseType, JTDType extends JTDDataType<JTDBaseType>> = (
+    data: JTDType,
+    setStateValue: <T extends keyof TStateType>(key: T, value: TStateType[T]) => void,
+    setAtomValue: <Value_1, Args extends unknown[], Result>(
+        atom: WritableAtom<Value_1, Args, Result>,
+        ...args: Args
+    ) => Result
+) => void;
+
 export enum ImportState {
     NotImported = "NotImported",
     Importing = "Importing",
@@ -66,7 +90,7 @@ export enum ImportState {
     Failed = "Failed",
 }
 
-export interface ModuleOptions {
+export interface ModuleOptions<TSerializedStateDef extends JTDBaseType> {
     name: string;
     defaultTitle: string;
     syncableSettingKeys?: SyncSettingKey[];
@@ -74,15 +98,24 @@ export interface ModuleOptions {
     description?: string;
     channelDefinitions?: ChannelDefinition[];
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
+    serialization?: {
+        serializedStateDefinition: TSerializedStateDef;
+        stateSerializer: ModuleStateSerializer<any, any>;
+        stateDeserializer: ModuleStateDeserializer<any, any>;
+    };
 }
 
-export class Module<TStateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> {
+export class Module<
+    TStateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType,
+    TSerializedStateDef extends JTDBaseType
+> {
     private _name: string;
     private _defaultTitle: string;
     public viewFC: ModuleView<TStateType, TInterfaceType>;
     public settingsFC: ModuleSettings<TStateType, TInterfaceType>;
     protected _importState: ImportState;
-    private _moduleInstances: ModuleInstance<TStateType, TInterfaceType>[];
+    private _moduleInstances: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>[];
     private _defaultState: TStateType | null;
     private _settingsToViewInterfaceHydration: InterfaceHydration<TInterfaceType> | null;
     private _stateOptions: StateOptions<TStateType> | undefined;
@@ -92,8 +125,11 @@ export class Module<TStateType extends StateBaseType, TInterfaceType extends Int
     private _description: string | null;
     private _channelDefinitions: ChannelDefinition[] | null;
     private _channelReceiverDefinitions: ChannelReceiverDefinition[] | null;
+    private _serializedStateDef: TSerializedStateDef | null;
+    private _stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>> | null;
+    private _stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>> | null;
 
-    constructor(options: ModuleOptions) {
+    constructor(options: ModuleOptions<TSerializedStateDef>) {
         this._name = options.name;
         this._defaultTitle = options.defaultTitle;
         this.viewFC = () => <div>Not defined</div>;
@@ -108,6 +144,28 @@ export class Module<TStateType extends StateBaseType, TInterfaceType extends Int
         this._description = options.description ?? null;
         this._channelDefinitions = options.channelDefinitions ?? null;
         this._channelReceiverDefinitions = options.channelReceiverDefinitions ?? null;
+
+        if (options.serialization) {
+            this._serializedStateDef = options.serialization.serializedStateDefinition;
+            this._stateSerializer = options.serialization.stateSerializer;
+            this._stateDeserializer = options.serialization.stateDeserializer;
+        } else {
+            this._serializedStateDef = null;
+            this._stateSerializer = null;
+            this._stateDeserializer = null;
+        }
+    }
+
+    getSerializedStateDef(): TSerializedStateDef | null {
+        return this._serializedStateDef;
+    }
+
+    getStateSerializer(): ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>> | null {
+        return this._stateSerializer;
+    }
+
+    getStateDeserializer(): ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>> | null {
+        return this._stateDeserializer;
     }
 
     getDrawPreviewFunc(): DrawPreviewFunc | null {
@@ -156,12 +214,12 @@ export class Module<TStateType extends StateBaseType, TInterfaceType extends Int
         return this._syncableSettingKeys.includes(key);
     }
 
-    makeInstance(instanceNumber: number): ModuleInstance<TStateType, TInterfaceType> {
+    makeInstance(instanceNumber: number): ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef> {
         if (!this._workbench) {
             throw new Error("Module must be added to a workbench before making an instance");
         }
 
-        const instance = new ModuleInstance<TStateType, TInterfaceType>({
+        const instance = new ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>({
             module: this,
             workbench: this._workbench,
             instanceNumber,
@@ -195,6 +253,8 @@ export class Module<TStateType extends StateBaseType, TInterfaceType extends Int
                         if (this._settingsToViewInterfaceHydration) {
                             instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
                         }
+                        instance.maybeApplyPersistedState();
+                        instance.persistStateOnStateStoreChange();
                     }
                 });
             }
@@ -213,6 +273,8 @@ export class Module<TStateType extends StateBaseType, TInterfaceType extends Int
                     if (this._settingsToViewInterfaceHydration) {
                         instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
                     }
+                    instance.maybeApplyPersistedState();
+                    instance.persistStateOnStateStoreChange();
                 });
             })
             .catch((e) => {

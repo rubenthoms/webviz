@@ -5,8 +5,10 @@ import { ModuleViewProps } from "@framework/Module";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleType } from "@lib/utils/ColorScale";
 
+import { useAtomValue } from "jotai";
 import { PlotData } from "plotly.js";
 
+import { gradientTypeAtom } from "./atoms";
 import { State } from "./state";
 
 const countryData = [
@@ -404,7 +406,7 @@ for (let i = 0; i < countryData.length; i += 2) {
 
 export const View = (props: ModuleViewProps<State>) => {
     const type = props.viewContext.useStoreValue("type");
-    const gradientType = props.viewContext.useStoreValue("gradientType");
+    const gradientType = useAtomValue(gradientTypeAtom);
     const min = props.viewContext.useStoreValue("min");
     const max = props.viewContext.useStoreValue("max");
     const divMidPoint = props.viewContext.useStoreValue("divMidPoint");

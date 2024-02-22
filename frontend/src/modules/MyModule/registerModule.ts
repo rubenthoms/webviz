@@ -1,6 +1,6 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
-import { MODULE_SERIALIZED_STATE, deserializeModuleState, serializeModuleState } from "./persistence";
+import { MODULE_SERIALIZED_STATE, ModuleSerializedState } from "./persistence";
 import { State } from "./state";
 
 ModuleRegistry.registerModule<State>({
@@ -12,13 +12,9 @@ ModuleRegistry.registerModule<State>({
 ModuleRegistry.registerModule<
     State,
     { baseStates: Record<string, never>; derivedStates: Record<string, never> },
-    typeof MODULE_SERIALIZED_STATE
+    ModuleSerializedState
 >({
     moduleName: "MyModule",
     defaultTitle: "My Module",
-    serialization: {
-        serializedStateDefinition: MODULE_SERIALIZED_STATE,
-        stateSerializer: serializeModuleState,
-        stateDeserializer: deserializeModuleState,
-    },
+    serializedStateDefinition: MODULE_SERIALIZED_STATE,
 });

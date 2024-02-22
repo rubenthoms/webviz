@@ -75,4 +75,8 @@ export class ModuleNotFoundPlaceholder extends Module<
             </div>
         );
     };
+
+    registerStateSerializerAndDeserializer() {
+        return;
+    }
 }

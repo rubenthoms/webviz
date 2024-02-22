@@ -98,11 +98,7 @@ export interface ModuleOptions<TSerializedStateDef extends JTDBaseType> {
     description?: string;
     channelDefinitions?: ChannelDefinition[];
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
-    serialization?: {
-        serializedStateDefinition: TSerializedStateDef;
-        stateSerializer: ModuleStateSerializer<any, any>;
-        stateDeserializer: ModuleStateDeserializer<any, any>;
-    };
+    serializedStateDefinition?: TSerializedStateDef;
 }
 
 export class Module<
@@ -144,16 +140,25 @@ export class Module<
         this._description = options.description ?? null;
         this._channelDefinitions = options.channelDefinitions ?? null;
         this._channelReceiverDefinitions = options.channelReceiverDefinitions ?? null;
+        this._stateSerializer = null;
+        this._stateDeserializer = null;
 
-        if (options.serialization) {
-            this._serializedStateDef = options.serialization.serializedStateDefinition;
-            this._stateSerializer = options.serialization.stateSerializer;
-            this._stateDeserializer = options.serialization.stateDeserializer;
+        if (options.serializedStateDefinition) {
+            this._serializedStateDef = options.serializedStateDefinition;
         } else {
             this._serializedStateDef = null;
-            this._stateSerializer = null;
-            this._stateDeserializer = null;
         }
+    }
+
+    registerStateSerializerAndDeserializer(serializerFunc: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>, deserializerFunc: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>) {
+        this._stateSerializer = serializerFunc;
+        this._stateDeserializer = deserializerFunc;
+
+        this._moduleInstances.forEach((instance) => {
+            if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
+                instance.makeAndInitStatePersistor(this._serializedStateDef, this._stateSerializer, this._stateDeserializer);
+            }
+        });
     }
 
     getSerializedStateDef(): TSerializedStateDef | null {
@@ -196,9 +201,7 @@ export class Module<
         this._defaultState = defaultState;
         this._stateOptions = options;
         this._moduleInstances.forEach((instance) => {
-            if (this._defaultState && !instance.isInitialised()) {
-                instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
-            }
+            this.initModuleInstance(instance);
         });
     }
 
@@ -242,20 +245,25 @@ export class Module<
         }
     }
 
+    private initModuleInstance(instance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>) {
+        if (!instance.isInitialised()) {
+            if (this._defaultState) {
+                instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
+            }
+            if (this._settingsToViewInterfaceHydration) {
+                instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
+            }
+            if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
+                instance.makeAndInitStatePersistor(this._serializedStateDef, this._stateSerializer, this._stateDeserializer);
+            }
+        }
+    }
+
     private maybeImportSelf(): void {
         if (this._importState !== ImportState.NotImported) {
             if (this._defaultState && this._importState === ImportState.Imported) {
                 this._moduleInstances.forEach((instance) => {
-                    if (!instance.isInitialised()) {
-                        if (this._defaultState) {
-                            instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
-                        }
-                        if (this._settingsToViewInterfaceHydration) {
-                            instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
-                        }
-                        instance.maybeApplyPersistedState();
-                        instance.persistStateOnStateStoreChange();
-                    }
+                    this.initModuleInstance(instance);
                 });
             }
             return;
@@ -267,14 +275,7 @@ export class Module<
             .then(() => {
                 this.setImportState(ImportState.Imported);
                 this._moduleInstances.forEach((instance) => {
-                    if (this._defaultState) {
-                        instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
-                    }
-                    if (this._settingsToViewInterfaceHydration) {
-                        instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
-                    }
-                    instance.maybeApplyPersistedState();
-                    instance.persistStateOnStateStoreChange();
+                    this.initModuleInstance(instance);
                 });
             })
             .catch((e) => {

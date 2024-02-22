@@ -16,11 +16,7 @@ export type RegisterModuleOptions<TState extends StateBaseType, TSerializedState
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
     preview?: DrawPreviewFunc;
     description?: string;
-    serialization?: {
-        serializedStateDefinition: MakeReadonly<TSerializedStateDef>;
-        stateSerializer: ModuleStateSerializer<TState, JTDDataType<TSerializedStateDef>>;
-        stateDeserializer: ModuleStateDeserializer<TState, JTDDataType<TSerializedStateDef>>;
-    };
+    serializedStateDefinition?: MakeReadonly<TSerializedStateDef>;
 };
 
 export class ModuleNotFoundError extends Error {
@@ -38,7 +34,7 @@ export class ModuleRegistry {
     private static _moduleNotFoundPlaceholders: Record<string, Module<any, any, any>> = {};
 
     /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-    private constructor() {}
+    private constructor() { }
 
     static registerModule<
         TStateType extends StateBaseType,
@@ -58,7 +54,7 @@ export class ModuleRegistry {
             channelReceiverDefinitions: options.channelReceiverDefinitions,
             drawPreviewFunc: options.preview,
             description: options.description,
-            serialization: options.serialization,
+            serializedStateDefinition: options.serializedStateDefinition,
         });
         this._registeredModules[options.moduleName] = module;
         return module;
@@ -69,20 +65,21 @@ export class ModuleRegistry {
         TInterfaceType extends InterfaceBaseType = {
             baseStates: Record<string, never>;
             derivedStates: Record<string, never>;
-        }
+        },
+        TSerializedStateDef extends JTDBaseType = Record<string, never>
     >(
         moduleName: string,
         defaultState: TStateType,
         options?: StateOptions<TStateType>,
         interfaceHydration?: InterfaceHydration<TInterfaceType>
-    ): Module<TStateType, TInterfaceType, any> {
+    ): Module<TStateType, TInterfaceType, TSerializedStateDef> {
         const module = this._registeredModules[moduleName];
         if (module) {
             module.setDefaultState(defaultState, options);
             if (interfaceHydration) {
                 module.setSettingsToViewInterfaceHydration(interfaceHydration);
             }
-            return module as Module<TStateType, TInterfaceType, any>;
+            return module as Module<TStateType, TInterfaceType, TSerializedStateDef>;
         }
         throw new ModuleNotFoundError(moduleName);
     }

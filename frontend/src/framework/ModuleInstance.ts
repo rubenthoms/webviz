@@ -1,14 +1,10 @@
 import { ErrorInfo } from "react";
-
-import Ajv from "ajv";
-import { JTDDataType } from "ajv/dist/core";
-import { Atom, PrimitiveAtom, WritableAtom, atom } from "jotai";
 import { cloneDeep } from "lodash";
 
 import { AtomStore } from "./AtomStoreMaster";
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
-import { ImportState, JTDBaseType, Module, ModuleSettings, ModuleView } from "./Module";
+import { ImportState, JTDBaseType, Module, ModuleSettings, ModuleStateDeserializer, ModuleStateSerializer, ModuleView } from "./Module";
 import { ModuleContext } from "./ModuleContext";
 import { StateBaseType, StateOptions, StateStore } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
@@ -20,6 +16,8 @@ import {
 import { Workbench } from "./Workbench";
 import { ChannelManager } from "./internal/DataChannels/ChannelManager";
 import { ModuleInstanceStatusControllerInternal } from "./internal/ModuleInstanceStatusControllerInternal";
+import { ModuleStatePersistor } from "./ModuleStatePersistor";
+import { JTDDataType } from "ajv/dist/core";
 
 export enum ModuleInstanceState {
     INITIALIZING,
@@ -65,14 +63,12 @@ export class ModuleInstance<
     private _channelManager: ChannelManager;
     private _workbench: Workbench;
     private _settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null;
-    private _stateStoreAtom: PrimitiveAtom<TStateType> | null;
-    private _persistanceAtom: Atom<JTDDataType<TSerializedStateDef>> | null;
+    private _moduleStatePersistor: ModuleStatePersistor<TStateType, TInterfaceType, TSerializedStateDef> | null;
 
     constructor(options: ModuleInstanceOptions<TStateType, TInterfaceType, TSerializedStateDef>) {
         this._id = `${options.module.getName()}-${options.instanceNumber}`;
         this._title = options.module.getDefaultTitle();
         this._stateStore = null;
-        this._stateStoreAtom = null;
         this._module = options.module;
         this._importStateSubscribers = new Set();
         this._context = null;
@@ -88,7 +84,7 @@ export class ModuleInstance<
         this._statusController = new ModuleInstanceStatusControllerInternal();
         this._workbench = options.workbench;
         this._settingsViewInterface = null;
-        this._persistanceAtom = null;
+        this._moduleStatePersistor = null;
 
         this._channelManager = new ChannelManager(this._id);
 
@@ -134,91 +130,30 @@ export class ModuleInstance<
         this.setModuleInstanceState(ModuleInstanceState.OK);
     }
 
-    maybeApplyPersistedState() {
-        const serializedStateDefinition = this._module.getSerializedStateDef();
-        const deserializerFunc = this._module.getStateDeserializer();
-        const persistedState = localStorage.getItem(`${this._id}-state`);
-
-        if (serializedStateDefinition && deserializerFunc && persistedState && this._stateStore) {
-            const parsedPersistedState = JSON.parse(persistedState);
-            const ajv = new Ajv();
-            const validate = ajv.compile<TSerializedStateDef>(serializedStateDefinition);
-            if (!validate(parsedPersistedState)) {
-                console.error("Persisted state does not match the state definition", validate.errors);
-                return;
-            }
-            const stateStore = this._stateStore;
-            const atomStore = this.getAtomStore();
-            deserializerFunc(
-                parsedPersistedState as JTDDataType<TSerializedStateDef>,
-                stateStore.setValue.bind(stateStore),
-                atomStore.set.bind(atomStore)
-            );
+    makeAndInitStatePersistor(
+        serializedStateDefinition: TSerializedStateDef,
+        stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
+        stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>
+    ): void {
+        if (this._stateStore === null || this._cachedDefaultState === null) {
+            throw `Module instance '${this._title}' does not have a state yet. Did you forget to init the module?`;
         }
-    }
 
-    persistState() {
-        const serializedStateDefinition = this._module.getSerializedStateDef();
-        const serializerFunc = this._module.getStateSerializer();
-        const stateStore = this._stateStore;
-        const atomStore = this.getAtomStore();
-        if (stateStore && serializedStateDefinition && serializerFunc && this._stateStore && this._persistanceAtom) {
-            atomStore.sub(this._persistanceAtom, () => {
-                const serializedState = serializerFunc(
-                    stateStore.getValue.bind(stateStore),
-                    atomStore.get.bind(atomStore)
-                );
-                localStorage.setItem(`${this._id}-state`, JSON.stringify(serializedState));
-            });
-        }
-    }
+        this._moduleStatePersistor = new ModuleStatePersistor(
+            this,
+            this._stateStore,
+            this.getAtomStore(),
+            serializedStateDefinition,
+            stateSerializer,
+            stateDeserializer,
+            this._cachedDefaultState
+        );
 
-    persistStateOnStateStoreChange() {
-        const atomStore = this.getAtomStore();
-        const serializerFunc = this._module.getStateSerializer();
-        if (this._stateStore && this._cachedDefaultState && serializerFunc) {
-            this._stateStoreAtom = atom<TStateType>(this._cachedDefaultState);
-            for (const stateKey of Object.keys(this._cachedDefaultState)) {
-                this._stateStore
-                    .subscribe(stateKey as keyof TStateType, (value) => {
-                        if (this._stateStore && this._stateStoreAtom) {
-                            atomStore.set(this._stateStoreAtom, {
-                                ...atomStore.get(this._stateStoreAtom),
-                                stateKey: value,
-                            });
-                        }
-                    })
-                    .bind(this);
-            }
-            this._persistanceAtom = atom((get) => {
-                const serializerFunc = this._module.getStateSerializer();
-                if (this._stateStoreAtom && serializerFunc) {
-                    const stateStore = get(this._stateStoreAtom);
-                    const getStateValue = <T extends keyof TStateType>(key: T): TStateType[T] => {
-                        return stateStore[key];
-                    };
-                    return serializerFunc(getStateValue.bind(stateStore), get);
-                }
-                throw new Error("State store or serializer function is not available");
-            });
-
-            atomStore
-                .sub(this._persistanceAtom, () => {
-                    if (this._stateStore) {
-                        const serializedState = serializerFunc(
-                            this._stateStore.getValue.bind(this._stateStore),
-                            atomStore.get.bind(atomStore)
-                        );
-                        localStorage.setItem(`${this._id}-state`, JSON.stringify(serializedState));
-                    }
-                })
-                .bind(this);
-        }
+        this._moduleStatePersistor.maybeApplyPersistedState();
     }
 
     makeSettingsToViewInterface(interfaceHydration: InterfaceHydration<TInterfaceType>) {
         this._settingsViewInterface = new UniDirectionalSettingsToViewInterface(interfaceHydration);
-        this.maybeApplyPersistedState();
     }
 
     addSyncedSetting(settingKey: SyncSettingKey): void {

@@ -4,6 +4,7 @@ import { JTDDataType } from "ajv/dist/core";
 import { Atom, WritableAtom } from "jotai";
 import { cloneDeep } from "lodash";
 
+import { AtomStoreMaster } from "./AtomStoreMaster";
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
 import { SettingsContext, ViewContext } from "./ModuleContext";
@@ -150,13 +151,24 @@ export class Module<
         }
     }
 
-    registerStateSerializerAndDeserializer(serializerFunc: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>, deserializerFunc: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>) {
+    makeId(instanceNumber: number): string {
+        return `${this._name}-${instanceNumber}`;
+    }
+
+    registerStateSerializerAndDeserializer(
+        serializerFunc: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
+        deserializerFunc: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>
+    ) {
         this._stateSerializer = serializerFunc;
         this._stateDeserializer = deserializerFunc;
 
         this._moduleInstances.forEach((instance) => {
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
-                instance.makeAndInitStatePersistor(this._serializedStateDef, this._stateSerializer, this._stateDeserializer);
+                instance.makeAndInitStatePersistor(
+                    this._serializedStateDef,
+                    this._stateSerializer,
+                    this._stateDeserializer
+                );
             }
         });
     }
@@ -223,6 +235,7 @@ export class Module<
         }
 
         const instance = new ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>({
+            id: this.makeId(instanceNumber),
             module: this,
             workbench: this._workbench,
             instanceNumber,
@@ -254,7 +267,11 @@ export class Module<
                 instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
             }
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
-                instance.makeAndInitStatePersistor(this._serializedStateDef, this._stateSerializer, this._stateDeserializer);
+                instance.makeAndInitStatePersistor(
+                    this._serializedStateDef,
+                    this._stateSerializer,
+                    this._stateDeserializer
+                );
             }
         }
     }

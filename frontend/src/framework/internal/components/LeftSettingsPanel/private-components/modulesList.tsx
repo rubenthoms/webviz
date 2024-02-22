@@ -62,7 +62,6 @@ const ModulesListItem: React.FC<ModulesListItemProps> = (props) => {
 
         const handlePointerDown = (e: PointerEvent) => {
             if (ref.current) {
-                document.body.classList.add("touch-none");
                 const point = pointerEventToPoint(e);
                 const rect = ref.current.getBoundingClientRect();
                 pointerDownElementPosition = pointSubtraction(point, pointRelativeToDomRect(point, rect));
@@ -84,7 +83,6 @@ const ModulesListItem: React.FC<ModulesListItemProps> = (props) => {
             pointerDownPoint = null;
             dragging = false;
             setIsDragged(false);
-            document.body.classList.remove("touch-none");
             pointerDownElementPosition = null;
 
             removeDraggingEventListeners();

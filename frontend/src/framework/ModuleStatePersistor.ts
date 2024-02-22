@@ -29,19 +29,7 @@ export class ModuleStatePersistor<
         this._stateStore = stateStore;
         this._atomStore = atomStore;
 
-        this._stateStoreAtom = atom<TStateType>(cachedDefaultState);
-        for (const stateKey of Object.keys(cachedDefaultState)) {
-            this._stateStore
-                .subscribe(stateKey as keyof TStateType, (value) => {
-                    if (this._stateStore && this._stateStoreAtom) {
-                        this._atomStore.set(this._stateStoreAtom, {
-                            ...this._atomStore.get(this._stateStoreAtom),
-                            [stateKey]: value,
-                        });
-                    }
-                })
-                .bind(this);
-        }
+        this._stateStoreAtom = this.makeStateStoreAtomAndConnectToStateStore(cachedDefaultState);
 
         this._persistanceAtom = atom((get) => {
             const stateStore = get(this._stateStoreAtom);
@@ -54,6 +42,23 @@ export class ModuleStatePersistor<
         atomStore.sub(this._persistanceAtom, () => {
             this.persistState();
         }).bind(this);
+    }
+
+    private makeStateStoreAtomAndConnectToStateStore(cachedDefaultState: TStateType): PrimitiveAtom<TStateType> {
+        const stateStoreAtom = atom<TStateType>(cachedDefaultState);
+        for (const stateKey of Object.keys(cachedDefaultState)) {
+            this._stateStore
+                .subscribe(stateKey as keyof TStateType, (value) => {
+                    if (this._stateStore && this._stateStoreAtom) {
+                        this._atomStore.set(this._stateStoreAtom, {
+                            ...this._atomStore.get(this._stateStoreAtom),
+                            [stateKey]: value,
+                        });
+                    }
+                })
+                .bind(this);
+        }
+        return stateStoreAtom;
     }
 
     private fetchAndValidatePersistedState(): JTDDataType<TSerializedStateDef> | null {
@@ -86,5 +91,9 @@ export class ModuleStatePersistor<
     persistState() {
         const state = this._atomStore.get(this._persistanceAtom);
         localStorage.setItem(`${this._moduleInstance.getId()}-state`, JSON.stringify(state));
+    }
+
+    removePersistedState() {
+        localStorage.removeItem(`${this._moduleInstance.getId()}-state`);
     }
 }

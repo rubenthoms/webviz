@@ -1,11 +1,22 @@
 import { ErrorInfo } from "react";
+
+import { JTDDataType } from "ajv/dist/core";
 import { cloneDeep } from "lodash";
 
 import { AtomStore } from "./AtomStoreMaster";
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
-import { ImportState, JTDBaseType, Module, ModuleSettings, ModuleStateDeserializer, ModuleStateSerializer, ModuleView } from "./Module";
+import {
+    ImportState,
+    JTDBaseType,
+    Module,
+    ModuleSettings,
+    ModuleStateDeserializer,
+    ModuleStateSerializer,
+    ModuleView,
+} from "./Module";
 import { ModuleContext } from "./ModuleContext";
+import { ModuleStatePersistor } from "./ModuleStatePersistor";
 import { StateBaseType, StateOptions, StateStore } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 import {
@@ -16,8 +27,6 @@ import {
 import { Workbench } from "./Workbench";
 import { ChannelManager } from "./internal/DataChannels/ChannelManager";
 import { ModuleInstanceStatusControllerInternal } from "./internal/ModuleInstanceStatusControllerInternal";
-import { ModuleStatePersistor } from "./ModuleStatePersistor";
-import { JTDDataType } from "ajv/dist/core";
 
 export enum ModuleInstanceState {
     INITIALIZING,
@@ -31,6 +40,7 @@ export interface ModuleInstanceOptions<
     TInterfaceType extends InterfaceBaseType,
     TSerializedStateDef extends JTDBaseType
 > {
+    id: string;
     module: Module<TStateType, TInterfaceType, TSerializedStateDef>;
     workbench: Workbench;
     instanceNumber: number;
@@ -66,7 +76,7 @@ export class ModuleInstance<
     private _moduleStatePersistor: ModuleStatePersistor<TStateType, TInterfaceType, TSerializedStateDef> | null;
 
     constructor(options: ModuleInstanceOptions<TStateType, TInterfaceType, TSerializedStateDef>) {
-        this._id = `${options.module.getName()}-${options.instanceNumber}`;
+        this._id = options.id;
         this._title = options.module.getDefaultTitle();
         this._stateStore = null;
         this._module = options.module;
@@ -317,5 +327,12 @@ export class ModuleInstance<
 
     getInitialSettings(): InitialSettings | null {
         return this._initialSettings;
+    }
+
+    beforeRemove() {
+        this._channelManager.unregisterAllChannels();
+        this._channelManager.unregisterAllReceivers();
+
+        this._moduleStatePersistor?.removePersistedState();
     }
 }

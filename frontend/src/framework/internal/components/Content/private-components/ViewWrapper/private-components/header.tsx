@@ -10,8 +10,11 @@ import { CircularProgress } from "@lib/components/CircularProgress";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { createPortal } from "@lib/utils/createPortal";
 import { isDevMode } from "@lib/utils/devMode";
+import { pointRelativeToDomRect, pointSubtraction, pointerEventToPoint } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { Close, Error, Input, Output, Warning } from "@mui/icons-material";
+import { Close, ContentCopy, Error, Input, Output, Warning } from "@mui/icons-material";
+
+import { CloneButton } from "./cloneButton";
 
 export type HeaderProps = {
     moduleInstance: ModuleInstance<any, any, any>;
@@ -172,7 +175,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
 
     return (
         <div
-            className={resolveClassNames("flex items-center select-none shadow relative touch-none", {
+            className={resolveClassNames("flex items-center select-none shadow relative touch-none z-50", {
                 "cursor-grabbing": props.isDragged,
                 "cursor-move": !props.isDragged,
                 "bg-red-100": hasErrors,
@@ -238,6 +241,12 @@ export const Header: React.FC<HeaderProps> = (props) => {
                     <Input fontSize="small" />
                 </div>
             )}
+            <span className="bg-slate-300 w-[1px] h-3/4 ml-2" />
+            <CloneButton
+                moduleName={props.moduleInstance.getName()}
+                displayName={props.moduleInstance.getTitle()}
+                guiMessageBroker={props.guiMessageBroker}
+            />
             <span className="bg-slate-300 w-[1px] h-3/4 ml-2" />
             <div
                 className="hover:text-slate-500 cursor-pointer p-1"

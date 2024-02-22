@@ -128,8 +128,9 @@ export class Workbench {
             }
 
             module.setWorkbench(this);
-            const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
-            this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
+            const instanceNumber = this.getNextModuleInstanceNumber(module.getName());
+            this._atomStoreMaster.makeAtomStoreForModuleInstance(module.makeId(instanceNumber));
+            const moduleInstance = module.makeInstance(instanceNumber);
             this._moduleInstances.push(moduleInstance);
             this._layout[index] = { ...this._layout[index], moduleInstanceId: moduleInstance.getId() };
             this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
@@ -142,9 +143,8 @@ export class Workbench {
 
     clearLayout(): void {
         for (const moduleInstance of this._moduleInstances) {
-            const manager = moduleInstance.getChannelManager();
-            manager.unregisterAllChannels();
-            manager.unregisterAllReceivers();
+            moduleInstance.beforeRemove();
+            this._atomStoreMaster.removeAtomStoreForModuleInstance(moduleInstance.getId());
         }
         this._moduleInstances = [];
         this._layout = [];
@@ -158,9 +158,9 @@ export class Workbench {
         }
 
         module.setWorkbench(this);
-
-        const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
-        this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
+        const instanceNumber = this.getNextModuleInstanceNumber(module.getName());
+        this._atomStoreMaster.makeAtomStoreForModuleInstance(module.makeId(instanceNumber));
+        const moduleInstance = module.makeInstance(instanceNumber);
         this._moduleInstances.push(moduleInstance);
 
         this._layout.push({ ...layout, moduleInstanceId: moduleInstance.getId() });
@@ -170,11 +170,13 @@ export class Workbench {
     }
 
     removeModuleInstance(moduleInstanceId: string): void {
-        const manager = this.getModuleInstance(moduleInstanceId)?.getChannelManager();
-        if (manager) {
-            manager.unregisterAllChannels();
-            manager.unregisterAllReceivers();
+        const moduleInstance = this.getModuleInstance(moduleInstanceId);
+        if (!moduleInstance) {
+            console.error(`Module instance with id '${moduleInstanceId}' not found`);
+            return;
         }
+
+        moduleInstance.beforeRemove();
 
         this._moduleInstances = this._moduleInstances.filter((el) => el.getId() !== moduleInstanceId);
 

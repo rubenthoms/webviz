@@ -3,12 +3,6 @@ import { ModuleRegistry } from "@framework/ModuleRegistry";
 import { MODULE_SERIALIZED_STATE, ModuleSerializedState } from "./persistence";
 import { State } from "./state";
 
-ModuleRegistry.registerModule<State>({
-    moduleName: "MyModule",
-    defaultTitle: "My Module",
-    description: "My module description",
-});
-
 ModuleRegistry.registerModule<
     State,
     { baseStates: Record<string, never>; derivedStates: Record<string, never> },

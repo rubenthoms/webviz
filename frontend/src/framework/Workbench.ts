@@ -169,6 +169,26 @@ export class Workbench {
         return moduleInstance;
     }
 
+    cloneAndAddModuleInstance(
+        moduleName: string,
+        layout: LayoutElement,
+        clonedModuleInstanceId: string
+    ): ModuleInstance<any, any, any> {
+        const moduleInstance = this.makeAndAddModuleInstance(moduleName, layout);
+        const clonedModuleInstance = this.getModuleInstance(clonedModuleInstanceId);
+        if (!clonedModuleInstance) {
+            throw new Error(`Module instance with id '${clonedModuleInstanceId}' not found`);
+        }
+
+        const clonedInstanceStatePersistor = clonedModuleInstance.getStatePersistor();
+        const cloneStatePersistor = moduleInstance.getStatePersistor();
+
+        const clonedState = clonedInstanceStatePersistor.getPersistedState();
+        cloneStatePersistor.applyPersistedState(clonedState);
+
+        return moduleInstance;
+    }
+
     removeModuleInstance(moduleInstanceId: string): void {
         const moduleInstance = this.getModuleInstance(moduleInstanceId);
         if (!moduleInstance) {

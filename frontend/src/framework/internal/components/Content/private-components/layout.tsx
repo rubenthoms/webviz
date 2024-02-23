@@ -4,6 +4,7 @@ import { GuiEvent, GuiEventPayloads } from "@framework/GuiMessageBroker";
 import { LayoutElement, Workbench } from "@framework/Workbench";
 import { LayoutBox, LayoutBoxComponents, makeLayoutBoxes } from "@framework/components/LayoutBox";
 import { useModuleInstances } from "@framework/internal/hooks/workbenchHooks";
+import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import {
     MANHATTAN_LENGTH,
@@ -48,6 +49,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
     const ref = React.useRef<HTMLDivElement>(null);
     const mainRef = React.useRef<HTMLDivElement>(null);
     const layoutDivSize = useElementSize(ref);
+    const layoutDivRect = useElementBoundingRect(ref);
     const layoutBoxRef = React.useRef<LayoutBox | null>(null);
     const moduleInstances = useModuleInstances(props.workbench);
     const guiMessageBroker = props.workbench.getGuiMessageBroker();
@@ -72,6 +74,8 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         let lastMovePosition: Point2D = { x: 0, y: 0 };
         let delayTimer: ReturnType<typeof setTimeout> | null = null;
         let isNewModule = false;
+        let isClonedModule = false;
+        let clonedModuleInstanceId: string | null = null;
 
         function adjustLayout() {
             if (currentLayoutBox && moduleInstanceId) {
@@ -115,9 +119,19 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                 if (isNewModule && moduleName) {
                     const layoutElement = currentLayout.find((el) => el.moduleInstanceId === pointerDownElementId);
                     if (layoutElement) {
-                        const instance = props.workbench.makeAndAddModuleInstance(moduleName, layoutElement);
-                        layoutElement.moduleInstanceId = instance.getId();
-                        layoutElement.moduleName = instance.getName();
+                        if (isClonedModule && clonedModuleInstanceId) {
+                            const instance = props.workbench.cloneAndAddModuleInstance(
+                                moduleName,
+                                layoutElement,
+                                clonedModuleInstanceId
+                            );
+                            layoutElement.moduleInstanceId = instance.getId();
+                            layoutElement.moduleName = instance.getName();
+                        } else {
+                            const instance = props.workbench.makeAndAddModuleInstance(moduleName, layoutElement);
+                            layoutElement.moduleInstanceId = instance.getId();
+                            layoutElement.moduleName = instance.getName();
+                        }
                     }
                 }
                 setDraggedModuleInstanceId(null);
@@ -247,6 +261,8 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                 originalLayoutBox = currentLayoutBox;
                 setLayout(currentLayout);
                 isNewModule = false;
+                isClonedModule = false;
+                clonedModuleInstanceId = null;
                 setTempLayoutBoxId(null);
                 removeDraggingEventListeners();
             }
@@ -290,6 +306,8 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             pointerDownElementSize = payload.elementSize;
             pointerDownElementId = payload.moduleInstanceId;
             isNewModule = false;
+            isClonedModule = false;
+            clonedModuleInstanceId = null;
             addDraggingEventListeners();
         }
 
@@ -300,6 +318,21 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             pointerDownElementId = v4();
             setTempLayoutBoxId(pointerDownElementId);
             isNewModule = true;
+            isClonedModule = false;
+            clonedModuleInstanceId = null;
+            moduleName = payload.moduleName;
+            addDraggingEventListeners();
+        }
+
+        function handleCloneModulePointerDown(payload: GuiEventPayloads[GuiEvent.StartDragClonedModule]) {
+            pointerDownPoint = payload.pointerPosition;
+            pointerDownElementPosition = payload.pointerPosition;
+            pointerDownElementSize = { width: 0, height: 0 };
+            pointerDownElementId = v4();
+            clonedModuleInstanceId = payload.moduleInstanceId;
+            setTempLayoutBoxId(pointerDownElementId);
+            isNewModule = true;
+            isClonedModule = true;
             moduleName = payload.moduleName;
             addDraggingEventListeners();
         }
@@ -312,6 +345,10 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             GuiEvent.NewModulePointerDown,
             handleNewModulePointerDown
         );
+        const removeCloneModulePointerDownSubscriber = guiMessageBroker.subscribeToEvent(
+            GuiEvent.StartDragClonedModule,
+            handleCloneModulePointerDown
+        );
         const removeRemoveModuleInstanceRequestSubscriber = guiMessageBroker.subscribeToEvent(
             GuiEvent.RemoveModuleInstanceRequest,
             handleRemoveModuleInstanceRequest
@@ -320,6 +357,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         return () => {
             removeModuleHeaderPointerDownSubscriber();
             removeNewModulePointerDownSubscriber();
+            removeCloneModulePointerDownSubscriber();
             removeRemoveModuleInstanceRequestSubscriber();
             removeDraggingEventListeners();
 
@@ -381,6 +419,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                             isDragged={isDragged}
                             dragPosition={position}
                             changingLayout={draggedModuleInstanceId !== null}
+                            layoutDivRect={layoutDivRect}
                         />
                     );
                 })}

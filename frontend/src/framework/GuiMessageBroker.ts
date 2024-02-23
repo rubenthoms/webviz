@@ -36,6 +36,7 @@ export enum GuiEvent {
     DataChannelConnectionsChange = "dataChannelConnectionsChange",
     DataChannelNodeHover = "dataChannelNodeHover",
     DataChannelNodeUnhover = "dataChannelNodeUnhover",
+    StartDragClonedModule = "startDragClonedModule",
 }
 
 export type GuiEventPayloads = {
@@ -67,6 +68,11 @@ export type GuiEventPayloads = {
     };
     [GuiEvent.DataChannelNodeHover]: {
         connectionAllowed: boolean;
+    };
+    [GuiEvent.StartDragClonedModule]: {
+        moduleInstanceId: string;
+        moduleName: string;
+        pointerPosition: Point2D;
     };
 };
 

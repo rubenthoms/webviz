@@ -8,6 +8,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { ChannelReceiverNodesWrapper } from "./private-components/channelReceiverNodesWrapper";
 import { Header } from "./private-components/header";
+import { NewModuleDragPreview } from "./private-components/newModuleDragPreview";
 import { ViewContent } from "./private-components/viewContent";
 
 import { ViewWrapperPlaceholder } from "../viewWrapperPlaceholder";
@@ -23,6 +24,7 @@ type ViewWrapperProps = {
     isDragged: boolean;
     dragPosition: Point2D;
     changingLayout: boolean;
+    layoutDivRect: DOMRect | null;
 };
 
 export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
@@ -147,6 +149,11 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
                     <ViewWrapperPlaceholder width={props.width} height={props.height} x={props.x} y={props.y} />
                 </>
             )}
+            <NewModuleDragPreview
+                moduleTitle={props.moduleInstance.getTitle()}
+                guiMessageBroker={guiMessageBroker}
+                layoutDivRect={props.layoutDivRect}
+            />
             {props.changingLayout && (
                 <div
                     className="absolute box-border p-0.5"

@@ -162,6 +162,13 @@ export class ModuleInstance<
         this._moduleStatePersistor.maybeApplyPersistedState();
     }
 
+    getStatePersistor(): ModuleStatePersistor<TStateType, TInterfaceType, TSerializedStateDef> {
+        if (!this._moduleStatePersistor) {
+            throw `Module instance '${this._title}' does not have a state persistor yet. Did you forget to init the module?`;
+        }
+        return this._moduleStatePersistor;
+    }
+
     makeSettingsToViewInterface(interfaceHydration: InterfaceHydration<TInterfaceType>) {
         this._settingsViewInterface = new UniDirectionalSettingsToViewInterface(interfaceHydration);
     }

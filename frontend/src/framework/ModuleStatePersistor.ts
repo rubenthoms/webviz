@@ -1,11 +1,12 @@
+import Ajv from "ajv";
+import { JTDDataType } from "ajv/dist/core";
 import { Atom, PrimitiveAtom, atom } from "jotai";
+
+import { AtomStore } from "./AtomStoreMaster";
 import { JTDBaseType, ModuleStateDeserializer, ModuleStateSerializer } from "./Module";
 import { ModuleInstance } from "./ModuleInstance";
 import { StateBaseType, StateStore } from "./StateStore";
 import { InterfaceBaseType } from "./UniDirectionalSettingsToViewInterface";
-import { JTDDataType } from "ajv/dist/core";
-import Ajv from "ajv";
-import { AtomStore } from "./AtomStoreMaster";
 
 export class ModuleStatePersistor<
     TStateType extends StateBaseType,
@@ -21,7 +22,15 @@ export class ModuleStatePersistor<
     private _stateStoreAtom: PrimitiveAtom<TStateType>;
     private _persistanceAtom: Atom<JTDDataType<TSerializedStateDef>>;
 
-    constructor(moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>, stateStore: StateStore<TStateType>, atomStore: AtomStore, serializedStateDefinition: TSerializedStateDef, stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>, stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>, cachedDefaultState: TStateType) {
+    constructor(
+        moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>,
+        stateStore: StateStore<TStateType>,
+        atomStore: AtomStore,
+        serializedStateDefinition: TSerializedStateDef,
+        stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
+        stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>,
+        cachedDefaultState: TStateType
+    ) {
         this._moduleInstance = moduleInstance;
         this._serializedStateDefinition = serializedStateDefinition;
         this._stateSerializer = stateSerializer;
@@ -39,9 +48,11 @@ export class ModuleStatePersistor<
             return this._stateSerializer(getStateValue.bind(stateStore), get);
         });
 
-        atomStore.sub(this._persistanceAtom, () => {
-            this.persistState();
-        }).bind(this);
+        atomStore
+            .sub(this._persistanceAtom, () => {
+                this.persistState();
+            })
+            .bind(this);
     }
 
     private makeStateStoreAtomAndConnectToStateStore(cachedDefaultState: TStateType): PrimitiveAtom<TStateType> {
@@ -85,7 +96,11 @@ export class ModuleStatePersistor<
             return;
         }
 
-        this._stateDeserializer(persistedState, this._stateStore.setValue.bind(this._stateStore), this._atomStore.set.bind(this._atomStore));
+        this._stateDeserializer(
+            persistedState,
+            this._stateStore.setValue.bind(this._stateStore),
+            this._atomStore.set.bind(this._atomStore)
+        );
     }
 
     persistState() {
@@ -95,5 +110,17 @@ export class ModuleStatePersistor<
 
     removePersistedState() {
         localStorage.removeItem(`${this._moduleInstance.getId()}-state`);
+    }
+
+    getPersistedState(): JTDDataType<TSerializedStateDef> {
+        return this._atomStore.get(this._persistanceAtom);
+    }
+
+    applyPersistedState(state: JTDDataType<TSerializedStateDef>) {
+        this._stateDeserializer(
+            state,
+            this._stateStore.setValue.bind(this._stateStore),
+            this._atomStore.set.bind(this._atomStore)
+        );
     }
 }

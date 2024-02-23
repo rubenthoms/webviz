@@ -53,6 +53,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
             const unsubscribeFromTitleChange = props.moduleInstance.subscribeToTitleChange(handleTitleChange);
 
             return function handleUnmount() {
+                console.debug("header unmounted");
                 unsubscribeFromSyncSettingsChange();
                 unsubscribeFromTitleChange();
             };
@@ -61,11 +62,13 @@ export const Header: React.FC<HeaderProps> = (props) => {
     );
 
     function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        console.debug("Header pointer down");
         props.onPointerDown(e);
         setStatusMessagesVisible(false);
     }
 
     function handleDataChannelOriginPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        console.debug("Header pointer down");
         if (!dataChannelOriginRef.current) {
             return;
         }
@@ -82,6 +85,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
     }
 
     function handleReceiverPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        console.debug("Header pointer down");
         e.stopPropagation();
     }
 
@@ -90,6 +94,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
     }
 
     function handleStatusPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+        console.debug("Header pointer down");
         setStatusMessagesVisible(!statusMessagesVisible);
         e.stopPropagation();
     }
@@ -244,7 +249,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
             <span className="bg-slate-300 w-[1px] h-3/4 ml-2" />
             <CloneButton
                 moduleName={props.moduleInstance.getName()}
-                displayName={props.moduleInstance.getTitle()}
+                moduleInstanceId={props.moduleInstance.getId()}
                 guiMessageBroker={props.guiMessageBroker}
             />
             <span className="bg-slate-300 w-[1px] h-3/4 ml-2" />

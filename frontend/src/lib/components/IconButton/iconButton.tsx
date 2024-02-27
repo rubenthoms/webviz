@@ -8,7 +8,7 @@ import { BaseComponent } from "../BaseComponent";
 export type IconButtonProps = {
     children: React.ReactNode;
     size?: "small" | "medium" | "large";
-    color?: "primary" | "danger" | "success";
+    color?: "primary" | "danger" | "success" | "inherit";
 };
 
 export const IconButton = React.forwardRef(

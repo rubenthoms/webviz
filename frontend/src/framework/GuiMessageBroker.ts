@@ -36,6 +36,14 @@ export enum GuiEvent {
     DataChannelConnectionsChange = "dataChannelConnectionsChange",
     DataChannelNodeHover = "dataChannelNodeHover",
     DataChannelNodeUnhover = "dataChannelNodeUnhover",
+    DisplayMessageRequest = "displayMessageRequest",
+}
+
+export enum GuiDisplayMessageType {
+    Error = "error",
+    Warning = "warning",
+    Info = "info",
+    Success = "success",
 }
 
 export type GuiEventPayloads = {
@@ -67,6 +75,10 @@ export type GuiEventPayloads = {
     };
     [GuiEvent.DataChannelNodeHover]: {
         connectionAllowed: boolean;
+    };
+    [GuiEvent.DisplayMessageRequest]: {
+        type: GuiDisplayMessageType;
+        message: string;
     };
 };
 

@@ -1,9 +1,11 @@
 import React from "react";
 import Plot from "react-plotly.js";
 
+import { apiService } from "@framework/ApiService";
 import { ModuleFCProps } from "@framework/Module";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleType } from "@lib/utils/ColorScale";
+import { useQuery } from "@tanstack/react-query";
 
 import { PlotData } from "plotly.js";
 
@@ -410,6 +412,11 @@ export const View = (props: ModuleFCProps<State>) => {
     const divMidPoint = props.moduleContext.useStoreValue("divMidPoint");
 
     const ref = React.useRef<HTMLDivElement>(null);
+
+    const query = useQuery({
+        queryKey: ["test-500"],
+        queryFn: async () => apiService.default.test500(),
+    });
 
     const size = useElementSize(ref);
 

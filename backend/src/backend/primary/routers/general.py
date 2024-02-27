@@ -89,3 +89,7 @@ async def user_session_container(
 ) -> StreamingResponse:
     """Get information about user session container (note that one is started if not already running)."""
     return await proxy_to_user_session(request, authenticated_user)
+
+@router.get("/test-500")
+def test_500() -> None:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Test 500 error")

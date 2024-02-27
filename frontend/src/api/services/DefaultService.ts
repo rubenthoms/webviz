@@ -93,6 +93,17 @@ export class DefaultService {
         });
     }
     /**
+     * Test 500
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public test500(): CancelablePromise<any> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/test-500',
+        });
+    }
+    /**
      * Root
      * @returns string Successful Response
      * @throws ApiError

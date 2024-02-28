@@ -31,7 +31,10 @@ function formatStackLine(line: string): React.ReactNode {
     );
 }
 
-function formatStack(stack: string): React.ReactNode {
+function formatStack(stack: string | null | undefined): React.ReactNode {
+    if (!stack) {
+        return null;
+    }
     const lines = stack.split("\n");
 
     return (

@@ -16,9 +16,9 @@ export type SliderProps = {
 export const Slider = React.forwardRef((props: SliderProps, ref: React.ForwardedRef<HTMLDivElement>) => {
     const { valueLabelDisplay, value: propsValue, max, min, valueLabelFormat, orientation, track, ...rest } = props;
 
-    const [value, setValue] = React.useState<number | number[]>(propsValue ?? 0);
+    const [value, setValue] = React.useState<number | readonly number[]>(propsValue ?? 0);
     const [currentlyActiveThumb, setCurrentlyActiveThumb] = React.useState<number>(0);
-    const [prevValue, setPrevValue] = React.useState<number | number[]>(propsValue ?? 0);
+    const [prevValue, setPrevValue] = React.useState<number | readonly number[]>(propsValue ?? 0);
     const [valueLabelVisible, setValueLabelVisible] = React.useState<boolean>(false);
     const [valueLabelPosition, setValueLabelPosition] = React.useState<Point2D>({ x: 0, y: 0 });
 

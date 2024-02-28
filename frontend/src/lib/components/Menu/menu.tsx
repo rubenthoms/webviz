@@ -1,9 +1,9 @@
 import React from "react";
 
-import { Menu as MuiMenu, MenuProps as MuiMenuProps, PopperPlacementType } from "@mui/base";
+import { Menu as MuiMenu, MenuProps as MuiMenuProps, PopupPlacement } from "@mui/base";
 
 export type MenuProps = {
-    anchorOrigin?: PopperPlacementType;
+    anchorOrigin?: PopupPlacement;
 } & MuiMenuProps;
 
 export const Menu: React.FC<MenuProps> = (props) => {

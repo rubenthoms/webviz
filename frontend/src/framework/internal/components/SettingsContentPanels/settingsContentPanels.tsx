@@ -6,6 +6,7 @@ import { ResizablePanels } from "@lib/components/ResizablePanels";
 
 import { Content } from "../Content";
 import { LeftSettingsPanel } from "../LeftSettingsPanel";
+import { MessageStack } from "../MessageStack/messageStack";
 import { RightSettingsPanel } from "../RightSettingsPanel";
 
 export type SettingsContentPanelsProps = {
@@ -48,8 +49,9 @@ export const SettingsContentPanels: React.FC<SettingsContentPanelsProps> = (prop
             onSizesChange={handleResizablePanelsChange}
         >
             <LeftSettingsPanel workbench={props.workbench} />
-            <div className="flex flex-col flex-grow h-full">
+            <div className="flex flex-col flex-grow h-full relative">
                 <Content workbench={props.workbench} />
+                <MessageStack guiMessageBroker={props.workbench.getGuiMessageBroker()} />
             </div>
             <RightSettingsPanel workbench={props.workbench} />
         </ResizablePanels>

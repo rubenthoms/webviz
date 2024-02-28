@@ -78,7 +78,8 @@ export type GuiEventPayloads = {
     };
     [GuiEvent.DisplayMessageRequest]: {
         type: GuiDisplayMessageType;
-        message: string;
+        message: React.ReactNode;
+        displayDurationMs?: number;
     };
 };
 

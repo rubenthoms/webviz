@@ -3,12 +3,10 @@ import React from "react";
 import WebvizLogo from "@assets/webviz.svg";
 import { DrawerContent, GuiState } from "@framework/GuiMessageBroker";
 import { LayoutElement, Workbench } from "@framework/Workbench";
-import { MessageStack } from "@framework/internal/components/MessageStack/messageStack";
 import { LeftNavBar, RightNavBar } from "@framework/internal/components/NavBar";
 import { SettingsContentPanels } from "@framework/internal/components/SettingsContentPanels";
 import { ToggleDevToolsButton } from "@framework/internal/components/ToggleDevToolsButton";
 import { AuthState, useAuthProvider } from "@framework/internal/providers/AuthProvider";
-import { CustomQueryClientProvider } from "@framework/internal/providers/QueryClientProvider";
 import { Button } from "@lib/components/Button";
 import { WebvizSpinner } from "@lib/components/WebvizSpinner";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
@@ -53,18 +51,21 @@ function App(props: { workbench: Workbench }) {
     const queryClient = useQueryClient();
     const { authState } = useAuthProvider();
 
-    function initApp() {
-        if (!props.workbench.loadLayoutFromLocalStorage()) {
-            props.workbench.makeLayout(layout);
-        }
+    const initApp = React.useCallback(
+        function initApp() {
+            if (!props.workbench.loadLayoutFromLocalStorage()) {
+                props.workbench.makeLayout(layout);
+            }
 
-        if (props.workbench.getLayout().length === 0) {
-            props.workbench.getGuiMessageBroker().setState(GuiState.DrawerContent, DrawerContent.ModulesList);
-        } else {
-            props.workbench.getGuiMessageBroker().setState(GuiState.DrawerContent, DrawerContent.ModuleSettings);
-        }
-        setInitAppState(InitAppState.InitCompleted);
-    }
+            if (props.workbench.getLayout().length === 0) {
+                props.workbench.getGuiMessageBroker().setState(GuiState.DrawerContent, DrawerContent.ModulesList);
+            } else {
+                props.workbench.getGuiMessageBroker().setState(GuiState.DrawerContent, DrawerContent.ModuleSettings);
+            }
+            setInitAppState(InitAppState.InitCompleted);
+        },
+        [props.workbench]
+    );
 
     function signIn() {
         window.location.href = `/api/login?redirect_url_after_login=${btoa("/")}`;
@@ -93,7 +94,7 @@ function App(props: { workbench: Workbench }) {
                 props.workbench.resetModuleInstanceNumbers();
             };
         },
-        [authState, isMounted, queryClient]
+        [authState, isMounted, queryClient, initApp, props.workbench]
     );
 
     function makeStateMessages() {
@@ -158,7 +159,6 @@ function App(props: { workbench: Workbench }) {
                     "opacity-100": !isInitialisingApp,
                 })}
             >
-                <MessageStack guiMessageBroker={props.workbench.getGuiMessageBroker()} />
                 <LeftNavBar workbench={props.workbench} />
                 <SettingsContentPanels workbench={props.workbench} />
                 <RightNavBar workbench={props.workbench} />

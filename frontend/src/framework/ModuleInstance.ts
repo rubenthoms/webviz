@@ -206,11 +206,11 @@ export class ModuleInstance<
         return this._initialised;
     }
 
-    getViewFC(): ModuleView<TStateType, TInterfaceType> {
+    getViewFC(): ModuleView<TStateType, TInterfaceType, TSerializedStateDef> {
         return this._module.viewFC;
     }
 
-    getSettingsFC(): ModuleSettings<TStateType, TInterfaceType> {
+    getSettingsFC(): ModuleSettings<TStateType, TInterfaceType, TSerializedStateDef> {
         return this._module.settingsFC;
     }
 

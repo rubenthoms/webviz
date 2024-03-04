@@ -6,6 +6,9 @@ export const MODULE_SERIALIZED_STATE = {
         gradientType: {
             type: "string",
         },
+        option: {
+            type: "string",
+        },
     },
 } as const;
 

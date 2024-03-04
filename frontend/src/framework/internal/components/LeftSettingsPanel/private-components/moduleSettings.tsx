@@ -110,7 +110,10 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
                                         workbenchSession={props.workbench.getWorkbenchSession()}
                                         workbenchServices={props.workbench.getWorkbenchServices()}
                                         workbenchSettings={props.workbench.getWorkbenchSettings()}
-                                        initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                                        initialSettings={props.moduleInstance.getInitialSettings() ?? undefined}
+                                        persistedState={
+                                            props.moduleInstance.getStatePersistor().getPersistedState() ?? undefined
+                                        }
                                     />
                                 </HydrateQueryClientAtom>
                             </Provider>

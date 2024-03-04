@@ -1,20 +1,33 @@
 import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
+import { Button } from "@lib/components/Button";
 import { ColorGradient } from "@lib/components/ColorGradient/colorGradient";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { RadioGroup } from "@lib/components/RadioGroup";
+import { Select } from "@lib/components/Select";
 import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 
-import { gradientTypeAtom } from "./atoms";
+import { gradientTypeAtom, optionAtom, optionsDerivedAtom, optionsSimulatedAtom } from "./atoms";
+import { ModuleSerializedState } from "./persistence";
 import { State } from "./state";
 
-export const Settings = (props: ModuleSettingsProps<State>) => {
+export const Settings = (
+    props: ModuleSettingsProps<
+        State,
+        { baseStates: Record<string, never>; derivedStates: Record<string, never> },
+        ModuleSerializedState
+    >
+) => {
     const [type, setType] = props.settingsContext.useStoreState("type");
     const [gradientType, setGradientType] = useAtom(gradientTypeAtom);
+    const [userSelectedOption, setOption] = useAtom(optionAtom);
+    const option = useAtomValue(optionsDerivedAtom);
+    const [simulatedOptions, setSimulatedOptions] = useAtom(optionsSimulatedAtom);
     const [min, setMin] = props.settingsContext.useStoreState("min");
     const [max, setMax] = props.settingsContext.useStoreState("max");
     const [divMidPoint, setDivMidPoint] = props.settingsContext.useStoreState("divMidPoint");
@@ -27,6 +40,14 @@ export const Settings = (props: ModuleSettingsProps<State>) => {
         setGradientType(e.target.value as ColorScaleGradientType);
     }
 
+    function handleSelectChange(value: string[]) {
+        setOption(value[0]);
+    }
+
+    function changeSimulatedOptions() {
+        setSimulatedOptions(["option4", "option5"]);
+    }
+
     const colorScale =
         type === ColorScaleType.Continuous
             ? props.workbenchSettings.useContinuousColorScale({
@@ -35,6 +56,14 @@ export const Settings = (props: ModuleSettingsProps<State>) => {
             : props.workbenchSettings.useDiscreteColorScale({
                   gradientType,
               });
+
+    const optionsArr = simulatedOptions.map((option) => ({ value: option, label: option }));
+
+    let validPersistedValue = !(
+        props.persistedState !== undefined &&
+        userSelectedOption !== option &&
+        userSelectedOption === props.persistedState.option
+    );
 
     return (
         <div className="flex flex-col gap-4">
@@ -102,6 +131,20 @@ export const Settings = (props: ModuleSettingsProps<State>) => {
                     />
                 </Label>
             )}
+            {validPersistedValue ? "" : "Persisted value is not valid. Please select a valid option."}
+            <div
+                className={resolveClassNames({
+                    "outline outline-red-800": !validPersistedValue,
+                })}
+            >
+                <Select
+                    options={optionsArr}
+                    size={4}
+                    value={validPersistedValue ? [option] : []}
+                    onChange={handleSelectChange}
+                />
+            </div>
+            <Button onClick={changeSimulatedOptions}>Change simulated options</Button>
         </div>
     );
 };

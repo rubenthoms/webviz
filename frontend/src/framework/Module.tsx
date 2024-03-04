@@ -31,6 +31,7 @@ export type ModuleSettingsProps<
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
     initialSettings?: InitialSettings;
+    persistedState?: JTDDataType<TSerializedStateDef>;
 };
 
 export type ModuleViewProps<
@@ -46,6 +47,7 @@ export type ModuleViewProps<
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
     initialSettings?: InitialSettings;
+    persistedState?: JTDDataType<TSerializedStateDef>;
 };
 
 export type ModuleSettings<
@@ -53,16 +55,18 @@ export type ModuleSettings<
     TInterfaceType extends InterfaceBaseType = {
         baseStates: Record<string, never>;
         derivedStates: Record<string, never>;
-    }
-> = React.FC<ModuleSettingsProps<TTStateType, TInterfaceType>>;
+    },
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
+> = React.FC<ModuleSettingsProps<TTStateType, TInterfaceType, TSerializedStateDef>>;
 
 export type ModuleView<
     TTStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType = {
         baseStates: Record<string, never>;
         derivedStates: Record<string, never>;
-    }
-> = React.FC<ModuleViewProps<TTStateType, TInterfaceType>>;
+    },
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
+> = React.FC<ModuleViewProps<TTStateType, TInterfaceType, TSerializedStateDef>>;
 
 export type JTDBaseType = Record<string, unknown>;
 
@@ -109,8 +113,8 @@ export class Module<
 > {
     private _name: string;
     private _defaultTitle: string;
-    public viewFC: ModuleView<TStateType, TInterfaceType>;
-    public settingsFC: ModuleSettings<TStateType, TInterfaceType>;
+    public viewFC: ModuleView<TStateType, TInterfaceType, TSerializedStateDef>;
+    public settingsFC: ModuleSettings<TStateType, TInterfaceType, TSerializedStateDef>;
     protected _importState: ImportState;
     private _moduleInstances: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>[];
     private _defaultState: TStateType | null;

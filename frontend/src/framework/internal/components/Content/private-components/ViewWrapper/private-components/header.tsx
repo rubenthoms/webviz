@@ -10,9 +10,8 @@ import { CircularProgress } from "@lib/components/CircularProgress";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { createPortal } from "@lib/utils/createPortal";
 import { isDevMode } from "@lib/utils/devMode";
-import { pointRelativeToDomRect, pointSubtraction, pointerEventToPoint } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { Close, ContentCopy, Error, Input, Output, Warning } from "@mui/icons-material";
+import { Close, Error, Input, Output, Warning } from "@mui/icons-material";
 
 import { CloneButton } from "./cloneButton";
 
@@ -53,7 +52,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
             const unsubscribeFromTitleChange = props.moduleInstance.subscribeToTitleChange(handleTitleChange);
 
             return function handleUnmount() {
-                console.debug("header unmounted");
                 unsubscribeFromSyncSettingsChange();
                 unsubscribeFromTitleChange();
             };
@@ -62,13 +60,11 @@ export const Header: React.FC<HeaderProps> = (props) => {
     );
 
     function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        console.debug("Header pointer down");
         props.onPointerDown(e);
         setStatusMessagesVisible(false);
     }
 
     function handleDataChannelOriginPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        console.debug("Header pointer down");
         if (!dataChannelOriginRef.current) {
             return;
         }
@@ -85,7 +81,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
     }
 
     function handleReceiverPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        console.debug("Header pointer down");
         e.stopPropagation();
     }
 
@@ -94,7 +89,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
     }
 
     function handleStatusPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        console.debug("Header pointer down");
         setStatusMessagesVisible(!statusMessagesVisible);
         e.stopPropagation();
     }

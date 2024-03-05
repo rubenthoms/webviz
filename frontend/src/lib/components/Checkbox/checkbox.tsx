@@ -34,7 +34,7 @@ export const Checkbox: React.FC<CheckboxProps> = (props) => {
     );
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div className="flex gap-2 items-center">
                 <input
                     id={props.id ?? id.current}

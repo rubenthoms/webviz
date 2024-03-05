@@ -4,7 +4,6 @@ import { JTDDataType } from "ajv/dist/core";
 import { Atom, WritableAtom } from "jotai";
 import { cloneDeep } from "lodash";
 
-import { AtomStoreMaster } from "./AtomStoreMaster";
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
 import { SettingsContext, ViewContext } from "./ModuleContext";
@@ -17,6 +16,7 @@ import { Workbench } from "./Workbench";
 import { WorkbenchServices } from "./WorkbenchServices";
 import { WorkbenchSession } from "./WorkbenchSession";
 import { WorkbenchSettings } from "./WorkbenchSettings";
+import { PersistableAtomValue } from "./utils/atomUtils";
 
 export type ModuleSettingsProps<
     TTStateType extends StateBaseType,
@@ -31,7 +31,6 @@ export type ModuleSettingsProps<
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
     initialSettings?: InitialSettings;
-    persistedState?: JTDDataType<TSerializedStateDef>;
 };
 
 export type ModuleViewProps<
@@ -47,7 +46,6 @@ export type ModuleViewProps<
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
     initialSettings?: InitialSettings;
-    persistedState?: JTDDataType<TSerializedStateDef>;
 };
 
 export type ModuleSettings<
@@ -82,10 +80,10 @@ export type ModuleStateSerializer<TStateType extends StateBaseType, JTDType exte
 export type ModuleStateDeserializer<TStateType extends StateBaseType, JTDType extends JTDDataType<JTDBaseType>> = (
     data: JTDType,
     setStateValue: <T extends keyof TStateType>(key: T, value: TStateType[T]) => void,
-    setAtomValue: <Value_1, Args extends unknown[], Result>(
-        atom: WritableAtom<Value_1, Args, Result>,
-        ...args: Args
-    ) => Result
+    setAtomValue: <T>(
+        atom: WritableAtom<PersistableAtomValue<T>, [newValue: T | PersistableAtomValue<T>], void>,
+        value: T
+    ) => void
 ) => void;
 
 export enum ImportState {
@@ -168,7 +166,7 @@ export class Module<
 
         this._moduleInstances.forEach((instance) => {
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
-                instance.makeAndInitStatePersistor(
+                instance.makeAndInitStateStorageManager(
                     this._serializedStateDef,
                     this._stateSerializer,
                     this._stateDeserializer
@@ -216,6 +214,9 @@ export class Module<
     setDefaultState(defaultState: TStateType, options?: StateOptions<TStateType>): void {
         this._defaultState = defaultState;
         this._stateOptions = options;
+    }
+
+    initInstances(): void {
         this._moduleInstances.forEach((instance) => {
             this.initModuleInstance(instance);
         });
@@ -223,6 +224,9 @@ export class Module<
 
     setSettingsToViewInterfaceHydration(interfaceHydration: InterfaceHydration<TInterfaceType>): void {
         this._settingsToViewInterfaceHydration = interfaceHydration;
+        this._moduleInstances.forEach((instance) => {
+            this.initModuleInstance(instance);
+        });
     }
 
     getSyncableSettingKeys(): SyncSettingKey[] {
@@ -263,7 +267,7 @@ export class Module<
     }
 
     private initModuleInstance(instance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>) {
-        if (!instance.isInitialised()) {
+        if (!instance.isInitialised() && this._importState !== ImportState.NotImported) {
             if (this._defaultState) {
                 instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
             }
@@ -271,22 +275,22 @@ export class Module<
                 instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
             }
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
-                instance.makeAndInitStatePersistor(
+                instance.makeAndInitStateStorageManager(
                     this._serializedStateDef,
                     this._stateSerializer,
                     this._stateDeserializer
                 );
             }
+
+            instance.setIsInitialised();
         }
     }
 
     private maybeImportSelf(): void {
         if (this._importState !== ImportState.NotImported) {
-            if (this._defaultState && this._importState === ImportState.Imported) {
-                this._moduleInstances.forEach((instance) => {
-                    this.initModuleInstance(instance);
-                });
-            }
+            this._moduleInstances.forEach((instance) => {
+                this.initModuleInstance(instance);
+            });
             return;
         }
 

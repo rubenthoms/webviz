@@ -90,8 +90,10 @@ function App() {
             }
 
             return function handleUnmount() {
-                workbenchRef.clearLayout();
-                workbenchRef.resetModuleInstanceNumbers();
+                if (isMounted) {
+                    workbenchRef.clearLayout();
+                    workbenchRef.resetModuleInstanceNumbers();
+                }
             };
         },
         [authState, isMounted, queryClient]

@@ -283,7 +283,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
     };
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div style={{ width: props.width }} id={props.wrapperId}>
                 <Input
                     ref={inputRef}

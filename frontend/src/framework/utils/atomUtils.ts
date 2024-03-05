@@ -40,10 +40,9 @@ export function atomWithQueries<
     const atoms = atom((get) => {
         const options = get(optionsAtom);
 
-        const queries =
-            options.queries.map((option) => {
-                return atomWithQuery<TQueryFnData, TError, TData, TQueryData, TQueryKey>(option, getQueryClient);
-            });
+        const queries = options.queries.map((option) => {
+            return atomWithQuery<TQueryFnData, TError, TData, TQueryData, TQueryKey>(option, getQueryClient);
+        });
 
         return queries;
     });
@@ -56,5 +55,33 @@ export function atomWithQueries<
         }
 
         return results as TCombinedResult;
-    })
+    });
+}
+
+export type PersistableAtomValue<T> = {
+    state: T;
+    isPersistedState: boolean;
+};
+
+export function isPersistableAtomValue<T>(value: T | PersistableAtomValue<T>): value is PersistableAtomValue<T> {
+    return value && typeof value === "object" && "state" in value && "isPersistedState" in value;
+}
+
+export function persistableAtom<T>(initialValue: T) {
+    const stateHolderAtom = atom<PersistableAtomValue<T>>({ state: initialValue, isPersistedState: false });
+
+    return atom(
+        (get) => {
+            const stateHolder = get(stateHolderAtom);
+            return stateHolder;
+        },
+        (_, set, newValue: T | PersistableAtomValue<T>) => {
+            if (isPersistableAtomValue(newValue)) {
+                set(stateHolderAtom, newValue);
+                return;
+            }
+
+            set(stateHolderAtom, { state: newValue, isPersistedState: false });
+        }
+    );
 }

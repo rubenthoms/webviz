@@ -16,7 +16,7 @@ import {
     ModuleView,
 } from "./Module";
 import { ModuleContext } from "./ModuleContext";
-import { ModuleStatePersistor } from "./ModuleStatePersistor";
+import { ModuleStateStorageManager } from "./ModuleStateStorageManager";
 import { StateBaseType, StateOptions, StateStore } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 import {
@@ -73,7 +73,7 @@ export class ModuleInstance<
     private _channelManager: ChannelManager;
     private _workbench: Workbench;
     private _settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null;
-    private _moduleStatePersistor: ModuleStatePersistor<TStateType, TInterfaceType, TSerializedStateDef> | null;
+    private _moduleStatePersistor: ModuleStateStorageManager<TStateType, TInterfaceType, TSerializedStateDef> | null;
 
     constructor(options: ModuleInstanceOptions<TStateType, TInterfaceType, TSerializedStateDef>) {
         this._id = options.id;
@@ -135,12 +135,10 @@ export class ModuleInstance<
 
         this._stateStore = new StateStore<TStateType>(cloneDeep(defaultState), options);
         this._context = new ModuleContext<TStateType, TInterfaceType, TSerializedStateDef>(this, this._stateStore);
-
-        this._initialised = true;
         this.setModuleInstanceState(ModuleInstanceState.OK);
     }
 
-    makeAndInitStatePersistor(
+    makeAndInitStateStorageManager(
         serializedStateDefinition: TSerializedStateDef,
         stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
         stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>
@@ -149,7 +147,7 @@ export class ModuleInstance<
             throw `Module instance '${this._title}' does not have a state yet. Did you forget to init the module?`;
         }
 
-        this._moduleStatePersistor = new ModuleStatePersistor(
+        this._moduleStatePersistor = new ModuleStateStorageManager(
             this,
             this._stateStore,
             this.getAtomStore(),
@@ -162,7 +160,7 @@ export class ModuleInstance<
         this._moduleStatePersistor.maybeApplyPersistedState();
     }
 
-    getStatePersistor(): ModuleStatePersistor<TStateType, TInterfaceType, TSerializedStateDef> {
+    getStateStorageManager(): ModuleStateStorageManager<TStateType, TInterfaceType, TSerializedStateDef> {
         if (!this._moduleStatePersistor) {
             throw `Module instance '${this._title}' does not have a state persistor yet. Did you forget to init the module?`;
         }
@@ -200,6 +198,10 @@ export class ModuleInstance<
         return () => {
             this._syncedSettingsSubscribers.delete(cb);
         };
+    }
+
+    setIsInitialised(): void {
+        this._initialised = true;
     }
 
     isInitialised(): boolean {

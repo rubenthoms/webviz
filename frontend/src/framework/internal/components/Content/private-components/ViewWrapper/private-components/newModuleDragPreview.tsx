@@ -1,14 +1,7 @@
 import React from "react";
 
 import { GuiEvent, GuiEventPayloads, GuiMessageBroker } from "@framework/GuiMessageBroker";
-import {
-    MANHATTAN_LENGTH,
-    Point2D,
-    pointDistance,
-    pointRelativeToDomRect,
-    pointSubtraction,
-    pointerEventToPoint,
-} from "@lib/utils/geometry";
+import { MANHATTAN_LENGTH, Point2D, pointDistance, pointSubtraction, pointerEventToPoint } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 export type NewModuleDragPreviewProps = {
@@ -58,11 +51,18 @@ export const NewModuleDragPreview: React.FC<NewModuleDragPreviewProps> = (props)
                 }
             }
 
+            function handleKeyDown(e: KeyboardEvent) {
+                if (e.key === "Escape") {
+                    handlePointerUp();
+                }
+            }
+
             function addDraggingEventListeners() {
                 document.addEventListener("pointerup", handlePointerUp);
                 document.addEventListener("pointermove", handlePointerMove);
                 document.addEventListener("pointercancel", handlePointerUp);
                 document.addEventListener("blur", handlePointerUp);
+                document.addEventListener("keydown", handleKeyDown);
             }
 
             function removeDraggingEventListeners() {
@@ -70,6 +70,7 @@ export const NewModuleDragPreview: React.FC<NewModuleDragPreviewProps> = (props)
                 document.removeEventListener("pointermove", handlePointerMove);
                 document.removeEventListener("pointercancel", handlePointerUp);
                 document.removeEventListener("blur", handlePointerUp);
+                document.removeEventListener("keydown", handleKeyDown);
             }
 
             const unsubscribeFunc = props.guiMessageBroker.subscribeToEvent(

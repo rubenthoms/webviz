@@ -24,8 +24,6 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
         ModuleInstanceState.INITIALIZING
     );
 
-    const atomStore = props.moduleInstance.getAtomStore();
-
     React.useEffect(
         function handleMount() {
             setModuleInstanceState(props.moduleInstance.getModuleInstanceState());
@@ -122,6 +120,8 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
     }
 
     const View = props.moduleInstance.getViewFC();
+    const atomStore = props.moduleInstance.getAtomStore();
+
     return (
         <ErrorBoundary moduleInstance={props.moduleInstance}>
             <div className="p-2 h-full w-full">
@@ -139,9 +139,6 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
                                 workbenchServices={props.workbench.getWorkbenchServices()}
                                 workbenchSettings={props.workbench.getWorkbenchSettings()}
                                 initialSettings={props.moduleInstance.getInitialSettings() ?? undefined}
-                                persistedState={
-                                    props.moduleInstance.getStatePersistor().getPersistedState() ?? undefined
-                                }
                             />
                         </HydrateQueryClientAtom>
                     </Provider>

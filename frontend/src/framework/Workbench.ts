@@ -180,8 +180,8 @@ export class Workbench {
             throw new Error(`Module instance with id '${clonedModuleInstanceId}' not found`);
         }
 
-        const clonedInstanceStatePersistor = clonedModuleInstance.getStatePersistor();
-        const cloneStatePersistor = moduleInstance.getStatePersistor();
+        const clonedInstanceStatePersistor = clonedModuleInstance.getStateStorageManager();
+        const cloneStatePersistor = moduleInstance.getStateStorageManager();
 
         const clonedState = clonedInstanceStatePersistor.getPersistedState();
         cloneStatePersistor.applyPersistedState(clonedState);

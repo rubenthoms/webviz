@@ -1,7 +1,7 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 
-import { gradientTypeAtom, optionAtom } from "./atoms";
+import { fixedUpOptionAtom, gradientTypeAtom, userSelectedOptionAtom } from "./atoms";
 import { ModuleSerializedState } from "./persistence";
 import { Settings } from "./settings";
 import { State } from "./state";
@@ -25,15 +25,16 @@ module.settingsFC = Settings;
 
 module.registerStateSerializerAndDeserializer(
     (getStateValue, getAtomValue) => {
+        const userSelectedOption = getAtomValue(userSelectedOptionAtom);
         return {
             type: getStateValue("type"),
-            gradientType: getAtomValue(gradientTypeAtom),
-            option: getAtomValue(optionAtom),
+            gradientType: getAtomValue(gradientTypeAtom).state,
+            option: userSelectedOption.isPersistedState ? userSelectedOption.state : getAtomValue(fixedUpOptionAtom),
         };
     },
     (data, setStateValue, setAtomValue) => {
         setStateValue("type", data.type as ColorScaleType);
         setAtomValue(gradientTypeAtom, data.gradientType as ColorScaleGradientType);
-        setAtomValue(optionAtom, data.option as string);
+        setAtomValue(userSelectedOptionAtom, data.option as string);
     }
 );

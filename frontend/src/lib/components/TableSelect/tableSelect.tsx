@@ -233,7 +233,7 @@ export const TableSelect = withDefaults<TableSelectProps>()(defaultProps, (props
     }
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div
                 id={props.wrapperId}
                 className={resolveClassNames("relative", {

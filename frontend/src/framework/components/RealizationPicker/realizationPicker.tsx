@@ -410,7 +410,7 @@ export const RealizationPicker: React.FC<RealizationPickerProps> = (props) => {
     const numSelectedRealizations = calcUniqueSelections(selections, props.validRealizations).length;
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div className="relative border border-gray-300 rounded p-2 pr-6 min-h-[3rem]">
                 <ul className="flex flex-wrap items-center cursor-text gap-1 h-full" onPointerDown={handlePointerDown}>
                     {selections.map((selection) => (

@@ -8,11 +8,10 @@ import { Label } from "@lib/components/Label";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select } from "@lib/components/Select";
 import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
-import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { useAtom, useAtomValue } from "jotai";
 
-import { gradientTypeAtom, optionAtom, optionsDerivedAtom, optionsSimulatedAtom } from "./atoms";
+import { availableOptionsAtom, fixedUpOptionAtom, gradientTypeAtom, userSelectedOptionAtom } from "./atoms";
 import { ModuleSerializedState } from "./persistence";
 import { State } from "./state";
 
@@ -25,9 +24,9 @@ export const Settings = (
 ) => {
     const [type, setType] = props.settingsContext.useStoreState("type");
     const [gradientType, setGradientType] = useAtom(gradientTypeAtom);
-    const [userSelectedOption, setOption] = useAtom(optionAtom);
-    const option = useAtomValue(optionsDerivedAtom);
-    const [simulatedOptions, setSimulatedOptions] = useAtom(optionsSimulatedAtom);
+    const [userSelectedOption, setOption] = useAtom(userSelectedOptionAtom);
+    const option = useAtomValue(fixedUpOptionAtom);
+    const [simulatedOptions, setSimulatedOptions] = useAtom(availableOptionsAtom);
     const [min, setMin] = props.settingsContext.useStoreState("min");
     const [max, setMax] = props.settingsContext.useStoreState("max");
     const [divMidPoint, setDivMidPoint] = props.settingsContext.useStoreState("divMidPoint");
@@ -48,22 +47,23 @@ export const Settings = (
         setSimulatedOptions(["option4", "option5"]);
     }
 
+    function resetSimulatedOptions() {
+        setSimulatedOptions(["option1", "option2", "option3"]);
+    }
+
     const colorScale =
         type === ColorScaleType.Continuous
             ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType,
+                  gradientType: gradientType.state,
               })
             : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType,
+                  gradientType: gradientType.state,
               });
 
     const optionsArr = simulatedOptions.map((option) => ({ value: option, label: option }));
 
-    let validPersistedValue = !(
-        props.persistedState !== undefined &&
-        userSelectedOption !== option &&
-        userSelectedOption === props.persistedState.option
-    );
+    const invalidPersistedValue =
+        userSelectedOption.isPersistedState && option !== userSelectedOption.state && simulatedOptions.length > 0;
 
     return (
         <div className="flex flex-col gap-4">
@@ -99,7 +99,7 @@ export const Settings = (
             </Label>
             <Label text="Gradient type">
                 <RadioGroup
-                    value={gradientType}
+                    value={gradientType.state}
                     onChange={handleGradientTypeChange}
                     options={[
                         {
@@ -120,7 +120,7 @@ export const Settings = (
             <Label text="Max">
                 <Input type="number" value={max} onChange={(e) => setMax(parseFloat(e.target.value))} />
             </Label>
-            {gradientType === ColorScaleGradientType.Diverging && (
+            {gradientType.state === ColorScaleGradientType.Diverging && (
                 <Label text="Midpoint">
                     <Input
                         type="number"
@@ -131,20 +131,16 @@ export const Settings = (
                     />
                 </Label>
             )}
-            {validPersistedValue ? "" : "Persisted value is not valid. Please select a valid option."}
-            <div
-                className={resolveClassNames({
-                    "outline outline-red-800": !validPersistedValue,
-                })}
-            >
-                <Select
-                    options={optionsArr}
-                    size={4}
-                    value={validPersistedValue ? [option] : []}
-                    onChange={handleSelectChange}
-                />
-            </div>
+            <Select
+                options={optionsArr}
+                size={4}
+                value={invalidPersistedValue ? [] : [option]}
+                onChange={handleSelectChange}
+                invalid={invalidPersistedValue}
+                invalidMessage="Persisted value is not valid. Please select a valid option."
+            />
             <Button onClick={changeSimulatedOptions}>Change simulated options</Button>
+            <Button onClick={resetSimulatedOptions}>Reset simulated options</Button>
         </div>
     );
 };

@@ -34,7 +34,7 @@ export class ModuleRegistry {
     private static _moduleNotFoundPlaceholders: Record<string, Module<any, any, any>> = {};
 
     /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-    private constructor() { }
+    private constructor() {}
 
     static registerModule<
         TStateType extends StateBaseType,
@@ -79,6 +79,7 @@ export class ModuleRegistry {
             if (interfaceHydration) {
                 module.setSettingsToViewInterfaceHydration(interfaceHydration);
             }
+            module.initInstances();
             return module as Module<TStateType, TInterfaceType, TSerializedStateDef>;
         }
         throw new ModuleNotFoundError(moduleName);

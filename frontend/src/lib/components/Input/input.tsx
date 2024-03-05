@@ -3,13 +3,13 @@ import React from "react";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Input as InputUnstyled, InputProps as InputUnstyledProps } from "@mui/base";
 
-import { BaseComponent } from "../BaseComponent";
+import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 
 export type InputProps = InputUnstyledProps & {
     wrapperStyle?: React.CSSProperties;
     min?: number;
     max?: number;
-};
+} & BaseComponentProps;
 
 export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRef<HTMLInputElement>) => {
     const { startAdornment, endAdornment, wrapperStyle, value: propsValue, onChange, ...other } = props;
@@ -64,7 +64,7 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
     );
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div
                 ref={ref}
                 className={resolveClassNames(

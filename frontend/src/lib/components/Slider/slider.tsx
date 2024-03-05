@@ -6,12 +6,13 @@ import { Point2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Slider as SliderUnstyled, SliderProps as SliderUnstyledProps } from "@mui/base";
 
-import { BaseComponent } from "../BaseComponent";
+import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 
 export type SliderProps = {
     valueLabelDisplay?: "auto" | "off";
     valueLabelFormat?: string | ((value: number) => React.ReactNode);
-} & Omit<SliderUnstyledProps, "valueLabelFormat">;
+} & Omit<SliderUnstyledProps, "valueLabelFormat"> &
+    BaseComponentProps;
 
 export const Slider = React.forwardRef((props: SliderProps, ref: React.ForwardedRef<HTMLDivElement>) => {
     const { valueLabelDisplay, value: propsValue, max, min, valueLabelFormat, orientation, track, ...rest } = props;
@@ -166,7 +167,7 @@ export const Slider = React.forwardRef((props: SliderProps, ref: React.Forwarded
     }
 
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div ref={divRef} className="mt-2 mb-2 flex justify-center">
                 <SliderUnstyled
                     {...rest}

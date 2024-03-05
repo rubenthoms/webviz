@@ -26,7 +26,6 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
     const [moduleInstanceState, setModuleInstanceState] = React.useState<ModuleInstanceState>(
         ModuleInstanceState.INITIALIZING
     );
-    const atomStore = props.moduleInstance.getAtomStore();
 
     React.useEffect(() => {
         setModuleInstanceState(props.moduleInstance.getModuleInstanceState());
@@ -76,6 +75,8 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
     }
 
     const Settings = props.moduleInstance.getSettingsFC();
+    const atomStore = props.moduleInstance.getAtomStore();
+
     return (
         <div
             key={props.moduleInstance.getId()}
@@ -111,9 +112,6 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
                                         workbenchServices={props.workbench.getWorkbenchServices()}
                                         workbenchSettings={props.workbench.getWorkbenchSettings()}
                                         initialSettings={props.moduleInstance.getInitialSettings() ?? undefined}
-                                        persistedState={
-                                            props.moduleInstance.getStatePersistor().getPersistedState() ?? undefined
-                                        }
                                     />
                                 </HydrateQueryClientAtom>
                             </Provider>

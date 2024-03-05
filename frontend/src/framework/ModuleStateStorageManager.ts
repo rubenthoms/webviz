@@ -1,14 +1,15 @@
 import Ajv from "ajv";
 import { JTDDataType } from "ajv/dist/core";
-import { Atom, PrimitiveAtom, atom } from "jotai";
+import { Atom, PrimitiveAtom, WritableAtom, atom } from "jotai";
 
 import { AtomStore } from "./AtomStoreMaster";
 import { JTDBaseType, ModuleStateDeserializer, ModuleStateSerializer } from "./Module";
 import { ModuleInstance } from "./ModuleInstance";
 import { StateBaseType, StateStore } from "./StateStore";
 import { InterfaceBaseType } from "./UniDirectionalSettingsToViewInterface";
+import { PersistableAtomValue, isPersistableAtomValue } from "./utils/atomUtils";
 
-export class ModuleStatePersistor<
+export class ModuleStateStorageManager<
     TStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
     TSerializedStateDef extends JTDBaseType
@@ -45,6 +46,17 @@ export class ModuleStatePersistor<
             const getStateValue = <T extends keyof TStateType>(key: T): TStateType[T] => {
                 return stateStore[key];
             };
+
+            /*
+            const getAtomValue = <T>(atom: Atom<T | PersistableAtomValue<T>>): T => {
+                const value = get(atom);
+                if (isPersistableAtomValue(value)) {
+                    return value.state;
+                }
+                return value;
+            };
+            */
+
             return this._stateSerializer(getStateValue.bind(stateStore), get);
         });
 
@@ -96,11 +108,7 @@ export class ModuleStatePersistor<
             return;
         }
 
-        this._stateDeserializer(
-            persistedState,
-            this._stateStore.setValue.bind(this._stateStore),
-            this._atomStore.set.bind(this._atomStore)
-        );
+        this.applyPersistedState(persistedState);
     }
 
     persistState() {
@@ -117,10 +125,19 @@ export class ModuleStatePersistor<
     }
 
     applyPersistedState(state: JTDDataType<TSerializedStateDef>) {
-        this._stateDeserializer(
-            state,
-            this._stateStore.setValue.bind(this._stateStore),
-            this._atomStore.set.bind(this._atomStore)
-        );
+        const atomStore = this._atomStore;
+
+        function setAtomStoreState<T>(
+            atom: WritableAtom<PersistableAtomValue<T>, [newValue: T | PersistableAtomValue<T>], void>,
+            value: T
+        ) {
+            const valueWithPersistedFlag: PersistableAtomValue<T> = {
+                state: value,
+                isPersistedState: true,
+            };
+            return atomStore.set(atom, valueWithPersistedFlag);
+        }
+
+        this._stateDeserializer(state, this._stateStore.setValue.bind(this._stateStore), setAtomStoreState);
     }
 }

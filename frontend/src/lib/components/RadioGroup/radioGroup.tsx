@@ -17,7 +17,7 @@ export type RadioProps<T extends string | number> = {
 
 export function Radio<T extends string | number>(props: RadioProps<T>): JSX.Element {
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <label className="relative inline-flex align-middle gap-2 items-center group">
                 <span
                     className={resolveClassNames(
@@ -75,7 +75,7 @@ export type RadioGroupProps<T extends string | number> = {
 export function RadioGroup<T extends string | number>(props: RadioGroupProps<T>): JSX.Element {
     const name = React.useRef<string>(props.name || v4());
     return (
-        <BaseComponent disabled={props.disabled}>
+        <BaseComponent disabled={props.disabled} invalid={props.invalid} invalidMessage={props.invalidMessage}>
             <div
                 className={resolveClassNames({
                     "opacity-30 pointer-events-none": props.disabled === true,

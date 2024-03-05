@@ -1,32 +1,8 @@
 import React from "react";
 
 import { GuiEvent, GuiMessageBroker } from "@framework/GuiMessageBroker";
-import {
-    MANHATTAN_LENGTH,
-    Point2D,
-    Size2D,
-    pointDistance,
-    pointRelativeToDomRect,
-    pointSubtraction,
-    pointerEventToPoint,
-} from "@lib/utils/geometry";
-import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { pointerEventToPoint } from "@lib/utils/geometry";
 import { ContentCopy } from "@mui/icons-material";
-
-const makeStyle = (isDragged: boolean, dragPosition: Point2D): React.CSSProperties => {
-    if (isDragged) {
-        return {
-            left: dragPosition.x,
-            top: dragPosition.y,
-            zIndex: 100,
-            opacity: 0.5,
-        };
-    }
-    return {
-        zIndex: 0,
-        opacity: 1,
-    };
-};
 
 export type CloneButtonProps = {
     moduleInstanceId: string;

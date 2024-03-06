@@ -118,10 +118,31 @@ export class Workbench {
         return this._perModuleRunningInstanceNumber[moduleName];
     }
 
+    private setModuleInstanceNumber(moduleName: string, moduleInstanceId: string): void {
+        const regExp = new RegExp(`^${moduleName}-(\\d+)$`);
+        const match = moduleInstanceId.match(regExp);
+        if (!match) {
+            throw new Error(`Module instance id ${moduleInstanceId} does not match expected format`);
+        }
+        const instanceNumber = parseInt(match[1]);
+        if (moduleName in this._perModuleRunningInstanceNumber) {
+            this._perModuleRunningInstanceNumber[moduleName] = Math.max(
+                this._perModuleRunningInstanceNumber[moduleName],
+                instanceNumber - 1
+            );
+        } else {
+            this._perModuleRunningInstanceNumber[moduleName] = instanceNumber - 1;
+        }
+    }
+
     makeLayout(layout: LayoutElement[]): void {
         this._moduleInstances = [];
         this.setLayout(layout);
         layout.forEach((element, index: number) => {
+            if (element.moduleInstanceId) {
+                this.setModuleInstanceNumber(element.moduleName, element.moduleInstanceId);
+            }
+
             const module = ModuleRegistry.getModule(element.moduleName);
             if (!module) {
                 throw new Error(`Module ${element.moduleName} not found`);
@@ -213,11 +234,7 @@ export class Workbench {
 
     setLayout(layout: LayoutElement[]): void {
         this._layout = layout;
-
-        const modifiedLayout = layout.map((el) => {
-            return { ...el, moduleInstanceId: undefined };
-        });
-        localStorage.setItem("layout", JSON.stringify(modifiedLayout));
+        localStorage.setItem("layout", JSON.stringify(layout));
     }
 
     maybeMakeFirstModuleInstanceActive(): void {

@@ -98,3 +98,15 @@ export const selectedRealizationsAreValidAtom = atom((get) => {
 
     return userSelectedRealizations.isPersistedValue && !isEqual(userSelectedRealizations.value, selectedRealizations);
 });
+
+export const selectedPvtNumsAreValidAtom = atom((get) => {
+    const userSelectedPvtNums = get(userSelectedPvtNumsAtom);
+    const selectedPvtNums = get(selectedPvtNumsAtom);
+    const pvtDataQueries = get(pvtDataQueriesAtom);
+
+    return (
+        !pvtDataQueries.isFetching &&
+        userSelectedPvtNums.isPersistedValue &&
+        !isEqual(userSelectedPvtNums.value, selectedPvtNums)
+    );
+});

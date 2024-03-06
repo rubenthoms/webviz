@@ -11,7 +11,6 @@ import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 
 import { useAtom, useAtomValue } from "jotai";
-import { isEqual } from "lodash";
 
 import {
     userSelectedEnsembleIdentsAtom,
@@ -20,8 +19,11 @@ import {
 } from "./atoms/baseAtoms";
 import {
     pvtDataAccessorAtom,
+    selectedEnsembleIdentsAreValidAtom,
     selectedEnsembleIdentsAtom,
+    selectedPvtNumsAreValidAtom,
     selectedPvtNumsAtom,
+    selectedRealizationsAreValidAtom,
     selectedRealizationsAtom,
 } from "./atoms/derivedAtoms";
 import { pvtDataQueriesAtom } from "./atoms/queryAtoms";
@@ -47,7 +49,7 @@ export function Settings({
     const selectedEnsembleIdents = useAtomValue(selectedEnsembleIdentsAtom);
     const [userSelectedEnsembleIdents, setSelectedEnsembleIdents] = useAtom(userSelectedEnsembleIdentsAtom);
     const selectedPvtNums = useAtomValue(selectedPvtNumsAtom);
-    const [, setSelectedPvtNums] = useAtom(userSelectedPvtNumsAtom);
+    const [userSelectedPvtNums, setSelectedPvtNums] = useAtom(userSelectedPvtNumsAtom);
     const pvtDataQueries = useAtomValue(pvtDataQueriesAtom);
     const pvtDataAccessor = useAtomValue(pvtDataAccessorAtom);
     const selectedRealizations = useAtomValue(selectedRealizationsAtom);
@@ -62,6 +64,10 @@ export function Settings({
         React.useState<EnsembleIdent[]>(selectedEnsembleIdents);
     const [selectedMultiRealizations, setSelectedMultiRealizations] = React.useState<number[]>(selectedRealizations);
     const [selectedMultiPvtNums, setSelectedMultiPvtNums] = React.useState<number[]>(selectedPvtNums);
+
+    const invalidEnsembleSelection = useAtomValue(selectedEnsembleIdentsAreValidAtom);
+    const invalidRealizationSelection = useAtomValue(selectedRealizationsAreValidAtom);
+    const invalidPvtNumSelection = useAtomValue(selectedPvtNumsAreValidAtom);
 
     function handleEnsembleSelectionChange(ensembleIdents: EnsembleIdent[]) {
         setSelectedEnsembleIdents(ensembleIdents);
@@ -83,13 +89,37 @@ export function Settings({
     function handleColorByChange(_: React.ChangeEvent<HTMLInputElement>, colorBy: ColorBy) {
         setSelectedColorBy(colorBy);
         if (colorBy === ColorBy.PVT_NUM) {
-            setSelectedEnsembleIdents([selectedMultiEnsembleIdents[0]]);
-            setSelectedRealizations([selectedMultiRealizations[0]]);
-            setSelectedPvtNums(selectedMultiPvtNums);
+            if (userSelectedEnsembleIdents.isPersistedValue) {
+                setSelectedEnsembleIdents([userSelectedEnsembleIdents.value[0]]);
+            } else {
+                setSelectedEnsembleIdents([selectedMultiEnsembleIdents[0]]);
+            }
+            if (userSelectedRealizations.isPersistedValue) {
+                setSelectedRealizations([userSelectedRealizations.value[0]]);
+            } else {
+                setSelectedRealizations([selectedMultiRealizations[0]]);
+            }
+            if (userSelectedPvtNums.isPersistedValue) {
+                setSelectedPvtNums([userSelectedPvtNums.value[0]]);
+            } else {
+                setSelectedPvtNums(selectedMultiPvtNums);
+            }
         } else {
-            setSelectedEnsembleIdents(selectedMultiEnsembleIdents);
-            setSelectedRealizations(selectedMultiRealizations);
-            setSelectedPvtNums([selectedMultiPvtNums[0]]);
+            if (userSelectedEnsembleIdents.isPersistedValue) {
+                setSelectedEnsembleIdents(userSelectedEnsembleIdents.value);
+            } else {
+                setSelectedEnsembleIdents(selectedMultiEnsembleIdents);
+            }
+            if (userSelectedRealizations.isPersistedValue) {
+                setSelectedRealizations(userSelectedRealizations.value);
+            } else {
+                setSelectedRealizations(selectedMultiRealizations);
+            }
+            if (userSelectedPvtNums.isPersistedValue) {
+                setSelectedPvtNums(userSelectedPvtNums.value);
+            } else {
+                setSelectedPvtNums([selectedMultiPvtNums[0]]);
+            }
         }
     }
 
@@ -111,13 +141,6 @@ export function Settings({
     if (pvtDataQueries.allQueriesFailed) {
         errorMessage = "Failed to fetch PVT data. Make sure the selected ensemble has PVT data.";
     }
-
-    const invalidEnsembleSelection =
-        userSelectedEnsembleIdents.isPersistedValue &&
-        !isEqual(userSelectedEnsembleIdents.value, selectedEnsembleIdents);
-
-    const invalidRealizationSelection =
-        userSelectedRealizations.isPersistedValue && !isEqual(userSelectedRealizations.value, selectedRealizations);
 
     let realizations: number[] = [];
     if (!invalidEnsembleSelection) {
@@ -162,10 +185,12 @@ export function Settings({
                 <CollapsibleGroup title="PVT Num" expanded>
                     <Select
                         options={makePvtNumOptions(pvtDataAccessor.getUniquePvtNums())}
-                        value={selectedPvtNums.map((el) => el.toString())}
+                        value={invalidPvtNumSelection ? [] : selectedPvtNums.map((el) => el.toString())}
                         onChange={handlePvtNumChange}
                         size={5}
                         multiple={selectedColorBy === ColorBy.PVT_NUM}
+                        invalid={invalidPvtNumSelection}
+                        invalidMessage="Persisted PVT num selection is no longer valid. Please select one or more valid PVT nums."
                     />
                 </CollapsibleGroup>
                 <CollapsibleGroup title="Phase" expanded>

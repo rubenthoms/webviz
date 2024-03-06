@@ -418,10 +418,10 @@ export const View = (props: ModuleViewProps<State>) => {
     const colorScale =
         type === ColorScaleType.Continuous
             ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType: gradientType.state,
+                  gradientType: gradientType.value,
               })
             : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType: gradientType.state,
+                  gradientType: gradientType.value,
               });
 
     colorScale.setRangeAndMidPoint(min, max, divMidPoint);

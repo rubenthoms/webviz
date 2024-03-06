@@ -28,8 +28,8 @@ module.registerStateSerializerAndDeserializer(
         const userSelectedOption = getAtomValue(userSelectedOptionAtom);
         return {
             type: getStateValue("type"),
-            gradientType: getAtomValue(gradientTypeAtom).state,
-            option: userSelectedOption.isPersistedState ? userSelectedOption.state : getAtomValue(fixedUpOptionAtom),
+            gradientType: getAtomValue(gradientTypeAtom).value,
+            option: userSelectedOption.isPersistedValue ? userSelectedOption.value : getAtomValue(fixedUpOptionAtom),
         };
     },
     (data, setStateValue, setAtomValue) => {

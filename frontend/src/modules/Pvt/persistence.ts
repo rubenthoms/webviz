@@ -1,33 +1,36 @@
+import { ColorBy, PhaseType, PressureDependentVariable } from "./typesAndEnums";
+
 export const MODULE_SERIALIZED_STATE = {
     properties: {
         colorBy: {
-            type: "string",
+            enum: [ColorBy.ENSEMBLE, ColorBy.PVT_NUM],
         },
         ensembleIdents: {
-            type: "array",
-            items: {
+            elements: {
                 type: "string",
             },
         },
         realizations: {
-            type: "array",
-            items: {
-                type: "number",
+            elements: {
+                type: "uint16",
             },
         },
         pvtNums: {
-            type: "array",
-            items: {
-                type: "number",
+            elements: {
+                type: "uint8",
             },
         },
         phase: {
-            type: "string",
+            enum: [PhaseType.OIL, PhaseType.GAS, PhaseType.WATER],
         },
-        plots: {
-            type: "array",
-            items: {
-                type: "string",
+        dependentVariables: {
+            elements: {
+                enum: [
+                    PressureDependentVariable.FORMATION_VOLUME_FACTOR,
+                    PressureDependentVariable.DENSITY,
+                    PressureDependentVariable.VISCOSITY,
+                    PressureDependentVariable.FLUID_RATIO,
+                ],
             },
         },
     },

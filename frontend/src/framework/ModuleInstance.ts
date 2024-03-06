@@ -140,8 +140,8 @@ export class ModuleInstance<
 
     makeAndInitStateStorageManager(
         serializedStateDefinition: TSerializedStateDef,
-        stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
-        stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>
+        stateSerializer: ModuleStateSerializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>,
+        stateDeserializer: ModuleStateDeserializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>
     ): void {
         if (this._stateStore === null || this._cachedDefaultState === null) {
             throw `Module instance '${this._title}' does not have a state yet. Did you forget to init the module?`;
@@ -151,6 +151,7 @@ export class ModuleInstance<
             this,
             this._stateStore,
             this.getAtomStore(),
+            this._settingsViewInterface,
             serializedStateDefinition,
             stateSerializer,
             stateDeserializer,

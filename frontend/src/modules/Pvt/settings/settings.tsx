@@ -11,6 +11,7 @@ import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 
 import { useAtom, useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 
 import {
     userSelectedEnsembleIdentsAtom,
@@ -44,13 +45,13 @@ export function Settings({
     const filterEnsembleRealizationsFunc = useEnsembleRealizationFilterFunc(workbenchSession);
 
     const selectedEnsembleIdents = useAtomValue(selectedEnsembleIdentsAtom);
-    const [, setSelectedEnsembleIdents] = useAtom(userSelectedEnsembleIdentsAtom);
+    const [userSelectedEnsembleIdents, setSelectedEnsembleIdents] = useAtom(userSelectedEnsembleIdentsAtom);
     const selectedPvtNums = useAtomValue(selectedPvtNumsAtom);
     const [, setSelectedPvtNums] = useAtom(userSelectedPvtNumsAtom);
     const pvtDataQueries = useAtomValue(pvtDataQueriesAtom);
     const pvtDataAccessor = useAtomValue(pvtDataAccessorAtom);
     const selectedRealizations = useAtomValue(selectedRealizationsAtom);
-    const [, setSelectedRealizations] = useAtom(userSelectedRealizationsAtom);
+    const [userSelectedRealizations, setSelectedRealizations] = useAtom(userSelectedRealizationsAtom);
 
     const [selectedPhase, setSelectedPhase] = settingsContext.useInterfaceState("selectedPhase");
     const [selectedColorBy, setSelectedColorBy] = settingsContext.useInterfaceState("selectedColorBy");
@@ -111,7 +112,17 @@ export function Settings({
         errorMessage = "Failed to fetch PVT data. Make sure the selected ensemble has PVT data.";
     }
 
-    const realizations = computeRealizationsIntersection(selectedEnsembleIdents, filterEnsembleRealizationsFunc);
+    const invalidEnsembleSelection =
+        userSelectedEnsembleIdents.isPersistedValue &&
+        !isEqual(userSelectedEnsembleIdents.value, selectedEnsembleIdents);
+
+    const invalidRealizationSelection =
+        userSelectedRealizations.isPersistedValue && !isEqual(userSelectedRealizations.value, selectedRealizations);
+
+    let realizations: number[] = [];
+    if (!invalidEnsembleSelection) {
+        realizations = computeRealizationsIntersection(selectedEnsembleIdents, filterEnsembleRealizationsFunc);
+    }
 
     return (
         <div className="flex flex-col gap-2">
@@ -129,18 +140,22 @@ export function Settings({
                 <MultiEnsembleSelect
                     ensembleSet={ensembleSet}
                     onChange={handleEnsembleSelectionChange}
-                    value={selectedEnsembleIdents}
+                    value={invalidEnsembleSelection ? [] : selectedEnsembleIdents}
                     size={5}
                     multiple={selectedColorBy === ColorBy.ENSEMBLE}
+                    invalid={invalidEnsembleSelection}
+                    invalidMessage="Persisted ensemble selection is no longer valid. Please select one or more valid ensembles."
                 />
             </CollapsibleGroup>
             <CollapsibleGroup title="Realizations" expanded>
                 <Select
                     options={makeRealizationOptions(realizations)}
-                    value={selectedRealizations.map((el) => el.toString())}
+                    value={invalidRealizationSelection ? [] : selectedRealizations.map((el) => el.toString())}
                     onChange={handleRealizationSelectionChange}
                     size={5}
                     multiple={selectedColorBy === ColorBy.ENSEMBLE}
+                    invalid={invalidRealizationSelection}
+                    invalidMessage="Persisted realization selection is no longer valid. Please select one or more valid realizations."
                 />
             </CollapsibleGroup>
             <PendingWrapper isPending={pvtDataQueries.isFetching} errorMessage={errorMessage}>

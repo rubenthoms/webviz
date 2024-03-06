@@ -10,21 +10,29 @@ export type BaseComponentProps = {
 };
 
 export const BaseComponent = React.forwardRef((props: BaseComponentProps, ref: React.ForwardedRef<HTMLDivElement>) => {
+    function maybeMakeInvalidMessage(): React.ReactNode {
+        if (props.invalidMessage === undefined || !props.invalid) {
+            return null;
+        }
+        return <span className="text-red-600 text-sm">{props.invalidMessage}</span>;
+    }
     return (
         <div
-            ref={ref}
-            className={resolveClassNames({
+            className={resolveClassNames("flex flex-col gap-2", {
                 "opacity-50": props.disabled,
                 "pointer-events-none": props.disabled,
                 "cursor-default": props.disabled,
-                "outline outline-red-600 relative": props.invalid,
-                "mb-4": props.invalidMessage !== undefined,
             })}
         >
-            {props.invalidMessage && props.invalid && (
-                <div className="absolute top-full mt-2 left-0 text-red-600 text-xs z-50">{props.invalidMessage}</div>
-            )}
-            {props.children}
+            <div
+                ref={ref}
+                className={resolveClassNames({
+                    "outline outline-red-600 relative": props.invalid,
+                })}
+            >
+                {props.children}
+            </div>
+            {maybeMakeInvalidMessage()}
         </div>
     );
 });

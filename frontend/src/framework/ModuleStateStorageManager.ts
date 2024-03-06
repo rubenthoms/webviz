@@ -6,8 +6,8 @@ import { AtomStore } from "./AtomStoreMaster";
 import { JTDBaseType, ModuleStateDeserializer, ModuleStateSerializer } from "./Module";
 import { ModuleInstance } from "./ModuleInstance";
 import { StateBaseType, StateStore } from "./StateStore";
-import { InterfaceBaseType } from "./UniDirectionalSettingsToViewInterface";
-import { PersistableAtomValue, isPersistableAtomValue } from "./utils/atomUtils";
+import { InterfaceBaseType, UniDirectionalSettingsToViewInterface } from "./UniDirectionalSettingsToViewInterface";
+import { PersistableAtomValue } from "./utils/atomUtils";
 
 export class ModuleStateStorageManager<
     TStateType extends StateBaseType,
@@ -17,9 +17,10 @@ export class ModuleStateStorageManager<
     private _moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>;
     private _stateStore: StateStore<TStateType>;
     private _atomStore: AtomStore;
+    private _settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null;
     private _serializedStateDefinition: TSerializedStateDef;
-    private _stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>;
-    private _stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>;
+    private _stateSerializer: ModuleStateSerializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>;
+    private _stateDeserializer: ModuleStateDeserializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>;
     private _stateStoreAtom: PrimitiveAtom<TStateType>;
     private _persistanceAtom: Atom<JTDDataType<TSerializedStateDef>>;
 
@@ -27,9 +28,10 @@ export class ModuleStateStorageManager<
         moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>,
         stateStore: StateStore<TStateType>,
         atomStore: AtomStore,
+        settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null,
         serializedStateDefinition: TSerializedStateDef,
-        stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
-        stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>,
+        stateSerializer: ModuleStateSerializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>,
+        stateDeserializer: ModuleStateDeserializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>,
         cachedDefaultState: TStateType
     ) {
         this._moduleInstance = moduleInstance;
@@ -38,6 +40,7 @@ export class ModuleStateStorageManager<
         this._stateDeserializer = stateDeserializer;
         this._stateStore = stateStore;
         this._atomStore = atomStore;
+        this._settingsViewInterface = settingsViewInterface;
 
         this._stateStoreAtom = this.makeStateStoreAtomAndConnectToStateStore(cachedDefaultState);
 
@@ -57,7 +60,20 @@ export class ModuleStateStorageManager<
             };
             */
 
-            return this._stateSerializer(getStateValue.bind(stateStore), get);
+            const getInterfaceValue = <T extends keyof TInterfaceType["baseStates"]>(
+                key: T
+            ): TInterfaceType["baseStates"][T] => {
+                if (this._settingsViewInterface === null) {
+                    throw new Error("Settings view interface not available");
+                }
+                return get(this._settingsViewInterface.getAtom(key));
+            };
+
+            return this._stateSerializer(
+                getStateValue.bind(stateStore),
+                get,
+                getInterfaceValue.bind(this._settingsViewInterface)
+            );
         });
 
         atomStore
@@ -91,7 +107,10 @@ export class ModuleStateStorageManager<
         }
 
         const parsedState = JSON.parse(persistedState);
-        const ajv = new Ajv();
+        const ajv = new Ajv({
+            // This is a standard keyword of JTD to define arrays, but it is not recognized by AJV - seems to be a bug
+            keywords: ["elements"],
+        });
 
         const validate = ajv.compile<TSerializedStateDef>(this._serializedStateDefinition);
         if (!validate(parsedState)) {
@@ -127,17 +146,33 @@ export class ModuleStateStorageManager<
     applyPersistedState(state: JTDDataType<TSerializedStateDef>) {
         const atomStore = this._atomStore;
 
-        function setAtomStoreState<T>(
+        function setAtomStoreValue<T>(
             atom: WritableAtom<PersistableAtomValue<T>, [newValue: T | PersistableAtomValue<T>], void>,
             value: T
         ) {
             const valueWithPersistedFlag: PersistableAtomValue<T> = {
-                state: value,
-                isPersistedState: true,
+                value: value,
+                isPersistedValue: true,
             };
             return atomStore.set(atom, valueWithPersistedFlag);
         }
 
-        this._stateDeserializer(state, this._stateStore.setValue.bind(this._stateStore), setAtomStoreState);
+        const setInterfaceValue = <T extends keyof TInterfaceType["baseStates"]>(
+            key: T,
+            value: TInterfaceType["baseStates"][T]
+        ) => {
+            if (this._settingsViewInterface === null) {
+                throw new Error("Settings view interface not available");
+            }
+            const atom = this._settingsViewInterface.getBaseAtom(key);
+            return atomStore.set(atom, value);
+        };
+
+        this._stateDeserializer(
+            state,
+            this._stateStore.setValue.bind(this._stateStore),
+            setAtomStoreValue,
+            setInterfaceValue
+        );
     }
 }

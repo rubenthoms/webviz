@@ -1,5 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { atomWithCompare } from "@framework/utils/atomUtils";
+import { persistableAtom } from "@framework/utils/atomUtils";
 
 import { isEqual } from "lodash";
 
@@ -15,6 +15,6 @@ function ensembleIdentsListsAreEqual(a: EnsembleIdent[], b: EnsembleIdent[]) {
     return true;
 }
 
-export const userSelectedEnsembleIdentsAtom = atomWithCompare<EnsembleIdent[]>([], ensembleIdentsListsAreEqual);
-export const userSelectedRealizationsAtom = atomWithCompare<number[]>([], isEqual);
-export const userSelectedPvtNumsAtom = atomWithCompare<number[]>([], isEqual);
+export const userSelectedEnsembleIdentsAtom = persistableAtom<EnsembleIdent[]>([], ensembleIdentsListsAreEqual);
+export const userSelectedRealizationsAtom = persistableAtom<number[]>([], isEqual);
+export const userSelectedPvtNumsAtom = persistableAtom<number[]>([], isEqual);

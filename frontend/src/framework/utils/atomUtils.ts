@@ -59,16 +59,27 @@ export function atomWithQueries<
 }
 
 export type PersistableAtomValue<T> = {
-    state: T;
-    isPersistedState: boolean;
+    value: T;
+    isPersistedValue: boolean;
 };
 
 export function isPersistableAtomValue<T>(value: T | PersistableAtomValue<T>): value is PersistableAtomValue<T> {
-    return value && typeof value === "object" && "state" in value && "isPersistedState" in value;
+    return value && typeof value === "object" && "value" in value && "isPersistedValue" in value;
 }
 
-export function persistableAtom<T>(initialValue: T) {
-    const stateHolderAtom = atom<PersistableAtomValue<T>>({ state: initialValue, isPersistedState: false });
+export function persistableAtom<T>(initialValue: T, areEqual?: (prev: T, next: T) => boolean) {
+    function adjustedAreEqual(prev: PersistableAtomValue<T>, next: PersistableAtomValue<T>) {
+        if (areEqual) {
+            return areEqual(prev.value, next.value);
+        }
+        // Used by Jotai by default
+        return Object.is(prev.value, next.value);
+    }
+
+    const stateHolderAtom = atomWithCompare<PersistableAtomValue<T>>(
+        { value: initialValue, isPersistedValue: false },
+        adjustedAreEqual
+    );
 
     return atom(
         (get) => {
@@ -81,7 +92,7 @@ export function persistableAtom<T>(initialValue: T) {
                 return;
             }
 
-            set(stateHolderAtom, { state: newValue, isPersistedState: false });
+            set(stateHolderAtom, { value: newValue, isPersistedValue: false });
         }
     );
 }

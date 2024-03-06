@@ -43,6 +43,9 @@ export function View({
     }
 
     function makeContent() {
+        if (pvtDataQueries.notStartedYet) {
+            return <ContentMessage type={ContentMessageType.INFO}>No data loaded yet.</ContentMessage>;
+        }
         if (pvtDataQueries.isFetching) {
             return (
                 <ContentMessage type={ContentMessageType.INFO}>

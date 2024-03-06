@@ -54,16 +54,16 @@ export const Settings = (
     const colorScale =
         type === ColorScaleType.Continuous
             ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType: gradientType.state,
+                  gradientType: gradientType.value,
               })
             : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType: gradientType.state,
+                  gradientType: gradientType.value,
               });
 
     const optionsArr = simulatedOptions.map((option) => ({ value: option, label: option }));
 
     const invalidPersistedValue =
-        userSelectedOption.isPersistedState && option !== userSelectedOption.state && simulatedOptions.length > 0;
+        userSelectedOption.isPersistedValue && option !== userSelectedOption.value && simulatedOptions.length > 0;
 
     return (
         <div className="flex flex-col gap-4">
@@ -99,7 +99,7 @@ export const Settings = (
             </Label>
             <Label text="Gradient type">
                 <RadioGroup
-                    value={gradientType.state}
+                    value={gradientType.value}
                     onChange={handleGradientTypeChange}
                     options={[
                         {
@@ -120,7 +120,7 @@ export const Settings = (
             <Label text="Max">
                 <Input type="number" value={max} onChange={(e) => setMax(parseFloat(e.target.value))} />
             </Label>
-            {gradientType.state === ColorScaleGradientType.Diverging && (
+            {gradientType.value === ColorScaleGradientType.Diverging && (
                 <Label text="Midpoint">
                     <Input
                         type="number"

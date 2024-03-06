@@ -48,4 +48,5 @@ export type CombinedPvtDataResult = {
     isFetching: boolean;
     someQueriesFailed: boolean;
     allQueriesFailed: boolean;
+    notStartedYet: boolean;
 };

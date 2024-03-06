@@ -72,17 +72,38 @@ export type MakeReadonly<T> = {
     readonly [P in keyof T]: T[P];
 };
 
-export type ModuleStateSerializer<TStateType extends StateBaseType, JTDType extends JTDDataType<JTDBaseType>> = (
+export type ModuleStateSerializer<
+    TStateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType = {
+        baseStates: Record<string, never>;
+        derivedStates: Record<string, never>;
+    },
+    JTDType extends JTDDataType<JTDBaseType> = Record<string, never>
+> = (
     getStateValue: <T extends keyof TStateType>(key: T) => TStateType[T],
-    getAtomValue: <T>(atom: Atom<T>) => T
+    getAtomValue: <T>(atom: Atom<T>) => T,
+    getInterfaceBaseStateValue: <T extends keyof TInterfaceType["baseStates"]>(
+        key: T
+    ) => TInterfaceType["baseStates"][T]
 ) => JTDType;
 
-export type ModuleStateDeserializer<TStateType extends StateBaseType, JTDType extends JTDDataType<JTDBaseType>> = (
+export type ModuleStateDeserializer<
+    TStateType extends StateBaseType,
+    TInterfaceType extends InterfaceBaseType = {
+        baseStates: Record<string, never>;
+        derivedStates: Record<string, never>;
+    },
+    JTDType extends JTDDataType<JTDBaseType> = Record<string, never>
+> = (
     data: JTDType,
     setStateValue: <T extends keyof TStateType>(key: T, value: TStateType[T]) => void,
     setAtomValue: <T>(
         atom: WritableAtom<PersistableAtomValue<T>, [newValue: T | PersistableAtomValue<T>], void>,
         value: T
+    ) => void,
+    setInterfaceBaseStateValue: <T extends keyof TInterfaceType["baseStates"]>(
+        key: T,
+        value: TInterfaceType["baseStates"][T]
     ) => void
 ) => void;
 
@@ -125,8 +146,16 @@ export class Module<
     private _channelDefinitions: ChannelDefinition[] | null;
     private _channelReceiverDefinitions: ChannelReceiverDefinition[] | null;
     private _serializedStateDef: TSerializedStateDef | null;
-    private _stateSerializer: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>> | null;
-    private _stateDeserializer: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>> | null;
+    private _stateSerializer: ModuleStateSerializer<
+        TStateType,
+        TInterfaceType,
+        JTDDataType<TSerializedStateDef>
+    > | null;
+    private _stateDeserializer: ModuleStateDeserializer<
+        TStateType,
+        TInterfaceType,
+        JTDDataType<TSerializedStateDef>
+    > | null;
 
     constructor(options: ModuleOptions<TSerializedStateDef>) {
         this._name = options.name;
@@ -158,8 +187,8 @@ export class Module<
     }
 
     registerStateSerializerAndDeserializer(
-        serializerFunc: ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>>,
-        deserializerFunc: ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>>
+        serializerFunc: ModuleStateSerializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>,
+        deserializerFunc: ModuleStateDeserializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>>
     ) {
         this._stateSerializer = serializerFunc;
         this._stateDeserializer = deserializerFunc;
@@ -179,11 +208,15 @@ export class Module<
         return this._serializedStateDef;
     }
 
-    getStateSerializer(): ModuleStateSerializer<TStateType, JTDDataType<TSerializedStateDef>> | null {
+    getStateSerializer(): ModuleStateSerializer<TStateType, TInterfaceType, JTDDataType<TSerializedStateDef>> | null {
         return this._stateSerializer;
     }
 
-    getStateDeserializer(): ModuleStateDeserializer<TStateType, JTDDataType<TSerializedStateDef>> | null {
+    getStateDeserializer(): ModuleStateDeserializer<
+        TStateType,
+        TInterfaceType,
+        JTDDataType<TSerializedStateDef>
+    > | null {
         return this._stateDeserializer;
     }
 
@@ -224,9 +257,6 @@ export class Module<
 
     setSettingsToViewInterfaceHydration(interfaceHydration: InterfaceHydration<TInterfaceType>): void {
         this._settingsToViewInterfaceHydration = interfaceHydration;
-        this._moduleInstances.forEach((instance) => {
-            this.initModuleInstance(instance);
-        });
     }
 
     getSyncableSettingKeys(): SyncSettingKey[] {

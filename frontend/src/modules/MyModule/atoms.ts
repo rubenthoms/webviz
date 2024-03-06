@@ -13,8 +13,8 @@ export const fixedUpOptionAtom = atom<string>((get) => {
     const userSelectedOptions = get(userSelectedOptionAtom);
     const availableOptions = get(availableOptionsAtom);
 
-    if (availableOptions.includes(userSelectedOptions.state)) {
-        return userSelectedOptions.state;
+    if (availableOptions.includes(userSelectedOptions.value)) {
+        return userSelectedOptions.value;
     }
 
     return availableOptions[0];

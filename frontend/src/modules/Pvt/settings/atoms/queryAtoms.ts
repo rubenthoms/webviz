@@ -4,7 +4,12 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
 import { UseQueryResult } from "@tanstack/react-query";
 
-import { selectedEnsembleIdentsAtom, selectedRealizationsAtom } from "./derivedAtoms";
+import {
+    selectedEnsembleIdentsAreValidAtom,
+    selectedEnsembleIdentsAtom,
+    selectedRealizationsAreValidAtom,
+    selectedRealizationsAtom,
+} from "./derivedAtoms";
 
 import { CombinedPvtDataResult } from "../../typesAndEnums";
 
@@ -14,6 +19,8 @@ const CACHE_TIME = 60 * 1000;
 export const pvtDataQueriesAtom = atomWithQueries((get) => {
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
     const selectedRealizations = get(selectedRealizationsAtom);
+    const selectedEnsembleIdentsAreValid = get(selectedEnsembleIdentsAreValidAtom);
+    const selectedRealizationsAreValid = get(selectedRealizationsAreValidAtom);
 
     const ensembleIdentsAndRealizations: { ensembleIdent: EnsembleIdent; realization: number }[] = [];
     for (const ensembleIdent of selectedEnsembleIdents) {
@@ -34,7 +41,9 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
-                enabled: !!(el.ensembleIdent && el.realization !== null),
+                enabled:
+                    !!(el.ensembleIdent && el.realization !== null) &&
+                    !(selectedEnsembleIdentsAreValid || selectedRealizationsAreValid),
             });
         })
         .flat();
@@ -51,6 +60,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
             isFetching: results.some((result) => result.isFetching),
             someQueriesFailed: results.some((result) => result.isError),
             allQueriesFailed: results.every((result) => result.isError),
+            notStartedYet: results.every((result) => result.fetchStatus === "idle"),
         };
     }
 

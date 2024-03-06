@@ -1,14 +1,12 @@
-import { JTDDataType } from "ajv/dist/core";
-
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
-import { JTDBaseType, MakeReadonly, Module, ModuleStateDeserializer, ModuleStateSerializer } from "./Module";
+import { JTDBaseType, MakeReadonly, Module } from "./Module";
 import { DrawPreviewFunc } from "./Preview";
 import { StateBaseType, StateOptions } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 import { InterfaceBaseType, InterfaceHydration } from "./UniDirectionalSettingsToViewInterface";
 import { ModuleNotFoundPlaceholder } from "./internal/ModuleNotFoundPlaceholder";
 
-export type RegisterModuleOptions<TState extends StateBaseType, TSerializedStateDef extends JTDBaseType> = {
+export type RegisterModuleOptions<TSerializedStateDef extends JTDBaseType> = {
     moduleName: string;
     defaultTitle: string;
     syncableSettingKeys?: SyncSettingKey[];
@@ -43,9 +41,7 @@ export class ModuleRegistry {
             derivedStates: Record<string, never>;
         },
         TSerializedStateDef extends JTDBaseType = Record<string, never>
-    >(
-        options: RegisterModuleOptions<TStateType, TSerializedStateDef>
-    ): Module<TStateType, TInterfaceType, TSerializedStateDef> {
+    >(options: RegisterModuleOptions<TSerializedStateDef>): Module<TStateType, TInterfaceType, TSerializedStateDef> {
         const module = new Module<TStateType, TInterfaceType, TSerializedStateDef>({
             name: options.moduleName,
             defaultTitle: options.defaultTitle,

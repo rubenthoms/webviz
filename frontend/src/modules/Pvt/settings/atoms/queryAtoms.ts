@@ -60,7 +60,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
             isFetching: results.some((result) => result.isFetching),
             someQueriesFailed: results.some((result) => result.isError),
             allQueriesFailed: results.every((result) => result.isError),
-            notStartedYet: results.every((result) => result.fetchStatus === "idle"),
+            notStartedYet: results.every((result) => result.fetchStatus === "idle" && result.data === undefined),
         };
     }
 

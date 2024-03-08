@@ -223,6 +223,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             const pixiRenderAppRefCurrent = pixiRenderAppRef.current;
             const pointerEventsCalculatorRefCurrent = pointerEventsCalculatorRef.current;
 
+            /*
             const element = esvControllerRefCurrent.overlay.create("focus_displacement", {
                 onMouseExit: (event) => {
                     const { target } = event;
@@ -282,6 +283,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 );
                 element.style.zIndex = "100";
             }
+            */
 
             function handlePointerUp() {
                 pointerDown = false;
@@ -301,14 +303,14 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
 
             function handlePointerMove() {
                 if (pointerDown) {
-                    element?.classList.replace("visible", "invisible");
+                    // element?.classList.replace("visible", "invisible");
                 }
             }
 
             const originalRescaleFunction = esvControllerRefCurrent.zoomPanHandler.onRescale;
 
             function handleRescale(event: OnRescaleEvent) {
-                element?.classList.replace("visible", "invisible");
+                // element?.classList.replace("visible", "invisible");
                 originalRescaleFunction(event);
             }
 

@@ -20,12 +20,6 @@ const exampleWellBorePath = [
 
 const ris = makeReferenceSystemFromTrajectoryXyzPoints(exampleWellBorePath);
 
-const wellborePathLayer = new WellborepathLayer("wellborepath", {
-    stroke: "red",
-    strokeWidth: "4px",
-    referenceSystem: ris,
-});
-
 export const View = (props: ModuleFCProps<State>) => {
     return (
         <div className="h-full w-full flex flex-col justify-center items-center">

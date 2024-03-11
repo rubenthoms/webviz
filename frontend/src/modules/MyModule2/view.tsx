@@ -18,6 +18,7 @@ import {
     transformFormationData,
 } from "@equinor/esv-intersection";
 import { ModuleFCProps } from "@framework/Module";
+import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { makeReferenceSystemFromTrajectoryXyzPoints } from "@modules/SeismicIntersection/utils/esvIntersectionDataConversion";
 import { EsvIntersection } from "@modules/_shared/components/EsvIntersection";
 import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection/esvIntersection";
@@ -58,6 +59,10 @@ export const View = (props: ModuleFCProps<State>) => {
     const picks = props.moduleContext.useStoreValue("picks");
     const axisLabels = props.moduleContext.useStoreValue("axisLabels");
     const polyLineIntersection = props.moduleContext.useStoreValue("polyLineIntersection");
+
+    const colorScale = props.workbenchSettings.useContinuousColorScale({
+        gradientType: ColorScaleGradientType.Sequential,
+    });
 
     const [layers, setLayers] = React.useState<LayerItem<any>[]>([]);
     const [ris, setRis] = React.useState<IntersectionReferenceSystem | null>(null);
@@ -285,6 +290,7 @@ export const View = (props: ModuleFCProps<State>) => {
                             type: LayerType.GRID_INTERSECTION,
                             options: {
                                 data: polylineIntersection,
+                                colorScale,
                             },
                         }
                     );

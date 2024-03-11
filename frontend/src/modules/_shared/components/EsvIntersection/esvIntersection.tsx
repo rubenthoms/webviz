@@ -34,7 +34,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { isEqual, set } from "lodash";
 
-import { GridIntersectionData, GridIntersectionLayer } from "./GridIntersectionLayer";
+import { GridIntersectionData, GridIntersectionLayer, GridIntersectionLayerOptions } from "./GridIntersectionLayer";
 import { PointerEventsCalculator } from "./PointerEventsCalculator";
 
 export enum LayerType {
@@ -68,7 +68,7 @@ type LayerOptionsMap = {
     [LayerType.GEOMODEL_CANVAS]: LayerOptions<SurfaceData>;
     [LayerType.GEOMODEL_LABELS]: GeomodelLayerLabelsOptions<SurfaceData>;
     [LayerType.GEOMODEL_V2]: LayerOptions<SurfaceData>;
-    [LayerType.GRID_INTERSECTION]: LayerOptions<GridIntersectionData>;
+    [LayerType.GRID_INTERSECTION]: GridIntersectionLayerOptions;
     [LayerType.IMAGE_CANVAS]: LayerOptions<unknown>;
     [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
     [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
@@ -126,7 +126,7 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
             return new GridIntersectionLayer(
                 pixiRenderApplication,
                 id,
-                options as LayerOptions<GridIntersectionData>
+                options as GridIntersectionLayerOptions
             ) as unknown as Layer<LayerDataTypeMap[T]>;
         case LayerType.IMAGE_CANVAS:
             return new ImageLayer(id, options as LayerOptions<unknown>) as unknown as Layer<LayerDataTypeMap[T]>;

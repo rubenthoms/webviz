@@ -1,8 +1,15 @@
-import { OnRescaleEvent, OnUpdateEvent, PixiLayer } from "@equinor/esv-intersection";
+import {
+    Layer,
+    LayerOptions,
+    OnRescaleEvent,
+    OnUpdateEvent,
+    PixiLayer,
+    PixiRenderApplication,
+} from "@equinor/esv-intersection";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { pointDistance } from "@lib/utils/geometry";
 
 import { Graphics } from "pixi.js";
-import { g } from "vitest/dist/suite-UrZdHRff";
 
 type FenceMeshSection = {
     verticesUzArr: Float64Array; // [u, z]
@@ -21,13 +28,24 @@ export type GridIntersectionData = {
     maxGridPropValue: number;
 };
 
+export type GridIntersectionLayerOptions = LayerOptions<GridIntersectionData> & {
+    colorScale: ColorScale;
+};
+
 export class GridIntersectionLayer extends PixiLayer<GridIntersectionData> {
-    private isPreRendered = false;
+    private _isPreRendered = false;
+    private _colorScale: ColorScale;
+
+    constructor(ctx: PixiRenderApplication, id: string, options: GridIntersectionLayerOptions) {
+        super(ctx, id, options);
+        this._colorScale = options.colorScale;
+        this._colorScale.setRange(options.data?.minGridPropValue ?? 0, options.data?.maxGridPropValue ?? 1000);
+    }
 
     override onRescale(event: OnRescaleEvent): void {
         super.onRescale(event);
 
-        if (!this.isPreRendered) {
+        if (!this._isPreRendered) {
             this.clearLayer();
             this.preRender();
         }
@@ -38,7 +56,9 @@ export class GridIntersectionLayer extends PixiLayer<GridIntersectionData> {
     override onUpdate(event: OnUpdateEvent<GridIntersectionData>): void {
         super.onUpdate(event);
 
-        this.isPreRendered = false;
+        this._colorScale.setRange(event.data?.minGridPropValue ?? 0, event.data?.maxGridPropValue ?? 1000);
+
+        this._isPreRendered = false;
         this.clearLayer();
         this.preRender();
         this.render();
@@ -66,14 +86,16 @@ export class GridIntersectionLayer extends PixiLayer<GridIntersectionData> {
         });
     }
 
-    createFenceMeshSection(offsetU: number, section: FenceMeshSection) {
+    createFenceMeshSection(offsetU: number, section: FenceMeshSection): void {
         const graphics = new Graphics();
 
-        graphics.lineStyle(1, 0x000000, 0.5);
-        graphics.beginFill(0x000000, 0.5);
-
         let idx = 0;
+        let polygonIndex = 0;
         while (idx < section.polysArr.length) {
+            const color = this._colorScale.getColorForValue(section.polyPropsArr[polygonIndex]);
+
+            graphics.lineStyle(1, color, 0.5);
+            graphics.beginFill(color, 0.5);
             const polySize = section.polysArr[idx];
             const polyVertices: number[] = [];
             for (let i = 0; i < polySize; i++) {
@@ -84,11 +106,11 @@ export class GridIntersectionLayer extends PixiLayer<GridIntersectionData> {
             }
 
             graphics.drawPolygon(polyVertices);
+            graphics.endFill();
 
             idx += polySize + 1;
+            polygonIndex++;
         }
-
-        graphics.endFill();
 
         this.addChild(graphics);
     }

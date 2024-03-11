@@ -62,19 +62,28 @@ export const getCementSqueezes = (): Promise<any[]> => {
 export const getPolyLineIntersection = (): Promise<GridIntersectionData> => {
     const adjustedPolylineIntersection = {
         fenceMeshSections: polylineIntersection.fence_mesh_sections.map((section: any) => {
+            const values: number[] = [];
+
+            let idx = 0;
+            while (idx < section.polys_arr.length) {
+                values.push(Math.random() * 1000);
+                idx += section.polys_arr[idx] + 1;
+            }
             return {
-                verticesUzArr: new Float64Array(section.vertices_uz_arr),
+                verticesUzArr: new Float64Array(
+                    section.vertices_uz_arr.map((el: number, i: number) => (i % 2 === 0 ? el : -el))
+                ),
                 polysArr: new Uint32Array(section.polys_arr),
                 polySourceCellIndicesArr: new Uint32Array(section.poly_source_cell_indices_arr),
-                polyPropsArr: new Float64Array(section.poly_props_arr),
+                polyPropsArr: Float64Array.from(values), // new Float64Array(section.poly_props_arr),
                 startUtmX: section.start_utm_x,
                 startUtmY: section.start_utm_y,
                 endUtmX: section.end_utm_x,
                 endUtmY: section.end_utm_y,
             };
         }),
-        minGridPropValue: polylineIntersection.min_grid_prop_value,
-        maxGridPropValue: polylineIntersection.max_grid_prop_value,
+        minGridPropValue: 0, // polylineIntersection.min_grid_prop_value,
+        maxGridPropValue: 1000, // polylineIntersection.max_grid_prop_value,
     };
     return Promise.resolve(adjustedPolylineIntersection);
 };

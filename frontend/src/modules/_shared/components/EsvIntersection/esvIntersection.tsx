@@ -1,17 +1,29 @@
 import React from "react";
 
 import {
+    Annotation,
     AxisOptions,
+    CalloutCanvasLayer,
+    CalloutOptions,
     Controller,
     GeomodelCanvasLayer,
     GeomodelLabelsLayer,
+    GeomodelLayerLabelsOptions,
     GeomodelLayerV2,
     GridLayer,
+    ImageLayer,
     IntersectionReferenceSystem,
     Layer,
     LayerOptions,
     OnRescaleEvent,
     PixiRenderApplication,
+    ReferenceLine,
+    ReferenceLineLayer,
+    SchematicData,
+    SchematicLayer,
+    SchematicLayerOptions,
+    SeismicCanvasData,
+    SeismicCanvasLayer,
     SurfaceData,
     WellborepathLayer,
     WellborepathLayerOptions,
@@ -20,32 +32,51 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
-import { isEqual } from "lodash";
+import { isEqual, set } from "lodash";
 
+import { GridIntersectionData, GridIntersectionLayer } from "./GridIntersectionLayer";
 import { PointerEventsCalculator } from "./PointerEventsCalculator";
 
 export enum LayerType {
+    CALLOUT_CANVAS = "callout-canvas",
     GEOMODEL_CANVAS = "geomodel-canvas",
-    GEOMODEL_V2 = "geomodel-v2",
-    WELLBORE_PATH = "wellborepath",
     GEOMODEL_LABELS = "geomodel-labels",
+    GEOMODEL_V2 = "geomodel-v2",
+    GRID_INTERSECTION = "grid-intersection",
+    IMAGE_CANVAS = "image-canvas",
+    REFERENCE_LINE = "reference-line",
+    SCHEMATIC = "schematic-layer",
+    SEISMIC_CANVAS = "seismic-canvas",
+    WELLBORE_PATH = "wellborepath",
 }
 
 type LayerDataTypeMap = {
+    [LayerType.CALLOUT_CANVAS]: Annotation[];
     [LayerType.GEOMODEL_CANVAS]: SurfaceData;
-    [LayerType.GEOMODEL_V2]: SurfaceData;
-    [LayerType.WELLBORE_PATH]: [number, number][];
     [LayerType.GEOMODEL_LABELS]: SurfaceData;
+    [LayerType.GEOMODEL_V2]: SurfaceData;
+    [LayerType.GRID_INTERSECTION]: GridIntersectionData;
+    [LayerType.IMAGE_CANVAS]: unknown;
+    [LayerType.REFERENCE_LINE]: ReferenceLine[];
+    [LayerType.SCHEMATIC]: SchematicData;
+    [LayerType.SEISMIC_CANVAS]: SeismicCanvasData;
+    [LayerType.WELLBORE_PATH]: [number, number][];
 };
 
 type LayerOptionsMap = {
+    [LayerType.CALLOUT_CANVAS]: CalloutOptions<Annotation[]>;
     [LayerType.GEOMODEL_CANVAS]: LayerOptions<SurfaceData>;
+    [LayerType.GEOMODEL_LABELS]: GeomodelLayerLabelsOptions<SurfaceData>;
     [LayerType.GEOMODEL_V2]: LayerOptions<SurfaceData>;
+    [LayerType.GRID_INTERSECTION]: LayerOptions<GridIntersectionData>;
+    [LayerType.IMAGE_CANVAS]: LayerOptions<unknown>;
+    [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
+    [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
+    [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData>;
     [LayerType.WELLBORE_PATH]: WellborepathLayerOptions<[number, number][]>;
-    [LayerType.GEOMODEL_LABELS]: LayerOptions<SurfaceData>;
 };
 
-export type LayerOption<T extends keyof LayerOptionsMap> = {
+export type LayerItem<T extends keyof LayerOptionsMap> = {
     type: T;
     id: string;
     options: LayerOptionsMap[T];
@@ -55,7 +86,9 @@ export type EsvIntersectionProps<T extends keyof LayerDataTypeMap> = {
     size?: Size2D;
     showGrid?: boolean;
     axesOptions?: AxisOptions;
-    layers?: LayerOption<T>[];
+    showAxesLabels?: boolean;
+    showAxes?: boolean;
+    layers?: LayerItem<T>[];
     bounds?: {
         x: [number, number];
         y: [number, number];
@@ -71,8 +104,16 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
     pixiRenderApplication: PixiRenderApplication
 ): Layer<LayerDataTypeMap[T]> {
     switch (type) {
+        case LayerType.CALLOUT_CANVAS:
+            return new CalloutCanvasLayer(id, options as CalloutOptions<Annotation[]>) as unknown as Layer<
+                LayerDataTypeMap[T]
+            >;
         case LayerType.GEOMODEL_CANVAS:
             return new GeomodelCanvasLayer(id, options as LayerOptions<SurfaceData>) as unknown as Layer<
+                LayerDataTypeMap[T]
+            >;
+        case LayerType.GEOMODEL_LABELS:
+            return new GeomodelLabelsLayer(id, options as LayerOptions<SurfaceData>) as unknown as Layer<
                 LayerDataTypeMap[T]
             >;
         case LayerType.GEOMODEL_V2:
@@ -81,15 +122,33 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
                 id,
                 options as LayerOptions<SurfaceData>
             ) as unknown as Layer<LayerDataTypeMap[T]>;
+        case LayerType.GRID_INTERSECTION:
+            return new GridIntersectionLayer(
+                pixiRenderApplication,
+                id,
+                options as LayerOptions<GridIntersectionData>
+            ) as unknown as Layer<LayerDataTypeMap[T]>;
+        case LayerType.IMAGE_CANVAS:
+            return new ImageLayer(id, options as LayerOptions<unknown>) as unknown as Layer<LayerDataTypeMap[T]>;
+        case LayerType.REFERENCE_LINE:
+            return new ReferenceLineLayer(id, options as LayerOptions<ReferenceLine[]>) as unknown as Layer<
+                LayerDataTypeMap[T]
+            >;
+        case LayerType.SCHEMATIC:
+            return new SchematicLayer(
+                pixiRenderApplication,
+                id,
+                options as SchematicLayerOptions<SchematicData>
+            ) as unknown as Layer<LayerDataTypeMap[T]>;
+        case LayerType.SEISMIC_CANVAS:
+            return new SeismicCanvasLayer(id, options as LayerOptions<SeismicCanvasData>) as unknown as Layer<
+                LayerDataTypeMap[T]
+            >;
         case LayerType.WELLBORE_PATH:
             return new WellborepathLayer(
                 id,
                 options as WellborepathLayerOptions<[number, number][]>
             ) as unknown as Layer<LayerDataTypeMap[T]>;
-        case LayerType.GEOMODEL_LABELS:
-            return new GeomodelLabelsLayer(id, options as LayerOptions<SurfaceData>) as unknown as Layer<
-                LayerDataTypeMap[T]
-            >;
     }
 
     throw new Error("Invalid layer type");
@@ -104,6 +163,10 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
     );
     const [prevViewport, setPrevViewport] = React.useState<[number, number, number] | undefined>(undefined);
     const [prevRevision, setPrevRevision] = React.useState<number>(0);
+    const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | undefined>(undefined);
+    const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | undefined>(undefined);
+    const [userTransform, setUserTransform] = React.useState<OnRescaleEvent["transform"] | null>(null);
+
     const [currentRevision, setCurrentRevision] = React.useState<number>(0);
     const [layers, setLayers] = React.useState<Layer<unknown>[]>([]);
 
@@ -122,6 +185,24 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 esvControllerRef.current.removeLayer("grid");
             }
             setPrevShowGrid(props.showGrid);
+        }
+
+        if (prevShowAxes !== props.showAxes || currentRevision !== prevRevision) {
+            if (props.showAxes) {
+                esvControllerRef.current.showAxis();
+            } else {
+                esvControllerRef.current.hideAxis();
+            }
+            setPrevShowAxes(props.showAxes);
+        }
+
+        if (prevShowAxesLabels !== props.showAxesLabels || currentRevision !== prevRevision) {
+            if (props.showAxesLabels) {
+                esvControllerRef.current.showAxisLabels();
+            } else {
+                esvControllerRef.current.hideAxisLabels();
+            }
+            setPrevShowAxesLabels(props.showAxesLabels);
         }
 
         if (!isEqual(prevContainerSize, containerSize) || currentRevision !== prevRevision) {
@@ -144,11 +225,13 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             setPrevBounds(props.bounds);
         }
 
-        if (!isEqual(prevViewport, props.viewport) || currentRevision !== prevRevision) {
+        if (!isEqual(prevViewport, props.viewport)) {
             if (props.viewport) {
                 esvControllerRef.current.setViewport(...props.viewport);
             }
             setPrevViewport(props.viewport);
+        } else if (currentRevision !== prevRevision && userTransform) {
+            esvControllerRef.current.zoomPanHandler.applyTransform(userTransform);
         }
 
         if (
@@ -158,10 +241,11 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             ) ||
             currentRevision !== prevRevision
         ) {
+            let newLayers = layers;
             for (const layer of props.layers ?? []) {
                 if (!prevLayerIds.includes(layer.id)) {
                     const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderAppRef.current);
-                    setLayers((prev) => [...prev, newLayer]);
+                    newLayers = [...newLayers, newLayer];
                     esvControllerRef.current.addLayer(newLayer);
                     pointerEventsCalculatorRef.current?.addLayer(newLayer);
                 }
@@ -169,12 +253,13 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
 
             for (const layerId of prevLayerIds) {
                 if (props.layers === undefined || !props.layers.some((el) => el.id === layerId)) {
-                    setLayers((prev) => prev.filter((el) => el.id !== layerId));
+                    newLayers = newLayers.filter((el) => el.id !== layerId);
                     esvControllerRef.current.removeLayer(layerId);
                     pointerEventsCalculatorRef.current?.removeLayer(layerId);
                 }
             }
 
+            setLayers(newLayers);
             setPrevLayerIds(props.layers?.map((el) => el.id) ?? []);
         }
 
@@ -190,13 +275,18 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 return;
             }
 
-            let pointerDown = false;
-
             esvControllerRef.current = new Controller({
                 container: containerRefCurrent,
                 axisOptions: props.axesOptions,
                 referenceSystem: props.intersectionReferenceSystem,
             });
+
+            pointerEventsCalculatorRef.current = new PointerEventsCalculator(
+                containerRefCurrent,
+                esvControllerRef.current
+            );
+
+            const originalRescaleHandler = esvControllerRef.current.zoomPanHandler.onRescale;
 
             pixiRenderAppRef.current = new PixiRenderApplication({
                 context: null,
@@ -212,124 +302,24 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 height: containerSize.height,
             });
 
-            pointerEventsCalculatorRef.current = new PointerEventsCalculator(
-                containerRefCurrent,
-                esvControllerRef.current
-            );
-
             setCurrentRevision((prev) => prev + 1);
 
             const esvControllerRefCurrent = esvControllerRef.current;
-            const pixiRenderAppRefCurrent = pixiRenderAppRef.current;
             const pointerEventsCalculatorRefCurrent = pointerEventsCalculatorRef.current;
+            const pixiRenderAppReCurrent = pixiRenderAppRef.current;
 
-            /*
-            const element = esvControllerRefCurrent.overlay.create("focus_displacement", {
-                onMouseExit: (event) => {
-                    const { target } = event;
-
-                    if (!(target instanceof HTMLElement)) return;
-
-                    target.classList.replace("visible", "invisible");
-                },
-                onMouseMove: (event) => {
-                    const { target, caller, x, y } = event;
-                    const referenceSystem = caller.referenceSystem;
-
-                    if (!referenceSystem || !(target instanceof HTMLElement)) return;
-
-                    const displacement = caller.currentStateAsEvent.xScale.invert(x);
-                    if (displacement && caller?.referenceSystem) {
-                        const { curtain } = caller.referenceSystem.interpolators;
-                        const { minX, maxX } = curtain;
-                        if ((displacement <= maxX && displacement >= minX) || (displacement < 0 && maxX >= 1000)) {
-                            const tvd = caller.currentStateAsEvent.yScale.invert(y);
-
-                            const targetDims = [displacement, tvd];
-
-                            const nearestPoint = curtain.getNearestPosition(targetDims);
-                            const md = nearestPoint.distance + caller.referenceSystem.offset;
-
-                            const nearestPointToScreenX = caller.currentStateAsEvent.xScale(nearestPoint.point[0]);
-                            const nearestPointToScreenY = caller.currentStateAsEvent.yScale(nearestPoint.point[1]);
-
-                            if (md < 200) {
-                                target.classList.replace("invisible", "visible");
-                                target.style.left = nearestPointToScreenX + "px";
-                                target.style.top = nearestPointToScreenY + "px";
-                            } else {
-                                target.classList.replace("visible", "invisible");
-                            }
-
-                            return;
-                        }
-                    }
-
-                    target.classList.replace("visible", "invisible");
-                },
-            });
-
-            if (element) {
-                element.classList.add(
-                    "invisible",
-                    "absolute",
-                    "bg-red-500",
-                    "rounded-full",
-                    "w-[11px]",
-                    "h-[11px]",
-                    "block",
-                    "-ml-[5px]",
-                    "-mt-[5px]"
-                );
-                element.style.zIndex = "100";
-            }
-            */
-
-            function handlePointerUp() {
-                pointerDown = false;
-                if (containerRefCurrent) {
-                    containerRefCurrent.removeEventListener("pointerup", handlePointerUp);
-                    containerRefCurrent.removeEventListener("pointermove", handlePointerMove);
-                }
-            }
-
-            function handlePointerDown() {
-                pointerDown = true;
-                if (containerRefCurrent) {
-                    containerRefCurrent.addEventListener("pointerup", handlePointerUp);
-                    containerRefCurrent.addEventListener("pointermove", handlePointerMove);
-                }
-            }
-
-            function handlePointerMove() {
-                if (pointerDown) {
-                    // element?.classList.replace("visible", "invisible");
-                }
-            }
-
-            const originalRescaleFunction = esvControllerRefCurrent.zoomPanHandler.onRescale;
-
-            function handleRescale(event: OnRescaleEvent) {
-                // element?.classList.replace("visible", "invisible");
-                originalRescaleFunction(event);
-            }
-
-            const currentContainerSize = containerRefCurrent.getBoundingClientRect();
-
-            esvControllerRef.current.adjustToSize(currentContainerSize.width, currentContainerSize.height);
-
-            if (containerRefCurrent) {
-                containerRefCurrent.addEventListener("pointerdown", handlePointerDown);
-                esvControllerRefCurrent.zoomPanHandler.onRescale = handleRescale;
-            }
+            esvControllerRefCurrent.zoomPanHandler.onRescale = (event: OnRescaleEvent) => {
+                setUserTransform(event.transform);
+                originalRescaleHandler(event);
+            };
 
             return function handleDestroyController() {
+                pixiRenderAppReCurrent.destroy();
+                esvControllerRefCurrent.removeAllLayers();
                 esvControllerRefCurrent.destroy();
-                pixiRenderAppRefCurrent.destroy();
                 pointerEventsCalculatorRefCurrent.destroy();
-                if (containerRefCurrent) {
-                    containerRefCurrent.removeEventListener("pointerdown", handlePointerDown);
-                }
+                setLayers([]);
+                setPrevLayerIds([]);
             };
         },
         [props.axesOptions, props.intersectionReferenceSystem]

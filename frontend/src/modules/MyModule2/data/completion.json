@@ -1,0 +1,30 @@
+[
+  {
+    "kind": "tubing",
+    "id": "tubing-01",
+    "start": 139.7,
+    "end": 1750,
+    "diameter": 12
+  },
+  {
+    "kind": "tubing",
+    "id": "tubing-02",
+    "start": 1750,
+    "end": 2550,
+    "diameter": 9.63
+  },
+  {
+    "kind": "screen",
+    "id": "screen-01",
+    "start": 2550,
+    "end": 3435,
+    "diameter": 9.63
+  },
+  {
+    "kind": "screen",
+    "id": "screen-02",
+    "start": 3435,
+    "end": 5250,
+    "diameter": 7
+  }
+]

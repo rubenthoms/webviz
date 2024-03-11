@@ -1,0 +1,11 @@
+[
+  {
+    "kind": "cementSqueeze",
+    "id": "cementSqueeze-01",
+    "referenceIds": [
+      "casing-02"
+    ],
+    "top": 145,
+    "bottom": 160
+  }
+]

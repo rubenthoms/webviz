@@ -1,0 +1,7 @@
+[
+  { "kind": "hole", "id": "hole-01", "start": 139.7, "end": 207, "diameter": 36 },
+  { "kind": "hole", "id": "hole-02", "start": 207, "end": 1403, "diameter": 26 },
+  { "kind": "hole", "id": "hole-03", "start": 1403, "end": 2619, "diameter": 17.5 },
+  { "kind": "hole", "id": "hole-04", "start": 2619, "end": 3446, "diameter": 12.25 },
+  { "kind": "hole", "id": "hole-05", "start": 3446, "end": 5331, "diameter": 8.5 }
+]

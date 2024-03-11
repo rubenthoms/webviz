@@ -219,15 +219,15 @@ function convertLayerDataToPoints(layer: Layer<unknown>): Curve[] {
         ];
     }
 
-    throw new Error("Unsupported data format");
+    return [];
 }
 
 const POINTER_DISTANCE_THRESHOLD_PX = 10;
 
 export class PointerEventsCalculator {
     private _layers: Layer<unknown>[] = [];
-    private _curves: Map<string, Curve> = new Map();
-    private _bbTrees: Map<string, BoundingBoxTree> = new Map();
+    private _curves: Map<string, Map<string, Curve>> = new Map();
+    private _bbTrees: Map<string, Map<string, BoundingBoxTree>> = new Map();
     private _container: HTMLDivElement;
     private _controller: Controller;
     private _indicatorOverlay: HTMLElement;
@@ -425,13 +425,17 @@ export class PointerEventsCalculator {
 
     private makeBoundingBoxTree(layer: Layer<DataType>) {
         const pointsAndColor = convertLayerDataToPoints(layer);
+        const boundingBoxTrees = new Map<string, BoundingBoxTree>();
+        const curves = new Map<string, Curve>();
         for (const el of pointsAndColor) {
             if (el.points.length > 0) {
-                this._curves.set(el.id, el);
+                curves.set(el.id, el);
                 const boundingBoxTree = new BoundingBoxTree(el.points, 100);
-                this._bbTrees.set(el.id, boundingBoxTree);
+                boundingBoxTrees.set(el.id, boundingBoxTree);
             }
         }
+        this._bbTrees.set(layer.id, boundingBoxTrees);
+        this._curves.set(layer.id, curves);
     }
 
     private handleMouseMove(event: OverlayMouseMoveEvent<Controller>) {
@@ -461,26 +465,34 @@ export class PointerEventsCalculator {
             distance: Number.MAX_VALUE,
         };
 
-        for (const id of this._curves.keys()) {
-            const boundingBoxTree = this._bbTrees.get(id);
-            const curve = this._curves.get(id);
+        for (const layerId of this._curves.keys()) {
+            const boundingBoxTrees = this._bbTrees.get(layerId);
+            const curves = this._curves.get(layerId);
 
-            if (boundingBoxTree === undefined || curve === undefined) {
+            if (boundingBoxTrees === undefined || curves === undefined) {
                 continue;
             }
 
-            const intersection = boundingBoxTree.calcIntersection(referenceSystemCoordinates);
-            if (intersection === null) {
-                continue;
-            }
+            for (const [id, boundingBoxTree] of boundingBoxTrees.entries()) {
+                const curve = curves.get(id);
 
-            if (intersection.distance < nearestIntersection.distance) {
-                nearestIntersection = {
-                    layerId: curve.layerId,
-                    color: curve.color,
-                    label: curve.label,
-                    ...intersection,
-                };
+                if (curve === undefined) {
+                    continue;
+                }
+
+                const intersection = boundingBoxTree.calcIntersection(referenceSystemCoordinates);
+                if (intersection === null) {
+                    continue;
+                }
+
+                if (intersection.distance < nearestIntersection.distance) {
+                    nearestIntersection = {
+                        layerId: curve.layerId,
+                        color: curve.color,
+                        label: curve.label,
+                        ...intersection,
+                    };
+                }
             }
         }
 

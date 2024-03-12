@@ -1,4 +1,11 @@
-import { Controller, Layer, OnRescaleEvent, OverlayMouseMoveEvent, RescaleFunction } from "@equinor/esv-intersection";
+import {
+    Controller,
+    Layer,
+    OnRescaleEvent,
+    OverlayMouseMoveEvent,
+    RescaleFunction,
+    SurfaceData,
+} from "@equinor/esv-intersection";
 import {
     Point2D,
     Vector2D,
@@ -10,9 +17,15 @@ import {
     vectorSum,
 } from "@lib/utils/geometry";
 
+import { PolylineIntersectionData } from "./PolylineIntersectionLayer";
+
 type DataType = number[][];
 
-class BoundingBox2D {
+interface BoundingVolume {
+    contains(point: Point2D): boolean;
+}
+
+class BoundingBox2D implements BoundingVolume {
     private _minPoint: Point2D;
     private _maxPoint: Point2D;
 
@@ -21,11 +34,11 @@ class BoundingBox2D {
         this._maxPoint = maxVector;
     }
 
-    getMin() {
+    getMinPoint(): Point2D {
         return this._minPoint;
     }
 
-    getMax() {
+    getMaxPoint(): Point2D {
         return this._maxPoint;
     }
 
@@ -39,7 +52,30 @@ class BoundingBox2D {
     }
 }
 
-class BoundingBoxTree {
+class BoundingSphere2D implements BoundingVolume {
+    private _center: Point2D;
+    private _radius: number;
+
+    constructor(center: Point2D, radius: number) {
+        this._center = center;
+        this._radius = radius;
+    }
+
+    contains(point: Point2D): boolean {
+        return pointDistance(this._center, point) <= this._radius;
+    }
+}
+
+type IntersectionResult = {
+    point: Point2D;
+    distance: number;
+};
+
+interface BoundingVolumeTree {
+    calcIntersection(point: Point2D): IntersectionResult | null;
+}
+
+class BoundingBoxTree implements BoundingVolumeTree {
     private _boundingBox: BoundingBox2D;
     private _data: Point2D[];
     private _children: BoundingBoxTree[] = [];
@@ -178,39 +214,255 @@ class BoundingBoxTree {
     }
 }
 
-type Curve = {
+class BoundingGrid {
+    private _sectors: BoundingBox2D[] = [];
+    private _minX: number = Number.NEGATIVE_INFINITY;
+    private _maxX: number = Number.POSITIVE_INFINITY;
+    private _minY: number = Number.NEGATIVE_INFINITY;
+    private _maxY: number = Number.POSITIVE_INFINITY;
+
+    private _sectorSize: number;
+
+    constructor(sectorSize: number) {
+        this._sectorSize = sectorSize;
+    }
+
+    getAndMaybeMakeSector(point: Point2D): number {
+        if (point.x < this._minX) {
+        }
+
+        const sector = this.getIntersectedSector(point);
+        if (sector === null) {
+            this.appendRow();
+            this.appendColumn();
+            return this._sectors.length - 1;
+        }
+        return sector;
+    }
+
+    private prependColumn() {
+        this._minX -= this._sectorSize;
+    }
+
+    private getNumCols(): number {
+        return Math.floor((this._maxPoint.x - this._minPoint.x) / this._maxSectorSize);
+    }
+
+    getIntersectedSector(point: Point2D): number | null {
+        for (const [index, sector] of this._sectors.entries()) {
+            if (sector.contains(point)) {
+                return this._sectors.indexOf(sector);
+            }
+        }
+        return null;
+    }
+}
+
+function makeBoundingSphereFromPolygon(polygon: Point2D[]): BoundingSphere2D {
+    const center = { x: 0, y: 0 };
+
+    const xValues = polygon.map((point) => point.x);
+    const yValues = polygon.map((point) => point.y);
+
+    const xMax = Math.max(...xValues);
+    const xMin = Math.min(...xValues);
+    const yMax = Math.max(...yValues);
+    const yMin = Math.min(...yValues);
+
+    center.x = (xMax + xMin) / 2;
+    center.y = (yMax + yMin) / 2;
+
+    const radius = Math.sqrt((xMax - xMin) ** 2 + (yMax - yMin) ** 2);
+
+    return new BoundingSphere2D(center, radius);
+}
+
+class BoundingSectionSpheres implements BoundingVolumeTree {
+    private _boundingGrid: BoundingGrid;
+    private _data: Point2D[][];
+    private _boundingSpheres: BoundingSphere2D[] = [];
+
+    constructor(data: Point2D[][]) {
+        this._data = data;
+
+        let minX = data[0][0].x;
+        let maxX = data[0][0].x;
+        let minY = data[0][0].y;
+        let maxY = data[0][0].y;
+
+        for (const polygon of data) {
+            this._boundingSpheres;
+        }
+    }
+
+    private makeBoundingSpheres(): BoundingSphere2D[] {
+        return this._data.map((polygon) => makeBoundingSphereFromPolygon(polygon));
+    }
+
+    private calcBoundingSphere(data: Point2D[], margin: number): BoundingSphere2D {
+        if (data.length === 0) {
+            throw "You have to provide data";
+        }
+
+        const center = { x: 0, y: 0 };
+        for (const point of data) {
+            center.x += point.x;
+            center.y += point.y;
+        }
+        center.x /= data.length;
+        center.y /= data.length;
+
+        let radius = 0;
+        for (const point of data) {
+            const distance = pointDistance(point, center);
+            if (distance > radius) {
+                radius = distance;
+            }
+        }
+
+        return new BoundingSphere2D(center, radius + margin);
+    }
+
+    private makeChildren(margin: number) {
+        if (this._data.length <= 100) {
+            return;
+        }
+
+        const middleIndex = Math.floor(this._data.length / 2);
+        const leftData = this._data.slice(0, middleIndex - 1);
+        const rightData = this._data.slice(middleIndex, this._data.length);
+
+        this._children.push(new BoundingSectionSphereTree(leftData, margin));
+        this._children.push(new BoundingSectionSphereTree(rightData, margin));
+    }
+
+    getBoundingSphere(): BoundingSphere2D {
+        return this._boundingSphere;
+    }
+
+    getChildren(): BoundingSectionSphereTree[] {
+        return this._children;
+    }
+
+    calcIntersection(point: Point2D): { point: Point2D; distance: number } | null {
+        if (!this._boundingSphere.contains(point)) {
+            return null;
+        }
+
+        if (this._children.length === 0) {
+            return this.interpolateData(point);
+        }
+
+        let intersection = this._children[0].calcIntersection(point);
+        if (intersection === null) {
+            intersection = this._children[1].calcIntersection(point);
+        }
+
+        return intersection;
+    }
+}
+
+enum ShapeType {
+    POLYLINE = "polyline",
+    POLYGON = "polygon",
+}
+
+type Shape<T extends ShapeType> = {
     id: string;
     label: string;
     layerId: string;
-    points: Point2D[];
-    color: string;
+    type: T;
+    points: T extends ShapeType.POLYLINE ? Point2D[] : Point2D[][];
+    color?: T extends ShapeType.POLYLINE ? string : never;
 };
 
-function convertLayerDataToPoints(layer: Layer<unknown>): Curve[] {
+function isSurfaceData(data: unknown): data is SurfaceData {
+    if (typeof data !== "object" || data === null) {
+        return false;
+    }
+
+    if (!("lines" in data) || !Array.isArray(data.lines)) {
+        return false;
+    }
+
+    return true;
+}
+
+function isPolylineIntersectionData(data: unknown): data is PolylineIntersectionData {
+    if (typeof data !== "object" || data === null) {
+        return false;
+    }
+
+    if (!("fenceMeshSections" in data) || !Array.isArray(data.fenceMeshSections)) {
+        return false;
+    }
+
+    return true;
+}
+
+function makePolygonsFromVerticesAndIndices(vertices: Float32Array, indices: Uint32Array): Point2D[][] {
+    const polygons: Point2D[][] = [];
+    let idx = 0;
+    while (idx < indices.length) {
+        const numVertices = indices[idx];
+        const polygon = Array.from(vertices)
+            .slice(idx + 1, idx + numVertices + 1)
+            .map((vertexIndex) => {
+                return { x: vertices[vertexIndex * 2], y: vertices[vertexIndex * 2 + 1] };
+            });
+        polygons.push(polygon);
+        idx += numVertices + 1;
+    }
+    return polygons;
+}
+
+function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>[] {
     if (layer.data === undefined || layer.data === null) {
         return [];
     }
 
-    if (typeof layer.data === "object" && "lines" in layer.data && Array.isArray(layer.data.lines)) {
+    if (isSurfaceData(layer.data)) {
         const pointsAndColor = layer.data.lines.map((line, index) => {
             if (Array.isArray(line.data)) {
                 return {
                     id: line.id ?? `${layer.id}-${index}`,
+                    type: ShapeType.POLYLINE,
                     layerId: layer.id,
                     label: line.label,
                     points: line.data.map((point: number[]) => ({ x: point[0], y: point[1] })),
-                    color: line.color,
+                    color: `${line.color}`,
                 };
             }
-            return { id: `${layer.id}-${index}`, layerId: "", label: "", points: [], color: "red" };
+            return {
+                id: `${layer.id}-${index}`,
+                type: ShapeType.POLYLINE,
+                layerId: "",
+                label: "",
+                points: [],
+                color: "red",
+            };
         });
         return pointsAndColor;
+    }
+
+    if (isPolylineIntersectionData(layer.data)) {
+        const polygons = layer.data.fenceMeshSections.map((section, index) => {
+            return {
+                id: `${layer.id}-${index}`,
+                type: ShapeType.POLYGON,
+                layerId: layer.id,
+                label: `${layer.id}-${index}`,
+                points: makePolygonsFromVerticesAndIndices(section.verticesUzArr, section.polysArr),
+            };
+        });
+        return polygons;
     }
 
     if (Array.isArray(layer.data)) {
         return [
             {
                 id: `${layer.id}`,
+                type: ShapeType.POLYLINE,
                 layerId: layer.id,
                 label: layer.id,
                 points: layer.data.map((point) => ({ x: point[0], y: point[1] })),
@@ -224,9 +476,8 @@ function convertLayerDataToPoints(layer: Layer<unknown>): Curve[] {
 
 const POINTER_DISTANCE_THRESHOLD_PX = 10;
 
-export class PointerEventsCalculator {
-    private _layers: Layer<unknown>[] = [];
-    private _curves: Map<string, Map<string, Curve>> = new Map();
+export class InteractivityHandler {
+    private _shapes: Map<string, Map<string, Shape<ShapeType>>> = new Map();
     private _bbTrees: Map<string, Map<string, BoundingBoxTree>> = new Map();
     private _container: HTMLDivElement;
     private _controller: Controller;
@@ -323,7 +574,6 @@ export class PointerEventsCalculator {
                         const targetDims = [displacement, tvd];
 
                         const nearestPoint = curtain.getNearestPosition(targetDims);
-                        const md = nearestPoint.distance + caller.referenceSystem.offset;
 
                         const nearestPointToScreenX = caller.currentStateAsEvent.xScale(nearestPoint.point[0]);
                         const nearestPointToScreenY = caller.currentStateAsEvent.yScale(nearestPoint.point[1]);
@@ -414,19 +664,17 @@ export class PointerEventsCalculator {
     }
 
     addLayer(layer: Layer<DataType>) {
-        this._layers.push(layer);
         this.makeBoundingBoxTree(layer);
     }
 
     removeLayer(layerId: string) {
-        this._layers = this._layers.filter((l) => l.id !== layerId);
         this._bbTrees.delete(layerId);
     }
 
     private makeBoundingBoxTree(layer: Layer<DataType>) {
-        const pointsAndColor = convertLayerDataToPoints(layer);
+        const pointsAndColor = convertLayerDataToShapeObjects(layer);
         const boundingBoxTrees = new Map<string, BoundingBoxTree>();
-        const curves = new Map<string, Curve>();
+        const curves = new Map<string, Shape>();
         for (const el of pointsAndColor) {
             if (el.points.length > 0) {
                 curves.set(el.id, el);
@@ -435,7 +683,7 @@ export class PointerEventsCalculator {
             }
         }
         this._bbTrees.set(layer.id, boundingBoxTrees);
-        this._curves.set(layer.id, curves);
+        this._shapes.set(layer.id, curves);
     }
 
     private handleMouseMove(event: OverlayMouseMoveEvent<Controller>) {
@@ -465,9 +713,9 @@ export class PointerEventsCalculator {
             distance: Number.MAX_VALUE,
         };
 
-        for (const layerId of this._curves.keys()) {
+        for (const layerId of this._shapes.keys()) {
             const boundingBoxTrees = this._bbTrees.get(layerId);
-            const curves = this._curves.get(layerId);
+            const curves = this._shapes.get(layerId);
 
             if (boundingBoxTrees === undefined || curves === undefined) {
                 continue;

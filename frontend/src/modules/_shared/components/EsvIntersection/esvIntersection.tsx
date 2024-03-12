@@ -32,17 +32,21 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
-import { isEqual, set } from "lodash";
+import { isEqual } from "lodash";
 
-import { GridIntersectionData, GridIntersectionLayer, GridIntersectionLayerOptions } from "./GridIntersectionLayer";
-import { PointerEventsCalculator } from "./PointerEventsCalculator";
+import { InteractivityHandler } from "./PointerEventsCalculator";
+import {
+    PolylineIntersectionData,
+    PolylineIntersectionLayerOptions,
+    PoylineIntersectionLayer,
+} from "./PolylineIntersectionLayer";
 
 export enum LayerType {
     CALLOUT_CANVAS = "callout-canvas",
     GEOMODEL_CANVAS = "geomodel-canvas",
     GEOMODEL_LABELS = "geomodel-labels",
     GEOMODEL_V2 = "geomodel-v2",
-    GRID_INTERSECTION = "grid-intersection",
+    POLYLINE_INTERSECTION = "grid-intersection",
     IMAGE_CANVAS = "image-canvas",
     REFERENCE_LINE = "reference-line",
     SCHEMATIC = "schematic-layer",
@@ -55,8 +59,8 @@ type LayerDataTypeMap = {
     [LayerType.GEOMODEL_CANVAS]: SurfaceData;
     [LayerType.GEOMODEL_LABELS]: SurfaceData;
     [LayerType.GEOMODEL_V2]: SurfaceData;
-    [LayerType.GRID_INTERSECTION]: GridIntersectionData;
     [LayerType.IMAGE_CANVAS]: unknown;
+    [LayerType.POLYLINE_INTERSECTION]: PolylineIntersectionData;
     [LayerType.REFERENCE_LINE]: ReferenceLine[];
     [LayerType.SCHEMATIC]: SchematicData;
     [LayerType.SEISMIC_CANVAS]: SeismicCanvasData;
@@ -68,8 +72,8 @@ type LayerOptionsMap = {
     [LayerType.GEOMODEL_CANVAS]: LayerOptions<SurfaceData>;
     [LayerType.GEOMODEL_LABELS]: GeomodelLayerLabelsOptions<SurfaceData>;
     [LayerType.GEOMODEL_V2]: LayerOptions<SurfaceData>;
-    [LayerType.GRID_INTERSECTION]: GridIntersectionLayerOptions;
     [LayerType.IMAGE_CANVAS]: LayerOptions<unknown>;
+    [LayerType.POLYLINE_INTERSECTION]: PolylineIntersectionLayerOptions;
     [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
     [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
     [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData>;
@@ -122,11 +126,11 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
                 id,
                 options as LayerOptions<SurfaceData>
             ) as unknown as Layer<LayerDataTypeMap[T]>;
-        case LayerType.GRID_INTERSECTION:
-            return new GridIntersectionLayer(
+        case LayerType.POLYLINE_INTERSECTION:
+            return new PoylineIntersectionLayer(
                 pixiRenderApplication,
                 id,
-                options as GridIntersectionLayerOptions
+                options as PolylineIntersectionLayerOptions
             ) as unknown as Layer<LayerDataTypeMap[T]>;
         case LayerType.IMAGE_CANVAS:
             return new ImageLayer(id, options as LayerOptions<unknown>) as unknown as Layer<LayerDataTypeMap[T]>;
@@ -173,7 +177,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
     const esvControllerRef = React.useRef<Controller | null>(null);
     const containerRef = React.useRef<HTMLDivElement>(null);
     const pixiRenderAppRef = React.useRef<PixiRenderApplication | null>(null);
-    const pointerEventsCalculatorRef = React.useRef<PointerEventsCalculator | null>(null);
+    const pointerEventsCalculatorRef = React.useRef<InteractivityHandler | null>(null);
 
     const containerSize = useElementSize(containerRef);
 
@@ -281,7 +285,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 referenceSystem: props.intersectionReferenceSystem,
             });
 
-            pointerEventsCalculatorRef.current = new PointerEventsCalculator(
+            pointerEventsCalculatorRef.current = new InteractivityHandler(
                 containerRefCurrent,
                 esvControllerRef.current
             );

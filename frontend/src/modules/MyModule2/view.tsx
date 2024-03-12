@@ -1,7 +1,6 @@
 import React from "react";
 
 import {
-    GeomodelLayerV2,
     InternalLayerOptions,
     IntersectionReferenceSystem,
     Perforation,
@@ -9,7 +8,6 @@ import {
     SchematicData,
     SchematicLayerOptions,
     SurfaceData,
-    WellborepathLayer,
     generateSeismicSliceImage,
     generateSurfaceData,
     getPicksData,
@@ -19,7 +17,6 @@ import {
 } from "@equinor/esv-intersection";
 import { ModuleFCProps } from "@framework/Module";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
-import { makeReferenceSystemFromTrajectoryXyzPoints } from "@modules/SeismicIntersection/utils/esvIntersectionDataConversion";
 import { EsvIntersection } from "@modules/_shared/components/EsvIntersection";
 import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 
@@ -38,15 +35,6 @@ import {
 } from "./data/data";
 import seismicColorMap from "./data/seismic-colormap.json";
 import { State } from "./state";
-
-const exampleWellBorePath = [
-    [463256.911, 5930542.294, -49],
-    [463564.402, 5931057.803, 1293.418],
-    [463637.925, 5931184.235, 1536.938],
-    [463690.658, 5931278.837, 1616.5],
-    [463910.452, 5931688.122, 1630.515],
-    [464465.876, 5932767.761, 1656.987],
-];
 
 export const View = (props: ModuleFCProps<State>) => {
     const grid = props.moduleContext.useStoreValue("grid");
@@ -287,7 +275,7 @@ export const View = (props: ModuleFCProps<State>) => {
                         },
                         {
                             id: "polyline-intersection",
-                            type: LayerType.GRID_INTERSECTION,
+                            type: LayerType.POLYLINE_INTERSECTION,
                             options: {
                                 data: polylineIntersection,
                                 colorScale,

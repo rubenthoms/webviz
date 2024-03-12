@@ -70,12 +70,12 @@ export const getPolyLineIntersection = (): Promise<GridIntersectionData> => {
                 idx += section.polys_arr[idx] + 1;
             }
             return {
-                verticesUzArr: new Float64Array(
+                verticesUzArr: new Float32Array(
                     section.vertices_uz_arr.map((el: number, i: number) => (i % 2 === 0 ? el : -el))
                 ),
                 polysArr: new Uint32Array(section.polys_arr),
                 polySourceCellIndicesArr: new Uint32Array(section.poly_source_cell_indices_arr),
-                polyPropsArr: Float64Array.from(values), // new Float64Array(section.poly_props_arr),
+                polyPropsArr: Float32Array.from(values), // new Float64Array(section.poly_props_arr),
                 startUtmX: section.start_utm_x,
                 startUtmY: section.start_utm_y,
                 endUtmX: section.end_utm_x,

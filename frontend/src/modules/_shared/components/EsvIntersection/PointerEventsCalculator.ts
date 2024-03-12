@@ -6,16 +6,7 @@ import {
     RescaleFunction,
     SurfaceData,
 } from "@equinor/esv-intersection";
-import {
-    Point2D,
-    Vector2D,
-    pointDistance,
-    pointRelativeToDomRect,
-    pointerEventToPoint,
-    vectorLength,
-    vectorMultiplyWithScalar,
-    vectorSum,
-} from "@lib/utils/geometry";
+import { Point2D, pointDistance, vectorLength, vectorMultiplyWithScalar } from "@lib/utils/geometry";
 
 import { PolylineIntersectionData } from "./PolylineIntersectionLayer";
 
@@ -61,6 +52,14 @@ class BoundingSphere2D implements BoundingVolume {
         this._radius = radius;
     }
 
+    getCenter(): Point2D {
+        return this._center;
+    }
+
+    getRadius(): number {
+        return this._radius;
+    }
+
     contains(point: Point2D): boolean {
         return pointDistance(this._center, point) <= this._radius;
     }
@@ -69,16 +68,18 @@ class BoundingSphere2D implements BoundingVolume {
 type IntersectionResult = {
     point: Point2D;
     distance: number;
+    polygonIndex?: number;
+    shape?: Point2D[];
 };
 
-interface BoundingVolumeTree {
+interface BoundingHandler {
     calcIntersection(point: Point2D): IntersectionResult | null;
 }
 
-class BoundingBoxTree implements BoundingVolumeTree {
+class LineBoundingHandler implements BoundingHandler {
     private _boundingBox: BoundingBox2D;
     private _data: Point2D[];
-    private _children: BoundingBoxTree[] = [];
+    private _children: LineBoundingHandler[] = [];
 
     constructor(data: Point2D[], margin: number = 0) {
         this._data = data;
@@ -126,15 +127,15 @@ class BoundingBoxTree implements BoundingVolumeTree {
         const leftData = this._data.slice(0, middleIndex - 1);
         const rightData = this._data.slice(middleIndex, this._data.length);
 
-        this._children.push(new BoundingBoxTree(leftData, margin));
-        this._children.push(new BoundingBoxTree(rightData, margin));
+        this._children.push(new LineBoundingHandler(leftData, margin));
+        this._children.push(new LineBoundingHandler(rightData, margin));
     }
 
     getBoundingBox(): BoundingBox2D {
         return this._boundingBox;
     }
 
-    getChildren(): BoundingBoxTree[] {
+    getChildren(): LineBoundingHandler[] {
         return this._children;
     }
 
@@ -215,11 +216,10 @@ class BoundingBoxTree implements BoundingVolumeTree {
 }
 
 class BoundingGrid {
-    private _sectors: BoundingBox2D[] = [];
-    private _minX: number = Number.NEGATIVE_INFINITY;
-    private _maxX: number = Number.POSITIVE_INFINITY;
-    private _minY: number = Number.NEGATIVE_INFINITY;
-    private _maxY: number = Number.POSITIVE_INFINITY;
+    private _sectors: number[] = [];
+    private _sectorIndices: number[] = [];
+    private _minX: number = Number.POSITIVE_INFINITY;
+    private _maxX: number = Number.NEGATIVE_INFINITY;
 
     private _sectorSize: number;
 
@@ -228,33 +228,59 @@ class BoundingGrid {
     }
 
     getAndMaybeMakeSector(point: Point2D): number {
+        if (this._sectors.length === 0) {
+            this._minX = point.x;
+            this._maxX = point.x + this._sectorSize;
+            this._sectors.push(point.x);
+            this._sectorIndices.push(0);
+            return 0;
+        }
+
         if (point.x < this._minX) {
+            const numColumns = Math.ceil((this._minX - point.x) / this._sectorSize);
+            this.prependColumns(numColumns);
+            const sectorIndex = this._sectors.length - 1;
+            return sectorIndex;
         }
 
-        const sector = this.getIntersectedSector(point);
-        if (sector === null) {
-            this.appendRow();
-            this.appendColumn();
-            return this._sectors.length - 1;
+        if (point.x > this._maxX) {
+            const numColumns = Math.ceil((point.x - this._maxX) / this._sectorSize);
+            this.appendColumns(numColumns);
+            const sectorIndex = this._sectors.length - 1;
+            return sectorIndex;
         }
-        return sector;
+
+        const sectorIndex = this.getIntersectedSector(point);
+        if (sectorIndex === null) {
+            throw "Expect to always find a sector since it should otherwise be created";
+        }
+
+        return sectorIndex;
     }
 
-    private prependColumn() {
-        this._minX -= this._sectorSize;
+    private prependColumns(numColumns: number) {
+        for (let i = 0; i < numColumns; i++) {
+            this._sectors.unshift(this._minX - this._sectorSize * i);
+            this._sectorIndices.unshift(i);
+        }
+        this._minX -= this._sectorSize * numColumns;
     }
 
-    private getNumCols(): number {
-        return Math.floor((this._maxPoint.x - this._minPoint.x) / this._maxSectorSize);
+    private appendColumns(numColumns: number) {
+        for (let i = 0; i < numColumns; i++) {
+            this._sectors.push(this._maxX - this._sectorSize * i);
+            this._sectorIndices.push(this._sectors.length - 1);
+        }
+        this._maxX += this._sectorSize * numColumns;
     }
 
     getIntersectedSector(point: Point2D): number | null {
-        for (const [index, sector] of this._sectors.entries()) {
-            if (sector.contains(point)) {
-                return this._sectors.indexOf(sector);
-            }
+        const sectorIndex = Math.floor((point.x - this._minX) / this._sectorSize);
+        if (sectorIndex < 0 || sectorIndex >= this._sectors.length) {
+            return null;
         }
-        return null;
+
+        return this._sectorIndices[sectorIndex];
     }
 }
 
@@ -269,96 +295,77 @@ function makeBoundingSphereFromPolygon(polygon: Point2D[]): BoundingSphere2D {
     const yMax = Math.max(...yValues);
     const yMin = Math.min(...yValues);
 
-    center.x = (xMax + xMin) / 2;
-    center.y = (yMax + yMin) / 2;
+    center.x = xMin + (xMax - xMin) / 2;
+    center.y = yMin + (yMax - yMin) / 2;
 
-    const radius = Math.sqrt((xMax - xMin) ** 2 + (yMax - yMin) ** 2);
+    const radius = Math.sqrt((center.x - xMin) ** 2 + (center.y - yMin) ** 2);
 
     return new BoundingSphere2D(center, radius);
 }
 
-class BoundingSectionSpheres implements BoundingVolumeTree {
-    private _boundingGrid: BoundingGrid;
-    private _data: Point2D[][];
-    private _boundingSpheres: BoundingSphere2D[] = [];
+function pointIsInPolygon(point: Point2D, polygon: Point2D[]): boolean {
+    const numVertices = polygon.length;
+    const x = point.x;
+    const y = point.y;
+    let inside = false;
 
-    constructor(data: Point2D[][]) {
-        this._data = data;
+    let p1 = polygon[0];
+    let p2 = polygon[numVertices - 1];
+    for (let i = 1; i <= numVertices; i++) {
+        p2 = polygon[i % numVertices];
 
-        let minX = data[0][0].x;
-        let maxX = data[0][0].x;
-        let minY = data[0][0].y;
-        let maxY = data[0][0].y;
-
-        for (const polygon of data) {
-            this._boundingSpheres;
-        }
-    }
-
-    private makeBoundingSpheres(): BoundingSphere2D[] {
-        return this._data.map((polygon) => makeBoundingSphereFromPolygon(polygon));
-    }
-
-    private calcBoundingSphere(data: Point2D[], margin: number): BoundingSphere2D {
-        if (data.length === 0) {
-            throw "You have to provide data";
-        }
-
-        const center = { x: 0, y: 0 };
-        for (const point of data) {
-            center.x += point.x;
-            center.y += point.y;
-        }
-        center.x /= data.length;
-        center.y /= data.length;
-
-        let radius = 0;
-        for (const point of data) {
-            const distance = pointDistance(point, center);
-            if (distance > radius) {
-                radius = distance;
+        if (y > Math.min(p1.y, p2.y)) {
+            if (y <= Math.max(p1.y, p2.y)) {
+                if (x <= Math.max(p1.x, p2.x)) {
+                    const xIntersection = ((y - p1.y) * (p2.x - p1.x)) / (p2.y - p1.y) + p1.x;
+                    if (p1.x === p2.x || x <= xIntersection) {
+                        inside = !inside;
+                    }
+                }
             }
         }
 
-        return new BoundingSphere2D(center, radius + margin);
+        p1 = p2;
     }
 
-    private makeChildren(margin: number) {
-        if (this._data.length <= 100) {
-            return;
-        }
+    return inside;
+}
 
-        const middleIndex = Math.floor(this._data.length / 2);
-        const leftData = this._data.slice(0, middleIndex - 1);
-        const rightData = this._data.slice(middleIndex, this._data.length);
+class PolygonBoundingHandler implements BoundingHandler {
+    private _boundingBox: BoundingBox2D;
+    private _data: PolygonData;
 
-        this._children.push(new BoundingSectionSphereTree(leftData, margin));
-        this._children.push(new BoundingSectionSphereTree(rightData, margin));
+    constructor(data: PolygonData) {
+        this._data = data;
+        this._boundingBox = new BoundingBox2D({ x: data.startU, y: data.minZ }, { x: data.endU, y: data.maxZ });
     }
 
-    getBoundingSphere(): BoundingSphere2D {
-        return this._boundingSphere;
-    }
-
-    getChildren(): BoundingSectionSphereTree[] {
-        return this._children;
-    }
-
-    calcIntersection(point: Point2D): { point: Point2D; distance: number } | null {
-        if (!this._boundingSphere.contains(point)) {
+    calcIntersection(point: Point2D): IntersectionResult | null {
+        if (!this._boundingBox.contains(point)) {
             return null;
         }
 
-        if (this._children.length === 0) {
-            return this.interpolateData(point);
+        let idx = 0;
+        let polygonIndex = 0;
+        while (idx < this._data.polygons.length) {
+            const numVertices = this._data.polygons[idx];
+            const polygon: Point2D[] = [];
+            for (let i = 1; i <= numVertices; i++) {
+                const vertexIndexU = this._data.polygons[idx + i] * 2;
+                const vertexIndexZ = this._data.polygons[idx + i] * 2 + 1;
+                polygon.push({
+                    x: this._data.startU + this._data.vertices[vertexIndexU],
+                    y: this._data.vertices[vertexIndexZ],
+                });
+            }
+            if (pointIsInPolygon(point, polygon)) {
+                return { point, distance: 0, polygonIndex, shape: polygon };
+            }
+            idx += numVertices + 1;
+            polygonIndex++;
         }
 
-        let intersection = this._children[0].calcIntersection(point);
-        if (intersection === null) {
-            intersection = this._children[1].calcIntersection(point);
-        }
-
-        return intersection;
+        return null;
     }
 }
 
@@ -367,12 +374,23 @@ enum ShapeType {
     POLYGON = "polygon",
 }
 
+type PolygonData = {
+    vertices: Float32Array;
+    polygons: Uint32Array;
+    polySourceCellIndicesArr: Uint32Array;
+    polyPropsArr: Float32Array;
+    minZ: number;
+    maxZ: number;
+    startU: number;
+    endU: number;
+};
+
 type Shape<T extends ShapeType> = {
     id: string;
     label: string;
     layerId: string;
     type: T;
-    points: T extends ShapeType.POLYLINE ? Point2D[] : Point2D[][];
+    data: T extends ShapeType.POLYLINE ? Point2D[] : PolygonData;
     color?: T extends ShapeType.POLYLINE ? string : never;
 };
 
@@ -400,18 +418,18 @@ function isPolylineIntersectionData(data: unknown): data is PolylineIntersection
     return true;
 }
 
-function makePolygonsFromVerticesAndIndices(vertices: Float32Array, indices: Uint32Array): Point2D[][] {
+function makePolygonsFromVerticesAndIndices(startU: number, vertices: Float32Array, indices: Uint32Array): Point2D[][] {
     const polygons: Point2D[][] = [];
     let idx = 0;
     while (idx < indices.length) {
         const numVertices = indices[idx];
-        const polygon = Array.from(vertices)
-            .slice(idx + 1, idx + numVertices + 1)
-            .map((vertexIndex) => {
-                return { x: vertices[vertexIndex * 2], y: vertices[vertexIndex * 2 + 1] };
-            });
-        polygons.push(polygon);
+        const polygon: Point2D[] = [];
+        for (let i = 1; i <= numVertices; i++) {
+            const vertexIndex = indices[idx + i];
+            polygon.push({ x: startU + vertices[vertexIndex * 2], y: vertices[vertexIndex * 2 + 1] });
+        }
         idx += numVertices + 1;
+        polygons.push(polygon);
     }
     return polygons;
 }
@@ -429,7 +447,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                     type: ShapeType.POLYLINE,
                     layerId: layer.id,
                     label: line.label,
-                    points: line.data.map((point: number[]) => ({ x: point[0], y: point[1] })),
+                    data: line.data.map((point: number[]) => ({ x: point[0], y: point[1] })),
                     color: `${line.color}`,
                 };
             }
@@ -438,7 +456,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 type: ShapeType.POLYLINE,
                 layerId: "",
                 label: "",
-                points: [],
+                data: [],
                 color: "red",
             };
         });
@@ -446,14 +464,36 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
     }
 
     if (isPolylineIntersectionData(layer.data)) {
+        let offsetU = 0;
         const polygons = layer.data.fenceMeshSections.map((section, index) => {
-            return {
+            const uVectorLength = pointDistance(
+                {
+                    x: section.startUtmX,
+                    y: section.startUtmY,
+                },
+                {
+                    x: section.endUtmX,
+                    y: section.endUtmY,
+                }
+            );
+            const sectionPolygons = {
                 id: `${layer.id}-${index}`,
                 type: ShapeType.POLYGON,
                 layerId: layer.id,
                 label: `${layer.id}-${index}`,
-                points: makePolygonsFromVerticesAndIndices(section.verticesUzArr, section.polysArr),
+                data: {
+                    vertices: section.verticesUzArr,
+                    polygons: section.polysArr,
+                    polySourceCellIndicesArr: section.polySourceCellIndicesArr,
+                    polyPropsArr: section.polyPropsArr,
+                    minZ: section.minZ,
+                    maxZ: section.maxZ,
+                    startU: offsetU,
+                    endU: offsetU + uVectorLength,
+                },
             };
+            offsetU += uVectorLength;
+            return sectionPolygons;
         });
         return polygons;
     }
@@ -465,7 +505,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 type: ShapeType.POLYLINE,
                 layerId: layer.id,
                 label: layer.id,
-                points: layer.data.map((point) => ({ x: point[0], y: point[1] })),
+                data: layer.data.map((point) => ({ x: point[0], y: point[1] })),
                 color: "red",
             },
         ];
@@ -474,11 +514,22 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
     return [];
 }
 
+type Intersection = {
+    shapeType: ShapeType;
+    layerId: string;
+    color: string;
+    label: string;
+    point: Point2D;
+    distance: number;
+    polygonIndex?: number;
+    shape?: Point2D[];
+};
+
 const POINTER_DISTANCE_THRESHOLD_PX = 10;
 
 export class InteractivityHandler {
     private _shapes: Map<string, Map<string, Shape<ShapeType>>> = new Map();
-    private _bbTrees: Map<string, Map<string, BoundingBoxTree>> = new Map();
+    private _boundingHandlers: Map<string, Map<string, BoundingHandler>> = new Map();
     private _container: HTMLDivElement;
     private _controller: Controller;
     private _indicatorOverlay: HTMLElement;
@@ -515,11 +566,9 @@ export class InteractivityHandler {
         overlay.style.position = "absolute";
         overlay.style.top = "0px";
         overlay.style.left = "0px";
-        overlay.style.width = "9px";
-        overlay.style.height = "9px";
         overlay.style.pointerEvents = "none";
-        overlay.style.borderRadius = "50%";
         overlay.style.visibility = "hidden";
+        overlay.style.zIndex = "100";
 
         return overlay;
     }
@@ -664,26 +713,63 @@ export class InteractivityHandler {
     }
 
     addLayer(layer: Layer<DataType>) {
-        this.makeBoundingBoxTree(layer);
+        this.makeBoundingHandler(layer);
     }
 
     removeLayer(layerId: string) {
-        this._bbTrees.delete(layerId);
+        this._boundingHandlers.delete(layerId);
     }
 
-    private makeBoundingBoxTree(layer: Layer<DataType>) {
-        const pointsAndColor = convertLayerDataToShapeObjects(layer);
-        const boundingBoxTrees = new Map<string, BoundingBoxTree>();
-        const curves = new Map<string, Shape>();
-        for (const el of pointsAndColor) {
-            if (el.points.length > 0) {
-                curves.set(el.id, el);
-                const boundingBoxTree = new BoundingBoxTree(el.points, 100);
-                boundingBoxTrees.set(el.id, boundingBoxTree);
+    private makePolygonDebugLayer(polygons: Point2D[][]) {
+        const { xScale, yScale, width, height } = this._controller.currentStateAsEvent;
+
+        let svgOverlay: HTMLElement | undefined = this._controller.overlay.elements["svg-overlay"] as unknown as
+            | HTMLElement
+            | undefined;
+
+        if (!svgOverlay) {
+            svgOverlay = this._controller.overlay.create("svg-overlay") as HTMLElement;
+            svgOverlay.style.zIndex = "99";
+        }
+
+        svgOverlay.innerHTML = "";
+
+        const svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svgLayer.setAttribute("id", "svg-debug");
+        svgLayer.style.width = width + "px";
+        svgLayer.style.height = height + "px";
+        svgLayer.style.pointerEvents = "none";
+
+        for (const polygon of polygons) {
+            const adjustedPoints = polygon.map((point) => {
+                return {
+                    x: xScale(point.x),
+                    y: yScale(point.y),
+                };
+            });
+            const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            poly.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
+            poly.setAttribute("style", "fill:rgba(0,0,0,0.5);stroke:rgba(0,0,0,0.5);stroke-width:1;");
+            svgLayer.appendChild(poly);
+        }
+        svgOverlay.appendChild(svgLayer);
+    }
+
+    private makeBoundingHandler(layer: Layer<DataType>) {
+        const shape = convertLayerDataToShapeObjects(layer);
+        const boundingHandlers = new Map<string, BoundingHandler>();
+        const shapes = new Map<string, Shape<ShapeType>>();
+        for (const el of shape) {
+            shapes.set(el.id, el);
+            if (el.type === ShapeType.POLYGON) {
+                boundingHandlers.set(el.id, new PolygonBoundingHandler(el.data as PolygonData));
+            } else {
+                boundingHandlers.set(el.id, new LineBoundingHandler(el.data as Point2D[]));
             }
         }
-        this._bbTrees.set(layer.id, boundingBoxTrees);
-        this._shapes.set(layer.id, curves);
+        // this.makePolygonDebugLayer(polygons);
+        this._boundingHandlers.set(layer.id, boundingHandlers);
+        this._shapes.set(layer.id, shapes);
     }
 
     private handleMouseMove(event: OverlayMouseMoveEvent<Controller>) {
@@ -699,13 +785,8 @@ export class InteractivityHandler {
             y: this._controller.currentStateAsEvent.yScale.invert(y),
         };
 
-        let nearestIntersection: {
-            layerId: string;
-            color: string;
-            label: string;
-            point: Point2D;
-            distance: number;
-        } = {
+        let nearestIntersection: Intersection = {
+            shapeType: ShapeType.POLYLINE,
             layerId: "",
             color: "",
             label: "",
@@ -714,32 +795,47 @@ export class InteractivityHandler {
         };
 
         for (const layerId of this._shapes.keys()) {
-            const boundingBoxTrees = this._bbTrees.get(layerId);
-            const curves = this._shapes.get(layerId);
+            const boundingHandlers = this._boundingHandlers.get(layerId);
+            const shapes = this._shapes.get(layerId);
 
-            if (boundingBoxTrees === undefined || curves === undefined) {
+            if (boundingHandlers === undefined || shapes === undefined) {
                 continue;
             }
 
-            for (const [id, boundingBoxTree] of boundingBoxTrees.entries()) {
-                const curve = curves.get(id);
+            for (const [id, boundingHandler] of boundingHandlers.entries()) {
+                const shape = shapes.get(id);
 
-                if (curve === undefined) {
+                if (shape === undefined) {
                     continue;
                 }
 
-                const intersection = boundingBoxTree.calcIntersection(referenceSystemCoordinates);
+                const intersection = boundingHandler.calcIntersection(referenceSystemCoordinates);
                 if (intersection === null) {
                     continue;
                 }
 
                 if (intersection.distance < nearestIntersection.distance) {
-                    nearestIntersection = {
-                        layerId: curve.layerId,
-                        color: curve.color,
-                        label: curve.label,
-                        ...intersection,
-                    };
+                    if (shape.type === ShapeType.POLYLINE) {
+                        nearestIntersection = {
+                            shapeType: shape.type,
+                            layerId: shape.layerId,
+                            color: shape.color as string,
+                            label: shape.label,
+                            ...intersection,
+                        };
+                    } else if (shape.type === ShapeType.POLYGON) {
+                        nearestIntersection = {
+                            shapeType: shape.type,
+                            layerId: shape.layerId,
+                            color: "red",
+                            label: `Cellindex: ${(shape.data as PolygonData).polySourceCellIndicesArr[
+                                intersection.polygonIndex as number
+                            ].toString()}<br />Property value: ${(shape.data as PolygonData).polyPropsArr[
+                                intersection.polygonIndex as number
+                            ].toFixed(2)}`,
+                            ...intersection,
+                        };
+                    }
                 }
             }
         }
@@ -756,7 +852,7 @@ export class InteractivityHandler {
             this.changeReadoutVisibility(true);
         }
 
-        this.drawIndicator(nearestIntersection.point, nearestIntersection.color);
+        this.drawIndicator(nearestIntersection);
         this.makeReadout(nearestIntersection.point, nearestIntersection.color, nearestIntersection.label);
     }
 
@@ -768,18 +864,45 @@ export class InteractivityHandler {
         }
     }
 
-    private drawIndicator(indicatorPoint: Point2D, color: string = "red") {
+    private drawIndicator(intersection: Intersection) {
         if (!this._showIndicator) {
             return;
         }
 
-        const px = this._controller.currentStateAsEvent.xScale(indicatorPoint.x);
-        const py = this._controller.currentStateAsEvent.yScale(indicatorPoint.y);
+        const { height, width, xScale, yScale } = this._controller.currentStateAsEvent;
+
+        this._indicatorOverlay.style.width = `${width}px`;
+        this._indicatorOverlay.style.height = `${height}px`;
+
+        this._indicatorOverlay.innerHTML = "";
+
+        const svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svgLayer.style.width = "100%";
+        svgLayer.style.height = "100%";
+
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", xScale(intersection.point.x).toString());
+        circle.setAttribute("cy", yScale(intersection.point.y).toString());
+        circle.setAttribute("r", "5");
+        circle.setAttribute("fill", intersection.color);
+        svgLayer.appendChild(circle);
+
+        if (intersection.shape) {
+            const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            const adjustedPoints = intersection.shape.map((point) => {
+                return {
+                    x: xScale(point.x),
+                    y: yScale(point.y),
+                };
+            });
+            polygon.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
+            polygon.setAttribute("style", "fill:rgba(255,0,0,0.2);stroke:rgba(255,0,0,1);stroke-width:2;");
+            svgLayer.appendChild(polygon);
+        }
+
+        this._indicatorOverlay.appendChild(svgLayer);
 
         this._indicatorOverlay.style.visibility = "visible";
-        this._indicatorOverlay.style.backgroundColor = color;
-        this._indicatorOverlay.style.left = `${px - 5}px`;
-        this._indicatorOverlay.style.top = `${py - 5}px`;
     }
 
     private makeReadout(indicatorPoint: Point2D, color: string, label: string) {

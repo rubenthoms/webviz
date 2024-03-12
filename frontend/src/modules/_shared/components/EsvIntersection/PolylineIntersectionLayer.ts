@@ -19,6 +19,8 @@ type FenceMeshSection = {
     startUtmY: number;
     endUtmX: number;
     endUtmY: number;
+    minZ: number;
+    maxZ: number;
 };
 
 export type PolylineIntersectionData = {

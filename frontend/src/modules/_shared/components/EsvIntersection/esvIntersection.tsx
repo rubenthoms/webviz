@@ -34,7 +34,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { isEqual } from "lodash";
 
-import { InteractivityHandler } from "./PointerEventsCalculator";
+import { InteractivityHandler } from "./InteractivityHandler";
 import {
     PolylineIntersectionData,
     PolylineIntersectionLayerOptions,

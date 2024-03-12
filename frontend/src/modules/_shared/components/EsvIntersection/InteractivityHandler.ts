@@ -303,16 +303,31 @@ function makeBoundingSphereFromPolygon(polygon: Point2D[]): BoundingSphere2D {
     return new BoundingSphere2D(center, radius);
 }
 
-function pointIsInPolygon(point: Point2D, polygon: Point2D[]): boolean {
-    const numVertices = polygon.length;
+function pointIsInPolygon(
+    point: Point2D,
+    startOffset: number,
+    vertices: Float32Array,
+    polygonIndices: Uint32Array
+): boolean {
+    const numVertices = polygonIndices.length;
     const x = point.x;
     const y = point.y;
     let inside = false;
 
-    let p1 = polygon[0];
-    let p2 = polygon[numVertices - 1];
+    let p1 = {
+        x: startOffset + vertices[polygonIndices[0] * 2],
+        y: vertices[polygonIndices[0] * 2 + 1],
+    };
+    let p2 = {
+        x: 0,
+        y: 0,
+    };
     for (let i = 1; i <= numVertices; i++) {
-        p2 = polygon[i % numVertices];
+        const idx = i % numVertices;
+        p2 = {
+            x: startOffset + vertices[polygonIndices[idx] * 2],
+            y: vertices[polygonIndices[idx] * 2 + 1],
+        };
 
         if (y > Math.min(p1.y, p2.y)) {
             if (y <= Math.max(p1.y, p2.y)) {
@@ -329,6 +344,14 @@ function pointIsInPolygon(point: Point2D, polygon: Point2D[]): boolean {
     }
 
     return inside;
+}
+
+function polygonFromVerticesAndIndices(startOffset: number, vertices: Float32Array, indices: Uint32Array): Point2D[] {
+    const polygon: Point2D[] = [];
+    for (let i = 0; i < indices.length; i++) {
+        polygon.push({ x: startOffset + vertices[indices[i] * 2], y: vertices[indices[i] * 2 + 1] });
+    }
+    return polygon;
 }
 
 class PolygonBoundingHandler implements BoundingHandler {
@@ -349,17 +372,14 @@ class PolygonBoundingHandler implements BoundingHandler {
         let polygonIndex = 0;
         while (idx < this._data.polygons.length) {
             const numVertices = this._data.polygons[idx];
-            const polygon: Point2D[] = [];
-            for (let i = 1; i <= numVertices; i++) {
-                const vertexIndexU = this._data.polygons[idx + i] * 2;
-                const vertexIndexZ = this._data.polygons[idx + i] * 2 + 1;
-                polygon.push({
-                    x: this._data.startU + this._data.vertices[vertexIndexU],
-                    y: this._data.vertices[vertexIndexZ],
-                });
-            }
-            if (pointIsInPolygon(point, polygon)) {
-                return { point, distance: 0, polygonIndex, shape: polygon };
+            const polygonIndices = this._data.polygons.subarray(idx + 1, idx + numVertices + 1);
+            if (pointIsInPolygon(point, this._data.startU, this._data.vertices, polygonIndices)) {
+                return {
+                    point,
+                    distance: 0,
+                    polygonIndex,
+                    shape: polygonFromVerticesAndIndices(this._data.startU, this._data.vertices, polygonIndices),
+                };
             }
             idx += numVertices + 1;
             polygonIndex++;
@@ -827,7 +847,7 @@ export class InteractivityHandler {
                         nearestIntersection = {
                             shapeType: shape.type,
                             layerId: shape.layerId,
-                            color: "red",
+                            color: "blue",
                             label: `Cellindex: ${(shape.data as PolygonData).polySourceCellIndicesArr[
                                 intersection.polygonIndex as number
                             ].toString()}<br />Property value: ${(shape.data as PolygonData).polyPropsArr[
@@ -896,7 +916,7 @@ export class InteractivityHandler {
                 };
             });
             polygon.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
-            polygon.setAttribute("style", "fill:rgba(255,0,0,0.2);stroke:rgba(255,0,0,1);stroke-width:2;");
+            polygon.setAttribute("style", "fill:rgba(0,0,255,0.2);stroke:rgba(0,0,255,1);stroke-width:2;");
             svgLayer.appendChild(polygon);
         }
 

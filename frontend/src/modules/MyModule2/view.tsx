@@ -1,5 +1,6 @@
 import React from "react";
 
+import { WellBoreCompletion_api } from "@api";
 import {
     InternalLayerOptions,
     IntersectionReferenceSystem,
@@ -71,13 +72,14 @@ export const View = (props: ModuleFCProps<State>) => {
 
     const [ris, setRis] = React.useState<IntersectionReferenceSystem | null>(null);
     const [prevTrajectoryPoint, setPrevTrajectoryPoint] = React.useState<number[][]>([]);
+    const [polylineIntersectionLayer, setPolylineIntersectionLayer] = React.useState<LayerItem<any> | null>(null);
 
     const getWellTrajectoriesQuery = useWellTrajectoriesQuery(wellbore ? [wellbore.uuid] : undefined);
     if (getWellTrajectoriesQuery.isError) {
         statusWriter.addError("Error loading well trajectories");
     }
 
-    const wellboreCompletionsQuery = useWellboreCompletionsQuery(wellbore?.uuid);
+    const wellboreCompletionsQuery = useWellboreCompletionsQuery(wellbore?.uuid, wellbore !== undefined);
 
     let trajectoryXyzPoints: number[][] = [];
 
@@ -358,6 +360,22 @@ export const View = (props: ModuleFCProps<State>) => {
     }, []);
     */
 
+    React.useEffect(() => {
+        const promises = [getPolyLineIntersection()];
+        Promise.all(promises).then((values) => {
+            const [polylineIntersection] = values;
+
+            setPolylineIntersectionLayer({
+                id: "polyline-intersection",
+                type: LayerType.POLYLINE_INTERSECTION,
+                options: {
+                    data: polylineIntersection,
+                    colorScale,
+                },
+            });
+        });
+    }, []);
+
     const surfaceStatisticsFancharts = sampleSurfaceInPointsQueries.data.map((surface) => {
         const fanchart = makeSurfaceStatisticalFanchartFromRealizationSurfaces(
             surface.realizationPoints.map((el) => el.sampled_values),
@@ -391,13 +409,21 @@ export const View = (props: ModuleFCProps<State>) => {
         },
     ];
 
+    if (polylineIntersectionLayer) {
+        layers.push(polylineIntersectionLayer);
+    }
+
+    if (wellboreCompletionsQuery.data) {
+        console.debug(wellboreCompletionsQuery.data);
+    }
+
     if (wellboreCompletionsQuery.data) {
         layers.push({
             id: "schematic",
             type: LayerType.SCHEMATIC,
             options: {
                 order: 100,
-                data: getPicksData(wellboreCompletionsQuery.data),
+                data: makeSchematicsFromWellCompletions(wellboreCompletionsQuery.data),
                 referenceSystem: ris,
             },
         });
@@ -439,3 +465,30 @@ export const View = (props: ModuleFCProps<State>) => {
 };
 
 View.displayName = "View";
+
+function makeSchematicsFromWellCompletions(completions: WellBoreCompletion_api[]): SchematicData {
+    const perforations: Perforation[] = [];
+    let idx = 0;
+    for (const [index, completion] of completions.entries()) {
+        if (completion.completion_type === "perforation") {
+            perforations.push({
+                kind: "perforation",
+                subKind: "Perforation",
+                id: `perforation-${idx++}`,
+                start: completion.top_depth_md,
+                end: completion.base_depth_md,
+                isOpen: completion.completion_open_flag,
+            });
+        }
+    }
+
+    return {
+        holeSizes: [],
+        cements: [],
+        casings: [],
+        completion: [],
+        pAndA: [],
+        perforations,
+        symbols: {},
+    };
+}

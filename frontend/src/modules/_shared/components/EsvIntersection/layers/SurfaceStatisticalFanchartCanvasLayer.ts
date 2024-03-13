@@ -73,7 +73,7 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
         requestAnimationFrame(() => {
             this.clearCanvas();
             this._fillPaths.forEach((path) => this.drawPolygonPath(path.path, path.color));
-            // this._linePaths.forEach((path) => this.drawLinePath(path.path, path.color, path.dashSegments));
+            this._linePaths.forEach((path) => this.drawLinePath(path.path, path.color, path.dashSegments));
         });
     }
 

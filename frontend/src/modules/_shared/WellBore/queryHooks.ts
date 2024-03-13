@@ -54,10 +54,10 @@ export function useWellborePicksAndStratigraphicUnitsQuery(
     });
 }
 
-export function useWellboreCompletions(
+export function useWellboreCompletionsQuery(
     wellboreUuid: string | undefined,
     allowEnable: boolean
-): UseQueryResult<WellBoreCompletion_api> {
+): UseQueryResult<WellBoreCompletion_api[]> {
     return useQuery({
         queryKey: ["getWellboreCompletions", wellboreUuid],
         queryFn: () => apiService.well.getWellboreCompletions(wellboreUuid ?? ""),

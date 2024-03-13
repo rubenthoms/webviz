@@ -16,9 +16,16 @@ import {
     transformFormationData,
 } from "@equinor/esv-intersection";
 import { ModuleFCProps } from "@framework/Module";
+import { useViewStatusWriter } from "@framework/StatusWriter";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
+import { makeTrajectoryXyzPointsFromWellboreTrajectory } from "@modules/SeismicIntersection/utils/esvIntersectionDataConversion";
+import { useWellTrajectoriesQuery } from "@modules/_shared/WellBore";
+import { useWellboreCompletionsQuery } from "@modules/_shared/WellBore/queryHooks";
 import { EsvIntersection } from "@modules/_shared/components/EsvIntersection";
 import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { makeSurfaceStatisticalFanchartFromRealizationSurfaces } from "@modules/_shared/components/EsvIntersection/utils/surfaceStatisticalFancharts";
+
+import { isEqual } from "lodash";
 
 import {
     getCasings,
@@ -34,11 +41,21 @@ import {
     getWellborePath,
 } from "./data/data";
 import seismicColorMap from "./data/seismic-colormap.json";
+import { useSampleSurfaceInPointsQueries } from "./queryHooks";
 import { State } from "./state";
 
 export const View = (props: ModuleFCProps<State>) => {
-    const grid = props.moduleContext.useStoreValue("grid");
+    const statusWriter = useViewStatusWriter(props.moduleContext);
+
+    const ensembleIdent = props.moduleContext.useStoreValue("ensembleIdent");
+    const realizations = props.moduleContext.useStoreValue("realizations");
     const wellbore = props.moduleContext.useStoreValue("wellbore");
+    const surfaceAttribute = props.moduleContext.useStoreValue("surfaceAttribute");
+    const surfaceNames = props.moduleContext.useStoreValue("surfaceNames");
+    const stratigraphyColorMap = props.moduleContext.useStoreValue("stratigraphyColorMap");
+
+    const grid = props.moduleContext.useStoreValue("grid");
+    const showWellbore = props.moduleContext.useStoreValue("showWellbore");
     const geoModel = props.moduleContext.useStoreValue("geoModel");
     const geoModelLabels = props.moduleContext.useStoreValue("geoModelLabels");
     const seismic = props.moduleContext.useStoreValue("seismic");
@@ -52,9 +69,60 @@ export const View = (props: ModuleFCProps<State>) => {
         gradientType: ColorScaleGradientType.Sequential,
     });
 
-    const [layers, setLayers] = React.useState<LayerItem<any>[]>([]);
     const [ris, setRis] = React.useState<IntersectionReferenceSystem | null>(null);
+    const [prevTrajectoryPoint, setPrevTrajectoryPoint] = React.useState<number[][]>([]);
 
+    const getWellTrajectoriesQuery = useWellTrajectoriesQuery(wellbore ? [wellbore.uuid] : undefined);
+    if (getWellTrajectoriesQuery.isError) {
+        statusWriter.addError("Error loading well trajectories");
+    }
+
+    const wellboreCompletionsQuery = useWellboreCompletionsQuery(wellbore?.uuid);
+
+    let trajectoryXyzPoints: number[][] = [];
+
+    if (getWellTrajectoriesQuery.data && getWellTrajectoriesQuery.data.length !== 0) {
+        trajectoryXyzPoints = makeTrajectoryXyzPointsFromWellboreTrajectory(getWellTrajectoriesQuery.data[0]);
+        if (!isEqual(trajectoryXyzPoints, prevTrajectoryPoint)) {
+            setPrevTrajectoryPoint(trajectoryXyzPoints);
+            const referenceSystem = new IntersectionReferenceSystem(trajectoryXyzPoints);
+            referenceSystem.offset = trajectoryXyzPoints[0][2]; // Offset should be md at start of path
+            setRis(referenceSystem);
+        }
+    }
+
+    const xPoints = trajectoryXyzPoints.map((coord) => coord[0]) ?? [];
+    const yPoints = trajectoryXyzPoints.map((coord) => coord[1]) ?? [];
+
+    let cumLength: number[] = [];
+
+    if (trajectoryXyzPoints) {
+        cumLength = IntersectionReferenceSystem.toDisplacement(trajectoryXyzPoints, 0).map((coord) => coord[0]);
+    }
+
+    const sampleSurfaceInPointsQueries = useSampleSurfaceInPointsQueries(
+        ensembleIdent?.getCaseUuid() ?? "",
+        ensembleIdent?.getEnsembleName() ?? "",
+        surfaceNames ?? [],
+        surfaceAttribute ?? "",
+        realizations ?? [],
+        xPoints,
+        yPoints,
+        true
+    );
+
+    statusWriter.setLoading(getWellTrajectoriesQuery.isFetching || sampleSurfaceInPointsQueries.isFetching);
+
+    let errorString = "";
+    if (getWellTrajectoriesQuery.isError) {
+        errorString += "Error loading well trajectories";
+    }
+
+    if (errorString !== "") {
+        statusWriter.addError(errorString);
+    }
+
+    /*
     React.useEffect(() => {
         const promises = [
             getWellborePath(),
@@ -288,6 +356,52 @@ export const View = (props: ModuleFCProps<State>) => {
             );
         });
     }, []);
+    */
+
+    const surfaceStatisticsFancharts = sampleSurfaceInPointsQueries.data.map((surface) => {
+        const fanchart = makeSurfaceStatisticalFanchartFromRealizationSurfaces(
+            surface.realizationPoints.map((el) => el.sampled_values),
+            cumLength,
+            surface.surfaceName,
+            stratigraphyColorMap
+        );
+        return fanchart;
+    });
+
+    const layers: LayerItem<any>[] = [
+        {
+            id: "wellborepath",
+            type: LayerType.WELLBORE_PATH,
+            options: {
+                order: 3,
+                stroke: "red",
+                strokeWidth: "2px",
+                referenceSystem: ris,
+            },
+        },
+        {
+            id: "statistics-surface",
+            type: LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS,
+            options: {
+                order: 4,
+                data: {
+                    fancharts: surfaceStatisticsFancharts,
+                },
+            },
+        },
+    ];
+
+    if (wellboreCompletionsQuery.data) {
+        layers.push({
+            id: "schematic",
+            type: LayerType.SCHEMATIC,
+            options: {
+                order: 100,
+                data: getPicksData(wellboreCompletionsQuery.data),
+                referenceSystem: ris,
+            },
+        });
+    }
 
     return (
         <div className="h-full w-full flex flex-col justify-center items-center">
@@ -302,14 +416,15 @@ export const View = (props: ModuleFCProps<State>) => {
                 }}
                 layers={layers.filter((layer) => {
                     return (
-                        (layer.id === "wellborepath" && wellbore) ||
+                        (layer.id === "wellborepath" && showWellbore) ||
                         (layer.id === "geomodel" && geoModel) ||
                         (layer.id === "geomodellabels" && geoModelLabels) ||
                         (layer.id === "seismic" && seismic) ||
                         (layer.id === "schematic" && schematic) ||
                         (layer.id === "seaAndRbk" && seaAndRbk) ||
                         (layer.id === "callout" && picks) ||
-                        (layer.id === "polyline-intersection" && polyLineIntersection)
+                        (layer.id === "polyline-intersection" && polyLineIntersection) ||
+                        layer.id === "statistics-surface"
                     );
                 })}
                 intersectionReferenceSystem={ris ?? undefined}

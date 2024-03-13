@@ -39,7 +39,11 @@ import {
     PolylineIntersectionData,
     PolylineIntersectionLayerOptions,
     PoylineIntersectionLayer,
-} from "./PolylineIntersectionLayer";
+} from "./layers/PolylineIntersectionLayer";
+import {
+    SurfaceStatisticalFanchartsCanvasLayer,
+    SurfaceStatisticalFanchartsData,
+} from "./layers/SurfaceStatisticalFanchartCanvasLayer";
 
 export enum LayerType {
     CALLOUT_CANVAS = "callout-canvas",
@@ -51,6 +55,7 @@ export enum LayerType {
     REFERENCE_LINE = "reference-line",
     SCHEMATIC = "schematic-layer",
     SEISMIC_CANVAS = "seismic-canvas",
+    SURFACE_STATISTICAL_FANCHARTS_CANVAS = "surface-statistical-fancharts-canvas",
     WELLBORE_PATH = "wellborepath",
 }
 
@@ -64,6 +69,7 @@ type LayerDataTypeMap = {
     [LayerType.REFERENCE_LINE]: ReferenceLine[];
     [LayerType.SCHEMATIC]: SchematicData;
     [LayerType.SEISMIC_CANVAS]: SeismicCanvasData;
+    [LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS]: SurfaceStatisticalFanchartsData;
     [LayerType.WELLBORE_PATH]: [number, number][];
 };
 
@@ -77,6 +83,7 @@ type LayerOptionsMap = {
     [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
     [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
     [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData>;
+    [LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS]: LayerOptions<SurfaceStatisticalFanchartsData>;
     [LayerType.WELLBORE_PATH]: WellborepathLayerOptions<[number, number][]>;
 };
 
@@ -148,6 +155,11 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
             return new SeismicCanvasLayer(id, options as LayerOptions<SeismicCanvasData>) as unknown as Layer<
                 LayerDataTypeMap[T]
             >;
+        case LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS:
+            return new SurfaceStatisticalFanchartsCanvasLayer(
+                id,
+                options as LayerOptions<SurfaceStatisticalFanchartsData>
+            ) as unknown as Layer<LayerDataTypeMap[T]>;
         case LayerType.WELLBORE_PATH:
             return new WellborepathLayer(
                 id,
@@ -155,7 +167,7 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
             ) as unknown as Layer<LayerDataTypeMap[T]>;
     }
 
-    throw new Error("Invalid layer type");
+    throw new Error("Unsupported layer type");
 }
 
 export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNode {

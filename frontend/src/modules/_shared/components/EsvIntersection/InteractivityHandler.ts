@@ -8,7 +8,8 @@ import {
 } from "@equinor/esv-intersection";
 import { Point2D, pointDistance, vectorLength, vectorMultiplyWithScalar } from "@lib/utils/geometry";
 
-import { PolylineIntersectionData } from "./PolylineIntersectionLayer";
+import { PolylineIntersectionData } from "./layers/PolylineIntersectionLayer";
+import { SurfaceStatisticalFanchartsData } from "./layers/SurfaceStatisticalFanchartCanvasLayer";
 
 type DataType = number[][];
 
@@ -119,7 +120,7 @@ class LineBoundingHandler implements BoundingHandler {
     }
 
     private makeChildren(margin: number) {
-        if (this._data.length <= 100) {
+        if (this._data.length <= 20) {
             return;
         }
 
@@ -145,23 +146,88 @@ class LineBoundingHandler implements BoundingHandler {
         secondNearestPoint: Point2D;
         secondNearestPointDistance: number;
     } {
-        const nearestPoints: { point: Point2D; distance: number }[] = [];
+        let nearestPoint = this._data[0];
+        let smallestDistance = pointDistance(this._data[0], point);
+        let nearestPointIndex = 0;
 
         for (let i = 1; i < this._data.length; i++) {
             const distance = pointDistance(this._data[i], point);
-            if (nearestPoints.length < 2 || distance < nearestPoints[0].distance) {
-                nearestPoints.unshift({ point: this._data[i], distance: distance });
-                if (nearestPoints.length > 2) {
-                    nearestPoints.pop();
-                }
+            if (distance < smallestDistance) {
+                nearestPoint = this._data[i];
+                smallestDistance = distance;
+                nearestPointIndex = i;
             }
         }
 
+        if (nearestPointIndex === 0) {
+            return {
+                nearestPoint,
+                nearestPointDistance: smallestDistance,
+                secondNearestPoint: this._data[1],
+                secondNearestPointDistance: pointDistance(this._data[1], point),
+            };
+        }
+
+        if (nearestPointIndex === this._data.length - 1) {
+            return {
+                nearestPoint,
+                nearestPointDistance: smallestDistance,
+                secondNearestPoint: this._data[this._data.length - 2],
+                secondNearestPointDistance: pointDistance(this._data[this._data.length - 2], point),
+            };
+        }
+
+        const nearestPointToPointVector = {
+            x: point.x - nearestPoint.x,
+            y: point.y - nearestPoint.y,
+        };
+
+        const candidateVector1 = {
+            x: this._data[nearestPointIndex + 1].x - nearestPoint.x,
+            y: this._data[nearestPointIndex + 1].y - nearestPoint.y,
+        };
+
+        const candidateVector2 = {
+            x: this._data[nearestPointIndex - 1].x - nearestPoint.x,
+            y: this._data[nearestPointIndex - 1].y - nearestPoint.y,
+        };
+
+        const scalarProduct1 =
+            nearestPointToPointVector.x * candidateVector1.x + nearestPointToPointVector.y * candidateVector1.y;
+        const scalarProduct2 =
+            nearestPointToPointVector.x * candidateVector2.x + nearestPointToPointVector.y * candidateVector2.y;
+
+        if (scalarProduct1 > 0 && scalarProduct2 > 0) {
+            if (scalarProduct1 < scalarProduct2) {
+                return {
+                    nearestPoint,
+                    nearestPointDistance: smallestDistance,
+                    secondNearestPoint: this._data[nearestPointIndex + 1],
+                    secondNearestPointDistance: pointDistance(this._data[nearestPointIndex + 1], point),
+                };
+            }
+            return {
+                nearestPoint,
+                nearestPointDistance: smallestDistance,
+                secondNearestPoint: this._data[nearestPointIndex - 1],
+                secondNearestPointDistance: pointDistance(this._data[nearestPointIndex - 1], point),
+            };
+        }
+
+        if (scalarProduct1 > 0) {
+            return {
+                nearestPoint,
+                nearestPointDistance: smallestDistance,
+                secondNearestPoint: this._data[nearestPointIndex + 1],
+                secondNearestPointDistance: pointDistance(this._data[nearestPointIndex + 1], point),
+            };
+        }
+
         return {
-            nearestPoint: nearestPoints[0].point,
-            nearestPointDistance: nearestPoints[0].distance,
-            secondNearestPoint: nearestPoints[1].point,
-            secondNearestPointDistance: nearestPoints[1].distance,
+            nearestPoint,
+            nearestPointDistance: smallestDistance,
+            secondNearestPoint: this._data[nearestPointIndex - 1],
+            secondNearestPointDistance: pointDistance(this._data[nearestPointIndex - 1], point),
         };
     }
 
@@ -438,6 +504,18 @@ function isPolylineIntersectionData(data: unknown): data is PolylineIntersection
     return true;
 }
 
+function isStatisticalFanchartsData(data: unknown): data is SurfaceStatisticalFanchartsData {
+    if (typeof data !== "object" || data === null) {
+        return false;
+    }
+
+    if (!("fancharts" in data) || !Array.isArray(data.fancharts)) {
+        return false;
+    }
+
+    return true;
+}
+
 function makePolygonsFromVerticesAndIndices(startU: number, vertices: Float32Array, indices: Uint32Array): Point2D[][] {
     const polygons: Point2D[][] = [];
     let idx = 0;
@@ -516,6 +594,70 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
             return sectionPolygons;
         });
         return polygons;
+    }
+
+    if (isStatisticalFanchartsData(layer.data)) {
+        const shapes: Shape<ShapeType.POLYLINE>[] = [];
+        for (const fanchart of layer.data.fancharts) {
+            const color = fanchart.color;
+            const data = fanchart.data;
+            const label = fanchart.label;
+
+            shapes.push({
+                id: `${layer.id}-${label}-mean`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (mean)`,
+                data: data.mean.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+
+            shapes.push({
+                id: `${layer.id}-${label}-min`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (min)`,
+                data: data.min.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+
+            shapes.push({
+                id: `${layer.id}-${label}-max`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (max)`,
+                data: data.max.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+
+            shapes.push({
+                id: `${layer.id}-${label}-p10`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (p10)`,
+                data: data.p10.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+
+            shapes.push({
+                id: `${layer.id}-${label}-p90`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (p90)`,
+                data: data.p90.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+
+            shapes.push({
+                id: `${layer.id}-${label}-p50`,
+                type: ShapeType.POLYLINE,
+                layerId: layer.id,
+                label: `${label} (p50)`,
+                data: data.p50.map((point) => ({ x: point[0], y: point[1] })),
+                color,
+            });
+        }
+        return shapes;
     }
 
     if (Array.isArray(layer.data)) {

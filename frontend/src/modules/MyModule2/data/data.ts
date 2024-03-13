@@ -1,4 +1,4 @@
-import { PolylineIntersectionData } from "@modules/_shared/components/EsvIntersection/PolylineIntersectionLayer";
+import { PolylineIntersectionData } from "@modules/_shared/components/EsvIntersection/layers/PolylineIntersectionLayer";
 
 import {
     casingData,

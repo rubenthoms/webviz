@@ -96,7 +96,7 @@ export class PoylineIntersectionLayer extends PixiLayer<PolylineIntersectionData
             const color = this._colorScale.getColorForValue(section.polyPropsArr[polygonIndex]);
 
             graphics.lineStyle(0.5, "#000", 0.5);
-            graphics.beginFill(color, 0.5);
+            graphics.beginFill(color, 1.0);
             const polySize = section.polysArr[idx];
             const polyVertices: number[] = [];
             for (let i = 0; i < polySize; i++) {

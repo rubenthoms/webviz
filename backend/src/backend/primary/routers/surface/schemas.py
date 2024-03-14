@@ -36,6 +36,7 @@ class SurfaceAttributeType(str, Enum):
     THICKNESS = "thickness"  # Values are isochores (real or conceptual difference between two depth surfaces)
     ISOCHORE = "isochore"  # Values are isochores (real or conceptual difference between two depth surfaces)
     FLUID_CONTACT = "fluid_contact"  # Values are fluid contacts (oil-water, gas-water, etc.)
+    VOLUMES = "volumes"
 
 
 class SurfaceMeta(BaseModel):

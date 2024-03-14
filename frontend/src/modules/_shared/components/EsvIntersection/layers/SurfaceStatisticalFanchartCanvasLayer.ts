@@ -30,10 +30,12 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
     private _rescaleEvent: OnRescaleEvent | null = null;
     private _linePaths: Path[] = [];
     private _fillPaths: Path[] = [];
+    private _transform: OnRescaleEvent["transform"];
 
     constructor(id?: string, options?: LayerOptions<T>) {
         super(id, options);
 
+        this._transform = { k: 1, x: 0, y: 0 };
         this.render = this.render.bind(this);
         this.generateFillPaths = this.generateFillPaths.bind(this);
         this.generateLinePaths = this.generateLinePaths.bind(this);
@@ -51,6 +53,7 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
     override onRescale(event: OnRescaleEvent): void {
         this._rescaleEvent = event;
         this.setTransform(event);
+        this._transform = event.transform;
         this.render();
     }
 
@@ -91,15 +94,16 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
             return;
         }
 
-        this.ctx.restore();
+        this.ctx.save();
         this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 1;
+        this.ctx.lineWidth = Math.min(1, 2 / this._transform.k);
         if (dashSegments !== undefined) {
             this.ctx.setLineDash(dashSegments);
         } else {
             this.ctx.setLineDash([]);
         }
         this.ctx.stroke(path);
+        this.ctx.restore();
     }
 
     private colorToCss(color: string | undefined, alpha: number): string {

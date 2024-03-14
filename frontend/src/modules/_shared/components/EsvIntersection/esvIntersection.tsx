@@ -15,7 +15,6 @@ import {
     IntersectionReferenceSystem,
     Layer,
     LayerOptions,
-    OnRescaleEvent,
     PixiRenderApplication,
     ReferenceLine,
     ReferenceLineLayer,
@@ -34,7 +33,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { isEqual } from "lodash";
 
-import { InteractivityHandler } from "./InteractivityHandler";
+import { InteractionHandler } from "./InteractionHandler";
 import {
     PolylineIntersectionData,
     PolylineIntersectionLayerOptions,
@@ -171,175 +170,203 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 }
 
 export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNode {
+    const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | undefined>(undefined);
+    const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
+        IntersectionReferenceSystem | undefined
+    >(undefined);
     const [prevShowGrid, setPrevShowGrid] = React.useState<boolean | undefined>(undefined);
     const [prevContainerSize, setPrevContainerSize] = React.useState<Size2D | undefined>(undefined);
-    const [prevLayerIds, setPrevLayerIds] = React.useState<string[]>([]);
+    const [prevLayers, setPrevLayers] = React.useState<LayerItem<any>[]>([]);
     const [prevBounds, setPrevBounds] = React.useState<{ x: [number, number]; y: [number, number] } | undefined>(
         undefined
     );
     const [prevViewport, setPrevViewport] = React.useState<[number, number, number] | undefined>(undefined);
-    const [prevRevision, setPrevRevision] = React.useState<number>(0);
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | undefined>(undefined);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | undefined>(undefined);
-    const [userTransform, setUserTransform] = React.useState<OnRescaleEvent["transform"] | null>(null);
 
-    const [currentRevision, setCurrentRevision] = React.useState<number>(0);
-    const [layers, setLayers] = React.useState<Layer<unknown>[]>([]);
+    const [layerIds, setLayerIds] = React.useState<string[]>([]);
 
-    const esvControllerRef = React.useRef<Controller | null>(null);
+    const [esvController, setEsvController] = React.useState<Controller | null>(null);
+    const [interactivityHandler, setInteractivityHandler] = React.useState<InteractionHandler | null>(null);
+    const [pixiRenderApplication, setPixiRenderApplication] = React.useState<PixiRenderApplication | null>(null);
+
     const containerRef = React.useRef<HTMLDivElement>(null);
-    const pixiRenderAppRef = React.useRef<PixiRenderApplication | null>(null);
-    const pointerEventsCalculatorRef = React.useRef<InteractivityHandler | null>(null);
 
     const containerSize = useElementSize(containerRef);
 
-    if (esvControllerRef.current && pixiRenderAppRef.current) {
-        if (prevShowGrid !== props.showGrid || currentRevision !== prevRevision) {
+    if (esvController && interactivityHandler && pixiRenderApplication) {
+        if (
+            !isEqual(prevIntersectionReferenceSystem, props.intersectionReferenceSystem) &&
+            props.intersectionReferenceSystem
+        ) {
+            esvController.setReferenceSystem(props.intersectionReferenceSystem);
+            setPrevIntersectionReferenceSystem(props.intersectionReferenceSystem);
+        }
+
+        if (!isEqual(prevAxesOptions, props.axesOptions)) {
+            if (props.axesOptions?.xLabel) {
+                esvController.axis?.setLabelX(props.axesOptions.xLabel);
+            }
+            if (props.axesOptions?.yLabel) {
+                esvController.axis?.setLabelY(props.axesOptions.yLabel);
+            }
+            if (props.axesOptions?.unitOfMeasure) {
+                esvController.axis?.setUnitOfMeasure(props.axesOptions.unitOfMeasure);
+            }
+            setPrevAxesOptions(props.axesOptions);
+        }
+
+        if (prevShowGrid !== props.showGrid) {
             if (props.showGrid) {
-                esvControllerRef.current.addLayer(new GridLayer("grid"));
+                esvController.addLayer(new GridLayer("grid"));
             } else {
-                esvControllerRef.current.removeLayer("grid");
+                esvController.removeLayer("grid");
             }
             setPrevShowGrid(props.showGrid);
         }
 
-        if (prevShowAxes !== props.showAxes || currentRevision !== prevRevision) {
+        if (prevShowAxes !== props.showAxes) {
             if (props.showAxes) {
-                esvControllerRef.current.showAxis();
+                esvController.showAxis();
             } else {
-                esvControllerRef.current.hideAxis();
+                esvController.hideAxis();
             }
             setPrevShowAxes(props.showAxes);
         }
 
-        if (prevShowAxesLabels !== props.showAxesLabels || currentRevision !== prevRevision) {
+        if (prevShowAxesLabels !== props.showAxesLabels) {
             if (props.showAxesLabels) {
-                esvControllerRef.current.showAxisLabels();
+                esvController.showAxisLabels();
             } else {
-                esvControllerRef.current.hideAxisLabels();
+                esvController.hideAxisLabels();
             }
             setPrevShowAxesLabels(props.showAxesLabels);
         }
 
-        if (!isEqual(prevContainerSize, containerSize) || currentRevision !== prevRevision) {
-            esvControllerRef.current.adjustToSize(containerSize.width, containerSize.height);
-            if (pixiRenderAppRef.current?.view) {
-                pixiRenderAppRef.current.view.width = containerSize.width;
-                pixiRenderAppRef.current.view.height = containerSize.height;
+        if (!isEqual(prevContainerSize, containerSize)) {
+            esvController.adjustToSize(containerSize.width, containerSize.height);
+            if (pixiRenderApplication?.view) {
+                pixiRenderApplication.view.width = containerSize.width;
+                pixiRenderApplication.view.height = containerSize.height;
             }
-            for (const layer of layers ?? []) {
-                layer.element?.setAttribute("width", containerSize.width.toString());
-                layer.element?.setAttribute("height", containerSize.height.toString());
+            for (const layerId of layerIds ?? []) {
+                const layer = esvController.getLayer(layerId);
+                layer?.element?.setAttribute("width", containerSize.width.toString());
+                layer?.element?.setAttribute("height", containerSize.height.toString());
             }
             setPrevContainerSize(containerSize);
         }
 
-        if (!isEqual(prevBounds, props.bounds) || currentRevision !== prevRevision) {
+        if (!isEqual(prevBounds, props.bounds)) {
             if (props.bounds?.x && props.bounds?.y) {
-                esvControllerRef.current.setBounds(props.bounds.x, props.bounds.y);
+                esvController.setBounds(props.bounds.x, props.bounds.y);
             }
             setPrevBounds(props.bounds);
         }
 
         if (!isEqual(prevViewport, props.viewport)) {
             if (props.viewport) {
-                esvControllerRef.current.setViewport(...props.viewport);
+                esvController.setViewport(...props.viewport);
             }
             setPrevViewport(props.viewport);
-        } else if (currentRevision !== prevRevision && userTransform) {
-            esvControllerRef.current.zoomPanHandler.applyTransform(userTransform);
         }
 
-        if (
-            !isEqual(
-                prevLayerIds,
-                props.layers?.map((el) => el.id)
-            ) ||
-            currentRevision !== prevRevision
-        ) {
-            let newLayers = layers;
+        if (!isEqual(prevLayers, props.layers)) {
+            let newLayerIds = layerIds;
+
+            // Remove layers that are not in the new list
+            for (const layer of prevLayers) {
+                if (!props.layers?.find((el) => el.id === layer.id)) {
+                    newLayerIds = newLayerIds.filter((el) => el !== layer.id);
+                    esvController.removeLayer(layer.id);
+                    interactivityHandler.removeLayer(layer.id);
+                }
+            }
+
+            // Add or update layers
             for (const layer of props.layers ?? []) {
-                if (!prevLayerIds.includes(layer.id)) {
-                    const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderAppRef.current);
-                    newLayers = [...newLayers, newLayer];
-                    esvControllerRef.current.addLayer(newLayer);
-                    pointerEventsCalculatorRef.current?.addLayer(newLayer);
+                if (!esvController.getLayer(layer.id)) {
+                    const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
+                    newLayerIds.push(layer.id);
+                    esvController.addLayer(newLayer);
+                    interactivityHandler.addLayer(newLayer);
+                } else {
+                    const existingLayer = esvController.getLayer(layer.id);
+                    if (existingLayer) {
+                        existingLayer.onUpdate({ data: layer.options.data });
+                    }
+                }
+                if (!interactivityHandler.hasLayer(layer.id)) {
+                    const newLayer = esvController.getLayer(layer.id) as Layer<any> | undefined;
+                    if (newLayer) {
+                        interactivityHandler.addLayer(newLayer);
+                    }
+                } else {
+                    const existingLayer = esvController.getLayer(layer.id) as Layer<any> | undefined;
+                    if (existingLayer) {
+                        interactivityHandler.updateLayer(existingLayer);
+                    }
                 }
             }
 
-            for (const layerId of prevLayerIds) {
-                if (props.layers === undefined || !props.layers.some((el) => el.id === layerId)) {
-                    newLayers = newLayers.filter((el) => el.id !== layerId);
-                    esvControllerRef.current.removeLayer(layerId);
-                    pointerEventsCalculatorRef.current?.removeLayer(layerId);
-                }
-            }
-
-            setLayers(newLayers);
-            setPrevLayerIds(props.layers?.map((el) => el.id) ?? []);
-        }
-
-        if (currentRevision !== prevRevision) {
-            setPrevRevision(currentRevision);
+            setLayerIds(newLayerIds);
+            setPrevLayers(props.layers ?? []);
         }
     }
 
-    React.useEffect(
-        function handleInitController() {
-            const containerRefCurrent = containerRef.current;
-            if (!containerRefCurrent) {
-                return;
-            }
+    React.useEffect(function handleMount() {
+        if (!containerRef.current) {
+            return;
+        }
 
-            esvControllerRef.current = new Controller({
-                container: containerRefCurrent,
-                axisOptions: props.axesOptions,
-                referenceSystem: props.intersectionReferenceSystem,
-            });
+        const newEsvController = new Controller({
+            container: containerRef.current,
+            axisOptions: {
+                xLabel: "",
+                yLabel: "",
+                unitOfMeasure: "",
+            },
+        });
 
-            pointerEventsCalculatorRef.current = new InteractivityHandler(
-                containerRefCurrent,
-                esvControllerRef.current
-            );
+        const newInteractivityHandler = new InteractionHandler(containerRef.current, newEsvController);
 
-            const originalRescaleHandler = esvControllerRef.current.zoomPanHandler.onRescale;
+        const newPixiRenderApplication = new PixiRenderApplication({
+            context: null,
+            antialias: true,
+            hello: false,
+            powerPreference: "default",
+            premultipliedAlpha: false,
+            preserveDrawingBuffer: false,
+            backgroundColor: "#fff",
+            clearBeforeRender: true,
+            backgroundAlpha: 0,
+            width: 0,
+            height: 0,
+        });
 
-            pixiRenderAppRef.current = new PixiRenderApplication({
-                context: null,
-                antialias: true,
-                hello: false,
-                powerPreference: "default",
-                premultipliedAlpha: false,
-                preserveDrawingBuffer: false,
-                backgroundColor: "#fff",
-                clearBeforeRender: true,
-                backgroundAlpha: 0,
-                width: containerSize.width,
-                height: containerSize.height,
-            });
+        setEsvController(newEsvController);
+        setInteractivityHandler(newInteractivityHandler);
+        setPixiRenderApplication(newPixiRenderApplication);
 
-            setCurrentRevision((prev) => prev + 1);
-
-            const esvControllerRefCurrent = esvControllerRef.current;
-            const pointerEventsCalculatorRefCurrent = pointerEventsCalculatorRef.current;
-            const pixiRenderAppReCurrent = pixiRenderAppRef.current;
-
-            esvControllerRefCurrent.zoomPanHandler.onRescale = (event: OnRescaleEvent) => {
-                setUserTransform(event.transform);
-                originalRescaleHandler(event);
-            };
-
-            return function handleDestroyController() {
-                pixiRenderAppReCurrent.destroy();
-                esvControllerRefCurrent.removeAllLayers();
-                esvControllerRefCurrent.destroy();
-                pointerEventsCalculatorRefCurrent.destroy();
-                setLayers([]);
-                setPrevLayerIds([]);
-            };
-        },
-        [props.axesOptions, props.intersectionReferenceSystem]
-    );
+        return function handleUnmount() {
+            setEsvController(null);
+            setInteractivityHandler(null);
+            setLayerIds([]);
+            setPrevLayers([]);
+            setPrevAxesOptions(undefined);
+            setPrevIntersectionReferenceSystem(undefined);
+            setPrevShowGrid(undefined);
+            setPrevContainerSize(undefined);
+            setPrevBounds(undefined);
+            setPrevViewport(undefined);
+            setPrevShowAxesLabels(undefined);
+            setPrevShowAxes(undefined);
+            newPixiRenderApplication.destroy();
+            newEsvController.removeAllLayers();
+            newEsvController.destroy();
+            newInteractivityHandler.destroy();
+        };
+    }, []);
 
     return (
         <>

@@ -374,7 +374,7 @@ export const View = (props: ModuleFCProps<State>) => {
                 },
             });
         });
-    }, []);
+    }, [colorScale]);
 
     const surfaceStatisticsFancharts = sampleSurfaceInPointsQueries.data.map((surface) => {
         const fanchart = makeSurfaceStatisticalFanchartFromRealizationSurfaces(
@@ -407,6 +407,17 @@ export const View = (props: ModuleFCProps<State>) => {
                 },
             },
         },
+        {
+            id: "seaAndRbk",
+            type: LayerType.REFERENCE_LINE,
+            options: {
+                data: [
+                    { text: "RKB", lineType: "dashed", color: "black", depth: -25 },
+                    { text: "MSL", lineType: "wavy", color: "blue", depth: 30 },
+                    { text: "Seabed", lineType: "solid", color: "slategray", depth: 91.1, lineWidth: 2 },
+                ],
+            },
+        },
     ];
 
     if (polylineIntersectionLayer) {
@@ -418,13 +429,23 @@ export const View = (props: ModuleFCProps<State>) => {
     }
 
     if (wellboreCompletionsQuery.data) {
+        const internalLayerIds: InternalLayerOptions = {
+            holeLayerId: "hole-id",
+            casingLayerId: "casing-id",
+            completionLayerId: "completion-id",
+            cementLayerId: "cement-id",
+            pAndALayerId: "pAndA-id",
+            perforationLayerId: "perforation-id",
+        };
+
         layers.push({
             id: "schematic",
             type: LayerType.SCHEMATIC,
             options: {
-                order: 100,
+                order: 5,
                 data: makeSchematicsFromWellCompletions(wellboreCompletionsQuery.data),
                 referenceSystem: ris,
+                internalLayerOptions: internalLayerIds,
             },
         });
     }
@@ -468,13 +489,12 @@ View.displayName = "View";
 
 function makeSchematicsFromWellCompletions(completions: WellBoreCompletion_api[]): SchematicData {
     const perforations: Perforation[] = [];
-    let idx = 0;
     for (const [index, completion] of completions.entries()) {
         if (completion.completion_type === "perforation") {
             perforations.push({
                 kind: "perforation",
                 subKind: "Perforation",
-                id: `perforation-${idx++}`,
+                id: `perforation-${index}`,
                 start: completion.top_depth_md,
                 end: completion.base_depth_md,
                 isOpen: completion.completion_open_flag,
@@ -483,7 +503,7 @@ function makeSchematicsFromWellCompletions(completions: WellBoreCompletion_api[]
     }
 
     return {
-        holeSizes: [],
+        holeSizes: [{ kind: "hole", id: "hole-01", start: 0, end: Infinity, diameter: 5 }],
         cements: [],
         casings: [],
         completion: [],

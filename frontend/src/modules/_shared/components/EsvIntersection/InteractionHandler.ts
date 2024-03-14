@@ -4,6 +4,8 @@ import {
     OnRescaleEvent,
     OverlayMouseMoveEvent,
     RescaleFunction,
+    SchematicData,
+    SchematicLayer,
     SurfaceData,
 } from "@equinor/esv-intersection";
 import { Point2D, pointDistance, vectorLength, vectorMultiplyWithScalar } from "@lib/utils/geometry";
@@ -44,33 +46,12 @@ class BoundingBox2D implements BoundingVolume {
     }
 }
 
-class BoundingSphere2D implements BoundingVolume {
-    private _center: Point2D;
-    private _radius: number;
-
-    constructor(center: Point2D, radius: number) {
-        this._center = center;
-        this._radius = radius;
-    }
-
-    getCenter(): Point2D {
-        return this._center;
-    }
-
-    getRadius(): number {
-        return this._radius;
-    }
-
-    contains(point: Point2D): boolean {
-        return pointDistance(this._center, point) <= this._radius;
-    }
-}
-
 type IntersectionResult = {
     point: Point2D;
     distance: number;
     polygonIndex?: number;
     shape?: Point2D[];
+    md?: number;
 };
 
 interface BoundingHandler {
@@ -263,7 +244,7 @@ class LineBoundingHandler implements BoundingHandler {
         };
     }
 
-    calcIntersection(point: Point2D): { point: Point2D; distance: number } | null {
+    calcIntersection(point: Point2D): IntersectionResult | null {
         if (!this._boundingBox.contains(point)) {
             return null;
         }
@@ -279,94 +260,6 @@ class LineBoundingHandler implements BoundingHandler {
 
         return intersection;
     }
-}
-
-class BoundingGrid {
-    private _sectors: number[] = [];
-    private _sectorIndices: number[] = [];
-    private _minX: number = Number.POSITIVE_INFINITY;
-    private _maxX: number = Number.NEGATIVE_INFINITY;
-
-    private _sectorSize: number;
-
-    constructor(sectorSize: number) {
-        this._sectorSize = sectorSize;
-    }
-
-    getAndMaybeMakeSector(point: Point2D): number {
-        if (this._sectors.length === 0) {
-            this._minX = point.x;
-            this._maxX = point.x + this._sectorSize;
-            this._sectors.push(point.x);
-            this._sectorIndices.push(0);
-            return 0;
-        }
-
-        if (point.x < this._minX) {
-            const numColumns = Math.ceil((this._minX - point.x) / this._sectorSize);
-            this.prependColumns(numColumns);
-            const sectorIndex = this._sectors.length - 1;
-            return sectorIndex;
-        }
-
-        if (point.x > this._maxX) {
-            const numColumns = Math.ceil((point.x - this._maxX) / this._sectorSize);
-            this.appendColumns(numColumns);
-            const sectorIndex = this._sectors.length - 1;
-            return sectorIndex;
-        }
-
-        const sectorIndex = this.getIntersectedSector(point);
-        if (sectorIndex === null) {
-            throw "Expect to always find a sector since it should otherwise be created";
-        }
-
-        return sectorIndex;
-    }
-
-    private prependColumns(numColumns: number) {
-        for (let i = 0; i < numColumns; i++) {
-            this._sectors.unshift(this._minX - this._sectorSize * i);
-            this._sectorIndices.unshift(i);
-        }
-        this._minX -= this._sectorSize * numColumns;
-    }
-
-    private appendColumns(numColumns: number) {
-        for (let i = 0; i < numColumns; i++) {
-            this._sectors.push(this._maxX - this._sectorSize * i);
-            this._sectorIndices.push(this._sectors.length - 1);
-        }
-        this._maxX += this._sectorSize * numColumns;
-    }
-
-    getIntersectedSector(point: Point2D): number | null {
-        const sectorIndex = Math.floor((point.x - this._minX) / this._sectorSize);
-        if (sectorIndex < 0 || sectorIndex >= this._sectors.length) {
-            return null;
-        }
-
-        return this._sectorIndices[sectorIndex];
-    }
-}
-
-function makeBoundingSphereFromPolygon(polygon: Point2D[]): BoundingSphere2D {
-    const center = { x: 0, y: 0 };
-
-    const xValues = polygon.map((point) => point.x);
-    const yValues = polygon.map((point) => point.y);
-
-    const xMax = Math.max(...xValues);
-    const xMin = Math.min(...xValues);
-    const yMax = Math.max(...yValues);
-    const yMin = Math.min(...yValues);
-
-    center.x = xMin + (xMax - xMin) / 2;
-    center.y = yMin + (yMax - yMin) / 2;
-
-    const radius = Math.sqrt((center.x - xMin) ** 2 + (center.y - yMin) ** 2);
-
-    return new BoundingSphere2D(center, radius);
 }
 
 function pointIsInPolygon(
@@ -475,6 +368,7 @@ type Shape<T extends ShapeType> = {
     id: string;
     label: string;
     layerId: string;
+    order?: number;
     type: T;
     data: T extends ShapeType.POLYLINE ? Point2D[] : PolygonData;
     color?: T extends ShapeType.POLYLINE ? string : never;
@@ -516,22 +410,6 @@ function isStatisticalFanchartsData(data: unknown): data is SurfaceStatisticalFa
     return true;
 }
 
-function makePolygonsFromVerticesAndIndices(startU: number, vertices: Float32Array, indices: Uint32Array): Point2D[][] {
-    const polygons: Point2D[][] = [];
-    let idx = 0;
-    while (idx < indices.length) {
-        const numVertices = indices[idx];
-        const polygon: Point2D[] = [];
-        for (let i = 1; i <= numVertices; i++) {
-            const vertexIndex = indices[idx + i];
-            polygon.push({ x: startU + vertices[vertexIndex * 2], y: vertices[vertexIndex * 2 + 1] });
-        }
-        idx += numVertices + 1;
-        polygons.push(polygon);
-    }
-    return polygons;
-}
-
 function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>[] {
     if (layer.data === undefined || layer.data === null) {
         return [];
@@ -547,6 +425,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                     label: line.label,
                     data: line.data.map((point: number[]) => ({ x: point[0], y: point[1] })),
                     color: `${line.color}`,
+                    order: layer.order,
                 };
             }
             return {
@@ -556,6 +435,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: "",
                 data: [],
                 color: "red",
+                order: layer.order,
             };
         });
         return pointsAndColor;
@@ -589,6 +469,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                     startU: offsetU,
                     endU: offsetU + uVectorLength,
                 },
+                order: layer.order,
             };
             offsetU += uVectorLength;
             return sectionPolygons;
@@ -610,6 +491,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (mean)`,
                 data: data.mean.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
 
             shapes.push({
@@ -619,6 +501,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (min)`,
                 data: data.min.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
 
             shapes.push({
@@ -628,6 +511,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (max)`,
                 data: data.max.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
 
             shapes.push({
@@ -637,6 +521,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (p10)`,
                 data: data.p10.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
 
             shapes.push({
@@ -646,6 +531,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (p90)`,
                 data: data.p90.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
 
             shapes.push({
@@ -655,6 +541,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: `${label} (p50)`,
                 data: data.p50.map((point) => ({ x: point[0], y: point[1] })),
                 color,
+                order: layer.order,
             });
         }
         return shapes;
@@ -669,6 +556,7 @@ function convertLayerDataToShapeObjects(layer: Layer<unknown>): Shape<ShapeType>
                 label: layer.id,
                 data: layer.data.map((point) => ({ x: point[0], y: point[1] })),
                 color: "red",
+                order: layer.order,
             },
         ];
     }
@@ -685,19 +573,25 @@ type Intersection = {
     distance: number;
     polygonIndex?: number;
     shape?: Point2D[];
+    order?: number;
 };
 
 const POINTER_DISTANCE_THRESHOLD_PX = 10;
 
-export class InteractivityHandler {
+type Schematic = {
+    label: string;
+    startMd: number;
+    endMd: number;
+};
+
+export class InteractionHandler {
     private _shapes: Map<string, Map<string, Shape<ShapeType>>> = new Map();
     private _boundingHandlers: Map<string, Map<string, BoundingHandler>> = new Map();
+    private _schematics: Schematic[] = [];
     private _container: HTMLDivElement;
     private _controller: Controller;
     private _indicatorOverlay: HTMLElement;
     private _readoutOverlay: HTMLElement;
-    private _mdReadoutOverlay: HTMLElement;
-    private _wellborePathOverlay: HTMLElement;
     private _pointerDown: boolean = false;
     private _showIndicator: boolean = true;
     private _controllerOriginalRescaleFunction: RescaleFunction;
@@ -712,8 +606,6 @@ export class InteractivityHandler {
 
         this._indicatorOverlay = this.makeIndicatorOverlay();
         this._readoutOverlay = this.makeReadoutOverlay();
-        this._mdReadoutOverlay = this.makeMdOverlay();
-        this._wellborePathOverlay = this.makeWellborePathOverlay();
     }
 
     private makeIndicatorOverlay(): HTMLElement {
@@ -733,116 +625,6 @@ export class InteractivityHandler {
         overlay.style.zIndex = "100";
 
         return overlay;
-    }
-
-    private makeMdOverlay(): HTMLElement {
-        const overlay = this._controller.overlay.create("md");
-
-        if (overlay === undefined) {
-            throw new Error("Overlay not found");
-        }
-
-        overlay.style.width = "10rem";
-        overlay.style.position = "absolute";
-        overlay.style.right = "0";
-        overlay.style.color = "white";
-        overlay.style.visibility = "hidden";
-        overlay.style.display = "flex";
-        overlay.style.flexDirection = "column";
-        overlay.style.borderRadius = "0.25rem";
-        overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        overlay.style.zIndex = "100";
-        overlay.style.padding = "0.25rem";
-        overlay.style.pointerEvents = "none";
-        overlay.style.gap = "0.25rem";
-        overlay.style.alignItems = "start";
-
-        return overlay;
-    }
-
-    private makeWellborePathOverlay(): HTMLElement {
-        const element = this._controller.overlay.create("wellborepath", {
-            onMouseExit: (event) => {
-                const { target } = event;
-
-                if (!(target instanceof HTMLElement)) return;
-
-                target.classList.replace("visible", "invisible");
-            },
-            onMouseMove: (event) => {
-                const { target, caller, x, y } = event;
-                const referenceSystem = caller.referenceSystem;
-
-                if (!referenceSystem || !(target instanceof HTMLElement)) return;
-
-                const displacement = caller.currentStateAsEvent.xScale.invert(x);
-                if (displacement && caller?.referenceSystem) {
-                    const { curtain } = caller.referenceSystem.interpolators;
-                    const { minX, maxX } = curtain;
-                    if ((displacement <= maxX && displacement >= minX) || (displacement < 0 && maxX >= 1000)) {
-                        const tvd = caller.currentStateAsEvent.yScale.invert(y);
-
-                        const targetDims = [displacement, tvd];
-
-                        const nearestPoint = curtain.getNearestPosition(targetDims);
-
-                        const nearestPointToScreenX = caller.currentStateAsEvent.xScale(nearestPoint.point[0]);
-                        const nearestPointToScreenY = caller.currentStateAsEvent.yScale(nearestPoint.point[1]);
-
-                        const referenceSystemCoordinates = {
-                            x: this._controller.currentStateAsEvent.xScale.invert(x),
-                            y: this._controller.currentStateAsEvent.yScale.invert(y),
-                        };
-
-                        const newX = caller.currentStateAsEvent.xScale.invert(x);
-
-                        if (
-                            pointDistance({ x, y }, { x: nearestPointToScreenX, y: nearestPointToScreenY }) <
-                            POINTER_DISTANCE_THRESHOLD_PX
-                        ) {
-                            target.style.visibility = "visible";
-                            target.style.left = nearestPointToScreenX + "px";
-                            target.style.top = nearestPointToScreenY + "px";
-                            this.makeMdReadout(referenceSystemCoordinates, newX);
-                            this.changeMdReadoutVisibility(true);
-                        } else {
-                            target.style.visibility = "hidden";
-                            this.changeMdReadoutVisibility(false);
-                        }
-
-                        return;
-                    }
-                }
-
-                target.style.visibility = "hidden";
-                this.changeMdReadoutVisibility(false);
-            },
-        });
-
-        if (!element) {
-            throw new Error("Overlay not found");
-        }
-
-        element.classList.add(
-            "absolute",
-            "bg-red-500",
-            "rounded-full",
-            "w-[11px]",
-            "h-[11px]",
-            "block",
-            "-ml-[5px]",
-            "-mt-[5px]"
-        );
-        element.style.zIndex = "100";
-        element.style.visibility = "hidden";
-
-        return element;
-    }
-
-    private makeMdReadout(indicatorPoint: Point2D, md: number) {
-        this._mdReadoutOverlay.innerHTML = `<span>MD: ${md.toFixed(2)}</span><span>${indicatorPoint.x.toFixed(
-            2
-        )}, ${indicatorPoint.y.toFixed(2)}</span>`;
     }
 
     private makeReadoutOverlay(): HTMLElement {
@@ -876,45 +658,25 @@ export class InteractivityHandler {
 
     addLayer(layer: Layer<DataType>) {
         this.makeBoundingHandler(layer);
+        if (layer instanceof SchematicLayer) {
+            const data = layer.data as SchematicData;
+            for (const perforation of data.perforations) {
+                this._schematics.push({ label: "Perforation", startMd: perforation.start, endMd: perforation.end });
+            }
+        }
+    }
+
+    hasLayer(layerId: string) {
+        return this._boundingHandlers.has(layerId);
+    }
+
+    updateLayer(layer: Layer<DataType>) {
+        this.removeLayer(layer.id);
+        this.makeBoundingHandler(layer);
     }
 
     removeLayer(layerId: string) {
         this._boundingHandlers.delete(layerId);
-    }
-
-    private makePolygonDebugLayer(polygons: Point2D[][]) {
-        const { xScale, yScale, width, height } = this._controller.currentStateAsEvent;
-
-        let svgOverlay: HTMLElement | undefined = this._controller.overlay.elements["svg-overlay"] as unknown as
-            | HTMLElement
-            | undefined;
-
-        if (!svgOverlay) {
-            svgOverlay = this._controller.overlay.create("svg-overlay") as HTMLElement;
-            svgOverlay.style.zIndex = "99";
-        }
-
-        svgOverlay.innerHTML = "";
-
-        const svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svgLayer.setAttribute("id", "svg-debug");
-        svgLayer.style.width = width + "px";
-        svgLayer.style.height = height + "px";
-        svgLayer.style.pointerEvents = "none";
-
-        for (const polygon of polygons) {
-            const adjustedPoints = polygon.map((point) => {
-                return {
-                    x: xScale(point.x),
-                    y: yScale(point.y),
-                };
-            });
-            const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            poly.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
-            poly.setAttribute("style", "fill:rgba(0,0,0,0.5);stroke:rgba(0,0,0,0.5);stroke-width:1;");
-            svgLayer.appendChild(poly);
-        }
-        svgOverlay.appendChild(svgLayer);
     }
 
     private makeBoundingHandler(layer: Layer<DataType>) {
@@ -926,12 +688,51 @@ export class InteractivityHandler {
             if (el.type === ShapeType.POLYGON) {
                 boundingHandlers.set(el.id, new PolygonBoundingHandler(el.data as PolygonData));
             } else {
-                boundingHandlers.set(el.id, new LineBoundingHandler(el.data as Point2D[]));
+                boundingHandlers.set(el.id, new LineBoundingHandler(el.data as Point2D[], 10));
             }
         }
         // this.makePolygonDebugLayer(polygons);
         this._boundingHandlers.set(layer.id, boundingHandlers);
         this._shapes.set(layer.id, shapes);
+    }
+
+    private calcWellborePathIntersection(event: OverlayMouseMoveEvent<Controller>): IntersectionResult | null {
+        const { target, caller, x, y } = event;
+        const referenceSystem = caller.referenceSystem;
+
+        if (!referenceSystem || !(target instanceof HTMLElement)) {
+            return null;
+        }
+
+        const displacement = caller.currentStateAsEvent.xScale.invert(x);
+        const tvd = caller.currentStateAsEvent.yScale.invert(y);
+
+        if (!displacement || !caller?.referenceSystem) {
+            return null;
+        }
+
+        const { curtain } = caller.referenceSystem.interpolators;
+        const { minX, maxX } = curtain;
+        const { min, max } = curtain.getBoundingBox(0, 1);
+        const boundingBox = new BoundingBox2D({ x: min[0], y: min[1] }, { x: max[0], y: max[1] });
+        if (!boundingBox.contains({ x: displacement, y: tvd })) {
+            return null;
+        }
+
+        if (displacement > maxX && displacement < minX && displacement > 0 && maxX < 1000) {
+            return null;
+        }
+
+        const targetDims = [displacement, tvd];
+
+        const nearestPoint = curtain.getNearestPosition(targetDims);
+        const md = curtain.getArcLength(1 - nearestPoint.u);
+
+        return {
+            point: { x: nearestPoint.point[0], y: nearestPoint.point[1] },
+            distance: nearestPoint.distance,
+            md,
+        };
     }
 
     private handleMouseMove(event: OverlayMouseMoveEvent<Controller>) {
@@ -947,14 +748,7 @@ export class InteractivityHandler {
             y: this._controller.currentStateAsEvent.yScale.invert(y),
         };
 
-        let nearestIntersection: Intersection = {
-            shapeType: ShapeType.POLYLINE,
-            layerId: "",
-            color: "",
-            label: "",
-            point: { x: 0, y: 0 },
-            distance: Number.MAX_VALUE,
-        };
+        let nearestIntersection: Intersection | null = null;
 
         for (const layerId of this._shapes.keys()) {
             const boundingHandlers = this._boundingHandlers.get(layerId);
@@ -976,23 +770,30 @@ export class InteractivityHandler {
                     continue;
                 }
 
-                if (intersection.distance < nearestIntersection.distance) {
+                if (
+                    nearestIntersection === null ||
+                    intersection.distance < nearestIntersection.distance ||
+                    (intersection.distance === nearestIntersection.distance &&
+                        (nearestIntersection.order ?? 0) < (shape.order ?? 0))
+                ) {
                     if (shape.type === ShapeType.POLYLINE) {
                         nearestIntersection = {
                             shapeType: shape.type,
                             layerId: shape.layerId,
                             color: shape.color as string,
                             label: shape.label,
+                            order: shape.order,
                             ...intersection,
                         };
                     } else if (shape.type === ShapeType.POLYGON) {
                         nearestIntersection = {
                             shapeType: shape.type,
                             layerId: shape.layerId,
+                            order: shape.order,
                             color: "blue",
                             label: `Cellindex: ${(shape.data as PolygonData).polySourceCellIndicesArr[
                                 intersection.polygonIndex as number
-                            ].toString()}<br />Property value: ${(shape.data as PolygonData).polyPropsArr[
+                            ].toString()}<br>Property value: ${(shape.data as PolygonData).polyPropsArr[
                                 intersection.polygonIndex as number
                             ].toFixed(2)}`,
                             ...intersection,
@@ -1000,6 +801,26 @@ export class InteractivityHandler {
                     }
                 }
             }
+        }
+
+        const wellborePathIntersection = this.calcWellborePathIntersection(event);
+
+        if (wellborePathIntersection) {
+            if (!nearestIntersection || wellborePathIntersection.distance <= nearestIntersection.distance + 3) {
+                nearestIntersection = {
+                    shapeType: ShapeType.POLYLINE,
+                    layerId: "wellborepath",
+                    color: "red",
+                    label: this.makeWellborePathLabel(wellborePathIntersection),
+                    ...wellborePathIntersection,
+                };
+            }
+        }
+
+        if (!nearestIntersection) {
+            this.changeIndicatorVisibility(false);
+            this.changeReadoutVisibility(false);
+            return;
         }
 
         const px = this._controller.currentStateAsEvent.xScale(nearestIntersection.point.x);
@@ -1016,6 +837,22 @@ export class InteractivityHandler {
 
         this.drawIndicator(nearestIntersection);
         this.makeReadout(nearestIntersection.point, nearestIntersection.color, nearestIntersection.label);
+    }
+
+    private makeWellborePathLabel(intersection: IntersectionResult) {
+        const schematicLabels: string[] = [];
+        if (intersection.md) {
+            for (const schematic of this._schematics) {
+                if (schematic.startMd <= intersection.md && schematic.endMd >= intersection.md) {
+                    schematicLabels.push(
+                        `${schematic.label} (${schematic.startMd.toFixed(2)} - ${schematic.endMd.toFixed(2)})`
+                    );
+                }
+            }
+        }
+        return `Wellbore path<br>Md: ${intersection.md?.toFixed(2) ?? "N/A"}${
+            schematicLabels.length > 0 ? "<br>" + schematicLabels.join("<br>") : ""
+        }`;
     }
 
     private changeIndicatorVisibility(visible: boolean) {
@@ -1042,14 +879,16 @@ export class InteractivityHandler {
         svgLayer.style.width = "100%";
         svgLayer.style.height = "100%";
 
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("cx", xScale(intersection.point.x).toString());
-        circle.setAttribute("cy", yScale(intersection.point.y).toString());
-        circle.setAttribute("r", "5");
-        circle.setAttribute("fill", intersection.color);
-        svgLayer.appendChild(circle);
+        if (intersection.shapeType === ShapeType.POLYLINE) {
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", xScale(intersection.point.x).toString());
+            circle.setAttribute("cy", yScale(intersection.point.y).toString());
+            circle.setAttribute("r", "5");
+            circle.setAttribute("fill", intersection.color);
+            svgLayer.appendChild(circle);
+        }
 
-        if (intersection.shape) {
+        if (intersection.shapeType === ShapeType.POLYGON && intersection.shape !== undefined) {
             const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const adjustedPoints = intersection.shape.map((point) => {
                 return {
@@ -1081,20 +920,11 @@ export class InteractivityHandler {
         }
     }
 
-    private changeMdReadoutVisibility(visible: boolean) {
-        if (visible) {
-            this._mdReadoutOverlay.style.visibility = "visible";
-        } else {
-            this._mdReadoutOverlay.style.visibility = "hidden";
-        }
-    }
-
     private handlePointerMove() {
         if (!this._pointerDown) {
             return;
         }
         this._showIndicator = false;
-        this._wellborePathOverlay.style.visibility = "hidden";
     }
 
     private handlePointerDown() {
@@ -1108,7 +938,6 @@ export class InteractivityHandler {
 
     private handleRescale(event: OnRescaleEvent) {
         this._indicatorOverlay.style.visibility = "hidden";
-        this._wellborePathOverlay.style.visibility = "hidden";
         this._controllerOriginalRescaleFunction(event);
     }
 

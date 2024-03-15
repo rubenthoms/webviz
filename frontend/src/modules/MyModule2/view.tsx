@@ -21,9 +21,13 @@ import { useViewStatusWriter } from "@framework/StatusWriter";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { makeTrajectoryXyzPointsFromWellboreTrajectory } from "@modules/SeismicIntersection/utils/esvIntersectionDataConversion";
 import { useWellTrajectoriesQuery } from "@modules/_shared/WellBore";
-import { useWellboreCompletionsQuery } from "@modules/_shared/WellBore/queryHooks";
+import {
+    useWellboreCompletionsQuery,
+    useWellborePicksAndStratigraphicUnitsQuery,
+} from "@modules/_shared/WellBore/queryHooks";
 import { EsvIntersection } from "@modules/_shared/components/EsvIntersection";
 import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { createEsvWellborePicksAndStratigraphicUnits } from "@modules/_shared/components/EsvIntersection/utils/dataConversion";
 import { makeSurfaceStatisticalFanchartFromRealizationSurfaces } from "@modules/_shared/components/EsvIntersection/utils/surfaceStatisticalFancharts";
 
 import { isEqual } from "lodash";
@@ -80,6 +84,16 @@ export const View = (props: ModuleFCProps<State>) => {
     }
 
     const wellboreCompletionsQuery = useWellboreCompletionsQuery(wellbore?.uuid, wellbore !== undefined);
+
+    const wellborePicksAndStratigraphicUnitsQuery = useWellborePicksAndStratigraphicUnitsQuery(
+        ensembleIdent?.getCaseUuid(),
+        wellbore?.uuid,
+        true
+    );
+
+    if (wellborePicksAndStratigraphicUnitsQuery.isError) {
+        statusWriter.addError("Error loading wellbore picks and stratigraphic units");
+    }
 
     let trajectoryXyzPoints: number[][] = [];
 
@@ -446,6 +460,24 @@ export const View = (props: ModuleFCProps<State>) => {
                 data: makeSchematicsFromWellCompletions(wellboreCompletionsQuery.data),
                 referenceSystem: ris,
                 internalLayerOptions: internalLayerIds,
+            },
+        });
+    }
+
+    if (wellborePicksAndStratigraphicUnitsQuery.data) {
+        const { wellborePicks, stratigraphicUnits } = createEsvWellborePicksAndStratigraphicUnits(
+            wellborePicksAndStratigraphicUnitsQuery.data
+        );
+        const picksData = transformFormationData(wellborePicks, stratigraphicUnits);
+        layers.push({
+            id: "callout",
+            type: LayerType.CALLOUT_CANVAS,
+            options: {
+                order: 100,
+                data: getPicksData(picksData),
+                referenceSystem: ris,
+                minFontSize: 12,
+                maxFontSize: 16,
             },
         });
     }

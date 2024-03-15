@@ -15,37 +15,6 @@ import { SurfaceStatisticalFanchartsData } from "./layers/SurfaceStatisticalFanc
 
 type DataType = number[][];
 
-interface BoundingVolume {
-    contains(point: Point2D): boolean;
-}
-
-class BoundingBox2D implements BoundingVolume {
-    private _minPoint: Point2D;
-    private _maxPoint: Point2D;
-
-    constructor(minVector: Point2D, maxVector: Point2D) {
-        this._minPoint = minVector;
-        this._maxPoint = maxVector;
-    }
-
-    getMinPoint(): Point2D {
-        return this._minPoint;
-    }
-
-    getMaxPoint(): Point2D {
-        return this._maxPoint;
-    }
-
-    contains(point: Point2D): boolean {
-        return (
-            this._minPoint.x <= point.x &&
-            this._maxPoint.x >= point.x &&
-            this._minPoint.y <= point.y &&
-            this._maxPoint.y >= point.y
-        );
-    }
-}
-
 type IntersectionResult = {
     point: Point2D;
     distance: number;
@@ -349,6 +318,7 @@ class PolygonBoundingHandler implements BoundingHandler {
 }
 
 enum ShapeType {
+    POINT = "point",
     POLYLINE = "polyline",
     POLYGON = "polygon",
 }
@@ -726,7 +696,7 @@ export class InteractionHandler {
         const targetDims = [displacement, tvd];
 
         const nearestPoint = curtain.getNearestPosition(targetDims);
-        const md = curtain.getArcLength(1 - nearestPoint.u);
+        const md = curtain.getArcLength(1 - nearestPoint.u) + caller.referenceSystem.offset;
 
         return {
             point: { x: nearestPoint.point[0], y: nearestPoint.point[1] },

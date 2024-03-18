@@ -10,7 +10,7 @@ export class HighlightOverlay {
     private _pointerDown: boolean = false;
     private _highlightItems: HighlightItem[] = [];
 
-    constructor(container: HTMLDivElement, controller: Controller) {
+    constructor(container: HTMLElement, controller: Controller) {
         this._container = container;
         this._controller = controller;
         this._controllerOriginalRescaleFunction = controller.zoomPanHandler.onRescale;
@@ -23,6 +23,10 @@ export class HighlightOverlay {
 
     setHighlightObjects(highlightItems: HighlightItem[]) {
         this._highlightItems = highlightItems;
+        if (this._highlightItems.length === 0) {
+            this.changeVisibility(false);
+            return;
+        }
         this.draw();
     }
 
@@ -72,6 +76,8 @@ export class HighlightOverlay {
                     break;
             }
         }
+
+        this._indicatorOverlay.appendChild(svgLayer);
 
         this.changeVisibility(true);
     }

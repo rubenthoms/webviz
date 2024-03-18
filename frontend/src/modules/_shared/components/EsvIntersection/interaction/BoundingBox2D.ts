@@ -17,12 +17,12 @@ export class BoundingBox2D implements BoundingVolume {
         return this._maxPoint;
     }
 
-    contains(point: number[]): boolean {
+    contains(point: number[], margin: number = 0): boolean {
         return (
-            this._minPoint[0] <= point[0] &&
-            this._maxPoint[0] >= point[0] &&
-            this._minPoint[1] <= point[1] &&
-            this._maxPoint[1] >= point[1]
+            this._minPoint[0] - margin <= point[0] &&
+            this._maxPoint[0] + margin >= point[0] &&
+            this._minPoint[1] - margin <= point[1] &&
+            this._maxPoint[1] + margin >= point[1]
         );
     }
 }

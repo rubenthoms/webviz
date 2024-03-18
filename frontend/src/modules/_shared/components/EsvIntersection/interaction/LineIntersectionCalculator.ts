@@ -28,8 +28,8 @@ class SubLine {
         return this._boundingBox;
     }
 
-    getIntersectedSubLine(point: number[]): SubLine | null {
-        if (!this._boundingBox.contains(point)) {
+    getIntersectedSubLine(point: number[], margin: number = 0): SubLine | null {
+        if (!this._boundingBox.contains(point, margin)) {
             return null;
         }
 
@@ -55,16 +55,17 @@ const MAX_NUMBER_POINTS = 50;
 
 export interface LineIntersectionResult extends IntersectionResult {
     shape: Shape.LINE;
-    distance: number;
 }
 
 export class LineIntersectionCalculator implements IntersectionCalculator {
     private _boundingBox: BoundingBox2D;
     private _points: number[][];
     private _subLines: SubLine[] = [];
+    private _margin: number;
 
-    constructor(points: number[][], margin: number = 10) {
+    constructor(points: number[][], margin: number = 0) {
         this._points = points;
+        this._margin = margin;
         this._boundingBox = this.makeBoundingBoxAndSubLines();
     }
 
@@ -92,7 +93,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
 
             localMinX = Math.min(localMinX, point[0]);
             localMinY = Math.min(localMinY, point[1]);
-            localMaxX = Math.max(localMaxX, point[1]);
+            localMaxX = Math.max(localMaxX, point[0]);
             localMaxY = Math.max(localMaxY, point[1]);
 
             if (numPoints === MAX_NUMBER_POINTS || index === this._points.length - 1) {
@@ -137,6 +138,8 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
             subLines = newLevelSubLines;
         }
 
+        this._subLines = subLines;
+
         return new BoundingBox2D([minX, minY], [maxX, maxY]);
     }
 
@@ -163,7 +166,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
             };
         }
 
-        for (let i = startIndex; i <= endIndex; i++) {
+        for (let i = startIndex + 1; i < endIndex; i++) {
             const distance = this.calcPointDistance(this._points[i], point);
             if (distance < smallestDistance) {
                 nearestPoint = this._points[i];
@@ -228,7 +231,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
         };
     }
 
-    private interpolate(point: number[], startIndex: number, endIndex: number): { point: number[]; distance: number } {
+    private interpolate(point: number[], startIndex: number, endIndex: number): number[] {
         const lineSegment = this.findLineSegment(point, startIndex, endIndex);
 
         const p1ToPointVector = [point[0] - lineSegment.p1[0], point[1] - lineSegment.p1[1]];
@@ -238,23 +241,20 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
 
         const p1ToP2Length = this.calcPointDistance(lineSegment.p1, lineSegment.p2);
         const scalar = scalarProduct / p1ToP2Length ** 2;
-        const result = [p1ToPointVector[0] * scalar, p1ToP2Vector[1] * scalar];
+        const result = [p1ToP2Vector[0] * scalar, p1ToP2Vector[1] * scalar];
 
         const resultVector = [lineSegment.p1[0] + result[0], lineSegment.p1[1] + result[1]];
 
-        return {
-            point: resultVector,
-            distance: this.calcPointDistance(resultVector, point),
-        };
+        return resultVector;
     }
 
     calcIntersection(point: number[]): LineIntersectionResult | null {
-        if (!this._boundingBox.contains(point)) {
+        if (!this._boundingBox.contains(point, this._margin)) {
             return null;
         }
 
         for (const subLine of this._subLines) {
-            const intersectedSubline = subLine.getIntersectedSubLine(point);
+            const intersectedSubline = subLine.getIntersectedSubLine(point, this._margin);
             if (intersectedSubline) {
                 const result = this.interpolate(
                     point,
@@ -262,8 +262,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
                     intersectedSubline.getEndIndex()
                 );
                 return {
-                    point: result.point,
-                    distance: result.distance,
+                    point: result,
                     shape: Shape.LINE,
                 };
             }

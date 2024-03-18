@@ -1,88 +1,88 @@
-import { Controller, OverlayMouseMoveEvent } from "@equinor/esv-intersection";
+import { Controller, Layer } from "@equinor/esv-intersection";
 
-import { LineIntersectionCalculator } from "./LineIntersectionCalculator";
-import { PointIntersectionCalculator } from "./PointIntersectionCalculator";
-import { PolygonIntersectionCalculator } from "./PolygonIntersectionCalculator";
-import { IntersectionCalculator, IntersectionObject, IntersectionResult, Shape } from "./types";
+import { HighlightOverlay } from "./HighlightOverlay";
+import { IntersectionHandler, IntersectionHandlerOptions, IntersectionHandlerTopic } from "./IntersectionHandler";
+import { ReadoutOverlay } from "./ReadoutOverlay";
+import { HighlightObject, IntersectionResult, LayerDataObject, ReadoutObject, Shape } from "./types";
 
-export type IntersectionHandlerOptions = {
-    threshold?: number;
+import { makeHighlightObjectFromIntersectionResult } from "../utils/intersectionConversion";
+import { makeLayerDataObjects } from "../utils/layerDataObjects";
+
+export type InteractionHandlerOptions = {
+    intersectionOptions: IntersectionHandlerOptions;
 };
 
 export class InteractionHandler {
-    private _controller: Controller;
-    private _options: IntersectionHandlerOptions;
-    private _intersectionCalculators: Map<string, IntersectionCalculator> = new Map();
-    onIntersection: ((id: string, intersection: IntersectionResult) => void) | null;
+    private _intersectionHandler: IntersectionHandler;
+    private _highlightOverlay: HighlightOverlay;
+    private _readoutOverlay: ReadoutOverlay;
+    private _layerDataObjects: LayerDataObject[] = [];
 
-    constructor(controller: Controller, options?: IntersectionHandlerOptions) {
-        this._controller = controller;
-        this._options = options || { threshold: 10 };
-        this.onIntersection = null;
+    constructor(controller: Controller, container: HTMLElement, options: InteractionHandlerOptions) {
+        this._intersectionHandler = new IntersectionHandler(controller, options.intersectionOptions);
+        this._highlightOverlay = new HighlightOverlay(container, controller);
+        this._readoutOverlay = new ReadoutOverlay(controller);
 
-        this.makeOverlay();
+        this._intersectionHandler.subscribe(IntersectionHandlerTopic.INTERSECTION, this.handleIntersection.bind(this));
     }
 
-    addIntersectionObject(intersectionObject: IntersectionObject) {
-        switch (intersectionObject.shape) {
-            case Shape.POINT:
-                this._intersectionCalculators.set(
-                    intersectionObject.id,
-                    new PointIntersectionCalculator(intersectionObject.data, this._options.threshold)
-                );
-                break;
-            case Shape.LINE:
-                this._intersectionCalculators.set(
-                    intersectionObject.id,
-                    new LineIntersectionCalculator(intersectionObject.data, this._options.threshold)
-                );
-                break;
-            case Shape.POLYGON:
-                this._intersectionCalculators.set(
-                    intersectionObject.id,
-                    new PolygonIntersectionCalculator(intersectionObject.data)
-                );
-                break;
+    addLayer(layer: Layer<any>) {
+        const layerDataObjects = makeLayerDataObjects(layer);
+        for (const layerDataObject of layerDataObjects) {
+            this._intersectionHandler.addIntersectionObject(layerDataObject.intersectionObject);
         }
+        this._layerDataObjects.push(...layerDataObjects);
     }
 
-    removeIntersectionObject(id: string) {
-        this._intersectionCalculators.delete(id);
-    }
+    removeLayer(layerId: string) {
+        const layerDataObjectsToRemove = this._layerDataObjects.filter(
+            (layerDataObject) => layerDataObject.layerId === layerId
+        );
+        this._layerDataObjects = this._layerDataObjects.filter(
+            (layerDataObject) => layerDataObject.layerId !== layerId
+        );
 
-    private makeOverlay() {
-        const overlay = this._controller.overlay.create("intersection-overlay", {
-            onMouseMove: this.handleMouseMove.bind(this),
-        });
-
-        if (overlay === undefined) {
-            throw new Error("Overlay not found");
+        for (const layerDataObject of layerDataObjectsToRemove) {
+            this._intersectionHandler.removeIntersectionObject(layerDataObject.id);
         }
-
-        overlay.style.position = "absolute";
-        overlay.style.inset = "0";
-        overlay.style.pointerEvents = "none";
-        overlay.style.visibility = "hidden";
-        overlay.style.zIndex = "100";
     }
 
     destroy() {
-        this._controller.overlay.remove("intersection-overlay");
+        this._intersectionHandler.destroy();
+        this._highlightOverlay.destroy();
     }
 
-    private handleMouseMove(event: OverlayMouseMoveEvent<Controller>) {
-        const { x, y } = event;
+    private handleIntersection(payload: { intersections: { id: string; md: number; result: IntersectionResult }[] }) {
+        const highlightItems: HighlightObject[] = [];
+        const readoutItems: ReadoutObject[] = [];
 
-        const referenceSystemCoordinates = [
-            this._controller.currentStateAsEvent.xScale.invert(x),
-            this._controller.currentStateAsEvent.yScale.invert(y),
-        ];
+        for (const intersection of payload.intersections) {
+            const layerDataObject = this._layerDataObjects.find(
+                (layerDataObject) => layerDataObject.id === intersection.id
+            );
+            if (layerDataObject) {
+                const highlightItem = makeHighlightObjectFromIntersectionResult(
+                    intersection.result,
+                    layerDataObject.color,
+                    layerDataObject.label
+                );
+                highlightItems.push(highlightItem);
 
-        for (const [id, calculator] of this._intersectionCalculators) {
-            const intersection = calculator.calcIntersection(referenceSystemCoordinates);
-            if (intersection) {
-                this.onIntersection?.(id, intersection);
+                const readoutItem: ReadoutObject = {
+                    color: layerDataObject.color,
+                    label: layerDataObject.label,
+                    md: layerDataObject.isWellbore ? intersection.md : undefined,
+                    polygonIndex:
+                        "polygonIndex" in intersection.result
+                            ? (intersection.result.polygonIndex as number)
+                            : undefined,
+                    point: intersection.result.point,
+                };
+                readoutItems.push(readoutItem);
             }
         }
+
+        this._highlightOverlay.setHighlightObjects(highlightItems);
+        this._readoutOverlay.makeReadout(readoutItems);
     }
 }

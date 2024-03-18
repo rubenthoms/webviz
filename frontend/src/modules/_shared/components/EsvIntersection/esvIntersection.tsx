@@ -33,7 +33,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { isEqual } from "lodash";
 
-import { InteractionHandler } from "./InteractionHandler";
+import { InteractionHandler } from "./interaction/InteractionHandler";
 import {
     PolylineIntersectionData,
     PolylineIntersectionLayerOptions,
@@ -187,14 +187,14 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
     const [layerIds, setLayerIds] = React.useState<string[]>([]);
 
     const [esvController, setEsvController] = React.useState<Controller | null>(null);
-    const [interactivityHandler, setInteractivityHandler] = React.useState<InteractionHandler | null>(null);
+    const [interactionHandler, setInteractionHandler] = React.useState<InteractionHandler | null>(null);
     const [pixiRenderApplication, setPixiRenderApplication] = React.useState<PixiRenderApplication | null>(null);
 
     const containerRef = React.useRef<HTMLDivElement>(null);
 
     const containerSize = useElementSize(containerRef);
 
-    if (esvController && interactivityHandler && pixiRenderApplication) {
+    if (esvController && interactionHandler && pixiRenderApplication) {
         if (
             !isEqual(prevIntersectionReferenceSystem, props.intersectionReferenceSystem) &&
             props.intersectionReferenceSystem
@@ -279,7 +279,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 if (!props.layers?.find((el) => el.id === layer.id)) {
                     newLayerIds = newLayerIds.filter((el) => el !== layer.id);
                     esvController.removeLayer(layer.id);
-                    interactivityHandler.removeLayer(layer.id);
+                    interactionHandler.removeLayer(layer.id);
                 }
             }
 
@@ -289,22 +289,13 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                     const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
                     newLayerIds.push(layer.id);
                     esvController.addLayer(newLayer);
-                    interactivityHandler.addLayer(newLayer);
+                    interactionHandler.addLayer(newLayer);
                 } else {
                     const existingLayer = esvController.getLayer(layer.id);
                     if (existingLayer) {
                         existingLayer.onUpdate({ data: layer.options.data });
-                    }
-                }
-                if (!interactivityHandler.hasLayer(layer.id)) {
-                    const newLayer = esvController.getLayer(layer.id) as Layer<any> | undefined;
-                    if (newLayer) {
-                        interactivityHandler.addLayer(newLayer);
-                    }
-                } else {
-                    const existingLayer = esvController.getLayer(layer.id) as Layer<any> | undefined;
-                    if (existingLayer) {
-                        interactivityHandler.updateLayer(existingLayer);
+                        interactionHandler.removeLayer(layer.id);
+                        interactionHandler.addLayer(existingLayer);
                     }
                 }
             }
@@ -328,7 +319,11 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             },
         });
 
-        const newInteractivityHandler = new InteractionHandler(containerRef.current, newEsvController);
+        const newInteractionHandler = new InteractionHandler(newEsvController, containerRef.current, {
+            intersectionOptions: {
+                threshold: 10,
+            },
+        });
 
         const newPixiRenderApplication = new PixiRenderApplication({
             context: null,
@@ -345,12 +340,12 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         });
 
         setEsvController(newEsvController);
-        setInteractivityHandler(newInteractivityHandler);
+        setInteractionHandler(newInteractionHandler);
         setPixiRenderApplication(newPixiRenderApplication);
 
         return function handleUnmount() {
             setEsvController(null);
-            setInteractivityHandler(null);
+            setInteractionHandler(null);
             setLayerIds([]);
             setPrevLayers([]);
             setPrevAxesOptions(undefined);
@@ -364,7 +359,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             newPixiRenderApplication.destroy();
             newEsvController.removeAllLayers();
             newEsvController.destroy();
-            newInteractivityHandler.destroy();
+            newInteractionHandler.destroy();
         };
     }, []);
 

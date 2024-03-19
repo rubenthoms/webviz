@@ -1,7 +1,5 @@
-import { Point2D } from "@lib/utils/geometry";
-
 import { BoundingBox2D } from "./BoundingBox2D";
-import { IntersectionCalculator, IntersectionResult, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, Shape } from "./types";
 
 class SubLine {
     private _startIndex: number;
@@ -53,7 +51,7 @@ class SubLine {
 
 const MAX_NUMBER_POINTS = 50;
 
-export interface LineIntersectionResult extends IntersectionResult {
+export interface LineIntersectedItem extends IntersectedItem {
     shape: Shape.LINE;
 }
 
@@ -109,10 +107,8 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
             }
         }
 
-        let numSubLines = subLines.length;
-
-        while (numSubLines > 1) {
-            let newLevelSubLines: SubLine[] = [];
+        while (subLines.length > 1) {
+            const newLevelSubLines: SubLine[] = [];
             for (let i = 0; i < subLines.length; i += 2) {
                 if (i + 1 <= subLines.length - 1) {
                     const boundingBox1 = subLines[i].getBoundingBox();
@@ -248,7 +244,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
         return resultVector;
     }
 
-    calcIntersection(point: number[]): LineIntersectionResult | null {
+    calcIntersection(point: number[]): LineIntersectedItem | null {
         if (!this._boundingBox.contains(point, this._margin)) {
             return null;
         }

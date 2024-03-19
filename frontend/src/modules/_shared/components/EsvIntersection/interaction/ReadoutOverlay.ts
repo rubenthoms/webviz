@@ -1,6 +1,8 @@
 import { Controller } from "@equinor/esv-intersection";
 
-import { ReadoutObject } from "./types";
+import { ReadoutItem } from "./types";
+
+import { makeHtmlFromReadoutItem } from "../utils/intersectionConversion";
 
 export class ReadoutOverlay {
     private _controller: Controller;
@@ -36,33 +38,24 @@ export class ReadoutOverlay {
         return overlay;
     }
 
-    makeReadout(highlightObjects: ReadoutObject[]) {
-        if (highlightObjects.length === 0) {
+    makeReadout(items: ReadoutItem[]) {
+        if (items.length === 0) {
             this._overlay.style.visibility = "hidden";
             return;
         }
 
-        let readout = highlightObjects
-            .map((highlightObject, idx) => {
+        let readout = items
+            .map((item, idx) => {
                 if (idx >= 3) {
                     return "";
                 }
-                let html = `<div style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;"><span style="display: block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.25rem; background-color: ${highlightObject.color}"></span><span style="text-overflow: ellipsis;">${highlightObject.label}`;
-                html += `<br>(${highlightObject.point[0].toFixed(2)}, ${highlightObject.point[1].toFixed(2)})`;
-                if (highlightObject.md !== undefined) {
-                    html += `<br>MD: ${highlightObject.md.toFixed(2)}`;
-                }
-                if (highlightObject.polygonIndex !== undefined) {
-                    html += `<br>Index: ${highlightObject.polygonIndex}`;
-                }
-                html += "</span></div>";
-                return html;
+                return makeHtmlFromReadoutItem(item);
             })
             .join("");
 
-        if (highlightObjects.length > 3) {
+        if (items.length > 3) {
             readout += `<div style="display: flex; flex-direction: row; align-items: center; gap: 0.5rem;"><span style="text-overflow: ellipsis;">... and ${
-                highlightObjects.length - 5
+                items.length - 3
             } more</span></div>`;
         }
 

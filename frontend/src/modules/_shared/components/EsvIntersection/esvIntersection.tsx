@@ -15,6 +15,7 @@ import {
     IntersectionReferenceSystem,
     Layer,
     LayerOptions,
+    PixiLayer,
     PixiRenderApplication,
     ReferenceLine,
     ReferenceLineLayer,
@@ -33,7 +34,12 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { isEqual } from "lodash";
 
-import { InteractionHandler } from "./interaction/InteractionHandler";
+import {
+    InteractionHandler,
+    InteractionHandlerTopic,
+    InteractionHandlerTopicPayload,
+} from "./interaction/InteractionHandler";
+import { ReadoutItem } from "./interaction/types";
 import {
     PolylineIntersectionData,
     PolylineIntersectionLayerOptions,
@@ -92,6 +98,10 @@ export type LayerItem<T extends keyof LayerOptionsMap> = {
     options: LayerOptionsMap[T];
 };
 
+export interface EsvIntersectionHoverEvent {
+    readoutItems: ReadoutItem[];
+}
+
 export type EsvIntersectionProps<T extends keyof LayerDataTypeMap> = {
     size?: Size2D;
     showGrid?: boolean;
@@ -105,6 +115,7 @@ export type EsvIntersectionProps<T extends keyof LayerDataTypeMap> = {
     };
     viewport?: [number, number, number];
     intersectionReferenceSystem?: IntersectionReferenceSystem;
+    onHover?: (event: EsvIntersectionHoverEvent) => void;
 };
 
 function makeLayer<T extends keyof LayerDataTypeMap>(
@@ -170,6 +181,8 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 }
 
 export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNode {
+    const { onHover } = props;
+
     const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | undefined>(undefined);
     const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
         IntersectionReferenceSystem | undefined
@@ -217,10 +230,14 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         }
 
         if (prevShowGrid !== props.showGrid) {
-            if (props.showGrid) {
+            if (!esvController.getLayer("grid") && props.showGrid) {
                 esvController.addLayer(new GridLayer("grid"));
             } else {
-                esvController.removeLayer("grid");
+                if (props.showGrid) {
+                    esvController.showLayer("grid");
+                } else {
+                    esvController.hideLayer("grid");
+                }
             }
             setPrevShowGrid(props.showGrid);
         }
@@ -248,6 +265,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
             if (pixiRenderApplication?.view) {
                 pixiRenderApplication.view.width = containerSize.width;
                 pixiRenderApplication.view.height = containerSize.height;
+                pixiRenderApplication.render();
             }
             for (const layerId of layerIds ?? []) {
                 const layer = esvController.getLayer(layerId);
@@ -274,10 +292,15 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         if (!isEqual(prevLayers, props.layers)) {
             let newLayerIds = layerIds;
 
+            let isPixiLayer = false;
+
             // Remove layers that are not in the new list
             for (const layer of prevLayers) {
                 if (!props.layers?.find((el) => el.id === layer.id)) {
                     newLayerIds = newLayerIds.filter((el) => el !== layer.id);
+                    if (esvController.getLayer(layer.id) instanceof PixiLayer) {
+                        isPixiLayer = true;
+                    }
                     esvController.removeLayer(layer.id);
                     interactionHandler.removeLayer(layer.id);
                 }
@@ -293,7 +316,14 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 } else {
                     const existingLayer = esvController.getLayer(layer.id);
                     if (existingLayer) {
-                        existingLayer.onUpdate({ data: layer.options.data });
+                        // Somehow, all layers sharing a PixiRenderApplication instance must be removed and re-added when one gets removed
+                        if (existingLayer instanceof PixiLayer && isPixiLayer) {
+                            esvController.removeLayer(layer.id);
+                            const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
+                            esvController.addLayer(newLayer);
+                        } else {
+                            existingLayer.onUpdate({ data: layer.options.data });
+                        }
                         interactionHandler.removeLayer(layer.id);
                         interactionHandler.addLayer(existingLayer);
                     }
@@ -305,63 +335,76 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         }
     }
 
-    React.useEffect(function handleMount() {
-        if (!containerRef.current) {
-            return;
-        }
+    React.useEffect(
+        function handleMount() {
+            if (!containerRef.current) {
+                return;
+            }
 
-        const newEsvController = new Controller({
-            container: containerRef.current,
-            axisOptions: {
-                xLabel: "",
-                yLabel: "",
-                unitOfMeasure: "",
-            },
-        });
+            const newEsvController = new Controller({
+                container: containerRef.current,
+                axisOptions: {
+                    xLabel: "",
+                    yLabel: "",
+                    unitOfMeasure: "",
+                },
+            });
 
-        const newInteractionHandler = new InteractionHandler(newEsvController, containerRef.current, {
-            intersectionOptions: {
-                threshold: 10,
-            },
-        });
+            const newInteractionHandler = new InteractionHandler(newEsvController, containerRef.current, {
+                intersectionOptions: {
+                    threshold: 10,
+                },
+            });
 
-        const newPixiRenderApplication = new PixiRenderApplication({
-            context: null,
-            antialias: true,
-            hello: false,
-            powerPreference: "default",
-            premultipliedAlpha: false,
-            preserveDrawingBuffer: false,
-            backgroundColor: "#fff",
-            clearBeforeRender: true,
-            backgroundAlpha: 0,
-            width: 0,
-            height: 0,
-        });
+            function handleReadoutItemsChange(
+                payload: InteractionHandlerTopicPayload[InteractionHandlerTopic.READOUT_ITEMS_CHANGE]
+            ) {
+                if (onHover) {
+                    onHover({ readoutItems: payload.items });
+                }
+            }
 
-        setEsvController(newEsvController);
-        setInteractionHandler(newInteractionHandler);
-        setPixiRenderApplication(newPixiRenderApplication);
+            newInteractionHandler.subscribe(InteractionHandlerTopic.READOUT_ITEMS_CHANGE, handleReadoutItemsChange);
 
-        return function handleUnmount() {
-            setEsvController(null);
-            setInteractionHandler(null);
-            setLayerIds([]);
-            setPrevLayers([]);
-            setPrevAxesOptions(undefined);
-            setPrevIntersectionReferenceSystem(undefined);
-            setPrevShowGrid(undefined);
-            setPrevContainerSize(undefined);
-            setPrevBounds(undefined);
-            setPrevViewport(undefined);
-            setPrevShowAxesLabels(undefined);
-            setPrevShowAxes(undefined);
-            newPixiRenderApplication.destroy();
-            newEsvController.removeAllLayers();
-            newEsvController.destroy();
-            newInteractionHandler.destroy();
-        };
-    }, []);
+            const newPixiRenderApplication = new PixiRenderApplication({
+                context: null,
+                antialias: true,
+                hello: false,
+                powerPreference: "default",
+                premultipliedAlpha: false,
+                preserveDrawingBuffer: false,
+                backgroundColor: "#fff",
+                clearBeforeRender: true,
+                backgroundAlpha: 0,
+                width: 0,
+                height: 0,
+            });
+
+            setEsvController(newEsvController);
+            setInteractionHandler(newInteractionHandler);
+            setPixiRenderApplication(newPixiRenderApplication);
+
+            return function handleUnmount() {
+                setEsvController(null);
+                setInteractionHandler(null);
+                setLayerIds([]);
+                setPrevLayers([]);
+                setPrevAxesOptions(undefined);
+                setPrevIntersectionReferenceSystem(undefined);
+                setPrevShowGrid(undefined);
+                setPrevContainerSize(undefined);
+                setPrevBounds(undefined);
+                setPrevViewport(undefined);
+                setPrevShowAxesLabels(undefined);
+                setPrevShowAxes(undefined);
+                newPixiRenderApplication.destroy();
+                newEsvController.removeAllLayers();
+                newEsvController.destroy();
+                newInteractionHandler.destroy();
+            };
+        },
+        [onHover]
+    );
 
     return (
         <>

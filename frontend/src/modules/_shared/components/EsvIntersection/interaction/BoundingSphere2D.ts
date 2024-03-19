@@ -1,5 +1,3 @@
-import { Point2D } from "@lib/utils/geometry";
-
 import { BoundingVolume } from "./types";
 
 export class BoundingSphere2D implements BoundingVolume {

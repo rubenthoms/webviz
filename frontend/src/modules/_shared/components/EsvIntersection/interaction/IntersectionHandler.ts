@@ -1,24 +1,21 @@
 import { Controller, OverlayMouseMoveEvent } from "@equinor/esv-intersection";
 
-import { LineIntersectionCalculator } from "./LineIntersectionCalculator";
-import { PointIntersectionCalculator } from "./PointIntersectionCalculator";
-import { PolygonIntersectionCalculator } from "./PolygonIntersectionCalculator";
-import { PolygonsIntersectionCalculator } from "./PolygonsIntersectionCalculator";
-import { IntersectionCalculator, IntersectionObject, IntersectionResult, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItem } from "./types";
 
-import { makeIntersectionCalculatorFromIntersectionObject } from "../utils/intersectionConversion";
+import { makeIntersectionCalculatorFromIntersectionItem } from "../utils/intersectionConversion";
 
 export enum IntersectionHandlerTopic {
     INTERSECTION = "INTERSECTION",
 }
 
+export type Intersection = {
+    id: string;
+    item: IntersectedItem;
+};
+
 export type IntersectionHandlerTopicPayload = {
     [IntersectionHandlerTopic.INTERSECTION]: {
-        intersections: {
-            id: string;
-            md: number;
-            result: IntersectionResult;
-        }[];
+        intersections: Intersection[];
     };
 };
 
@@ -39,10 +36,11 @@ export class IntersectionHandler {
         this.makeOverlay();
     }
 
-    addIntersectionObject(intersectionObject: IntersectionObject) {
-        const intersectionCalculator = makeIntersectionCalculatorFromIntersectionObject(
+    addIntersectionObject(intersectionObject: IntersectionItem) {
+        const intersectionCalculator = makeIntersectionCalculatorFromIntersectionItem(
             intersectionObject,
-            this._options
+            this._options,
+            this._controller
         );
         this._intersectionCalculators.set(intersectionObject.id, intersectionCalculator);
     }
@@ -125,7 +123,8 @@ export class IntersectionHandler {
         for (const [id, calculator] of this._intersectionCalculators) {
             const intersection = calculator.calcIntersection(referenceSystemCoordinates);
             if (intersection && calcDistance(intersection.point) < (this._options.threshold ?? 0)) {
-                intersections.push({ id, result: intersection, md: this.calcMd(intersection.point) });
+                const intersectionWithMd = { ...intersection, md: this.calcMd(intersection.point) };
+                intersections.push({ id, item: intersectionWithMd });
             }
         }
 

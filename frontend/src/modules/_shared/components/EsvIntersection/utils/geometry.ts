@@ -31,3 +31,7 @@ export function pointIsInPolygon(
 
     return inside;
 }
+
+export function calcDistance(p1: number[], p2: number[]): number {
+    return Math.sqrt(Math.pow(p1[0] - p2[0], 2) + Math.pow(p1[1] - p2[1], 2));
+}

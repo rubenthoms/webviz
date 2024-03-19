@@ -5,15 +5,8 @@ import {
     InternalLayerOptions,
     IntersectionReferenceSystem,
     Perforation,
-    ReferenceLine,
     SchematicData,
-    SchematicLayerOptions,
-    SurfaceData,
-    generateSeismicSliceImage,
-    generateSurfaceData,
     getPicksData,
-    getSeismicInfo,
-    getSeismicOptions,
     transformFormationData,
 } from "@equinor/esv-intersection";
 import { ModuleFCProps } from "@framework/Module";
@@ -32,20 +25,7 @@ import { makeSurfaceStatisticalFanchartFromRealizationSurfaces } from "@modules/
 
 import { isEqual } from "lodash";
 
-import {
-    getCasings,
-    getCement,
-    getCementSqueezes,
-    getCompletion,
-    getHolesize,
-    getPicks,
-    getPolyLineIntersection,
-    getSeismic,
-    getStratColumns,
-    getSurfaces,
-    getWellborePath,
-} from "./data/data";
-import seismicColorMap from "./data/seismic-colormap.json";
+import { getPolyLineIntersection } from "./data/data";
 import { useSampleSurfaceInPointsQueries } from "./queryHooks";
 import { State } from "./state";
 
@@ -436,10 +416,6 @@ export const View = (props: ModuleFCProps<State>) => {
 
     if (polylineIntersectionLayer) {
         layers.push(polylineIntersectionLayer);
-    }
-
-    if (wellboreCompletionsQuery.data) {
-        console.debug(wellboreCompletionsQuery.data);
     }
 
     if (wellboreCompletionsQuery.data) {

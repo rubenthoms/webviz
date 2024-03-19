@@ -14,6 +14,14 @@ export type SurfaceStatisticalFanchart = {
         p50: number[][];
         p90: number[][];
     };
+    visibility?: {
+        mean: boolean;
+        min: boolean;
+        max: boolean;
+        p10: boolean;
+        p50: boolean;
+        p90: boolean;
+    };
 };
 
 export type SurfaceStatisticalFanchartsData = {
@@ -142,35 +150,52 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
         this._linePaths = [];
 
         for (const fanchart of this.data.fancharts) {
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.mean),
-            });
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.p10),
-                dashSegments: [1, 1],
-            });
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.p90),
-                dashSegments: [1, 1],
-            });
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.min),
-                dashSegments: [5, 5],
-            });
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.max),
-                dashSegments: [5, 5],
-            });
-            this._linePaths.push({
-                color: this.colorToCss(fanchart.color, 1),
-                path: this.makeLinePath(fanchart.data.p50),
-                dashSegments: [1, 1, 5, 1],
-            });
+            if (fanchart.visibility?.mean ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.mean),
+                });
+            }
+
+            if (fanchart.visibility?.p10 ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.p10),
+                    dashSegments: [1, 1],
+                });
+            }
+
+            if (fanchart.visibility?.p90 ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.p90),
+                    dashSegments: [1, 1],
+                });
+            }
+
+            if (fanchart.visibility?.min ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.min),
+                    dashSegments: [5, 5],
+                });
+            }
+
+            if (fanchart.visibility?.max ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.max),
+                    dashSegments: [5, 5],
+                });
+            }
+
+            if (fanchart.visibility?.p50 ?? true) {
+                this._linePaths.push({
+                    color: this.colorToCss(fanchart.color, 1),
+                    path: this.makeLinePath(fanchart.data.p50),
+                    dashSegments: [1, 1, 5, 1],
+                });
+            }
         }
     }
 

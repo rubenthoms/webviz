@@ -1,3 +1,5 @@
+import { Layer, SchematicData } from "@equinor/esv-intersection";
+
 export interface BoundingVolume {
     contains(point: number[]): boolean;
 }
@@ -5,8 +7,11 @@ export interface BoundingVolume {
 export enum Shape {
     POINT = "point",
     LINE = "line",
+    LINE_SET = "lineset",
     POLYGON = "polygon",
     POLYGONS = "polygons",
+    WELLBORE_PATH = "wellbore-path",
+    WELLBORE_SECTION = "wellbore-section",
 }
 
 export type PolygonData = {
@@ -18,7 +23,7 @@ export type PolygonData = {
     yMax: number;
 };
 
-export type IntersectionObject = {
+export type IntersectionItem = {
     id: string;
 } & (
     | {
@@ -30,6 +35,10 @@ export type IntersectionObject = {
           data: number[][];
       }
     | {
+          shape: Shape.LINE_SET;
+          data: number[][][];
+      }
+    | {
           shape: Shape.POLYGON;
           data: number[][];
       }
@@ -37,17 +46,18 @@ export type IntersectionObject = {
           shape: Shape.POLYGONS;
           data: PolygonData;
       }
+    | {
+          shape: Shape.WELLBORE_PATH;
+      }
 );
 
-export interface IntersectionResult {
+export interface IntersectedItem {
     shape: Shape;
     point: number[];
-    md?: number;
 }
 
-export type HighlightObject = {
+export type HighlightItem = {
     color: string;
-    label: string;
 } & (
     | {
           shape: Shape.POINT;
@@ -55,7 +65,7 @@ export type HighlightObject = {
       }
     | {
           shape: Shape.LINE;
-          points: number[][];
+          line: number[][];
       }
     | {
           shape: Shape.POLYGON;
@@ -63,23 +73,23 @@ export type HighlightObject = {
       }
 );
 
-export type ReadoutObject = {
-    color: string;
-    label: string;
+export type ReadoutItem = {
+    layer: Layer<unknown>;
+    index: number;
+    point: number[];
+    points?: number[][];
     md?: number;
     polygonIndex?: number;
-    point: number[];
+    schematicType?: keyof SchematicData;
 };
 
 export interface IntersectionCalculator {
-    calcIntersection(point: number[]): IntersectionResult | null;
+    calcIntersection(point: number[]): IntersectedItem | null;
 }
 
-export type LayerDataObject = {
+export type LayerDataItem = {
     id: string;
-    layerId: string;
-    intersectionObject: IntersectionObject;
-    color: string;
-    label: string;
-    isWellbore?: boolean;
+    layer: Layer<unknown>;
+    index: number;
+    intersectionItem: IntersectionItem;
 };

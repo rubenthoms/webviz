@@ -1,4 +1,4 @@
-import { SurfaceIntersectionData_api, WellBorePicksAndStratigraphicUnits_api, WellBoreTrajectory_api } from "@api";
+import { WellBorePicksAndStratigraphicUnits_api, WellBoreTrajectory_api } from "@api";
 import { IntersectionReferenceSystem, Trajectory, transformFormationData } from "@equinor/esv-intersection";
 
 import { SeismicFenceData_trans } from "./queryDataTransforms";

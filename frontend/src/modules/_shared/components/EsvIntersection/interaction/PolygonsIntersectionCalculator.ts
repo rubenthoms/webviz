@@ -1,5 +1,5 @@
 import { BoundingBox2D } from "./BoundingBox2D";
-import { IntersectionCalculator, IntersectionResult, PolygonData, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, PolygonData, Shape } from "./types";
 
 function polygonFromVerticesAndIndices(startOffset: number, vertices: Float32Array, indices: Uint32Array): number[][] {
     const polygon: number[][] = [];
@@ -43,8 +43,8 @@ function pointIsInPolygon(
     return inside;
 }
 
-export interface PolygonsIntersectionResult extends IntersectionResult {
-    shape: Shape.POLYGON;
+export interface PolygonsIntersectedItem extends IntersectedItem {
+    shape: Shape.POLYGONS;
     polygon: number[][];
     polygonIndex: number;
 }
@@ -58,7 +58,7 @@ export class PolygonsIntersectionCalculator implements IntersectionCalculator {
         this._boundingBox = new BoundingBox2D([data.xMin, data.yMin], [data.xMax, data.yMax]);
     }
 
-    calcIntersection(point: number[]): PolygonsIntersectionResult | null {
+    calcIntersection(point: number[]): PolygonsIntersectedItem | null {
         if (!this._boundingBox.contains(point)) {
             return null;
         }
@@ -70,7 +70,7 @@ export class PolygonsIntersectionCalculator implements IntersectionCalculator {
             const polygonIndices = this._data.polygons.subarray(idx + 1, idx + numVertices + 1);
             if (pointIsInPolygon(point, this._data.xMin, this._data.vertices, polygonIndices)) {
                 return {
-                    shape: Shape.POLYGON,
+                    shape: Shape.POLYGONS,
                     point,
                     polygonIndex,
                     polygon: polygonFromVerticesAndIndices(this._data.xMin, this._data.vertices, polygonIndices),

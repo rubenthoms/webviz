@@ -6,6 +6,7 @@ import {
     IntersectionReferenceSystem,
     Perforation,
     SchematicData,
+    SurfaceLine,
     getPicksData,
     transformFormationData,
 } from "@equinor/esv-intersection";
@@ -34,21 +35,13 @@ export const View = (props: ModuleFCProps<State>) => {
 
     const ensembleIdent = props.moduleContext.useStoreValue("ensembleIdent");
     const realizations = props.moduleContext.useStoreValue("realizations");
-    const wellbore = props.moduleContext.useStoreValue("wellbore");
+    const wellboreHeader = props.moduleContext.useStoreValue("wellboreHeader");
     const surfaceAttribute = props.moduleContext.useStoreValue("surfaceAttribute");
     const surfaceNames = props.moduleContext.useStoreValue("surfaceNames");
     const stratigraphyColorMap = props.moduleContext.useStoreValue("stratigraphyColorMap");
 
-    const grid = props.moduleContext.useStoreValue("grid");
-    const showWellbore = props.moduleContext.useStoreValue("showWellbore");
-    const geoModel = props.moduleContext.useStoreValue("geoModel");
-    const geoModelLabels = props.moduleContext.useStoreValue("geoModelLabels");
-    const seismic = props.moduleContext.useStoreValue("seismic");
-    const schematic = props.moduleContext.useStoreValue("schematic");
-    const seaAndRbk = props.moduleContext.useStoreValue("seaAndRbk");
-    const picks = props.moduleContext.useStoreValue("picks");
-    const axisLabels = props.moduleContext.useStoreValue("axisLabels");
-    const polyLineIntersection = props.moduleContext.useStoreValue("polyLineIntersection");
+    const visibleLayers = props.moduleContext.useStoreValue("visibleLayers");
+    const visibleStatisticCurves = props.moduleContext.useStoreValue("visibleStatisticCurves");
 
     const colorScale = props.workbenchSettings.useContinuousColorScale({
         gradientType: ColorScaleGradientType.Sequential,
@@ -58,16 +51,21 @@ export const View = (props: ModuleFCProps<State>) => {
     const [prevTrajectoryPoint, setPrevTrajectoryPoint] = React.useState<number[][]>([]);
     const [polylineIntersectionLayer, setPolylineIntersectionLayer] = React.useState<LayerItem<any> | null>(null);
 
-    const getWellTrajectoriesQuery = useWellTrajectoriesQuery(wellbore ? [wellbore.uuid] : undefined);
-    if (getWellTrajectoriesQuery.isError) {
+    const wellboreTrajectoriesQuery = useWellTrajectoriesQuery(
+        wellboreHeader ? [wellboreHeader.wellbore_uuid] : undefined
+    );
+    if (wellboreTrajectoriesQuery.isError) {
         statusWriter.addError("Error loading well trajectories");
     }
 
-    const wellboreCompletionsQuery = useWellboreCompletionsQuery(wellbore?.uuid, wellbore !== undefined);
+    const wellboreCompletionsQuery = useWellboreCompletionsQuery(
+        wellboreHeader?.wellbore_uuid,
+        wellboreHeader !== undefined
+    );
 
     const wellborePicksAndStratigraphicUnitsQuery = useWellborePicksAndStratigraphicUnitsQuery(
         ensembleIdent?.getCaseUuid(),
-        wellbore?.uuid,
+        wellboreHeader?.wellbore_uuid,
         true
     );
 
@@ -77,12 +75,12 @@ export const View = (props: ModuleFCProps<State>) => {
 
     let trajectoryXyzPoints: number[][] = [];
 
-    if (getWellTrajectoriesQuery.data && getWellTrajectoriesQuery.data.length !== 0) {
-        trajectoryXyzPoints = makeTrajectoryXyzPointsFromWellboreTrajectory(getWellTrajectoriesQuery.data[0]);
+    if (wellboreTrajectoriesQuery.data && wellboreTrajectoriesQuery.data.length !== 0) {
+        trajectoryXyzPoints = makeTrajectoryXyzPointsFromWellboreTrajectory(wellboreTrajectoriesQuery.data[0]);
         if (!isEqual(trajectoryXyzPoints, prevTrajectoryPoint)) {
             setPrevTrajectoryPoint(trajectoryXyzPoints);
             const referenceSystem = new IntersectionReferenceSystem(trajectoryXyzPoints);
-            referenceSystem.offset = trajectoryXyzPoints[0][2]; // Offset should be md at start of path
+            referenceSystem.offset = wellboreTrajectoriesQuery.data[0].md_arr[0]; // Offset should be md at start of path
             setRis(referenceSystem);
         }
     }
@@ -107,10 +105,10 @@ export const View = (props: ModuleFCProps<State>) => {
         true
     );
 
-    statusWriter.setLoading(getWellTrajectoriesQuery.isFetching || sampleSurfaceInPointsQueries.isFetching);
+    statusWriter.setLoading(wellboreTrajectoriesQuery.isFetching || sampleSurfaceInPointsQueries.isFetching);
 
     let errorString = "";
-    if (getWellTrajectoriesQuery.isError) {
+    if (wellboreTrajectoriesQuery.isError) {
         errorString += "Error loading well trajectories";
     }
 
@@ -362,6 +360,7 @@ export const View = (props: ModuleFCProps<State>) => {
             setPolylineIntersectionLayer({
                 id: "polyline-intersection",
                 type: LayerType.POLYLINE_INTERSECTION,
+                hoverable: true,
                 options: {
                     data: polylineIntersection,
                     colorScale,
@@ -375,7 +374,8 @@ export const View = (props: ModuleFCProps<State>) => {
             surface.realizationPoints.map((el) => el.sampled_values),
             cumLength,
             surface.surfaceName,
-            stratigraphyColorMap
+            stratigraphyColorMap,
+            visibleStatisticCurves
         );
         return fanchart;
     });
@@ -384,6 +384,7 @@ export const View = (props: ModuleFCProps<State>) => {
         {
             id: "wellborepath",
             type: LayerType.WELLBORE_PATH,
+            hoverable: true,
             options: {
                 order: 3,
                 stroke: "red",
@@ -392,8 +393,9 @@ export const View = (props: ModuleFCProps<State>) => {
             },
         },
         {
-            id: "statistics-surface",
+            id: "geomodel",
             type: LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS,
+            hoverable: true,
             options: {
                 order: 4,
                 data: {
@@ -402,20 +404,53 @@ export const View = (props: ModuleFCProps<State>) => {
             },
         },
         {
-            id: "seaAndRbk",
-            type: LayerType.REFERENCE_LINE,
+            id: "geomodel-labels",
+            type: LayerType.GEOMODEL_LABELS,
             options: {
-                data: [
-                    { text: "RKB", lineType: "dashed", color: "black", depth: -25 },
-                    { text: "MSL", lineType: "wavy", color: "blue", depth: 30 },
-                    { text: "Seabed", lineType: "solid", color: "slategray", depth: 91.1, lineWidth: 2 },
-                ],
+                order: 5,
+                data: {
+                    lines: surfaceStatisticsFancharts.map((fanchart) => {
+                        const line: SurfaceLine = {
+                            color: fanchart.color ?? "black",
+                            label: fanchart.label ?? "Surface",
+                            data: fanchart.data.mean,
+                        };
+                        return line;
+                    }),
+                    areas: [],
+                },
             },
         },
     ];
 
     if (polylineIntersectionLayer) {
         layers.push(polylineIntersectionLayer);
+    }
+
+    if (wellboreHeader && wellboreTrajectoriesQuery.data) {
+        const tvdStart = wellboreTrajectoriesQuery.data[0].tvd_msl_arr[0] - wellboreTrajectoriesQuery.data[0].md_arr[0];
+        if (tvdStart !== undefined) {
+            layers.push({
+                id: "sea-and-rkb",
+                type: LayerType.REFERENCE_LINE,
+                options: {
+                    data: [
+                        {
+                            text: wellboreHeader.depth_reference_point,
+                            lineType: "dashed",
+                            color: "black",
+                            depth: tvdStart,
+                        },
+                        {
+                            text: wellboreHeader.depth_reference_datum,
+                            lineType: wellboreHeader.depth_reference_datum === "MSL" ? "wavy" : "solid",
+                            color: wellboreHeader.depth_reference_datum === "MSL" ? "blue" : "brown",
+                            depth: tvdStart + wellboreHeader.depth_reference_elevation,
+                        },
+                    ],
+                },
+            });
+        }
     }
 
     if (wellboreCompletionsQuery.data) {
@@ -431,6 +466,7 @@ export const View = (props: ModuleFCProps<State>) => {
         layers.push({
             id: "schematic",
             type: LayerType.SCHEMATIC,
+            hoverable: true,
             options: {
                 order: 5,
                 data: makeSchematicsFromWellCompletions(wellboreCompletionsQuery.data),
@@ -448,6 +484,7 @@ export const View = (props: ModuleFCProps<State>) => {
         layers.push({
             id: "callout",
             type: LayerType.CALLOUT_CANVAS,
+            hoverable: true,
             options: {
                 order: 100,
                 data: getPicksData(picksData),
@@ -461,9 +498,9 @@ export const View = (props: ModuleFCProps<State>) => {
     return (
         <div className="h-full w-full flex flex-col justify-center items-center">
             <EsvIntersection
-                showGrid={grid}
+                showGrid={visibleLayers.includes("grid")}
                 showAxes
-                showAxesLabels={axisLabels}
+                showAxesLabels={visibleLayers.includes("axis-labels")}
                 axesOptions={{
                     xLabel: "X",
                     yLabel: "Y",
@@ -471,15 +508,14 @@ export const View = (props: ModuleFCProps<State>) => {
                 }}
                 layers={layers.filter((layer) => {
                     return (
-                        (layer.id === "wellborepath" && showWellbore) ||
-                        (layer.id === "geomodel" && geoModel) ||
-                        (layer.id === "geomodellabels" && geoModelLabels) ||
-                        (layer.id === "seismic" && seismic) ||
-                        (layer.id === "schematic" && schematic) ||
-                        (layer.id === "seaAndRbk" && seaAndRbk) ||
-                        (layer.id === "callout" && picks) ||
-                        (layer.id === "polyline-intersection" && polyLineIntersection) ||
-                        layer.id === "statistics-surface"
+                        (layer.id === "wellborepath" && visibleLayers.includes("wellborepath")) ||
+                        (layer.id === "geomodel" && visibleLayers.includes("geomodel")) ||
+                        (layer.id === "geomodel-labels" && visibleLayers.includes("geomodel-labels")) ||
+                        (layer.id === "seismic" && visibleLayers.includes("seismic")) ||
+                        (layer.id === "schematic" && visibleLayers.includes("schematic")) ||
+                        (layer.id === "sea-and-rkb" && visibleLayers.includes("sea-and-rkb")) ||
+                        (layer.id === "callout" && visibleLayers.includes("picks")) ||
+                        (layer.id === "polyline-intersection" && visibleLayers.includes("polyline-intersection"))
                     );
                 })}
                 intersectionReferenceSystem={ris ?? undefined}

@@ -1,5 +1,5 @@
 import { BoundingBox2D } from "./BoundingBox2D";
-import { IntersectedItem, IntersectionCalculator, PolygonData, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItemShape, PolygonData } from "./types";
 
 function polygonFromVerticesAndIndices(startOffset: number, vertices: Float32Array, indices: Uint32Array): number[][] {
     const polygon: number[][] = [];
@@ -44,7 +44,7 @@ function pointIsInPolygon(
 }
 
 export interface PolygonsIntersectedItem extends IntersectedItem {
-    shape: Shape.POLYGONS;
+    shape: IntersectionItemShape.POLYGONS;
     polygon: number[][];
     polygonIndex: number;
 }
@@ -70,7 +70,7 @@ export class PolygonsIntersectionCalculator implements IntersectionCalculator {
             const polygonIndices = this._data.polygons.subarray(idx + 1, idx + numVertices + 1);
             if (pointIsInPolygon(point, this._data.xMin, this._data.vertices, polygonIndices)) {
                 return {
-                    shape: Shape.POLYGONS,
+                    shape: IntersectionItemShape.POLYGONS,
                     point,
                     polygonIndex,
                     polygon: polygonFromVerticesAndIndices(this._data.xMin, this._data.vertices, polygonIndices),

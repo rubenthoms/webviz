@@ -76,6 +76,7 @@ export class IntersectionHandler {
     private makeOverlay() {
         const overlay = this._controller.overlay.create("intersection-overlay", {
             onMouseMove: this.handleMouseMove.bind(this),
+            onMouseExit: this.handleMouseExit.bind(this),
         });
 
         if (overlay === undefined) {
@@ -130,6 +131,12 @@ export class IntersectionHandler {
 
         this.publish(IntersectionHandlerTopic.INTERSECTION, {
             intersections,
+        });
+    }
+
+    private handleMouseExit() {
+        this.publish(IntersectionHandlerTopic.INTERSECTION, {
+            intersections: [],
         });
     }
 }

@@ -16,11 +16,9 @@ export type SurfaceStatisticalFanchart = {
     };
     visibility?: {
         mean: boolean;
-        min: boolean;
-        max: boolean;
-        p10: boolean;
+        minMax: boolean;
+        p10p90: boolean;
         p50: boolean;
-        p90: boolean;
     };
 };
 
@@ -131,14 +129,18 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
         this._fillPaths = [];
 
         for (const fanchart of this.data.fancharts) {
-            this._fillPaths.push({
-                color: this.colorToCss(fanchart.color, 0.2),
-                path: this.makeFillPath(this.createMinMaxFillPolygon(fanchart)),
-            });
-            this._fillPaths.push({
-                color: this.colorToCss(fanchart.color, 0.4),
-                path: this.makeFillPath(this.createP10P90FillPolygon(fanchart)),
-            });
+            if (fanchart.visibility?.minMax ?? true) {
+                this._fillPaths.push({
+                    color: this.colorToCss(fanchart.color, 0.2),
+                    path: this.makeFillPath(this.createMinMaxFillPolygon(fanchart)),
+                });
+            }
+            if (fanchart.visibility?.p10p90 ?? true) {
+                this._fillPaths.push({
+                    color: this.colorToCss(fanchart.color, 0.4),
+                    path: this.makeFillPath(this.createP10P90FillPolygon(fanchart)),
+                });
+            }
         }
     }
 
@@ -154,38 +156,6 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
                 this._linePaths.push({
                     color: this.colorToCss(fanchart.color, 1),
                     path: this.makeLinePath(fanchart.data.mean),
-                });
-            }
-
-            if (fanchart.visibility?.p10 ?? true) {
-                this._linePaths.push({
-                    color: this.colorToCss(fanchart.color, 1),
-                    path: this.makeLinePath(fanchart.data.p10),
-                    dashSegments: [1, 1],
-                });
-            }
-
-            if (fanchart.visibility?.p90 ?? true) {
-                this._linePaths.push({
-                    color: this.colorToCss(fanchart.color, 1),
-                    path: this.makeLinePath(fanchart.data.p90),
-                    dashSegments: [1, 1],
-                });
-            }
-
-            if (fanchart.visibility?.min ?? true) {
-                this._linePaths.push({
-                    color: this.colorToCss(fanchart.color, 1),
-                    path: this.makeLinePath(fanchart.data.min),
-                    dashSegments: [5, 5],
-                });
-            }
-
-            if (fanchart.visibility?.max ?? true) {
-                this._linePaths.push({
-                    color: this.colorToCss(fanchart.color, 1),
-                    path: this.makeLinePath(fanchart.data.max),
-                    dashSegments: [5, 5],
                 });
             }
 

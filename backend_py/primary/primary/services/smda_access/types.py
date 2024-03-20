@@ -41,6 +41,12 @@ class WellBoreHeader(BaseModel):
     unique_well_identifier: str
     well_easting: float
     well_northing: float
+    depth_reference_datum: str
+    depth_reference_elevation: float
+    depth_reference_elevation_unit: str
+    depth_reference_point: str
+    tvd_unit: str
+    md_unit: str
 
 
 class WellBoreCompletion(BaseModel):

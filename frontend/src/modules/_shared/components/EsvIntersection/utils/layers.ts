@@ -10,7 +10,7 @@ import {
 import { PolylineIntersectionData } from "../layers/PolylineIntersectionLayer";
 import { SurfaceStatisticalFanchartsData } from "../layers/SurfaceStatisticalFanchartCanvasLayer";
 
-export function isSurfaceData(data: unknown): data is SurfaceData {
+export function isSurfaceLayer(data: unknown): data is SurfaceData {
     if (typeof data !== "object" || data === null) {
         return false;
     }

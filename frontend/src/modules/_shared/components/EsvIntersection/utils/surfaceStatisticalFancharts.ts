@@ -29,11 +29,9 @@ export function makeSurfaceStatisticalFanchartFromRealizationSurfaces(
     stratColorMap: StratigraphyColorMap,
     visibility?: {
         mean: boolean;
-        min: boolean;
-        max: boolean;
-        p10: boolean;
+        minMax: boolean;
+        p10p90: boolean;
         p50: boolean;
-        p90: boolean;
     }
 ): SurfaceStatisticalFanchart {
     const numPoints = realizationSamplePoints[0]?.length || 0;

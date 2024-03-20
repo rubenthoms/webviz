@@ -7,20 +7,17 @@ import { View } from "./view";
 const defaultState: State = {
     ensembleIdent: null,
     realizations: [],
-    wellbore: null,
+    wellboreHeader: null,
     surfaceAttribute: "",
     surfaceNames: [],
     stratigraphyColorMap: {},
-    grid: true,
-    showWellbore: true,
-    geoModel: true,
-    geoModelLabels: true,
-    seismic: true,
-    schematic: true,
-    seaAndRbk: true,
-    picks: true,
-    axisLabels: true,
-    polyLineIntersection: true,
+    visibleLayers: [],
+    visibleStatisticCurves: {
+        mean: true,
+        minMax: true,
+        p10p90: true,
+        p50: true,
+    },
 };
 
 const module = ModuleRegistry.initModule<State>("MyModule2", defaultState);

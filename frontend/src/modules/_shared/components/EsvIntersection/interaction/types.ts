@@ -4,14 +4,21 @@ export interface BoundingVolume {
     contains(point: number[]): boolean;
 }
 
-export enum Shape {
+export enum IntersectionItemShape {
     POINT = "point",
     LINE = "line",
     LINE_SET = "lineset",
     POLYGON = "polygon",
     POLYGONS = "polygons",
     WELLBORE_PATH = "wellbore-path",
-    WELLBORE_SECTION = "wellbore-section",
+    FANCHART = "fanchart",
+}
+
+export enum HighlightItemShape {
+    POINT = "point",
+    LINE = "line",
+    POLYGON = "polygon",
+    POINTS = "points",
 }
 
 export type PolygonData = {
@@ -27,32 +34,39 @@ export type IntersectionItem = {
     id: string;
 } & (
     | {
-          shape: Shape.POINT;
+          shape: IntersectionItemShape.POINT;
           data: number[];
       }
     | {
-          shape: Shape.LINE;
+          shape: IntersectionItemShape.LINE;
           data: number[][];
       }
     | {
-          shape: Shape.LINE_SET;
+          shape: IntersectionItemShape.LINE_SET;
           data: number[][][];
       }
     | {
-          shape: Shape.POLYGON;
+          shape: IntersectionItemShape.POLYGON;
           data: number[][];
       }
     | {
-          shape: Shape.POLYGONS;
+          shape: IntersectionItemShape.POLYGONS;
           data: PolygonData;
       }
     | {
-          shape: Shape.WELLBORE_PATH;
+          shape: IntersectionItemShape.WELLBORE_PATH;
+      }
+    | {
+          shape: IntersectionItemShape.FANCHART;
+          data: {
+              hull: number[][];
+              lines: number[][][];
+          };
       }
 );
 
 export interface IntersectedItem {
-    shape: Shape;
+    shape: IntersectionItemShape;
     point: number[];
 }
 
@@ -60,16 +74,20 @@ export type HighlightItem = {
     color: string;
 } & (
     | {
-          shape: Shape.POINT;
+          shape: HighlightItemShape.POINT;
           point: number[];
       }
     | {
-          shape: Shape.LINE;
+          shape: HighlightItemShape.LINE;
           line: number[][];
       }
     | {
-          shape: Shape.POLYGON;
+          shape: HighlightItemShape.POLYGON;
           polygon: number[][];
+      }
+    | {
+          shape: HighlightItemShape.POINTS;
+          points: number[][];
       }
 );
 

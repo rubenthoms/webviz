@@ -18,6 +18,12 @@ async def get_well_headers(
         "unique_well_identifier",
         "well_easting",
         "well_northing",
+        "depth_reference_datum",
+        "depth_reference_elevation",
+        "depth_reference_elevation_unit",
+        "depth_reference_point",
+        "tvd_unit",
+        "md_unit",
     ]
     params = {
         "_projection": ",".join(projection),

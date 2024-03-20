@@ -1,5 +1,5 @@
 import { BoundingBox2D } from "./BoundingBox2D";
-import { IntersectedItem, IntersectionCalculator, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItemShape } from "./types";
 
 class SubLine {
     private _startIndex: number;
@@ -52,7 +52,7 @@ class SubLine {
 const MAX_NUMBER_POINTS = 50;
 
 export interface LineIntersectedItem extends IntersectedItem {
-    shape: Shape.LINE;
+    shape: IntersectionItemShape.LINE;
 }
 
 export class LineIntersectionCalculator implements IntersectionCalculator {
@@ -259,7 +259,7 @@ export class LineIntersectionCalculator implements IntersectionCalculator {
                 );
                 return {
                     point: result,
-                    shape: Shape.LINE,
+                    shape: IntersectionItemShape.LINE,
                 };
             }
         }

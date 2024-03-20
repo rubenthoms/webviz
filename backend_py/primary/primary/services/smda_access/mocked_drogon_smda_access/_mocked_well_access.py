@@ -83,6 +83,12 @@ class WellAccess:
                 unique_well_identifier="55/33-1",
                 well_easting=462480.000,
                 well_northing=5934232.000,
+                depth_reference_datum="MSL",
+                depth_reference_elevation=30,
+                depth_reference_elevation_unit="m",
+                depth_reference_point="RKB",
+                tvd_unit="m",
+                md_unit="m",
             ),
             WellBoreHeader(
                 wellbore_uuid="drogon_horizontal",
@@ -91,6 +97,12 @@ class WellAccess:
                 unique_well_identifier="55/33-A-4",
                 well_easting=463256.911,
                 well_northing=5930542.294,
+                depth_reference_datum="MSL",
+                depth_reference_elevation=30,
+                depth_reference_elevation_unit="m",
+                depth_reference_point="RKB",
+                tvd_unit="m",
+                md_unit="m",
             ),
         ]
 

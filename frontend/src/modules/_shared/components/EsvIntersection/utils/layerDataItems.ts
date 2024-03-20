@@ -1,15 +1,17 @@
 import { Annotation, Layer, SurfaceData, WellborepathLayer } from "@equinor/esv-intersection";
 import { pointDistance } from "@lib/utils/geometry";
 
+import { isEqual } from "lodash";
+
 import {
     isAnnotationData,
     isPolylineIntersectionData,
     isStatisticalFanchartsData,
-    isSurfaceData,
+    isSurfaceLayer,
     isWellborepathLayer,
 } from "./layers";
 
-import { LayerDataItem, Shape } from "../interaction/types";
+import { IntersectionItem, IntersectionItemShape, LayerDataItem } from "../interaction/types";
 import { PolylineIntersectionData } from "../layers/PolylineIntersectionLayer";
 import { SurfaceStatisticalFanchartsData } from "../layers/SurfaceStatisticalFanchartCanvasLayer";
 
@@ -19,7 +21,7 @@ export function makeLayerDataItems(layer: Layer<SurfaceStatisticalFanchartsData>
 export function makeLayerDataItems(layer: Layer<Annotation[]>): LayerDataItem[];
 export function makeLayerDataItems(layer: WellborepathLayer<[number, number][]>): LayerDataItem[];
 export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
-    if (isSurfaceData(layer.data)) {
+    if (isSurfaceLayer(layer.data)) {
         const dataItems: LayerDataItem[] = [];
         for (const [index, line] of layer.data.lines.entries()) {
             const id = line.id ?? `${layer.id}-line-${index}`;
@@ -29,7 +31,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 index,
                 intersectionItem: {
                     id,
-                    shape: Shape.LINE,
+                    shape: IntersectionItemShape.LINE,
                     data: line.data,
                 },
             });
@@ -43,7 +45,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 index,
                 intersectionItem: {
                     id,
-                    shape: Shape.POLYGON,
+                    shape: IntersectionItemShape.POLYGON,
                     data: area.data,
                 },
             });
@@ -68,7 +70,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 index,
                 intersectionItem: {
                     id,
-                    shape: Shape.POINT,
+                    shape: IntersectionItemShape.POINT,
                     data: point,
                 },
             });
@@ -99,7 +101,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 index,
                 intersectionItem: {
                     id,
-                    shape: Shape.POLYGONS,
+                    shape: IntersectionItemShape.POLYGONS,
                     data: {
                         vertices: fenceMeshSection.verticesUzArr,
                         polygons: fenceMeshSection.polysArr,
@@ -120,25 +122,59 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
         const dataItems: LayerDataItem[] = [];
         for (const [index, fanchart] of layer.data.fancharts.entries()) {
             const id = fanchart.id ?? `${layer.id}-${index}`;
+            let hull: number[][] = [];
             const lines: number[][][] = [];
+            let intersectionItem: IntersectionItem | null = null;
 
-            lines.push(fanchart.data.mean);
-            lines.push(fanchart.data.p10);
-            lines.push(fanchart.data.p90);
-            lines.push(fanchart.data.min);
-            lines.push(fanchart.data.max);
-            lines.push(fanchart.data.p50);
+            if (fanchart.visibility?.mean ?? true) {
+                lines.push(fanchart.data.mean);
+            }
 
-            dataItems.push({
-                id,
-                layer,
-                index,
-                intersectionItem: {
+            if (fanchart.visibility?.minMax ?? true) {
+                if (!isEqual(fanchart.data.min, fanchart.data.max)) {
+                    hull = [...fanchart.data.min, ...fanchart.data.max.toReversed(), fanchart.data.min[0]];
+                }
+                lines.push(fanchart.data.min);
+                lines.push(fanchart.data.max);
+            }
+            if (fanchart.visibility?.p10p90 ?? true) {
+                if (hull.length === 0 && !isEqual(fanchart.data.p10, fanchart.data.p90)) {
+                    hull = [...fanchart.data.p10, ...fanchart.data.p90.toReversed(), fanchart.data.p10[0]];
+                }
+                lines.push(fanchart.data.p10);
+                if (fanchart.visibility?.p50 ?? true) {
+                    lines.push(fanchart.data.p50);
+                }
+                lines.push(fanchart.data.p90);
+            } else if (fanchart.visibility?.p50 ?? true) {
+                lines.push(fanchart.data.p50);
+            }
+
+            if (hull.length > 0) {
+                intersectionItem = {
                     id,
-                    shape: Shape.LINE_SET,
+                    shape: IntersectionItemShape.FANCHART,
+                    data: {
+                        hull,
+                        lines,
+                    },
+                };
+            } else {
+                intersectionItem = {
+                    id,
+                    shape: IntersectionItemShape.LINE_SET,
                     data: lines,
-                },
-            });
+                };
+            }
+
+            if (intersectionItem) {
+                dataItems.push({
+                    id,
+                    layer,
+                    index,
+                    intersectionItem,
+                });
+            }
         }
         return dataItems;
     }
@@ -154,7 +190,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 index: 0,
                 intersectionItem: {
                     id: layer.id,
-                    shape: Shape.WELLBORE_PATH,
+                    shape: IntersectionItemShape.WELLBORE_PATH,
                 },
             },
         ];

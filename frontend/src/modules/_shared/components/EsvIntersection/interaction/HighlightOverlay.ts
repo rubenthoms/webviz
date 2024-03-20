@@ -2,7 +2,7 @@ import { Controller, OnRescaleEvent } from "@equinor/esv-intersection";
 
 import { isEqual } from "lodash";
 
-import { HighlightItem, Shape } from "./types";
+import { HighlightItem, HighlightItemShape } from "./types";
 
 export class HighlightOverlay {
     private _container: HTMLElement;
@@ -45,7 +45,7 @@ export class HighlightOverlay {
         svgLayer.style.height = "100%";
 
         for (const item of this._highlightItems) {
-            if (item.shape === Shape.POINT) {
+            if (item.shape === HighlightItemShape.POINT) {
                 const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", xScale(item.point[0]).toString());
                 circle.setAttribute("cy", yScale(item.point[1]).toString());
@@ -53,7 +53,7 @@ export class HighlightOverlay {
                 circle.setAttribute("fill", item.color);
                 svgLayer.appendChild(circle);
             }
-            if (item.shape === Shape.LINE) {
+            if (item.shape === HighlightItemShape.LINE) {
                 if (isEqual(item.line[0], item.line[1])) {
                     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                     circle.setAttribute("cx", xScale(item.line[0][0]).toString());
@@ -75,7 +75,7 @@ export class HighlightOverlay {
                 line.setAttribute("stroke-width", "2");
                 svgLayer.appendChild(line);
             }
-            if (item.shape === Shape.POLYGON) {
+            if (item.shape === HighlightItemShape.POLYGON) {
                 const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
                 const adjustedPoints = item.polygon.map((point) => {
                     return {
@@ -86,6 +86,16 @@ export class HighlightOverlay {
                 polygon.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
                 polygon.setAttribute("style", `fill:${item.color};stroke:${item.color};stroke-width:2;`);
                 svgLayer.appendChild(polygon);
+            }
+            if (item.shape === HighlightItemShape.POINTS) {
+                for (const point of item.points) {
+                    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", xScale(point[0]).toString());
+                    circle.setAttribute("cy", yScale(point[1]).toString());
+                    circle.setAttribute("r", "5");
+                    circle.setAttribute("fill", item.color);
+                    svgLayer.appendChild(circle);
+                }
             }
         }
 
@@ -132,7 +142,6 @@ export class HighlightOverlay {
 
     private handlePointerUp() {
         this._pointerDown = false;
-        this.changeVisibility(true);
     }
 
     private handleRescale(event: OnRescaleEvent) {

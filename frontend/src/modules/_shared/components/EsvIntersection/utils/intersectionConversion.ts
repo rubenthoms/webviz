@@ -15,10 +15,11 @@ import {
     isPolylineIntersectionData,
     isSchematicLayer,
     isStatisticalFanchartsData,
-    isSurfaceData,
+    isSurfaceLayer,
     isWellborepathLayer,
 } from "./layers";
 
+import { FanchartIntersectedItem, FanchartIntersectionCalculator } from "../interaction/FanchartIntersectionCalculator";
 import { IntersectionHandlerOptions } from "../interaction/IntersectionHandler";
 import { LineIntersectedItem, LineIntersectionCalculator } from "../interaction/LineIntersectionCalculator";
 import { LineSetIntersectedItem, LineSetIntersectionCalculator } from "../interaction/LineSetIntersectionCalculator";
@@ -31,11 +32,12 @@ import {
 } from "../interaction/WellborePathIntersectionCalculator";
 import {
     HighlightItem,
+    HighlightItemShape,
     IntersectedItem,
     IntersectionCalculator,
     IntersectionItem,
+    IntersectionItemShape,
     ReadoutItem,
-    Shape,
 } from "../interaction/types";
 
 export function makeIntersectionCalculatorFromIntersectionItem(
@@ -44,55 +46,67 @@ export function makeIntersectionCalculatorFromIntersectionItem(
     controller: Controller
 ): IntersectionCalculator {
     switch (intersectionItem.shape) {
-        case Shape.POINT:
+        case IntersectionItemShape.POINT:
             return new PointIntersectionCalculator(intersectionItem.data, options.threshold);
-        case Shape.LINE:
+        case IntersectionItemShape.LINE:
             return new LineIntersectionCalculator(intersectionItem.data, options.threshold);
-        case Shape.LINE_SET:
+        case IntersectionItemShape.LINE_SET:
             return new LineSetIntersectionCalculator(intersectionItem.data, options.threshold);
-        case Shape.POLYGON:
+        case IntersectionItemShape.POLYGON:
             return new PolygonIntersectionCalculator(intersectionItem.data);
-        case Shape.POLYGONS:
+        case IntersectionItemShape.POLYGONS:
             return new PolygonsIntersectionCalculator(intersectionItem.data);
-        case Shape.WELLBORE_PATH:
-            return new WellborePathIntersectionCalculator(controller);
+        case IntersectionItemShape.WELLBORE_PATH:
+            return new WellborePathIntersectionCalculator(controller, options.threshold);
+        case IntersectionItemShape.FANCHART:
+            return new FanchartIntersectionCalculator(
+                intersectionItem.data.lines,
+                intersectionItem.data.hull,
+                options.threshold
+            );
     }
 }
 
 function isPointIntersectionResult(intersectionResult: IntersectedItem): intersectionResult is PointIntersectedItem {
-    return intersectionResult.shape === Shape.POINT;
+    return intersectionResult.shape === IntersectionItemShape.POINT;
 }
 
 function isLineIntersectionResult(intersectionResult: IntersectedItem): intersectionResult is LineIntersectedItem {
-    return intersectionResult.shape === Shape.LINE;
+    return intersectionResult.shape === IntersectionItemShape.LINE;
 }
 
 function isLineSetIntersectionResult(
     intersectionResult: IntersectedItem
 ): intersectionResult is LineSetIntersectedItem {
-    return intersectionResult.shape === Shape.LINE_SET;
+    return intersectionResult.shape === IntersectionItemShape.LINE_SET;
 }
 
 function isPolygonIntersectionResult(
     intersectionResult: IntersectedItem
 ): intersectionResult is PolygonIntersectedItem {
-    return intersectionResult.shape === Shape.POLYGON;
+    return intersectionResult.shape === IntersectionItemShape.POLYGON;
 }
 
 function isPolygonsIntersectionResult(
     intersectionResult: IntersectedItem
 ): intersectionResult is PolygonsIntersectedItem {
-    return intersectionResult.shape === Shape.POLYGONS;
+    return intersectionResult.shape === IntersectionItemShape.POLYGONS;
 }
 
 function isWellborePathIntersectionResult(
     intersectionResult: IntersectedItem
 ): intersectionResult is WellborePathIntersectedItem {
-    return intersectionResult.shape === Shape.WELLBORE_PATH;
+    return intersectionResult.shape === IntersectionItemShape.WELLBORE_PATH;
+}
+
+function isFanchartIntersectionResult(
+    intersectionResult: IntersectedItem
+): intersectionResult is FanchartIntersectedItem {
+    return intersectionResult.shape === IntersectionItemShape.FANCHART;
 }
 
 function getColorFromLayerData(layer: Layer<unknown>, index: number): string {
-    if (isSurfaceData(layer.data)) {
+    if (isSurfaceLayer(layer.data)) {
         return layer.data.lines[index].color.toString();
     }
 
@@ -120,7 +134,7 @@ function getColorFromLayerData(layer: Layer<unknown>, index: number): string {
 }
 
 function getLabelFromLayerData(readoutItem: ReadoutItem): string {
-    if (isSurfaceData(readoutItem.layer.data)) {
+    if (isSurfaceLayer(readoutItem.layer.data)) {
         return readoutItem.layer.data.lines[readoutItem.index].label;
     }
 
@@ -235,7 +249,28 @@ function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem): stri
     if (isStatisticalFanchartsData(readoutItem.layer.data)) {
         const fanchart = readoutItem.layer.data.fancharts[readoutItem.index];
         if (fanchart && readoutItem.points) {
-            const keys = Object.keys(fanchart.data);
+            const keys = Object.keys(fanchart.data).filter((el) => {
+                if (el === "mean") {
+                    return fanchart.visibility?.mean ?? true;
+                }
+                if (el === "min") {
+                    return fanchart.visibility?.minMax ?? true;
+                }
+                if (el === "max") {
+                    return fanchart.visibility?.minMax ?? true;
+                }
+                if (el === "p10") {
+                    return fanchart.visibility?.p10p90 ?? true;
+                }
+                if (el === "p90") {
+                    return fanchart.visibility?.p10p90 ?? true;
+                }
+                if (el === "p50") {
+                    return fanchart.visibility?.p50 ?? true;
+                }
+                return false;
+            });
+
             for (const [index, point] of readoutItem.points.entries()) {
                 const label = keys[index];
                 infoArr.push(`${label}: ${point[1].toFixed(2)}`);
@@ -273,43 +308,50 @@ export function makeHighlightItemFromIntersectionResult(
     const color = getColorFromLayerData(layer, index);
     if (isPointIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.POINT,
+            shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
             color,
         };
     }
     if (isLineIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.POINT,
+            shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
             color,
         };
     }
     if (isLineSetIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.LINE,
-            line: intersectionResult.line,
+            shape: HighlightItemShape.POINTS,
+            points: intersectionResult.points,
             color,
         };
     }
     if (isPolygonIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.POLYGON,
+            shape: HighlightItemShape.POLYGON,
             polygon: intersectionResult.polygon,
             color,
         };
     }
     if (isPolygonsIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.POLYGON,
+            shape: HighlightItemShape.POLYGON,
             polygon: intersectionResult.polygon,
             color,
         };
     }
     if (isWellborePathIntersectionResult(intersectionResult)) {
         return {
-            shape: Shape.POINT,
+            shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
+            color,
+        };
+    }
+    if (isFanchartIntersectionResult(intersectionResult)) {
+        return {
+            shape: HighlightItemShape.LINE,
+            line: intersectionResult.line,
             color,
         };
     }
@@ -362,6 +404,14 @@ export function makeReadoutItemFromIntersectionResult(
         return {
             point: intersectionResult.point,
             md: intersectionResult.md,
+            layer,
+            index,
+        };
+    }
+    if (isFanchartIntersectionResult(intersectionResult)) {
+        return {
+            point: intersectionResult.point,
+            points: intersectionResult.points,
             layer,
             index,
         };

@@ -1,8 +1,8 @@
 import { BoundingSphere2D } from "./BoundingSphere2D";
-import { IntersectedItem, IntersectionCalculator, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItemShape } from "./types";
 
 export interface PointIntersectedItem extends IntersectedItem {
-    shape: Shape.POINT;
+    shape: IntersectionItemShape.POINT;
 }
 
 export class PointIntersectionCalculator implements IntersectionCalculator {
@@ -18,7 +18,7 @@ export class PointIntersectionCalculator implements IntersectionCalculator {
         }
 
         return {
-            shape: Shape.POINT,
+            shape: IntersectionItemShape.POINT,
             point: this._boundingSphere.getCenter(),
         };
     }

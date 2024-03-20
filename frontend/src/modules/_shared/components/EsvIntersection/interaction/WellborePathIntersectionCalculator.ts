@@ -1,10 +1,10 @@
 import { Controller } from "@equinor/esv-intersection";
 
 import { BoundingBox2D } from "./BoundingBox2D";
-import { IntersectedItem, IntersectionCalculator, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItemShape } from "./types";
 
 export interface WellborePathIntersectedItem extends IntersectedItem {
-    shape: Shape.WELLBORE_PATH;
+    shape: IntersectionItemShape.WELLBORE_PATH;
     md: number;
 }
 
@@ -47,7 +47,7 @@ export class WellborePathIntersectionCalculator implements IntersectionCalculato
         const md = curtain.getArcLength(1 - nearestPosition.u) + this._controller.referenceSystem.offset;
 
         return {
-            shape: Shape.WELLBORE_PATH,
+            shape: IntersectionItemShape.WELLBORE_PATH,
             md,
             point: [nearestPosition.point[0], nearestPosition.point[1]],
         };

@@ -1,20 +1,22 @@
 import { LineIntersectionCalculator } from "./LineIntersectionCalculator";
 import { IntersectedItem, IntersectionCalculator, IntersectionItemShape } from "./types";
 
-import { calcDistance } from "../utils/geometry";
+import { calcDistance, pointIsInPolygon } from "../utils/geometry";
 
-export interface LineSetIntersectedItem extends IntersectedItem {
-    shape: IntersectionItemShape.LINE_SET;
+export interface FanchartIntersectedItem extends IntersectedItem {
+    shape: IntersectionItemShape.FANCHART;
     line: number[][];
     points: number[][];
 }
 
-export class LineSetIntersectionCalculator implements IntersectionCalculator {
+export class FanchartIntersectionCalculator implements IntersectionCalculator {
     private _lineIntersectionCalculators: LineIntersectionCalculator[];
     private _lines: number[][][];
+    private _hull: number[][];
 
-    constructor(lines: number[][][], margin: number = 0) {
+    constructor(lines: number[][][], hull: number[][], margin: number = 0) {
         this._lines = lines;
+        this._hull = hull;
         const lineIntersectionCalculators: LineIntersectionCalculator[] = [];
         for (const line of lines) {
             lineIntersectionCalculators.push(new LineIntersectionCalculator(line, margin));
@@ -47,7 +49,11 @@ export class LineSetIntersectionCalculator implements IntersectionCalculator {
         return points;
     }
 
-    calcIntersection(point: number[]): LineSetIntersectedItem | null {
+    calcIntersection(point: number[]): FanchartIntersectedItem | null {
+        if (!pointIsInPolygon(point, this._hull)) {
+            return null;
+        }
+
         let intersectionPoint: number[] | null = null;
         let points: number[][] = [];
         let smallestDistance = Number.MAX_VALUE;
@@ -75,13 +81,13 @@ export class LineSetIntersectionCalculator implements IntersectionCalculator {
         const yMax = Math.max(...points.map((p) => p[1]));
 
         return {
-            shape: IntersectionItemShape.LINE_SET,
+            shape: IntersectionItemShape.FANCHART,
             line: [
                 [x, yMin],
                 [x, yMax],
             ],
             points: points,
-            point: intersectionPoint,
+            point,
         };
     }
 }

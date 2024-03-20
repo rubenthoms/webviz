@@ -1,4 +1,4 @@
-import { IntersectedItem, IntersectionCalculator, Shape } from "./types";
+import { IntersectedItem, IntersectionCalculator, IntersectionItemShape } from "./types";
 
 function pointIsInPolygon(point: number[], polygon: number[][]): boolean {
     const numVertices = polygon.length;
@@ -29,7 +29,7 @@ function pointIsInPolygon(point: number[], polygon: number[][]): boolean {
 }
 
 export interface PolygonIntersectedItem extends IntersectedItem {
-    shape: Shape.POLYGON;
+    shape: IntersectionItemShape.POLYGON;
     polygon: number[][];
 }
 
@@ -43,7 +43,7 @@ export class PolygonIntersectionCalculator implements IntersectionCalculator {
     calcIntersection(point: number[]): PolygonIntersectedItem | null {
         if (pointIsInPolygon(point, this._polygon)) {
             return {
-                shape: Shape.POLYGON,
+                shape: IntersectionItemShape.POLYGON,
                 point,
                 polygon: this._polygon,
             };

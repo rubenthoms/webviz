@@ -1,23 +1,21 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { Wellbore } from "@framework/Wellbore";
+
+import { WellBoreHeader } from "src/api/models/WellBoreHeader";
 
 export type StratigraphyColorMap = { [name: string]: string };
 
 export type State = {
     ensembleIdent: EnsembleIdent | null;
     realizations: number[];
-    wellbore: Wellbore | null;
+    wellboreHeader: WellBoreHeader | null;
     surfaceAttribute: string;
     surfaceNames: string[];
     stratigraphyColorMap: StratigraphyColorMap;
-    grid: boolean;
-    showWellbore: boolean;
-    geoModel: boolean;
-    geoModelLabels: boolean;
-    seismic: boolean;
-    schematic: boolean;
-    seaAndRbk: boolean;
-    picks: boolean;
-    axisLabels: boolean;
-    polyLineIntersection: boolean;
+    visibleLayers: string[];
+    visibleStatisticCurves: {
+        mean: boolean;
+        minMax: boolean;
+        p10p90: boolean;
+        p50: boolean;
+    };
 };

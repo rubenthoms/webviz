@@ -95,6 +95,7 @@ type LayerOptionsMap = {
 export type LayerItem<T extends keyof LayerOptionsMap> = {
     type: T;
     id: string;
+    hoverable?: boolean;
     options: LayerOptionsMap[T];
 };
 
@@ -230,14 +231,10 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         }
 
         if (prevShowGrid !== props.showGrid) {
-            if (!esvController.getLayer("grid") && props.showGrid) {
-                esvController.addLayer(new GridLayer("grid"));
+            if (props.showGrid) {
+                esvController.showLayer("grid");
             } else {
-                if (props.showGrid) {
-                    esvController.showLayer("grid");
-                } else {
-                    esvController.hideLayer("grid");
-                }
+                esvController.hideLayer("grid");
             }
             setPrevShowGrid(props.showGrid);
         }
@@ -262,9 +259,8 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
 
         if (!isEqual(prevContainerSize, containerSize)) {
             esvController.adjustToSize(containerSize.width, containerSize.height);
-            if (pixiRenderApplication?.view) {
-                pixiRenderApplication.view.width = containerSize.width;
-                pixiRenderApplication.view.height = containerSize.height;
+            if (pixiRenderApplication.renderer) {
+                pixiRenderApplication.renderer.resize(containerSize.width, containerSize.height);
                 pixiRenderApplication.render();
             }
             for (const layerId of layerIds ?? []) {
@@ -272,6 +268,9 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 layer?.element?.setAttribute("width", containerSize.width.toString());
                 layer?.element?.setAttribute("height", containerSize.height.toString());
             }
+            const gridLayer = esvController.getLayer("grid");
+            gridLayer?.element?.setAttribute("width", containerSize.width.toString());
+            gridLayer?.element?.setAttribute("height", containerSize.height.toString());
             setPrevContainerSize(containerSize);
         }
 
@@ -292,14 +291,14 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
         if (!isEqual(prevLayers, props.layers)) {
             let newLayerIds = layerIds;
 
-            let isPixiLayer = false;
+            let pixiLayerRemoved = false;
 
             // Remove layers that are not in the new list
             for (const layer of prevLayers) {
                 if (!props.layers?.find((el) => el.id === layer.id)) {
                     newLayerIds = newLayerIds.filter((el) => el !== layer.id);
                     if (esvController.getLayer(layer.id) instanceof PixiLayer) {
-                        isPixiLayer = true;
+                        pixiLayerRemoved = true;
                     }
                     esvController.removeLayer(layer.id);
                     interactionHandler.removeLayer(layer.id);
@@ -312,20 +311,28 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                     const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
                     newLayerIds.push(layer.id);
                     esvController.addLayer(newLayer);
-                    interactionHandler.addLayer(newLayer);
+                    newLayer?.element?.setAttribute("width", containerSize.width.toString());
+                    newLayer?.element?.setAttribute("height", containerSize.height.toString());
+                    if (layer.hoverable) {
+                        interactionHandler.addLayer(newLayer);
+                    }
                 } else {
                     const existingLayer = esvController.getLayer(layer.id);
                     if (existingLayer) {
                         // Somehow, all layers sharing a PixiRenderApplication instance must be removed and re-added when one gets removed
-                        if (existingLayer instanceof PixiLayer && isPixiLayer) {
+                        if (existingLayer instanceof PixiLayer && pixiLayerRemoved) {
                             esvController.removeLayer(layer.id);
                             const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
+                            newLayer?.element?.setAttribute("width", containerSize.width.toString());
+                            newLayer?.element?.setAttribute("height", containerSize.height.toString());
                             esvController.addLayer(newLayer);
                         } else {
                             existingLayer.onUpdate({ data: layer.options.data });
                         }
                         interactionHandler.removeLayer(layer.id);
-                        interactionHandler.addLayer(existingLayer);
+                        if (layer.hoverable) {
+                            interactionHandler.addLayer(existingLayer);
+                        }
                     }
                 }
             }
@@ -349,6 +356,9 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                     unitOfMeasure: "",
                 },
             });
+
+            const gridLayer = new GridLayer("grid");
+            newEsvController.addLayer(gridLayer);
 
             const newInteractionHandler = new InteractionHandler(newEsvController, containerRef.current, {
                 intersectionOptions: {
@@ -376,8 +386,6 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 backgroundColor: "#fff",
                 clearBeforeRender: true,
                 backgroundAlpha: 0,
-                width: 0,
-                height: 0,
             });
 
             setEsvController(newEsvController);

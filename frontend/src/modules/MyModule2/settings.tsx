@@ -10,8 +10,7 @@ import { SingleEnsembleSelect } from "@framework/components/SingleEnsembleSelect
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Label } from "@lib/components/Label";
 import { QueryStateWrapper } from "@lib/components/QueryStateWrapper";
-import { Select } from "@lib/components/Select";
-import { Switch } from "@lib/components/Switch";
+import { Select, SelectOption } from "@lib/components/Select";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { SurfaceDirectory, SurfaceTimeType, useSurfaceDirectoryQuery } from "@modules/_shared/Surface";
 import { useWellHeadersQuery } from "@modules/_shared/WellBore";
@@ -27,19 +26,12 @@ export function Settings(props: ModuleFCProps<State>) {
 
     const [ensembleIdent, setEnsembleIdent] = props.moduleContext.useStoreState("ensembleIdent");
     const [realizations, setRealizations] = props.moduleContext.useStoreState("realizations");
-    const [wellbore, setWellbore] = props.moduleContext.useStoreState("wellbore");
+    const [wellboreHeader, setWellboreHeader] = props.moduleContext.useStoreState("wellboreHeader");
     const [surfaceAttribute, setSurfaceAttribute] = props.moduleContext.useStoreState("surfaceAttribute");
     const [surfaceNames, setSurfaceNames] = props.moduleContext.useStoreState("surfaceNames");
-    const [grid, setGrid] = props.moduleContext.useStoreState("grid");
-    const [showWellbore, setShowWellbore] = props.moduleContext.useStoreState("showWellbore");
-    const [geoModel, setGeoModel] = props.moduleContext.useStoreState("geoModel");
-    const [geoModelLabels, setGeoModelLabels] = props.moduleContext.useStoreState("geoModelLabels");
-    const [seismic, setSeismic] = props.moduleContext.useStoreState("seismic");
-    const [schematic, setSchematic] = props.moduleContext.useStoreState("schematic");
-    const [seaAndRbk, setSeaAndRbk] = props.moduleContext.useStoreState("seaAndRbk");
-    const [picks, setPicks] = props.moduleContext.useStoreState("picks");
-    const [axisLabels, setAxisLabels] = props.moduleContext.useStoreState("axisLabels");
-    const [polyLineIntersection, setPolyLineIntersection] = props.moduleContext.useStoreState("polyLineIntersection");
+    const [visibleLayers, setVisibleLayers] = props.moduleContext.useStoreState("visibleLayers");
+    const [visibleStatisticCurves, setVisibleStatisticCurves] =
+        props.moduleContext.useStoreState("visibleStatisticCurves");
 
     let availableRealizations: readonly number[] = [];
     if (ensembleIdent) {
@@ -88,10 +80,6 @@ export function Settings(props: ModuleFCProps<State>) {
         }
     });
 
-    function handleGridChange() {
-        setGrid(!grid);
-    }
-
     function handleEnsembleSelectionChange(ensembleIdent: EnsembleIdent | null) {
         setEnsembleIdent(ensembleIdent);
     }
@@ -101,8 +89,9 @@ export function Settings(props: ModuleFCProps<State>) {
     }
 
     function handleWellboreChange(wellboreUuids: string[]) {
-        const wellbores = wellboreUuids.map((uuid) => availableWellboreList.find((w) => w.uuid === uuid));
-        setWellbore(wellbores[0] ?? null);
+        const wellboreId = wellboreUuids.map((uuid) => availableWellboreList.find((w) => w.uuid === uuid))[0] ?? null;
+        const wellboreHeader = wellHeadersQuery.data?.find((w) => w.wellbore_uuid === wellboreId?.uuid) ?? null;
+        setWellboreHeader(wellboreHeader ?? null);
     }
 
     function handleSurfaceAttributeChange(values: string[]) {
@@ -111,6 +100,20 @@ export function Settings(props: ModuleFCProps<State>) {
 
     function handleSurfaceNamesChange(values: string[]) {
         setSurfaceNames(values);
+    }
+
+    function handleLayerVisibilityChange(values: string[]) {
+        setVisibleLayers(values);
+    }
+
+    function handleStatisticCurvesVisibilityChange(values: string[]) {
+        const newValue = {
+            mean: values.includes("mean"),
+            minMax: values.includes("minMax"),
+            p10p90: values.includes("p10p90"),
+            p50: values.includes("p50"),
+        };
+        setVisibleStatisticCurves(newValue);
     }
 
     return (
@@ -140,7 +143,7 @@ export function Settings(props: ModuleFCProps<State>) {
                     <Select
                         multiple
                         options={availableWellboreList.map((w) => ({ value: w.uuid, label: w.uwi }))}
-                        value={wellbore?.uuid ? [wellbore.uuid] : []}
+                        value={wellboreHeader?.wellbore_uuid ? [wellboreHeader.wellbore_uuid] : []}
                         onChange={handleWellboreChange}
                         size={10}
                     />
@@ -169,37 +172,26 @@ export function Settings(props: ModuleFCProps<State>) {
                     />
                 </Label>
             </QueryStateWrapper>
-            <Label text="Show grid">
-                <Switch checked={grid} onChange={handleGridChange} />
+            <Label text="Visible layers">
+                <Select
+                    options={makeLayerOptions()}
+                    value={visibleLayers}
+                    size={5}
+                    onChange={handleLayerVisibilityChange}
+                    multiple
+                />
             </Label>
-            <Label text="Show wellbore">
-                <Switch checked={showWellbore} onChange={() => setShowWellbore(!showWellbore)} />
-            </Label>
-            <Label text="Show geo model">
-                <Switch checked={geoModel} onChange={() => setGeoModel(!geoModel)} />
-            </Label>
-            <Label text="Show geo model labels">
-                <Switch checked={geoModelLabels} onChange={() => setGeoModelLabels(!geoModelLabels)} />
-            </Label>
-            <Label text="Show seismic">
-                <Switch checked={seismic} onChange={() => setSeismic(!seismic)} />
-            </Label>
-            <Label text="Show schematic">
-                <Switch checked={schematic} onChange={() => setSchematic(!schematic)} />
-            </Label>
-            <Label text="Show sea and RBK">
-                <Switch checked={seaAndRbk} onChange={() => setSeaAndRbk(!seaAndRbk)} />
-            </Label>
-            <Label text="Show picks">
-                <Switch checked={picks} onChange={() => setPicks(!picks)} />
-            </Label>
-            <Label text="Show axis labels">
-                <Switch checked={axisLabels} onChange={() => setAxisLabels(!axisLabels)} />
-            </Label>
-            <Label text="Show polyline intersection">
-                <Switch
-                    checked={polyLineIntersection}
-                    onChange={() => setPolyLineIntersection(!polyLineIntersection)}
+            <Label text="Visible statistic curves">
+                <Select
+                    options={makeStatisticCurveOptions()}
+                    value={
+                        Object.entries(visibleStatisticCurves)
+                            .map(([el, value]) => (value ? el : null))
+                            .filter((el) => el !== null) as string[]
+                    }
+                    size={5}
+                    onChange={handleStatisticCurvesVisibilityChange}
+                    multiple
                 />
             </Label>
         </div>
@@ -212,4 +204,28 @@ function createStratigraphyColors(surfaceNames: string[], colorSet: ColorSet): S
         colorMap[surfaceName] = index === 0 ? colorSet.getFirstColor() : colorSet.getNextColor();
     });
     return colorMap;
+}
+
+function makeLayerOptions(): SelectOption[] {
+    return [
+        { label: "Grid", value: "grid" },
+        { label: "Wellbore", value: "wellborepath" },
+        { label: "Geo model", value: "geomodel" },
+        { label: "Geo model labels", value: "geomodel-labels" },
+        { label: "Seismic", value: "seismic" },
+        { label: "Schematic", value: "schematic" },
+        { label: "Sea and RKB", value: "sea-and-rkb" },
+        { label: "Picks", value: "picks" },
+        { label: "Axis labels", value: "axis-labels" },
+        { label: "Polyline intersection", value: "polyline-intersection" },
+    ];
+}
+
+function makeStatisticCurveOptions(): SelectOption[] {
+    return [
+        { label: "Mean", value: "mean" },
+        { label: "Min/Max", value: "minMax" },
+        { label: "P10/P90", value: "p10p90" },
+        { label: "P50", value: "p50" },
+    ];
 }

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 from ..types import WellBoreCompletion
 from ._get_request import get

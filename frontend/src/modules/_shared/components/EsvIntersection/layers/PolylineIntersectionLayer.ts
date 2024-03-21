@@ -10,7 +10,7 @@ import { pointDistance } from "@lib/utils/geometry";
 
 import { Graphics } from "pixi.js";
 
-type FenceMeshSection = {
+export type FenceMeshSection = {
     verticesUzArr: Float32Array; // [u, z]
     polysArr: Uint32Array;
     polySourceCellIndicesArr: Uint32Array;
@@ -27,6 +27,7 @@ export type PolylineIntersectionData = {
     fenceMeshSections: FenceMeshSection[];
     minGridPropValue: number;
     maxGridPropValue: number;
+    hideGridLines?: boolean;
 };
 
 export type PolylineIntersectionLayerOptions = LayerOptions<PolylineIntersectionData> & {
@@ -36,11 +37,13 @@ export type PolylineIntersectionLayerOptions = LayerOptions<PolylineIntersection
 export class PoylineIntersectionLayer extends PixiLayer<PolylineIntersectionData> {
     private _isPreRendered = false;
     private _colorScale: ColorScale;
+    private _hideGridLines: boolean;
 
     constructor(ctx: PixiRenderApplication, id: string, options: PolylineIntersectionLayerOptions) {
         super(ctx, id, options);
         this._colorScale = options.colorScale;
         this._colorScale.setRange(options.data?.minGridPropValue ?? 0, options.data?.maxGridPropValue ?? 1000);
+        this._hideGridLines = options.data?.hideGridLines ?? false;
     }
 
     override onRescale(event: OnRescaleEvent): void {
@@ -56,6 +59,8 @@ export class PoylineIntersectionLayer extends PixiLayer<PolylineIntersectionData
 
     override onUpdate(event: OnUpdateEvent<PolylineIntersectionData>): void {
         super.onUpdate(event);
+
+        this._hideGridLines = event.data?.hideGridLines ?? false;
 
         this._colorScale.setRange(event.data?.minGridPropValue ?? 0, event.data?.maxGridPropValue ?? 1000);
 
@@ -95,7 +100,9 @@ export class PoylineIntersectionLayer extends PixiLayer<PolylineIntersectionData
         while (idx < section.polysArr.length) {
             const color = this._colorScale.getColorForValue(section.polyPropsArr[polygonIndex]);
 
-            graphics.lineStyle(0.5, "#000", 0.5);
+            if (!this._hideGridLines) {
+                graphics.lineStyle(0.2, "#000", 1);
+            }
             graphics.beginFill(color, 1.0);
             const polySize = section.polysArr[idx];
             const polyVertices: number[] = [];

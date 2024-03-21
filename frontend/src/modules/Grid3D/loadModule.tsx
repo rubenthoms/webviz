@@ -13,6 +13,7 @@ const defaultState: state = {
     realization: 0,
     singleKLayer: -1,
     polyLine: [],
+    zScale: 1,
 };
 
 const module = ModuleRegistry.initModule<state>("Grid3D", defaultState, {});

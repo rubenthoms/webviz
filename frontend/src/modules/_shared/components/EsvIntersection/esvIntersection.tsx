@@ -116,6 +116,7 @@ export type EsvIntersectionProps<T extends keyof LayerDataTypeMap> = {
     };
     viewport?: [number, number, number];
     intersectionReferenceSystem?: IntersectionReferenceSystem;
+    zScale?: number;
     onHover?: (event: EsvIntersectionHoverEvent) => void;
 };
 
@@ -197,6 +198,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
     const [prevViewport, setPrevViewport] = React.useState<[number, number, number] | undefined>(undefined);
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | undefined>(undefined);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | undefined>(undefined);
+    const [prevZScale, setPrevZScale] = React.useState<number | undefined>(undefined);
 
     const [layerIds, setLayerIds] = React.useState<string[]>([]);
 
@@ -255,6 +257,11 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 esvController.hideAxisLabels();
             }
             setPrevShowAxesLabels(props.showAxesLabels);
+        }
+
+        if (!isEqual(prevZScale, props.zScale)) {
+            esvController.zoomPanHandler.zFactor = props.zScale ?? 1;
+            setPrevZScale(props.zScale);
         }
 
         if (!isEqual(prevContainerSize, containerSize)) {
@@ -400,6 +407,7 @@ export function EsvIntersection(props: EsvIntersectionProps<any>): React.ReactNo
                 setPrevAxesOptions(undefined);
                 setPrevIntersectionReferenceSystem(undefined);
                 setPrevShowGrid(undefined);
+                setPrevZScale(undefined);
                 setPrevContainerSize(undefined);
                 setPrevBounds(undefined);
                 setPrevViewport(undefined);

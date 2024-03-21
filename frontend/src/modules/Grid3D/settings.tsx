@@ -61,6 +61,7 @@ export function Settings({ moduleContext, workbenchServices, workbenchSession }:
     const [parameterName, setParameterName] = moduleContext.useStoreState("parameterName");
     const [boundingBox, setBoundingBox] = moduleContext.useStoreState("boundingBox");
     const [showGridLines, setShowGridLines] = moduleContext.useStoreState("showGridLines");
+    const [zScale, setZScale] = moduleContext.useStoreState("zScale");
 
     const gridModelNames: string[] = [];
     const parameterNames: string[] = [];
@@ -241,6 +242,9 @@ export function Settings({ moduleContext, workbenchServices, workbenchSession }:
                     <Switch checked={showGridLines} onChange={(e) => setShowGridLines(e.target.checked)} />
                 </Label>
             </div>
+            <Label text="Z scale">
+                <Input type="number" min={0.1} value={zScale} onChange={(e) => setZScale(parseFloat(e.target.value))} />
+            </Label>
         </div>
     );
 }

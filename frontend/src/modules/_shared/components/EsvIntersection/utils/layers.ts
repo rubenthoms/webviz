@@ -3,6 +3,7 @@ import {
     Layer,
     SchematicData,
     SchematicLayer,
+    SeismicCanvasLayer,
     SurfaceData,
     WellborepathLayer,
 } from "@equinor/esv-intersection";
@@ -66,17 +67,13 @@ export function isAnnotationData(data: unknown): data is Annotation[] {
 }
 
 export function isWellborepathLayer(layer: Layer<any>): layer is WellborepathLayer<[number, number][]> {
-    if (layer instanceof WellborepathLayer) {
-        return true;
-    }
-
-    return false;
+    return layer instanceof WellborepathLayer;
 }
 
 export function isSchematicLayer(layer: Layer<unknown>): layer is SchematicLayer<SchematicData> {
-    if (layer instanceof SchematicLayer) {
-        return true;
-    }
+    return layer instanceof SchematicLayer;
+}
 
-    return false;
+export function isSeismicLayer(layer: Layer<unknown>): layer is SeismicCanvasLayer {
+    return layer instanceof SeismicCanvasLayer;
 }

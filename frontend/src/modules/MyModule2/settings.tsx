@@ -8,14 +8,25 @@ import { Wellbore } from "@framework/Wellbore";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { SingleEnsembleSelect } from "@framework/components/SingleEnsembleSelect";
 import { CircularProgress } from "@lib/components/CircularProgress";
+import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Label } from "@lib/components/Label";
 import { QueryStateWrapper } from "@lib/components/QueryStateWrapper";
+import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { ColorSet } from "@lib/utils/ColorSet";
+import { useSeismicCubeMetaListQuery } from "@modules/SeismicIntersection/queryHooks";
 import { SurfaceDirectory, SurfaceTimeType, useSurfaceDirectoryQuery } from "@modules/_shared/Surface";
 import { useWellHeadersQuery } from "@modules/_shared/WellBore";
 
-import { State, StratigraphyColorMap } from "./state";
+import {
+    SeismicDataType,
+    SeismicDataTypeTypeToStringMapping,
+    SeismicTimeTypeEnumToSeismicTimeTypeStringMapping,
+    SeismicTimeTypeEnumToSurveyTypeStringMapping,
+    State,
+    StratigraphyColorMap,
+} from "./state";
+import { SeismicCubeMetaDirectory, SeismicTimeType } from "./utils/seismicCubeDirectory";
 
 const WELLBORE_TYPE = "smda";
 
@@ -29,6 +40,10 @@ export function Settings(props: ModuleFCProps<State>) {
     const [wellboreHeader, setWellboreHeader] = props.moduleContext.useStoreState("wellboreHeader");
     const [surfaceAttribute, setSurfaceAttribute] = props.moduleContext.useStoreState("surfaceAttribute");
     const [surfaceNames, setSurfaceNames] = props.moduleContext.useStoreState("surfaceNames");
+    const [seismicDataType, setSeismicDataType] = props.moduleContext.useStoreState("seismicDataType");
+    const [seismicTimeType, setSeismicTimeType] = props.moduleContext.useStoreState("seismicTimeType");
+    const [seismicAttribute, setSeismicAttribute] = props.moduleContext.useStoreState("seismicAttribute");
+    const [seismicTimestamp, setSeismicTimestamp] = props.moduleContext.useStoreState("seismicTimestamp");
     const [visibleLayers, setVisibleLayers] = props.moduleContext.useStoreState("visibleLayers");
     const [visibleStatisticCurves, setVisibleStatisticCurves] =
         props.moduleContext.useStoreState("visibleStatisticCurves");
@@ -73,6 +88,29 @@ export function Settings(props: ModuleFCProps<State>) {
 
     const availableSurfaceNames = surfaceDirectory ? surfaceDirectory.getSurfaceNames(surfaceAttribute) : null;
 
+    const seismicCubeMetaListQuery = useSeismicCubeMetaListQuery(
+        ensembleIdent?.getCaseUuid(),
+        ensembleIdent?.getEnsembleName()
+    );
+
+    // Create seismic cube directory
+    const seismicCubeMetaDirectory = seismicCubeMetaListQuery.data
+        ? new SeismicCubeMetaDirectory({
+              seismicCubeMetaList: seismicCubeMetaListQuery.data,
+              timeType: seismicTimeType,
+              useObservedSeismicCubes: seismicDataType === SeismicDataType.OBSERVED,
+          })
+        : null;
+
+    const seismicAttributeOptions = seismicCubeMetaDirectory
+        ? seismicCubeMetaDirectory.getAttributeNames().map((attribute) => {
+              return { label: attribute, value: attribute };
+          })
+        : [];
+    const seismicTimeOptions = seismicCubeMetaDirectory
+        ? createOptionsFromTimeOrIntervalStrings(seismicCubeMetaDirectory.getTimeOrIntervalStrings())
+        : [];
+
     React.useEffect(function propogateColorsToView() {
         if (surfaceDirectory && availableSurfaceNames) {
             const surfaceColorMap = createStratigraphyColors(availableSurfaceNames?.sort() ?? [], colorSet);
@@ -116,84 +154,156 @@ export function Settings(props: ModuleFCProps<State>) {
         setVisibleStatisticCurves(newValue);
     }
 
+    function handleSeismicAttributeChange(values: string[]) {
+        setSeismicAttribute(values[0]);
+    }
+
+    function handleSeismicTimeChange(values: string[]) {
+        setSeismicTimestamp(values[0]);
+    }
+
     return (
         <div className="flex flex-col gap-2">
-            <Label text="Ensemble">
-                <SingleEnsembleSelect
-                    ensembleSet={ensembleSet}
-                    value={ensembleIdent}
-                    onChange={handleEnsembleSelectionChange}
-                />
-            </Label>
-            <Label text="Realizations">
-                <Select
-                    multiple
-                    options={availableRealizations.map((r) => ({ value: r.toString(), label: r.toString() }))}
-                    value={realizations.map((r) => r.toString())}
-                    onChange={handleRealizationsChange}
-                    size={10}
-                />
-            </Label>
-            <Label text="Well trajectory">
+            <CollapsibleGroup title="Ensemble & realizations" expanded>
+                <div className="flex flex-col gap-2">
+                    <Label text="Ensemble">
+                        <SingleEnsembleSelect
+                            ensembleSet={ensembleSet}
+                            value={ensembleIdent}
+                            onChange={handleEnsembleSelectionChange}
+                        />
+                    </Label>
+                    <Label text="Realizations">
+                        <Select
+                            multiple
+                            options={availableRealizations.map((r) => ({ value: r.toString(), label: r.toString() }))}
+                            value={realizations.map((r) => r.toString())}
+                            onChange={handleRealizationsChange}
+                            size={5}
+                        />
+                    </Label>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Well trajectory" expanded>
+                <div className="flex flex-col gap-2">
+                    <Label text="Well trajectory">
+                        <QueryStateWrapper
+                            queryResult={wellHeadersQuery}
+                            errorComponent={"Error loading wells"}
+                            loadingComponent={<CircularProgress />}
+                        >
+                            <Select
+                                multiple
+                                options={availableWellboreList.map((w) => ({ value: w.uuid, label: w.uwi }))}
+                                value={wellboreHeader?.wellbore_uuid ? [wellboreHeader.wellbore_uuid] : []}
+                                onChange={handleWellboreChange}
+                                size={5}
+                            />
+                        </QueryStateWrapper>
+                    </Label>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Surface attribute & name" expanded>
                 <QueryStateWrapper
-                    queryResult={wellHeadersQuery}
-                    errorComponent={"Error loading wells"}
+                    queryResult={surfaceDirectoryQuery}
+                    errorComponent={"Error loading seismic directory"}
                     loadingComponent={<CircularProgress />}
                 >
-                    <Select
-                        multiple
-                        options={availableWellboreList.map((w) => ({ value: w.uuid, label: w.uwi }))}
-                        value={wellboreHeader?.wellbore_uuid ? [wellboreHeader.wellbore_uuid] : []}
-                        onChange={handleWellboreChange}
-                        size={10}
-                    />
+                    <div className="flex flex-col gap-2">
+                        <Label text="Surface attribute">
+                            <Select
+                                options={surfaceAttrOptions}
+                                value={surfaceAttribute ? [surfaceAttribute] : []}
+                                size={5}
+                                onChange={handleSurfaceAttributeChange}
+                            />
+                        </Label>
+                        <Label text="Surface names">
+                            <Select
+                                options={availableSurfaceNames?.map((name) => ({ label: name, value: name })) || []}
+                                onChange={handleSurfaceNamesChange}
+                                value={surfaceNames || []}
+                                size={5}
+                                multiple={true}
+                            />
+                        </Label>
+                    </div>
                 </QueryStateWrapper>
-            </Label>
-            <QueryStateWrapper
-                queryResult={surfaceDirectoryQuery}
-                errorComponent={"Error loading seismic directory"}
-                loadingComponent={<CircularProgress />}
-            >
-                <Label text="Surface attribute">
-                    <Select
-                        options={surfaceAttrOptions}
-                        value={surfaceAttribute ? [surfaceAttribute] : []}
-                        size={5}
-                        onChange={handleSurfaceAttributeChange}
-                    />
-                </Label>
-                <Label text="Surface names">
-                    <Select
-                        options={availableSurfaceNames?.map((name) => ({ label: name, value: name })) || []}
-                        onChange={handleSurfaceNamesChange}
-                        value={surfaceNames || []}
-                        size={5}
-                        multiple={true}
-                    />
-                </Label>
-            </QueryStateWrapper>
-            <Label text="Visible layers">
-                <Select
-                    options={makeLayerOptions()}
-                    value={visibleLayers}
-                    size={5}
-                    onChange={handleLayerVisibilityChange}
-                    multiple
-                />
-            </Label>
-            <Label text="Visible statistic curves">
-                <Select
-                    options={makeStatisticCurveOptions()}
-                    value={
-                        Object.entries(visibleStatisticCurves)
-                            .map(([el, value]) => (value ? el : null))
-                            .filter((el) => el !== null) as string[]
-                    }
-                    size={5}
-                    onChange={handleStatisticCurvesVisibilityChange}
-                    multiple
-                />
-            </Label>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Seismic specifications">
+                <div className="flex flex-col gap-4 overflow-y-auto">
+                    <Label text="Seismic data type">
+                        <RadioGroup
+                            direction="horizontal"
+                            options={Object.values(SeismicDataType).map((val: SeismicDataType) => {
+                                return { value: val, label: SeismicDataTypeTypeToStringMapping[val] };
+                            })}
+                            value={seismicDataType}
+                            onChange={(_, value: string | number) => setSeismicDataType(value as SeismicDataType)}
+                        />
+                    </Label>
+                    <Label text="Seismic survey type">
+                        <RadioGroup
+                            options={Object.values(SeismicTimeType).map((val: SeismicTimeType) => {
+                                return { value: val, label: SeismicTimeTypeEnumToSurveyTypeStringMapping[val] };
+                            })}
+                            direction="horizontal"
+                            value={seismicTimeType}
+                            onChange={(_, value: string | number) => setSeismicTimeType(value as SeismicTimeType)}
+                        />
+                    </Label>
+                    <QueryStateWrapper
+                        queryResult={seismicCubeMetaListQuery}
+                        errorComponent={"Error loading seismic directory"}
+                        loadingComponent={<CircularProgress />}
+                    >
+                        <div className="flex flex-col gap-4 overflow-y-auto">
+                            <Label text="Seismic attribute">
+                                <Select
+                                    options={seismicAttributeOptions}
+                                    value={seismicAttribute ? [seismicAttribute] : []}
+                                    size={5}
+                                    onChange={handleSeismicAttributeChange}
+                                />
+                            </Label>
+                            <Label text={SeismicTimeTypeEnumToSeismicTimeTypeStringMapping[seismicTimeType]}>
+                                <Select
+                                    options={seismicTimeOptions}
+                                    value={seismicTimestamp ? [seismicTimestamp] : []}
+                                    onChange={handleSeismicTimeChange}
+                                    size={8}
+                                />
+                            </Label>
+                        </div>
+                    </QueryStateWrapper>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Visibility" expanded>
+                <div className="flex flex-col gap-2">
+                    <Label text="Visible layers">
+                        <Select
+                            options={makeLayerOptions()}
+                            value={visibleLayers}
+                            size={5}
+                            onChange={handleLayerVisibilityChange}
+                            multiple
+                        />
+                    </Label>
+                    <Label text="Visible statistic curves">
+                        <Select
+                            options={makeStatisticCurveOptions()}
+                            value={
+                                Object.entries(visibleStatisticCurves)
+                                    .map(([el, value]) => (value ? el : null))
+                                    .filter((el) => el !== null) as string[]
+                            }
+                            size={5}
+                            onChange={handleStatisticCurvesVisibilityChange}
+                            multiple
+                        />
+                    </Label>
+                </div>
+            </CollapsibleGroup>
         </div>
     );
 }
@@ -228,4 +338,41 @@ function makeStatisticCurveOptions(): SelectOption[] {
         { label: "P10/P90", value: "p10p90" },
         { label: "P50", value: "p50" },
     ];
+}
+
+function createOptionsFromTimeOrIntervalStrings(timeOrIntervalStrings: string[]): SelectOption[] {
+    if (timeOrIntervalStrings.length == 0) {
+        return [];
+    }
+
+    // '2018-01-01T00:00:00.000/2019-07-01T00:00:00.000' to '2018-01-01/2019-07-01'
+    const options = timeOrIntervalStrings.map((elm) => {
+        const isInterval = elm.includes("/");
+        return { value: elm, label: isInterval ? isoIntervalStringToDateLabel(elm) : isoStringToDateLabel(elm) };
+    });
+    return options;
+}
+
+/**
+ * Extracts the date substring from an ISO string
+ *
+ * Input ISO string format: '2018-01-01T00:00:00.000'
+ * Returns: '2018-01-01'
+ */
+function isoStringToDateLabel(inputIsoString: string): string {
+    const date = inputIsoString.split("T")[0];
+    return `${date}`;
+}
+
+/**
+ * Extracts interval date substring from an ISO string
+ *
+ * Input ISO string format: '2018-01-01T00:00:00.000/2019-07-01T00:00:00.000'
+ * Returns: '2018-01-01/2019-07-01'
+ */
+function isoIntervalStringToDateLabel(inputIsoIntervalString: string): string {
+    const [start, end] = inputIsoIntervalString.split("/");
+    const startDate = start.split("T")[0];
+    const endDate = end.split("T")[0];
+    return `${startDate}/${endDate}`;
 }

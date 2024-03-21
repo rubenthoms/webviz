@@ -14,6 +14,7 @@ import {
     isAnnotationData,
     isPolylineIntersectionData,
     isSchematicLayer,
+    isSeismicLayer,
     isStatisticalFanchartsData,
     isSurfaceLayer,
     isWellborepathLayer,
@@ -26,6 +27,7 @@ import { LineSetIntersectedItem, LineSetIntersectionCalculator } from "../intera
 import { PointIntersectedItem, PointIntersectionCalculator } from "../interaction/PointIntersectionCalculator";
 import { PolygonIntersectedItem, PolygonIntersectionCalculator } from "../interaction/PolygonIntersectionCalculator";
 import { PolygonsIntersectedItem, PolygonsIntersectionCalculator } from "../interaction/PolygonsIntersectionCalculator";
+import { RectangleIntersectionCalculator } from "../interaction/RectangleIntersectionCalculator";
 import {
     WellborePathIntersectedItem,
     WellborePathIntersectionCalculator,
@@ -64,6 +66,8 @@ export function makeIntersectionCalculatorFromIntersectionItem(
                 intersectionItem.data.hull,
                 options.threshold
             );
+        case IntersectionItemShape.RECTANGLE:
+            return new RectangleIntersectionCalculator(intersectionItem.data);
     }
 }
 
@@ -105,6 +109,12 @@ function isFanchartIntersectionResult(
     return intersectionResult.shape === IntersectionItemShape.FANCHART;
 }
 
+function isRectangleIntersectionResult(
+    intersectionResult: IntersectedItem
+): intersectionResult is PolygonIntersectedItem {
+    return intersectionResult.shape === IntersectionItemShape.RECTANGLE;
+}
+
 function getColorFromLayerData(layer: Layer<unknown>, index: number): string {
     if (isSurfaceLayer(layer.data)) {
         return layer.data.lines[index].color.toString();
@@ -128,6 +138,10 @@ function getColorFromLayerData(layer: Layer<unknown>, index: number): string {
 
     if (isSchematicLayer(layer)) {
         return "#000";
+    }
+
+    if (isSeismicLayer(layer)) {
+        return "rgba(0, 0, 255, 0.3)";
     }
 
     return "#000";
@@ -173,6 +187,10 @@ function getLabelFromLayerData(readoutItem: ReadoutItem): string {
             case "symbols":
                 return "Symbol";
         }
+    }
+
+    if (isSeismicLayer(readoutItem.layer)) {
+        return "Seismic";
     }
 
     return "Unknown";
@@ -297,6 +315,30 @@ function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem): stri
         infoArr.push(`(X: ${readoutItem.point[0].toFixed(2)}, Y: ${readoutItem.point[1].toFixed(2)})`);
     }
 
+    if (isSeismicLayer(readoutItem.layer)) {
+        const seismicCanvasData = readoutItem.layer.getData();
+        const ctx = readoutItem.layer.ctx;
+        if (seismicCanvasData) {
+            if (ctx) {
+                const transformedPoint = ctx
+                    .getTransform()
+                    .transformPoint({ x: readoutItem.point[0], y: readoutItem.point[1] });
+
+                const imageX = transformedPoint.x;
+                const imageY = transformedPoint.y;
+                const imageData = ctx.getImageData(imageX, imageY, 1, 1);
+
+                infoArr.push(`R: ${imageData.data[0]}`);
+                infoArr.push(`G: ${imageData.data[1]}`);
+                infoArr.push(`B: ${imageData.data[2]}`);
+
+                infoArr.push(
+                    `Color: <span style="border-radius: 50%; width: 1rem; height: 1rem; display: block; background-color: ${`rgb(${imageData.data[0]}, ${imageData.data[1]}, ${imageData.data[2]});" />`}`
+                );
+            }
+        }
+    }
+
     return infoArr;
 }
 
@@ -352,6 +394,13 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.LINE,
             line: intersectionResult.line,
+            color,
+        };
+    }
+    if (isRectangleIntersectionResult(intersectionResult)) {
+        return {
+            shape: HighlightItemShape.POINT,
+            point: intersectionResult.point,
             color,
         };
     }
@@ -412,6 +461,13 @@ export function makeReadoutItemFromIntersectionResult(
         return {
             point: intersectionResult.point,
             points: intersectionResult.points,
+            layer,
+            index,
+        };
+    }
+    if (isRectangleIntersectionResult(intersectionResult)) {
+        return {
+            point: intersectionResult.point,
             layer,
             index,
         };

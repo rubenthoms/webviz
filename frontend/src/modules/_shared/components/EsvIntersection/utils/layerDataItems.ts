@@ -1,4 +1,4 @@
-import { Annotation, Layer, SurfaceData, WellborepathLayer } from "@equinor/esv-intersection";
+import { Layer } from "@equinor/esv-intersection";
 import { pointDistance } from "@lib/utils/geometry";
 
 import { isEqual } from "lodash";
@@ -6,20 +6,14 @@ import { isEqual } from "lodash";
 import {
     isAnnotationData,
     isPolylineIntersectionData,
+    isSeismicLayer,
     isStatisticalFanchartsData,
     isSurfaceLayer,
     isWellborepathLayer,
 } from "./layers";
 
 import { IntersectionItem, IntersectionItemShape, LayerDataItem } from "../interaction/types";
-import { PolylineIntersectionData } from "../layers/PolylineIntersectionLayer";
-import { SurfaceStatisticalFanchartsData } from "../layers/SurfaceStatisticalFanchartCanvasLayer";
 
-export function makeLayerDataItems(layer: Layer<SurfaceData>): LayerDataItem[];
-export function makeLayerDataItems(layer: Layer<PolylineIntersectionData>): LayerDataItem[];
-export function makeLayerDataItems(layer: Layer<SurfaceStatisticalFanchartsData>): LayerDataItem[];
-export function makeLayerDataItems(layer: Layer<Annotation[]>): LayerDataItem[];
-export function makeLayerDataItems(layer: WellborepathLayer<[number, number][]>): LayerDataItem[];
 export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
     if (isSurfaceLayer(layer.data)) {
         const dataItems: LayerDataItem[] = [];
@@ -191,6 +185,32 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 intersectionItem: {
                     id: layer.id,
                     shape: IntersectionItemShape.WELLBORE_PATH,
+                },
+            },
+        ];
+    }
+
+    if (isSeismicLayer(layer)) {
+        if (!layer.data) {
+            return [];
+        }
+        const x = layer.data.options.x;
+        const y = layer.data.options.y;
+        const w = layer.data.options.width;
+        const h = layer.data.options.height;
+
+        return [
+            {
+                id: layer.id,
+                layer,
+                index: 0,
+                intersectionItem: {
+                    id: layer.id,
+                    shape: IntersectionItemShape.RECTANGLE,
+                    data: [
+                        [x, y],
+                        [x + w, y + h],
+                    ],
                 },
             },
         ];

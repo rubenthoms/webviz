@@ -1,7 +1,8 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
 import { Settings } from "./settings";
-import { State } from "./state";
+import { SeismicDataType, State } from "./state";
+import { SeismicTimeType } from "./utils/seismicCubeDirectory";
 import { View } from "./view";
 
 const defaultState: State = {
@@ -11,6 +12,10 @@ const defaultState: State = {
     surfaceAttribute: "",
     surfaceNames: [],
     stratigraphyColorMap: {},
+    seismicDataType: SeismicDataType.SIMULATED,
+    seismicTimeType: SeismicTimeType.TimePoint,
+    seismicAttribute: "",
+    seismicTimestamp: "",
     visibleLayers: [],
     visibleStatisticCurves: {
         mean: true,

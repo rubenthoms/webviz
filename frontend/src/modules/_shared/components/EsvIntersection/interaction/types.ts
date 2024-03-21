@@ -12,6 +12,7 @@ export enum IntersectionItemShape {
     POLYGONS = "polygons",
     WELLBORE_PATH = "wellbore-path",
     FANCHART = "fanchart",
+    RECTANGLE = "rectangle",
 }
 
 export enum HighlightItemShape {
@@ -62,6 +63,10 @@ export type IntersectionItem = {
               hull: number[][];
               lines: number[][][];
           };
+      }
+    | {
+          shape: IntersectionItemShape.RECTANGLE;
+          data: number[][];
       }
 );
 

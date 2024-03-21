@@ -2,7 +2,7 @@ import logging
 
 import grpc
 import numpy as np
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 import rips
 from rips.generated import GridGeometryExtraction_pb2, GridGeometryExtraction_pb2_grpc
@@ -33,18 +33,21 @@ async def post_get_grid_geometry(
     req_body: api_schemas.GridGeometryRequest,
 ) -> api_schemas.GridGeometryResponse:
 
-    perf_metrics = PerfMetrics()
-
-    LOGGER.debug(f"post_get_grid_geometry()")
+    myfunc = "post_get_grid_geometry()"
+    LOGGER.debug(f"{myfunc}")
     # LOGGER.debug(f"{req_body.sas_token=}")
     # LOGGER.debug(f"{req_body.blob_store_base_uri=}")
     # LOGGER.debug(f"{req_body.grid_blob_object_uuid=}")
     # LOGGER.debug(f"{req_body.ijk_index_filter=}")
 
+    perf_metrics = PerfMetrics()
+
     blob_cache = LocalBlobCache(req_body.sas_token, req_body.blob_store_base_uri)
 
     grid_path_name = await blob_cache.ensure_grid_blob_downloaded_async(req_body.grid_blob_object_uuid)
-    LOGGER.debug(f"{grid_path_name=}")
+    if grid_path_name is None:
+        raise HTTPException(status_code=500, detail=f"Failed to download grid blob: {req_body.grid_blob_object_uuid=}")
+    LOGGER.debug(f"{myfunc} - {grid_path_name=}")
     perf_metrics.record_lap("get-blob")
 
     grpc_channel: grpc.Channel = await RESINSIGHT_MANAGER.get_channel_for_running_ri_instance_async()
@@ -75,7 +78,7 @@ async def post_get_grid_geometry(
                 kMin=req_body.ijk_index_filter.min_k,
                 kMax=req_body.ijk_index_filter.max_k,
             )
-        LOGGER.debug(f"grpc_ijk_index_filter: {_proto_msg_as_oneliner(grpc_ijk_index_filter)}")
+        LOGGER.debug(f"{myfunc} - grpc_ijk_index_filter: {_proto_msg_as_oneliner(grpc_ijk_index_filter)}")
 
         perf_metrics.reset_lap_timer()
 
@@ -97,21 +100,15 @@ async def post_get_grid_geometry(
 
     grid_dims = grpc_response.gridDimensions
     cell_count = grid_dims.i * grid_dims.j * grid_dims.k
-    LOGGER.debug(f"grid_dims: {_proto_msg_as_oneliner(grid_dims)}")
-    LOGGER.debug(f"{cell_count=}")
+    LOGGER.debug(f"{myfunc} - grid_dims: {_proto_msg_as_oneliner(grid_dims)}")
+    LOGGER.debug(f"{myfunc} - {cell_count=}")
 
-    LOGGER.debug(f"{len(grpc_response.quadIndicesArr)=}")
-    LOGGER.debug(f"{len(grpc_response.sourceCellIndicesArr)=}")
+    LOGGER.debug(f"{myfunc} - {len(grpc_response.quadIndicesArr)=}")
+    LOGGER.debug(f"{myfunc} - {len(grpc_response.sourceCellIndicesArr)=}")
 
     vertices_np = np.asarray(grpc_response.vertexArray, dtype=np.float32)
     vertices_np = vertices_np.reshape(-1, 3)
     # LOGGER.debug(f"{vertices_np[:5]=}")
-
-    # !!!!
-    # Slight hack, utilizing the returned UTM origin to get correct absolute Z value
-    # ResInsight should probably be returning absolute Z values in the first place
-    origin_utm = grpc_response.originUtm
-    vertices_np = np.add(vertices_np, [0, 0, origin_utm.z])
 
     min_coord = np.min(vertices_np, axis=0)
     max_coord = np.max(vertices_np, axis=0)
@@ -132,8 +129,13 @@ async def post_get_grid_geometry(
         vertices_b64arr=b64_encode_float_array_as_float32(vertices_np),
         polys_b64arr=b64_encode_uint_array_as_smallest_size(poly_indices_np),
         poly_source_cell_indices_b64arr=b64_encode_uint_array_as_smallest_size(source_cell_indices_np),
-        origin_utm_x=origin_utm.x,
-        origin_utm_y=origin_utm.y,
+        origin_utm_x=grpc_response.originUtmXy.x,
+        origin_utm_y=grpc_response.originUtmXy.y,
+        grid_dimensions=api_schemas.GridDimensions(
+            i_count=grpc_response.gridDimensions.i,
+            j_count=grpc_response.gridDimensions.j,
+            k_count=grpc_response.gridDimensions.k,
+        ),
         bounding_box=api_schemas.BoundingBox3D(
             min_x=min_coord[0],
             min_y=min_coord[1],
@@ -152,9 +154,11 @@ async def post_get_grid_geometry(
         perf_metrics=perf_metrics.to_dict(),
         ri_total_time=grpc_timeElapsedInfo.totalTimeElapsedMs,
         ri_perf_metrics=dict(grpc_timeElapsedInfo.namedEventsAndTimeElapsedMs),
+        vertex_count=int(len(vertices_np) / 3),
+        poly_count=int(len(source_cell_indices_np)),
     )
 
-    LOGGER.debug(f"Got grid geometry in: {perf_metrics.to_string_s()}")
+    LOGGER.debug(f"{myfunc} - Got grid geometry in: {perf_metrics.to_string_s()}")
 
     return ret_obj
 
@@ -164,7 +168,8 @@ async def post_get_mapped_grid_properties(
     req_body: api_schemas.MappedGridPropertiesRequest,
 ) -> api_schemas.MappedGridPropertiesResponse:
 
-    LOGGER.debug(f"post_get_mapped_grid_properties()")
+    myfunc = "post_get_mapped_grid_properties()"
+    LOGGER.debug(f"{myfunc}")
     # LOGGER.debug(f"{req_body.sas_token=}")
     # LOGGER.debug(f"{req_body.blob_store_base_uri=}")
     # LOGGER.debug(f"{req_body.grid_blob_object_uuid=}")
@@ -176,9 +181,15 @@ async def post_get_mapped_grid_properties(
     blob_cache = LocalBlobCache(req_body.sas_token, req_body.blob_store_base_uri)
 
     grid_path_name = await blob_cache.ensure_grid_blob_downloaded_async(req_body.grid_blob_object_uuid)
-    LOGGER.debug(f"{grid_path_name=}")
     property_path_name = await blob_cache.ensure_property_blob_downloaded_async(req_body.property_blob_object_uuid)
-    LOGGER.debug(f"{property_path_name=}")
+
+    if grid_path_name is None:
+        raise HTTPException(status_code=500, detail=f"Failed to download grid blob: {req_body.grid_blob_object_uuid=}")
+    if property_path_name is None:
+        raise HTTPException(status_code=500, detail=f"Failed to download property blob: {req_body.property_blob_object_uuid=}")
+
+    LOGGER.debug(f"{myfunc} - {grid_path_name=}")
+    LOGGER.debug(f"{myfunc} - {property_path_name=}")
     perf_metrics.record_lap("get-blobs")
 
     # data_cache = DataCache()
@@ -200,7 +211,7 @@ async def post_get_mapped_grid_properties(
                 kMin=req_body.ijk_index_filter.min_k,
                 kMax=req_body.ijk_index_filter.max_k,
             )
-        LOGGER.debug(f"grpc_ijk_index_filter: {_proto_msg_as_oneliner(grpc_ijk_index_filter)}")
+        LOGGER.debug(f"{myfunc} - grpc_ijk_index_filter: {_proto_msg_as_oneliner(grpc_ijk_index_filter)}")
 
         grid_geometry_extraction_stub = GridGeometryExtraction_pb2_grpc.GridGeometryExtractionStub(grpc_channel)
         request = GridGeometryExtraction_pb2.GetGridSurfaceRequest(
@@ -251,8 +262,10 @@ async def post_get_mapped_grid_properties(
         perf_metrics=perf_metrics.to_dict(),
         ri_total_time=grpc_timeElapsedInfo.totalTimeElapsedMs,
         ri_perf_metrics=dict(grpc_timeElapsedInfo.namedEventsAndTimeElapsedMs),
+        vertex_count=-1,
+        poly_count=int(len(source_cell_indices_np)),
     )
 
-    LOGGER.debug(f"Got mapped grid properties in: {perf_metrics.to_string_s()}")
+    LOGGER.debug(f"{myfunc} - Got mapped grid properties in: {perf_metrics.to_string_s()}")
 
     return ret_obj

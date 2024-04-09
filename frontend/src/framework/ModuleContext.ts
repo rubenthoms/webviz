@@ -140,7 +140,7 @@ export class ModuleContext<TStateType extends StateBaseType, TInterfaceType exte
 
 export type ViewContext<StateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> = Omit<
     ModuleContext<StateType, TInterfaceType>,
-    "useInterfaceState" | "useSetInterfaceValue"
+    "useSettingsToViewInterfaceState" | "useSetSettingsToViewInterfaceValue"
 >;
 
 export type SettingsContext<StateType extends StateBaseType, TInterfaceType extends InterfaceBaseType> = ModuleContext<

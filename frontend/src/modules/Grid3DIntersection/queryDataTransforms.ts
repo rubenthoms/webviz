@@ -3,7 +3,6 @@ import { FenceMeshSection_api, PolylineIntersection_api } from "@api";
 import { b64DecodeFloatArrayToFloat32 } from "@modules_shared/base64";
 import { b64DecodeUintArrayToUint32, b64DecodeUintArrayToUint32OrLess } from "@modules_shared/base64";
 
-
 // Data structure for the transformed GridSurface data
 // Removes the base64 encoded data and replaces them with typed arrays
 export type GridSurface_trans = Omit<
@@ -21,7 +20,7 @@ export function transformGridSurface(apiData: Grid3dGeometry_api): GridSurface_t
     const { points_b64arr, polys_b64arr, poly_source_cell_indices_b64arr, ...untransformedData } = apiData;
     const pointsFloat32Arr = b64DecodeFloatArrayToFloat32(points_b64arr);
     const polysUint32Arr = b64DecodeUintArrayToUint32(polys_b64arr);
-    const polySourceCellIndicesUint32Arr = b64DecodeUintArrayToUint32(polys_b64arr);
+    const polySourceCellIndicesUint32Arr = b64DecodeUintArrayToUint32(poly_source_cell_indices_b64arr);
 
     console.debug(`transformGridSurface() took: ${(performance.now() - startTS).toFixed(1)}ms`);
 

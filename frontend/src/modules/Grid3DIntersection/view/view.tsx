@@ -1,6 +1,7 @@
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
+import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
 
 import { Grid3D } from "./components/grid3d";
@@ -12,6 +13,10 @@ import { State } from "../state";
 
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JSX.Element {
     const statusWriter = useViewStatusWriter(props.viewContext);
+
+    const colorScale = props.workbenchSettings.useContinuousColorScale({
+        gradientType: ColorScaleGradientType.Sequential,
+    });
 
     const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
     const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
@@ -74,6 +79,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 referenceSystem={referenceSystem}
                 polylineIntersectionData={polylineIntersectionQuery.data ?? null}
                 gridBoundingBox3d={gridModelBoundingBox3d}
+                colorScale={colorScale}
             />
         </div>
     );

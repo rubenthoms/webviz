@@ -98,7 +98,9 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
 
             // Values can be NaN by definition
             let color = "transparent";
+            let alpha = 0.0;
             if (!Number.isNaN(propValue) && this.data) {
+                alpha = 1.0;
                 color = this.data?.colorScale.getColorForValue(propValue);
             }
 
@@ -108,7 +110,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
                 graphics.lineStyle(0);
             }
 
-            graphics.beginFill(color, 1.0);
+            graphics.beginFill(color, alpha);
             const polySize = section.verticesPerPolyArr[polygonIndex];
             const polyVertices: number[] = [];
             for (let i = 0; i < polySize; i++) {

@@ -7,7 +7,7 @@
  *
  * Camel case attributes needed for esvIntersection component in front-end
  */
-export type WellBorePick = {
+export type WellborePick = {
     northing: number;
     easting: number;
     tvd: number;

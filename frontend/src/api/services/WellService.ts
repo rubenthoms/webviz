@@ -2,26 +2,26 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { WellBoreHeader } from '../models/WellBoreHeader';
-import type { WellBorePicksAndStratigraphicUnits } from '../models/WellBorePicksAndStratigraphicUnits';
-import type { WellBoreTrajectory } from '../models/WellBoreTrajectory';
+import type { WellboreHeader } from '../models/WellboreHeader';
+import type { WellborePicksAndStratigraphicUnits } from '../models/WellborePicksAndStratigraphicUnits';
+import type { WellboreTrajectory } from '../models/WellboreTrajectory';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class WellService {
     constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
-     * Get Well Headers
-     * Get well headers for all wells in the field
+     * Get Drilled Wellbore Headers
+     * Get wellbore headers for all wells in the field
      * @param caseUuid Sumo case uuid
-     * @returns WellBoreHeader Successful Response
+     * @returns WellboreHeader Successful Response
      * @throws ApiError
      */
-    public getWellHeaders(
+    public getDrilledWellboreHeaders(
         caseUuid: string,
-    ): CancelablePromise<Array<WellBoreHeader>> {
+    ): CancelablePromise<Array<WellboreHeader>> {
         return this.httpRequest.request({
             method: 'GET',
-            url: '/well/well_headers/',
+            url: '/well/drilled_wellbore_headers/',
             query: {
                 'case_uuid': caseUuid,
             },
@@ -35,13 +35,13 @@ export class WellService {
      * Get well trajectories for field
      * @param caseUuid Sumo case uuid
      * @param uniqueWellboreIdentifiers Optional subset of well names
-     * @returns WellBoreTrajectory Successful Response
+     * @returns WellboreTrajectory Successful Response
      * @throws ApiError
      */
     public getFieldWellTrajectories(
         caseUuid: string,
         uniqueWellboreIdentifiers?: Array<string>,
-    ): CancelablePromise<Array<WellBoreTrajectory>> {
+    ): CancelablePromise<Array<WellboreTrajectory>> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/well/field_well_trajectories/',
@@ -58,12 +58,12 @@ export class WellService {
      * Get Well Trajectories
      * Get well trajectories
      * @param wellboreUuids Wellbore uuids
-     * @returns WellBoreTrajectory Successful Response
+     * @returns WellboreTrajectory Successful Response
      * @throws ApiError
      */
     public getWellTrajectories(
         wellboreUuids: Array<string>,
-    ): CancelablePromise<Array<WellBoreTrajectory>> {
+    ): CancelablePromise<Array<WellboreTrajectory>> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/well/well_trajectories/',
@@ -80,13 +80,13 @@ export class WellService {
      * Get well bore picks for a single well bore
      * @param caseUuid Sumo case uuid
      * @param wellboreUuid Wellbore uuid
-     * @returns WellBorePicksAndStratigraphicUnits Successful Response
+     * @returns WellborePicksAndStratigraphicUnits Successful Response
      * @throws ApiError
      */
     public getWellborePicksAndStratigraphicUnits(
         caseUuid: string,
         wellboreUuid: string,
-    ): CancelablePromise<WellBorePicksAndStratigraphicUnits> {
+    ): CancelablePromise<WellborePicksAndStratigraphicUnits> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/well/wellbore_picks_and_stratigraphic_units/',

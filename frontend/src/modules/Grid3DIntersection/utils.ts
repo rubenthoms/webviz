@@ -1,6 +1,6 @@
 import { FeatureCollection } from "geojson";
 
-import { FenceMeshSection_trans } from "./queryDataTransforms";
+import { FenceMeshSection_trans } from "./view/queries/queryDataTransforms";
 
 function polyLineToGeojsonLineString(polyLine: number[]): FeatureCollection {
     // Expect an array with even numbers of elements.

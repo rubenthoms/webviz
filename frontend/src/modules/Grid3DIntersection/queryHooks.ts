@@ -2,9 +2,9 @@ import { Grid3dInfo_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
-import { GridSurface_trans, transformGridSurface } from "./queryDataTransforms";
-import { GridMappedProperty_trans, transformGridMappedProperty } from "./queryDataTransforms";
-import { PolylineIntersection_trans, transformPolylineIntersection } from "./queryDataTransforms";
+import { GridSurface_trans, transformGridSurface } from "./view/queries/queryDataTransforms";
+import { GridMappedProperty_trans, transformGridMappedProperty } from "./view/queries/queryDataTransforms";
+import { PolylineIntersection_trans, transformPolylineIntersection } from "./view/queries/queryDataTransforms";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;

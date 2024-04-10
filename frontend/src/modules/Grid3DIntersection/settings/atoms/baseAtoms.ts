@@ -7,4 +7,4 @@ export const userSelectedRealizationAtom = atom<number | null>(null);
 export const userSelectedGridModelNameAtom = atom<string | null>(null);
 export const userSelectedGridModelParameterNameAtom = atom<string | null>(null);
 export const userSelectedGridModelParameterDateOrIntervalAtom = atom<string | null>(null);
-export const userSelectedWellboreHeaderAtom = atom<string | null>(null);
+export const userSelectedWellboreUuidAtom = atom<string | null>(null);

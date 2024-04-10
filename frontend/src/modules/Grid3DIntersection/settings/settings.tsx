@@ -1,4 +1,4 @@
-import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellBoreHeader_api } from "@api";
+import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
@@ -19,7 +19,7 @@ import {
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
-    userSelectedWellboreHeaderAtom,
+    userSelectedWellboreUuidAtom,
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
@@ -30,7 +30,7 @@ import {
     selectedRealizationAtom,
     selectedWellboreHeaderAtom,
 } from "./atoms/derivedAtoms";
-import { gridModelInfosQueryAtom, wellHeadersQueryAtom } from "./atoms/queryAtoms";
+import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atoms/queryAtoms";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { State } from "../state";
@@ -47,7 +47,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const setSelectedRealization = useSetAtom(userSelectedRealizationAtom);
 
     const gridModelInfos = useAtomValue(gridModelInfosQueryAtom);
-    const wellHeaders = useAtomValue(wellHeadersQueryAtom);
+    const wellHeaders = useAtomValue(drilledWellboreHeadersQueryAtom);
 
     const selectedGridModelName = useAtomValue(selectedGridModelNameAtom);
     const setSelectedGridModelName = useSetAtom(userSelectedGridModelNameAtom);
@@ -59,7 +59,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const setSelectedGridModelParameterDateOrInterval = useSetAtom(userSelectedGridModelParameterDateOrIntervalAtom);
 
     const selectedWellboreHeader = useAtomValue(selectedWellboreHeaderAtom);
-    const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreHeaderAtom);
+    const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
 
     let gridModelErrorMessage = "";
     if (gridModelInfos.isError) {
@@ -214,7 +214,7 @@ function makeGridParameterDateOrIntervalOptions(datesOrIntervals: Grid3dProperty
     }));
 }
 
-function makeWellHeaderOptions(wellHeaders: WellBoreHeader_api[]): SelectOption[] {
+function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[] {
     return wellHeaders.map((wellHeader) => ({
         value: wellHeader.wellbore_uuid,
         label: wellHeader.unique_wellbore_identifier,

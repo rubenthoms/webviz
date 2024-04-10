@@ -9,7 +9,6 @@ from primary.services.smda_access.stratigraphy_access import StratigraphyAccess
 from primary.services.utils.authenticated_user import AuthenticatedUser
 from primary.auth.auth_helper import AuthHelper
 from primary.services.sumo_access._helpers import SumoCase
-from primary.services.smda_access.types import WellBoreHeader, WellBoreTrajectory
 
 from . import schemas
 from . import converters
@@ -19,15 +18,15 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/well_headers/")
-async def get_well_headers(
+@router.get("/drilled_wellbore_headers/")
+async def get_drilled_wellbore_headers(
     # fmt:off
     authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
     case_uuid: str = Query(description="Sumo case uuid"),
     # Should be field identifier
     # fmt:on
-) -> List[WellBoreHeader]:
-    """Get well headers for all wells in the field"""
+) -> List[schemas.WellboreHeader]:
+    """Get wellbore headers for all wells in the field"""
 
     case_inspector = await SumoCase.from_case_uuid(authenticated_user.get_sumo_access_token(), case_uuid)
     field_identifier = (await case_inspector.get_field_identifiers())[0]
@@ -38,7 +37,7 @@ async def get_well_headers(
     else:
         well_access = WellAccess(authenticated_user.get_smda_access_token())
 
-    return await well_access.get_well_headers(field_identifier=field_identifier)
+    return await well_access.get_wellbore_headers(field_identifier=field_identifier)
 
 
 @router.get("/field_well_trajectories/")
@@ -48,7 +47,7 @@ async def get_field_well_trajectories(
     case_uuid: str = Query(description="Sumo case uuid"), # Should be field identifier?
     unique_wellbore_identifiers:List[str] =  Query(None, description="Optional subset of well names")
     # fmt:on
-) -> List[WellBoreTrajectory]:
+) -> List[schemas.WellboreTrajectory]:
     """Get well trajectories for field"""
     case_inspector = await SumoCase.from_case_uuid(authenticated_user.get_sumo_access_token(), case_uuid)
     field_identifier = (await case_inspector.get_field_identifiers())[0]
@@ -70,7 +69,7 @@ async def get_well_trajectories(
     authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
     wellbore_uuids: List[str] = Query(description="Wellbore uuids"),
     # fmt:on
-) -> List[WellBoreTrajectory]:
+) -> List[schemas.WellboreTrajectory]:
     """Get well trajectories"""
     well_access: Union[WellAccess, mocked_drogon_smda_access.WellAccess]
 
@@ -90,7 +89,7 @@ async def get_wellbore_picks_and_stratigraphic_units(
     case_uuid: str = Query(description="Sumo case uuid"), # Should be field identifier?
     wellbore_uuid: str = Query(description="Wellbore uuid"),
     # fmt:on
-) -> schemas.WellBorePicksAndStratigraphicUnits:
+) -> schemas.WellborePicksAndStratigraphicUnits:
     """Get well bore picks for a single well bore"""
     well_access: Union[WellAccess, mocked_drogon_smda_access.WellAccess]
     stratigraphy_access: Union[StratigraphyAccess, mocked_drogon_smda_access.StratigraphyAccess]
@@ -111,7 +110,7 @@ async def get_wellbore_picks_and_stratigraphic_units(
     stratigraphic_units = await stratigraphy_access.get_stratigraphic_units(stratigraphic_column_identifier)
     wellbore_picks = await well_access.get_all_picks_for_wellbore(wellbore_uuid=wellbore_uuid)
 
-    return schemas.WellBorePicksAndStratigraphicUnits(
+    return schemas.WellborePicksAndStratigraphicUnits(
         wellbore_picks=converters.convert_wellbore_picks_to_schema(wellbore_picks),
         stratigraphic_units=converters.convert_stratigraphic_units_to_schema(stratigraphic_units),
     )

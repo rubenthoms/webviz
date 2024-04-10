@@ -77,10 +77,10 @@ export type { VectorHistoricalData as VectorHistoricalData_api } from './models/
 export type { VectorRealizationData as VectorRealizationData_api } from './models/VectorRealizationData';
 export type { VectorStatisticData as VectorStatisticData_api } from './models/VectorStatisticData';
 export type { VectorStatisticSensitivityData as VectorStatisticSensitivityData_api } from './models/VectorStatisticSensitivityData';
-export type { WellBoreHeader as WellBoreHeader_api } from './models/WellBoreHeader';
-export type { WellBorePick as WellBorePick_api } from './models/WellBorePick';
-export type { WellBorePicksAndStratigraphicUnits as WellBorePicksAndStratigraphicUnits_api } from './models/WellBorePicksAndStratigraphicUnits';
-export type { WellBoreTrajectory as WellBoreTrajectory_api } from './models/WellBoreTrajectory';
+export type { WellboreHeader as WellboreHeader_api } from './models/WellboreHeader';
+export type { WellborePick as WellborePick_api } from './models/WellborePick';
+export type { WellborePicksAndStratigraphicUnits as WellborePicksAndStratigraphicUnits_api } from './models/WellborePicksAndStratigraphicUnits';
+export type { WellboreTrajectory as WellboreTrajectory_api } from './models/WellboreTrajectory';
 export type { WellCompletionsData as WellCompletionsData_api } from './models/WellCompletionsData';
 export type { WellCompletionsUnitInfo as WellCompletionsUnitInfo_api } from './models/WellCompletionsUnitInfo';
 export type { WellCompletionsUnits as WellCompletionsUnits_api } from './models/WellCompletionsUnits';

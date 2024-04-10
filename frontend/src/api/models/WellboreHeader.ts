@@ -2,12 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type WellBoreTrajectory = {
+export type WellboreHeader = {
     wellbore_uuid: string;
     unique_wellbore_identifier: string;
-    tvd_msl_arr: Array<number>;
-    md_arr: Array<number>;
-    easting_arr: Array<number>;
-    northing_arr: Array<number>;
+    well_uuid: string;
+    unique_well_identifier: string;
+    well_easting: number;
+    well_northing: number;
 };
 

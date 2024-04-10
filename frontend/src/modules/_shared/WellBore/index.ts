@@ -1,1 +1,5 @@
-export { useFieldWellsTrajectoriesQuery, useWellHeadersQuery, useWellTrajectoriesQuery } from "./queryHooks";
+export {
+    useFieldWellsTrajectoriesQuery,
+    useDrilledWellboreHeadersQuery,
+    useWellboreTrajectoriesQuery,
+} from "./queryHooks";

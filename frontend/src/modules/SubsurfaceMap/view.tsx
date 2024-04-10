@@ -1,6 +1,6 @@
 import React from "react";
 
-import { PolygonData_api, WellBoreTrajectory_api } from "@api";
+import { PolygonData_api, WellboreTrajectory_api } from "@api";
 import { ContinuousLegend } from "@emerson-eps/color-tables";
 import { ModuleViewProps } from "@framework/Module";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
@@ -154,7 +154,7 @@ export function View({ viewContext, workbenchSettings, workbenchServices }: Modu
         newLayers.push(polygonsLayer);
     }
     if (wellTrajectoriesQuery.data) {
-        const wellTrajectories: WellBoreTrajectory_api[] = wellTrajectoriesQuery.data.filter((well) =>
+        const wellTrajectories: WellboreTrajectory_api[] = wellTrajectoriesQuery.data.filter((well) =>
             selectedWellUuids.includes(well.wellbore_uuid)
         );
         const wellTrajectoryLayer: Record<string, unknown> = createWellboreTrajectoryLayer(wellTrajectories);

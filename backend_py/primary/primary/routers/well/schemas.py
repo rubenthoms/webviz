@@ -22,8 +22,23 @@ class StratigraphicUnit(BaseModel):
     colorB: int
     lithologyType: int | float | str = "unknown"
 
+class WellboreHeader(BaseModel):
+    wellbore_uuid: str
+    unique_wellbore_identifier: str
+    well_uuid: str
+    unique_well_identifier: str
+    well_easting: float
+    well_northing: float
 
-class WellBorePick(BaseModel):
+class WellboreTrajectory(BaseModel):
+    wellbore_uuid: str
+    unique_wellbore_identifier: str
+    tvd_msl_arr: List[float]
+    md_arr: List[float]
+    easting_arr: List[float]
+    northing_arr: List[float]
+
+class WellborePick(BaseModel):
     """
     Wellbore pick from SMDA
 
@@ -43,6 +58,6 @@ class WellBorePick(BaseModel):
     mdUnit: str
 
 
-class WellBorePicksAndStratigraphicUnits(BaseModel):
-    wellbore_picks: List[WellBorePick] = []
+class WellborePicksAndStratigraphicUnits(BaseModel):
+    wellbore_picks: List[WellborePick] = []
     stratigraphic_units: List[StratigraphicUnit] = []

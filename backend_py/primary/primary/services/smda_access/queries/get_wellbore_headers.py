@@ -2,14 +2,14 @@ from typing import List
 
 
 from webviz_pkg.core_utils.perf_timer import PerfTimer
-from ..types import WellBoreHeader
+from ..types import WellboreHeader
 from ._get_request import get
 
 
-async def get_well_headers(
+async def get_wellbore_headers(
     access_token: str,
     field_identifier: str,
-) -> List[WellBoreHeader]:
+) -> List[WellboreHeader]:
     endpoint = "wellbore-survey-headers"
     projection = [
         "wellbore_uuid",
@@ -28,4 +28,4 @@ async def get_well_headers(
     timer = PerfTimer()
     result = await get(access_token=access_token, endpoint=endpoint, params=params)
     print(f"TIME SMDA fetch well headers took {timer.lap_s():.2f} seconds")
-    return [WellBoreHeader(**result) for result in result]
+    return [WellboreHeader(**result) for result in result]

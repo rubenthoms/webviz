@@ -23,14 +23,14 @@ export const gridModelInfosQueryAtom = atomWithQuery((get) => {
     };
 });
 
-export const wellHeadersQueryAtom = atomWithQuery((get) => {
+export const drilledWellboreHeadersQueryAtom = atomWithQuery((get) => {
     const ensembleIdent = get(selectedEnsembleIdentAtom);
 
     const caseUuid = ensembleIdent?.getCaseUuid() ?? "";
 
     return {
-        queryKey: ["getWellHeaders", caseUuid],
-        queryFn: () => apiService.well.getWellHeaders(caseUuid),
+        queryKey: ["getDrilledWellboreHeaders", caseUuid],
+        queryFn: () => apiService.well.getDrilledWellboreHeaders(caseUuid),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
         enabled: Boolean(caseUuid),

@@ -9,9 +9,9 @@ import {
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
-    userSelectedWellboreHeaderAtom,
+    userSelectedWellboreUuidAtom,
 } from "./baseAtoms";
-import { gridModelInfosQueryAtom, wellHeadersQueryAtom } from "./queryAtoms";
+import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./queryAtoms";
 
 export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {
     const ensembleSet = get(EnsembleSetAtom);
@@ -70,6 +70,21 @@ export const selectedGridModelNameAtom = atom((get) => {
     }
 
     return userSelectedGridModelName;
+});
+
+export const selectedGridModelBoundingBox3dAtom = atom((get) => {
+    const gridModelInfos = get(gridModelInfosQueryAtom);
+    const selectedGridModelName = get(selectedGridModelNameAtom);
+
+    if (!gridModelInfos.data) {
+        return null;
+    }
+
+    if (!selectedGridModelName) {
+        return null;
+    }
+
+    return gridModelInfos.data.find((gridModelInfo) => gridModelInfo.grid_name === selectedGridModelName)?.bbox ?? null;
 });
 
 export const selectedGridModelParameterNameAtom = atom((get) => {
@@ -139,16 +154,19 @@ export const selectedGridModelParameterDateOrIntervalAtom = atom((get) => {
 });
 
 export const selectedWellboreHeaderAtom = atom((get) => {
-    const userSelectedWellHeader = get(userSelectedWellboreHeaderAtom);
-    const wellHeaders = get(wellHeadersQueryAtom);
+    const userSelectedWellboreUuid = get(userSelectedWellboreUuidAtom);
+    const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
 
-    if (!wellHeaders.data) {
+    if (!wellboreHeaders.data) {
         return null;
     }
 
-    if (!userSelectedWellHeader || !wellHeaders.data.some((el) => el.wellbore_uuid === userSelectedWellHeader)) {
-        return wellHeaders.data[0].well_uuid ?? null;
+    if (
+        !userSelectedWellboreUuid ||
+        !wellboreHeaders.data.some((el) => el.wellbore_uuid === userSelectedWellboreUuid)
+    ) {
+        return wellboreHeaders.data[0].wellbore_uuid ?? null;
     }
 
-    return userSelectedWellHeader;
+    return userSelectedWellboreUuid;
 });

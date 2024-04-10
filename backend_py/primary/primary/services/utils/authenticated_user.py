@@ -9,7 +9,7 @@ class AccessTokens(TypedDict):
     graph_access_token: Optional[str]
     sumo_access_token: Optional[str]
     smda_access_token: Optional[str]
-
+    ssdl_access_token: Optional[str]
 
 class AuthenticatedUser:
     def __init__(

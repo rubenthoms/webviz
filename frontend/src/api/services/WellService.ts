@@ -2,7 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { WellboreCasing } from '../models/WellboreCasing';
+import type { WellboreCompletion } from '../models/WellboreCompletion';
 import type { WellboreHeader } from '../models/WellboreHeader';
+import type { WellboreLogCurveData } from '../models/WellboreLogCurveData';
+import type { WellboreLogCurveInfo } from '../models/WellboreLogCurveInfo';
+import type { WellborePerforation } from '../models/WellborePerforation';
 import type { WellborePicksAndStratigraphicUnits } from '../models/WellborePicksAndStratigraphicUnits';
 import type { WellboreTrajectory } from '../models/WellboreTrajectory';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -93,6 +98,114 @@ export class WellService {
             query: {
                 'case_uuid': caseUuid,
                 'wellbore_uuid': wellboreUuid,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Wellbore Completions
+     * Get well bore completions for a single well bore
+     * @param wellboreUuid Wellbore uuid
+     * @returns WellboreCompletion Successful Response
+     * @throws ApiError
+     */
+    public getWellboreCompletions(
+        wellboreUuid: string,
+    ): CancelablePromise<Array<WellboreCompletion>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/well/wellbore_completions/',
+            query: {
+                'wellbore_uuid': wellboreUuid,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Wellbore Casing
+     * Get well bore casing for a single well bore
+     * @param wellboreUuid Wellbore uuid
+     * @returns WellboreCasing Successful Response
+     * @throws ApiError
+     */
+    public getWellboreCasing(
+        wellboreUuid: string,
+    ): CancelablePromise<Array<WellboreCasing>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/well/wellbore_casing/',
+            query: {
+                'wellbore_uuid': wellboreUuid,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Wellbore Perforations
+     * Get well bore casing for a single well bore
+     * @param wellboreUuid Wellbore uuid
+     * @returns WellborePerforation Successful Response
+     * @throws ApiError
+     */
+    public getWellborePerforations(
+        wellboreUuid: string,
+    ): CancelablePromise<Array<WellborePerforation>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/well/wellbore_perforations/',
+            query: {
+                'wellbore_uuid': wellboreUuid,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Wellbore Log Curve Headers
+     * Get all log curve headers for a single well bore
+     * @param wellboreUuid Wellbore uuid
+     * @returns WellboreLogCurveInfo Successful Response
+     * @throws ApiError
+     */
+    public getWellboreLogCurveHeaders(
+        wellboreUuid: string,
+    ): CancelablePromise<Array<WellboreLogCurveInfo>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/well/wellbore_log_curve_headers/',
+            query: {
+                'wellbore_uuid': wellboreUuid,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Log Curve Data
+     * Get log curve data
+     * @param wellboreUuid Wellbore uuid
+     * @param logCurveName Log curve name
+     * @returns WellboreLogCurveData Successful Response
+     * @throws ApiError
+     */
+    public getLogCurveData(
+        wellboreUuid: string,
+        logCurveName: string,
+    ): CancelablePromise<WellboreLogCurveData> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/well/log_curve_data/',
+            query: {
+                'wellbore_uuid': wellboreUuid,
+                'log_curve_name': logCurveName,
             },
             errors: {
                 422: `Validation Error`,

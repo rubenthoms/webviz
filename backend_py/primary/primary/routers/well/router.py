@@ -186,7 +186,7 @@ async def get_wellbore_log_curve_headers(
     authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
     wellbore_uuid: str = Query(description="Wellbore uuid"),
     # fmt:on
-) -> List[schemas.WellBoreLogCurveInfo]:
+) -> List[schemas.WellboreLogCurveInfo]:
     """Get all log curve headers for a single well bore"""
 
     # Handle DROGON
@@ -207,7 +207,7 @@ async def get_log_curve_data(
     wellbore_uuid: str = Query(description="Wellbore uuid"),
     log_curve_name:str = Query(description="Log curve name")
     # fmt:on
-) -> schemas.WellBoreLogCurveData:
+) -> schemas.WellboreLogCurveData:
     """Get log curve data"""
 
     # Handle DROGON

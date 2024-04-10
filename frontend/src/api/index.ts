@@ -77,7 +77,12 @@ export type { VectorHistoricalData as VectorHistoricalData_api } from './models/
 export type { VectorRealizationData as VectorRealizationData_api } from './models/VectorRealizationData';
 export type { VectorStatisticData as VectorStatisticData_api } from './models/VectorStatisticData';
 export type { VectorStatisticSensitivityData as VectorStatisticSensitivityData_api } from './models/VectorStatisticSensitivityData';
+export type { WellboreCasing as WellboreCasing_api } from './models/WellboreCasing';
+export type { WellboreCompletion as WellboreCompletion_api } from './models/WellboreCompletion';
 export type { WellboreHeader as WellboreHeader_api } from './models/WellboreHeader';
+export type { WellboreLogCurveData as WellboreLogCurveData_api } from './models/WellboreLogCurveData';
+export type { WellboreLogCurveInfo as WellboreLogCurveInfo_api } from './models/WellboreLogCurveInfo';
+export type { WellborePerforation as WellborePerforation_api } from './models/WellborePerforation';
 export type { WellborePick as WellborePick_api } from './models/WellborePick';
 export type { WellborePicksAndStratigraphicUnits as WellborePicksAndStratigraphicUnits_api } from './models/WellborePicksAndStratigraphicUnits';
 export type { WellboreTrajectory as WellboreTrajectory_api } from './models/WellboreTrajectory';

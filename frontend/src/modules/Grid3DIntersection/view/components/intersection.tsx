@@ -1,7 +1,7 @@
 import React from "react";
 
-import { BoundingBox3d_api } from "@api";
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { BoundingBox3d_api, WellboreCasing_api } from "@api";
+import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ColorScale } from "@lib/utils/ColorScale";
 import {
     EsvIntersection,
@@ -21,6 +21,7 @@ import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
     polylineIntersectionData: PolylineIntersection_trans | null;
+    wellboreCasingData: WellboreCasing_api[] | null;
     gridBoundingBox3d: BoundingBox3d_api | null;
     colorScale: ColorScale;
 };
@@ -81,6 +82,39 @@ export function Intersection(props: IntersectionProps): JSX.Element {
                     // hideGridlines: true,
                 },
                 order: 5,
+            },
+        });
+    }
+
+    if (props.wellboreCasingData) {
+        const casingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Casing");
+        const tubingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Tubing");
+
+        const casings: Casing[] = casingData.map((casing, index) => ({
+            id: `casing-${index}`,
+            diameter: casing.diameter_numeric,
+            start: casing.depth_top_md,
+            end: casing.depth_bottom_md,
+            innerDiameter: casing.diameter_inner,
+            kind: "casing",
+            hasShoe: false,
+        }));
+
+        layers.push({
+            id: "schematic",
+            type: LayerType.SCHEMATIC,
+            hoverable: true,
+            options: {
+                data: {
+                    holeSizes: [],
+                    casings,
+                    cements: [],
+                    completion: [],
+                    pAndA: [],
+                    symbols: {},
+                    perforations: [],
+                },
+                order: 7,
             },
         });
     }

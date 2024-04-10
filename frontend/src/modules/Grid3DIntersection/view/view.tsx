@@ -7,6 +7,7 @@ import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
 import { Grid3D } from "./components/grid3d";
 import { Intersection } from "./components/intersection";
 import { useGridPolylineIntersection } from "./queries/polylineIntersection";
+import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { State } from "../state";
@@ -66,11 +67,19 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         polylineUtmXy
     );
 
-    statusWriter.setLoading(polylineIntersectionQuery.isFetching || wellboreTrajectoriesQuery.isFetching);
-
     if (polylineIntersectionQuery.isError) {
         statusWriter.addError(polylineIntersectionQuery.error.message);
     }
+
+    const wellboreCasingQuery = useWellboreCasingQuery(wellboreUuid ?? undefined);
+
+    if (wellboreCasingQuery.isError) {
+        statusWriter.addError(wellboreCasingQuery.error.message);
+    }
+
+    statusWriter.setLoading(
+        polylineIntersectionQuery.isFetching || wellboreTrajectoriesQuery.isFetching || wellboreCasingQuery.isFetching
+    );
 
     return (
         <div className="w-full h-full">
@@ -78,6 +87,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
             <Intersection
                 referenceSystem={referenceSystem}
                 polylineIntersectionData={polylineIntersectionQuery.data ?? null}
+                wellboreCasingData={wellboreCasingQuery.data ?? null}
                 gridBoundingBox3d={gridModelBoundingBox3d}
                 colorScale={colorScale}
             />

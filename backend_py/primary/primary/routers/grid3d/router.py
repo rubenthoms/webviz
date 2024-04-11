@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 from typing import Annotated
 
 import numpy as np
@@ -125,6 +125,7 @@ async def grid_parameter(
     parameter_name: Annotated[str, Query(description="Grid parameter")],
     realization_num: Annotated[int, Query(description="Realization")],
     single_k_layer: Annotated[int, Query(description="Show only a single k layer")] = -1,
+    parameter_date_or_interval: Annotated[Optional[str], Query(description="Grid parameter date or interval")] = None,
 ) -> schemas.Grid3dMappedProperty:
     """Get a grid parameter"""
 
@@ -143,6 +144,7 @@ async def grid_parameter(
         ensemble_name=ensemble_name,
         grid_name=grid_name,
         property_name=parameter_name,
+        property_date_or_interval=parameter_date_or_interval,
         realization=realization_num,
         ijk_index_filter=ijk_index_filter,
     )

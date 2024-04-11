@@ -33,6 +33,7 @@ export type InteractionHandlerOptions = {
 export class InteractionHandler {
     private _intersectionHandler: IntersectionHandler;
     private _highlightOverlay: HighlightOverlay;
+    private _staticHighlightItems: HighlightItem[] = [];
     private _layerDataItems: LayerDataItem[] = [];
     private _schematicLayer: SchematicLayer<SchematicData> | null = null;
     private _subscribers: Map<InteractionHandlerTopic, Set<(payload: any) => void>> = new Map();
@@ -71,6 +72,11 @@ export class InteractionHandler {
         for (const layerDataObject of layerDataObjectsToRemove) {
             this._intersectionHandler.removeIntersectionObject(layerDataObject.id);
         }
+    }
+
+    setStaticHighlightItems(highlightItems: HighlightItem[]) {
+        this._staticHighlightItems = highlightItems;
+        this._highlightOverlay.setHighlightItems([...this._staticHighlightItems]);
     }
 
     subscribe<T extends InteractionHandlerTopic>(
@@ -153,7 +159,7 @@ export class InteractionHandler {
             }
         }
 
-        this._highlightOverlay.setHighlightObjects(highlightItems);
+        this._highlightOverlay.setHighlightItems([...this._staticHighlightItems, ...highlightItems]);
 
         this.publish(InteractionHandlerTopic.READOUT_ITEMS_CHANGE, { items: readoutItems });
     }

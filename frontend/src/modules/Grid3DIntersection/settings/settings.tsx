@@ -6,10 +6,12 @@ import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dropdown } from "@lib/components/Dropdown";
+import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { QueryStateWrapper } from "@lib/components/QueryStateWrapper";
 import { Select, SelectOption } from "@lib/components/Select";
+import { Switch } from "@lib/components/Switch";
 
 import { useAtomValue, useSetAtom } from "jotai";
 
@@ -23,21 +25,29 @@ import {
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
-    selectedEnsembleIdentAtom,
+    gridModelDimensionsAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
-    selectedWellboreHeaderAtom,
 } from "./atoms/derivedAtoms";
 import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atoms/queryAtoms";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
+import { selectedEnsembleIdentAtom, selectedWellboreUuidAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
     const ensembleSet = props.workbenchSession.getEnsembleSet();
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
+
+    const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
+    const [gridLayer, setGridLayer] = props.settingsContext.useSettingsToViewInterfaceState("gridLayer");
+    const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
+    const [intersectionExtensionLength, setIntersectionExtensionLength] =
+        props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
+
+    const gridModelDimensions = useAtomValue(gridModelDimensionsAtom);
 
     const selectedEnsembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const setSelectedEnsembleIdent = useSetAtom(userSelectedEnsembleIdentAtom);
@@ -58,7 +68,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedGridModelParameterDateOrInterval = useAtomValue(selectedGridModelParameterDateOrIntervalAtom);
     const setSelectedGridModelParameterDateOrInterval = useSetAtom(userSelectedGridModelParameterDateOrIntervalAtom);
 
-    const selectedWellboreHeader = useAtomValue(selectedWellboreHeaderAtom);
+    const selectedWellboreHeader = useAtomValue(selectedWellboreUuidAtom);
     const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
 
     let gridModelErrorMessage = "";
@@ -97,6 +107,22 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setSelectedWellboreHeader(wellHeader.at(0) ?? null);
     }
 
+    function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setShowGridLines(event.target.checked);
+    }
+
+    function handleGridLayerChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setGridLayer(parseInt(event.target.value));
+    }
+
+    function handleZFactorChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setZFactor(parseFloat(event.target.value));
+    }
+
+    function handleIntersectionExtensionLengthChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setIntersectionExtensionLength(parseFloat(event.target.value));
+    }
+
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
@@ -129,6 +155,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 value={selectedGridModelName ? [selectedGridModelName] : []}
                                 onChange={handleGridModelSelectionChange}
                                 size={5}
+                                debounceTimeMs={600}
                             />
                         </PendingWrapper>
                     </Label>
@@ -139,6 +166,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 value={selectedGridModelParameterName ? [selectedGridModelParameterName] : []}
                                 onChange={handleGridParameterSelectionChange}
                                 size={5}
+                                debounceTimeMs={600}
                             />
                         </PendingWrapper>
                     </Label>
@@ -153,8 +181,18 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 }
                                 onChange={handleGridParameterDateOrIntervalSelectionChange}
                                 size={5}
+                                debounceTimeMs={600}
                             />
                         </PendingWrapper>
+                    </Label>
+                    <Label text="Grid layer">
+                        <Input
+                            type="number"
+                            defaultValue={gridLayer}
+                            onChange={handleGridLayerChange}
+                            min={-1}
+                            max={gridModelDimensions?.k_count}
+                        />
                     </Label>
                 </div>
             </CollapsibleGroup>
@@ -166,8 +204,25 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                         onChange={handleWellHeaderSelectionChange}
                         size={5}
                         filter
+                        debounceTimeMs={600}
                     />
                 </PendingWrapper>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Visualization options" expanded>
+                <Label text="Show grid lines" position="left">
+                    <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
+                </Label>
+                <Label text="Z factor">
+                    <Input type="number" defaultValue={zFactor} min={0} onChange={handleZFactorChange} />
+                </Label>
+                <Label text="Intersection extension length">
+                    <Input
+                        type="number"
+                        defaultValue={intersectionExtensionLength}
+                        min={0}
+                        onChange={handleIntersectionExtensionLengthChange}
+                    />
+                </Label>
             </CollapsibleGroup>
         </>
     );

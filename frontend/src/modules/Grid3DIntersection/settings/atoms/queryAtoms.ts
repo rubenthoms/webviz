@@ -1,8 +1,9 @@
 import { apiService } from "@framework/ApiService";
+import { selectedEnsembleIdentAtom } from "@modules/Grid3DIntersection/sharedAtoms/sharedAtoms";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 
-import { selectedEnsembleIdentAtom, selectedRealizationAtom } from "./derivedAtoms";
+import { selectedRealizationAtom } from "./derivedAtoms";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;

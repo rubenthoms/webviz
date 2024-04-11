@@ -41,8 +41,12 @@ async def get_grid_geometry_and_property_blob_ids_async(
     realization: int,
     grid_name: str,
     property_name: str,
+    property_date_or_interval: str | None,
 ) -> Tuple[str, str]:
     """Get the blob ids for both grid geometry and grid property in a case, iteration, and realization"""
+
+    # ((?<time0>\d{4}(-\d{2}){2}T\d{2}(:\d{2}){2})(\/(?<time1>\d{4}(-\d{2}){2}T\d{2}(:\d{2}){2}))?)|(?<timeNone>None)
+
     payload = {
         "query": {
             "bool": {

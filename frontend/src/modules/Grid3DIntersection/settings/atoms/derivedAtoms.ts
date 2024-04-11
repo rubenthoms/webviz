@@ -1,28 +1,16 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
+import { selectedEnsembleIdentAtom } from "@modules/Grid3DIntersection/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
 
 import {
-    userSelectedEnsembleIdentAtom,
     userSelectedGridModelNameAtom,
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
-    userSelectedWellboreUuidAtom,
 } from "./baseAtoms";
-import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./queryAtoms";
-
-export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {
-    const ensembleSet = get(EnsembleSetAtom);
-    const userSelectedEnsembleIdent = get(userSelectedEnsembleIdentAtom);
-
-    if (userSelectedEnsembleIdent === null || !ensembleSet.hasEnsemble(userSelectedEnsembleIdent)) {
-        return ensembleSet.getEnsembleArr()[0]?.getIdent() || null;
-    }
-
-    return userSelectedEnsembleIdent;
-});
+import { gridModelInfosQueryAtom } from "./queryAtoms";
 
 export const availableRealizationsAtom = atom((get) => {
     const ensembleSet = get(EnsembleSetAtom);
@@ -70,6 +58,24 @@ export const selectedGridModelNameAtom = atom((get) => {
     }
 
     return userSelectedGridModelName;
+});
+
+export const gridModelDimensionsAtom = atom((get) => {
+    const gridModelInfos = get(gridModelInfosQueryAtom);
+    const selectedGridModelName = get(selectedGridModelNameAtom);
+
+    if (!gridModelInfos.data) {
+        return null;
+    }
+
+    if (!selectedGridModelName) {
+        return null;
+    }
+
+    return (
+        gridModelInfos.data.find((gridModelInfo) => gridModelInfo.grid_name === selectedGridModelName)?.dimensions ??
+        null
+    );
 });
 
 export const selectedGridModelBoundingBox3dAtom = atom((get) => {
@@ -151,22 +157,4 @@ export const selectedGridModelParameterDateOrIntervalAtom = atom((get) => {
     }
 
     return userSelectedGridModelParameterDateOrInterval;
-});
-
-export const selectedWellboreHeaderAtom = atom((get) => {
-    const userSelectedWellboreUuid = get(userSelectedWellboreUuidAtom);
-    const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
-
-    if (!wellboreHeaders.data) {
-        return null;
-    }
-
-    if (
-        !userSelectedWellboreUuid ||
-        !wellboreHeaders.data.some((el) => el.wellbore_uuid === userSelectedWellboreUuid)
-    ) {
-        return wellboreHeaders.data[0].wellbore_uuid ?? null;
-    }
-
-    return userSelectedWellboreUuid;
 });

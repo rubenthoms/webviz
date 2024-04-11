@@ -109,6 +109,7 @@ export class Grid3DService {
      * @param parameterName Grid parameter
      * @param realizationNum Realization
      * @param singleKLayer Show only a single k layer
+     * @param parameterDateOrInterval Grid parameter date or interval
      * @returns Grid3dMappedProperty Successful Response
      * @throws ApiError
      */
@@ -119,6 +120,7 @@ export class Grid3DService {
         parameterName: string,
         realizationNum: number,
         singleKLayer: number = -1,
+        parameterDateOrInterval?: (string | null),
     ): CancelablePromise<Grid3dMappedProperty> {
         return this.httpRequest.request({
             method: 'GET',
@@ -130,6 +132,7 @@ export class Grid3DService {
                 'parameter_name': parameterName,
                 'realization_num': realizationNum,
                 'single_k_layer': singleKLayer,
+                'parameter_date_or_interval': parameterDateOrInterval,
             },
             errors: {
                 422: `Validation Error`,

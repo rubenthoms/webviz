@@ -73,7 +73,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
 
     if (isPolylineIntersectionLayer(layer) && layer.data) {
         const dataItems: LayerDataItem[] = [];
-        let startU = 0;
+        let startU = -(layer.data.extensionLengthStart ?? 0);
         for (const [index, fenceMeshSection] of layer.data.fenceMeshSections.entries()) {
             const uVectorLength = pointDistance(
                 {

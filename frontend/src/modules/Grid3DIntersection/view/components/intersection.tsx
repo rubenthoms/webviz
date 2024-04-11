@@ -9,7 +9,7 @@ import {
     LayerItem,
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
-import { ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
+import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
 import { getColorFromLayerData } from "@modules/_shared/components/EsvIntersection/utils/intersectionConversion";
 import {
     getAdditionalInformationFromReadoutItem,
@@ -24,9 +24,16 @@ export type IntersectionProps = {
     wellboreCasingData: WellboreCasing_api[] | null;
     gridBoundingBox3d: BoundingBox3d_api | null;
     colorScale: ColorScale;
+    showGridLines: boolean;
+    zFactor: number;
+    intersectionExtensionLength: number;
+    hoveredMd: number | null;
+    onReadout: (event: EsvIntersectionReadoutEvent) => void;
 };
 
 export function Intersection(props: IntersectionProps): JSX.Element {
+    const { onReadout } = props;
+
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
     const layers: LayerItem[] = [
         {
@@ -79,7 +86,8 @@ export function Intersection(props: IntersectionProps): JSX.Element {
                     minGridPropValue: props.polylineIntersectionData.min_grid_prop_value,
                     maxGridPropValue: props.polylineIntersectionData.max_grid_prop_value,
                     colorScale: props.colorScale,
-                    // hideGridlines: true,
+                    hideGridlines: !props.showGridLines,
+                    extensionLengthStart: props.intersectionExtensionLength,
                 },
                 order: 5,
             },
@@ -133,17 +141,29 @@ export function Intersection(props: IntersectionProps): JSX.Element {
         viewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
     }
 
-    const handleReadoutItemsChange = React.useCallback(function handleReadoutItemsChange(
-        event: EsvIntersectionReadoutEvent
-    ): void {
-        setReadoutItems(event.readoutItems);
-    },
-    []);
+    const handleReadoutItemsChange = React.useCallback(
+        function handleReadoutItemsChange(event: EsvIntersectionReadoutEvent): void {
+            setReadoutItems(event.readoutItems);
+            onReadout(event);
+        },
+        [onReadout]
+    );
+
+    const highlightItems: HighlightItem[] = [];
+    if (props.referenceSystem && props.hoveredMd) {
+        const point = props.referenceSystem.project(props.hoveredMd);
+        highlightItems.push({
+            point: [point[0], point[1]],
+            color: "red",
+            shape: HighlightItemShape.POINT,
+        });
+    }
 
     return (
         <div className="relative w-full h-1/2">
             <EsvIntersection
                 showGrid
+                zFactor={props.zFactor}
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
                 layers={layers}
@@ -152,6 +172,8 @@ export function Intersection(props: IntersectionProps): JSX.Element {
                     y: [props.gridBoundingBox3d?.ymin ?? 0, props.gridBoundingBox3d?.ymax ?? 1],
                 }}
                 viewport={viewport}
+                intersectionThreshold={50}
+                highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
             />
             <ReadoutBox readoutItems={readoutItems} />
@@ -168,6 +190,17 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
         return null;
     }
 
+    function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
+        const additionalInformation = getAdditionalInformationFromReadoutItem(item);
+        return Object.entries(additionalInformation).map(([key, value], index) => {
+            return (
+                <span key={index} className="block">
+                    {key}: {value}
+                </span>
+            );
+        });
+    }
+
     return (
         <div className="absolute rounded border-2 border-neutral-300 bottom-10 left-0 bg-white p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
             {props.readoutItems.map((item, index) => (
@@ -179,11 +212,7 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
                     <div>
                         <strong>{getLabelFromLayerData(item)}</strong>
                         <br />
-                        {getAdditionalInformationFromReadoutItem(item).map((el, index) => (
-                            <span key={index} className="block">
-                                {el}
-                            </span>
-                        ))}
+                        {makeAdditionalInformation(item)}
                     </div>
                 </div>
             ))}

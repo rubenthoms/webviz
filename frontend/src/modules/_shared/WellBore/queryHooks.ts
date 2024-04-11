@@ -15,7 +15,9 @@ export function useDrilledWellboreHeadersQuery(caseUuid: string | undefined): Us
     });
 }
 
-export function useFieldWellsTrajectoriesQuery(caseUuid: string | undefined): UseQueryResult<WellboreTrajectory_api[]> {
+export function useFieldWellboreTrajectoriesQuery(
+    caseUuid: string | undefined
+): UseQueryResult<WellboreTrajectory_api[]> {
     return useQuery({
         queryKey: ["getFieldWellsTrajectories", caseUuid],
         queryFn: () => apiService.well.getFieldWellTrajectories(caseUuid ?? ""),

@@ -28,6 +28,7 @@ export type PolylineIntersectionData = {
     fenceMeshSections: FenceMeshSection[];
     minGridPropValue: number;
     maxGridPropValue: number;
+    extensionLengthStart?: number;
     hideGridlines?: boolean;
     colorScale: ColorScale;
 };
@@ -70,7 +71,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
         this.data?.colorScale.setRange(this.data.minGridPropValue, this.data.maxGridPropValue);
 
         const showGridlines = !(this.data?.hideGridlines ?? false);
-        let startU = 0;
+        let startU = -(this.data?.extensionLengthStart ?? 0);
         this.data.fenceMeshSections.forEach((section) => {
             this.createFenceMeshSection(startU, section, showGridlines);
             const uVectorLength = pointDistance(

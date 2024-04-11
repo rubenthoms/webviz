@@ -23,7 +23,7 @@ export class HighlightOverlay {
         this._indicatorOverlay = this.makeIndicatorOverlay();
     }
 
-    setHighlightObjects(highlightItems: HighlightItem[]) {
+    setHighlightItems(highlightItems: HighlightItem[]) {
         this._highlightItems = highlightItems;
         if (this._highlightItems.length === 0) {
             this.changeVisibility(false);

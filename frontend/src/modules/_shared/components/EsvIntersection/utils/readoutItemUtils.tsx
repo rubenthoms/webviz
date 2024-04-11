@@ -110,8 +110,10 @@ export function makeSchematicInfo<T extends keyof Omit<SchematicData, "symbols">
     return arr;
 }
 
-export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem): React.ReactNode[] {
-    const infoArr: ReactNode[] = [];
+export function getAdditionalInformationFromReadoutItem(
+    readoutItem: ReadoutItem
+): Record<string, string | string[] | number | null> {
+    const infoObject: Record<string, string | string[] | number | null> = {};
     const layer = readoutItem.layer;
 
     if (isPolylineIntersectionLayer(layer) && layer.data) {
@@ -119,15 +121,15 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
             const cellIndexOffset = layer.data.fenceMeshSections
                 .slice(0, readoutItem.index)
                 .reduce((acc, section) => acc + section.polySourceCellIndicesArr.length, 0);
-            infoArr.push(`Polygon index: ${cellIndexOffset + readoutItem.polygonIndex}`);
+            infoObject["polygon-index"] = cellIndexOffset + readoutItem.polygonIndex;
 
             const propValue = layer.data.fenceMeshSections[readoutItem.index].polyPropsArr[readoutItem.polygonIndex];
-            infoArr.push(`Value: ${propValue}`);
+            infoObject["prop-value"] = propValue;
         }
     }
 
     if (isWellborepathLayer(layer)) {
-        infoArr.push(`MD: ${readoutItem.md?.toFixed(2)}`);
+        infoObject["md"] = readoutItem.md ?? null;
     }
 
     if (isStatisticalFanchartsCanvasLayer(layer) && layer.data) {
@@ -157,7 +159,7 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
 
             for (const [index, point] of readoutItem.points.entries()) {
                 const label = keys[index];
-                infoArr.push(`${label}: ${point[1].toFixed(2)}`);
+                infoObject[label] = point[1];
             }
         }
     }
@@ -165,8 +167,8 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
     if (isCalloutCanvasLayer(layer) && layer.data) {
         const md = layer.data[readoutItem.index].md;
         if (md) {
-            infoArr.push(layer.data[readoutItem.index].label);
-            infoArr.push(`MD: ${md.toFixed(2)}`);
+            infoObject["label"] = layer.data[readoutItem.index].label;
+            infoObject["md"] = md;
         }
     }
 
@@ -174,11 +176,15 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
         if (layer.data) {
             const schematicType = readoutItem.schematicType;
             if (schematicType && layer.data[schematicType] && schematicType !== "symbols") {
-                infoArr.push(...makeSchematicInfo(schematicType, layer.data[schematicType][readoutItem.index]));
+                infoObject["schematic-info"] = makeSchematicInfo(
+                    schematicType,
+                    layer.data[schematicType][readoutItem.index]
+                );
             }
         }
     } else {
-        infoArr.push(`(X: ${readoutItem.point[0].toFixed(2)}, Y: ${readoutItem.point[1].toFixed(2)})`);
+        infoObject["x"] = readoutItem.point[0];
+        infoObject["y"] = readoutItem.point[1];
     }
 
     if (isSeismicCanvasLayer(layer)) {
@@ -194,24 +200,12 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
                 const imageY = transformedPoint.y;
                 const imageData = ctx.getImageData(imageX, imageY, 1, 1);
 
-                infoArr.push(`R: ${imageData.data[0]}`);
-                infoArr.push(`G: ${imageData.data[1]}`);
-                infoArr.push(`B: ${imageData.data[2]}`);
-
-                infoArr.push(
-                    <>
-                        Color Color:{" "}
-                        <span
-                            className="rounded w-1 h-1 block"
-                            style={{
-                                backgroundColor: `rgb(${imageData.data[0]}, ${imageData.data[1]}, ${imageData.data[2]});`,
-                            }}
-                        />
-                    </>
-                );
+                infoObject["r"] = imageData.data[0];
+                infoObject["g"] = imageData.data[1];
+                infoObject["b"] = imageData.data[2];
             }
         }
     }
 
-    return infoArr;
+    return infoObject;
 }

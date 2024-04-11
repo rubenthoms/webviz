@@ -47,7 +47,7 @@ import {
     SurfaceStatisticalFanchartsCanvasLayer,
     SurfaceStatisticalFanchartsData,
 } from "./layers/SurfaceStatisticalFanchartCanvasLayer";
-import { ReadoutItem } from "./types/types";
+import { HighlightItem, ReadoutItem } from "./types/types";
 
 export enum LayerType {
     CALLOUT_CANVAS = "callout-canvas",
@@ -123,6 +123,8 @@ export type EsvIntersectionProps = {
     viewport?: Viewport;
     intersectionReferenceSystem?: IntersectionReferenceSystem;
     zFactor?: number;
+    intersectionThreshold?: number;
+    highlightItems?: HighlightItem[];
     onReadout?: (event: EsvIntersectionReadoutEvent) => void;
 };
 
@@ -203,6 +205,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | null | undefined>(null);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | null | undefined>(null);
     const [prevZFactor, setPrevZFactor] = React.useState<number | null | undefined>(null);
+    const [prevHighlightItems, setPrevHighlightItems] = React.useState<HighlightItem[] | null | undefined>(null);
 
     const [layerIds, setLayerIds] = React.useState<string[]>([]);
 
@@ -268,6 +271,11 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
         if (!isEqual(prevZFactor, props.zFactor)) {
             esvController.zoomPanHandler.zFactor = props.zFactor ?? 1;
             setPrevZFactor(props.zFactor);
+        }
+
+        if (!isEqual(prevHighlightItems, props.highlightItems)) {
+            interactionHandler.setStaticHighlightItems(props.highlightItems ?? []);
+            setPrevHighlightItems(props.highlightItems);
         }
 
         if (!isEqual(prevContainerSize, containerSize)) {
@@ -370,7 +378,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
 
             const newInteractionHandler = new InteractionHandler(newEsvController, containerRef.current, {
                 intersectionOptions: {
-                    threshold: 10,
+                    threshold: props.intersectionThreshold ?? 10,
                 },
             });
 
@@ -419,7 +427,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onHover]
+        [onHover, props.intersectionThreshold]
     );
 
     return (

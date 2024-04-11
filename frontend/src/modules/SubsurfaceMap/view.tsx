@@ -9,7 +9,7 @@ import { Button } from "@lib/components/Button";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { usePolygonsDataQueryByAddress } from "@modules/_shared/Polygons";
-import { useFieldWellsTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
+import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
 import { useSurfaceDataQueryByAddress } from "@modules_shared/Surface";
 import { ViewAnnotation } from "@webviz/subsurface-viewer/dist/components/ViewAnnotation";
 
@@ -88,7 +88,7 @@ export function View({ viewContext, workbenchSettings, workbenchServices }: Modu
     const hasMeshSurfData = meshSurfDataQuery?.data ? true : false;
     const propertySurfDataQuery = usePropertySurfaceDataByQueryAddress(meshSurfAddr, propertySurfAddr, hasMeshSurfData);
 
-    const wellTrajectoriesQuery = useFieldWellsTrajectoriesQuery(meshSurfAddr?.caseUuid);
+    const wellTrajectoriesQuery = useFieldWellboreTrajectoriesQuery(meshSurfAddr?.caseUuid);
     const polygonsQuery = usePolygonsDataQueryByAddress(polygonsAddr);
 
     const newLayers: Record<string, unknown>[] = [createNorthArrowLayer()];

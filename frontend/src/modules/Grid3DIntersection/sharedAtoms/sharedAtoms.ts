@@ -3,8 +3,13 @@ import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 
 import { atom } from "jotai";
 
-import { userSelectedEnsembleIdentAtom, userSelectedWellboreUuidAtom } from "../settings/atoms/baseAtoms";
+import {
+    userSelectedCustomIntersectionPolylineIdAtom,
+    userSelectedEnsembleIdentAtom,
+    userSelectedWellboreUuidAtom,
+} from "../settings/atoms/baseAtoms";
 import { drilledWellboreHeadersQueryAtom } from "../settings/atoms/queryAtoms";
+import { CustomIntersectionPolyline, IntersectionType } from "../typesAndEnums";
 
 export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {
     const ensembleSet = get(EnsembleSetAtom);
@@ -33,4 +38,29 @@ export const selectedWellboreUuidAtom = atom((get) => {
     }
 
     return userSelectedWellboreUuid;
+});
+
+export const intersectionTypeAtom = atom<IntersectionType>(IntersectionType.WELLBORE);
+export const addCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
+export const editCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
+
+export const currentCustomIntersectionPolylineAtom = atom<number[][]>([]);
+
+export const customIntersectionPolylinesAtom = atom<CustomIntersectionPolyline[]>([]);
+export const selectedCustomIntersectionPolylineIdAtom = atom((get) => {
+    const userSelectedCustomIntersectionPolylineId = get(userSelectedCustomIntersectionPolylineIdAtom);
+    const customIntersectionPolylines = get(customIntersectionPolylinesAtom);
+
+    if (!customIntersectionPolylines.length) {
+        return null;
+    }
+
+    if (
+        !userSelectedCustomIntersectionPolylineId ||
+        !customIntersectionPolylines.some((el) => el.id === userSelectedCustomIntersectionPolylineId)
+    ) {
+        return customIntersectionPolylines[0].id;
+    }
+
+    return userSelectedCustomIntersectionPolylineId;
 });

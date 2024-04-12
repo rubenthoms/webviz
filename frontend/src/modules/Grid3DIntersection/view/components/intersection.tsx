@@ -3,6 +3,7 @@ import React from "react";
 import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ColorScale } from "@lib/utils/ColorScale";
+import { IntersectionType } from "@modules/Grid3DIntersection/typesAndEnums";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -29,14 +30,17 @@ export type IntersectionProps = {
     intersectionExtensionLength: number;
     hoveredMd: number | null;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
+    intersectionType: IntersectionType;
 };
 
 export function Intersection(props: IntersectionProps): JSX.Element {
     const { onReadout } = props;
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
-    const layers: LayerItem[] = [
-        {
+    const layers: LayerItem[] = [];
+
+    if (props.intersectionType === IntersectionType.WELLBORE) {
+        layers.push({
             id: "wellbore-path",
             type: LayerType.WELLBORE_PATH,
             hoverable: true,
@@ -45,8 +49,8 @@ export function Intersection(props: IntersectionProps): JSX.Element {
                 strokeWidth: "2",
                 order: 6,
             },
-        },
-    ];
+        });
+    }
 
     if (props.polylineIntersectionData) {
         layers.push({

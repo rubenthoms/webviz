@@ -29,7 +29,7 @@ export type SettingsToViewInterface = {
 export const interfaceInitialization: InterfaceInitialization<SettingsToViewInterface> = {
     baseStates: {
         showGridlines: false,
-        gridLayer: -1,
+        gridLayer: 1,
         zFactor: 1,
         intersectionExtensionLength: 1000,
     },

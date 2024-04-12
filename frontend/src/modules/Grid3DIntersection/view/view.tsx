@@ -9,9 +9,9 @@ import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/que
 import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
 
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 
-import { intersectionReferenceSystemAtom } from "./atoms/derivedAtoms";
+import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
 import { Grid3D } from "./components/grid3d";
 import { Intersection } from "./components/intersection";
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
@@ -19,8 +19,16 @@ import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from 
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
-import { selectedEnsembleIdentAtom, selectedWellboreUuidAtom } from "../sharedAtoms/sharedAtoms";
+import {
+    addCustomIntersectionPolylineEditModeActiveAtom,
+    currentCustomIntersectionPolylineAtom,
+    editCustomIntersectionPolylineEditModeActiveAtom,
+    intersectionTypeAtom,
+    selectedEnsembleIdentAtom,
+    selectedWellboreUuidAtom,
+} from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
+import { IntersectionType } from "../typesAndEnums";
 
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JSX.Element {
     const statusWriter = useViewStatusWriter(props.viewContext);
@@ -45,9 +53,14 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const zFactor = props.viewContext.useSettingsToViewInterfaceValue("zFactor");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
+    const addPolylineModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
+    const editPolylineModeActive = useAtomValue(editCustomIntersectionPolylineEditModeActiveAtom);
+    const intersectionType = useAtomValue(intersectionTypeAtom);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
     const [hoveredMd3dGrid, setHoveredMd3dGrid] = React.useState<number | null>(null);
+    const [customIntersectionPolyline, setCustomIntersectionPolyline] = useAtom(currentCustomIntersectionPolylineAtom);
+    const selectedCustomIntersectionPolyline = useAtomValue(selectedCustomIntersectionPolylineAtom);
 
     const fieldWellboreTrajectoriesQuery = useFieldWellboreTrajectoriesQuery(ensembleIdent?.getCaseUuid() ?? undefined);
 
@@ -59,14 +72,20 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     let hoveredMdPoint3d: number[] | null = null;
 
     if (intersectionReferenceSystem) {
-        const extendedTrajectory = intersectionReferenceSystem.getExtendedTrajectory(
-            10,
-            intersectionExtensionLength,
-            intersectionExtensionLength
-        );
+        if (intersectionType === IntersectionType.WELLBORE) {
+            const extendedTrajectory = intersectionReferenceSystem.getExtendedTrajectory(
+                10,
+                intersectionExtensionLength,
+                intersectionExtensionLength
+            );
 
-        for (const point of extendedTrajectory.points) {
-            polylineUtmXy.push(point[0], point[1]);
+            for (const point of extendedTrajectory.points) {
+                polylineUtmXy.push(point[0], point[1]);
+            }
+        } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {
+            for (const point of selectedCustomIntersectionPolyline.polyline) {
+                polylineUtmXy.push(point[0], point[1]);
+            }
         }
 
         if (hoveredMd) {
@@ -148,6 +167,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         setHoveredMd3dGrid(md);
     }, []);
 
+    const handleEditPolylineChange = React.useCallback(function handleEditPolylineChange(polyline: number[][]) {
+        setCustomIntersectionPolyline(polyline);
+    }, []);
+
+    const potentialIntersectionExtensionLength =
+        intersectionType === IntersectionType.WELLBORE ? intersectionExtensionLength : 0;
+
     return (
         <div className="w-full h-full">
             <Grid3D
@@ -156,12 +182,17 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 fieldWellboreTrajectoriesData={fieldWellboreTrajectoriesQuery.data ?? null}
                 selectedWellboreUuid={wellboreUuid}
                 polylineIntersectionData={polylineIntersectionQuery.data ?? null}
+                editCustomPolyline={
+                    editPolylineModeActive ? selectedCustomIntersectionPolyline?.polyline ?? null : null
+                }
                 boundingBox3d={gridModelBoundingBox3d}
                 colorScale={colorScale}
                 showGridLines={showGridLines}
                 zFactor={zFactor}
                 hoveredMdPoint3d={hoveredMdPoint3d}
                 onHoveredMdChange={handleGrid3DMdChange}
+                onEditPolylineChange={handleEditPolylineChange}
+                editModeActive={addPolylineModeActive || editPolylineModeActive}
             />
             <Intersection
                 referenceSystem={intersectionReferenceSystem}
@@ -171,9 +202,10 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 colorScale={colorScale}
                 showGridLines={showGridLines}
                 zFactor={zFactor}
-                intersectionExtensionLength={intersectionExtensionLength}
+                intersectionExtensionLength={potentialIntersectionExtensionLength}
                 hoveredMd={hoveredMd3dGrid}
                 onReadout={handleReadout}
+                intersectionType={intersectionType}
             />
         </div>
     );

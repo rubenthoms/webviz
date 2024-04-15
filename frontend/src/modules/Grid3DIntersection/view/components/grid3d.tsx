@@ -2,14 +2,8 @@ import React from "react";
 
 import { BoundingBox3d_api, WellboreTrajectory_api } from "@api";
 import { Layer } from "@deck.gl/core/typed";
-import { ColumnLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { colorTablesObj } from "@emerson-eps/color-tables";
 import { ColorScale } from "@lib/utils/ColorScale";
-import SubsurfaceViewer, {
-    MapMouseEvent,
-    SubsurfaceViewerProps,
-    ViewStateType,
-} from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import {
     AxesLayer,
     Grid3DLayer,
@@ -19,7 +13,8 @@ import {
 } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Color, Rgb, parse } from "culori";
-import { isEqual } from "lodash";
+
+import { SubsurfaceViewerWrapper } from "./SubsurfaceViewerWrapper";
 
 import {
     FenceMeshSection_trans,
@@ -53,31 +48,10 @@ type WorkingGrid3dLayer = {
     ZIncreasingDownwards: boolean;
 } & Layer;
 
-export function Grid3D(props: Grid3DProps): JSX.Element {
+export function Grid3D(props: Grid3DProps): React.ReactNode {
     const { onHoveredMdChange } = props;
 
     const [hoveredMdPoint, setHoveredMdPoint] = React.useState<number[] | null>(null);
-    const [editPolyline, setEditPolyline] = React.useState<number[][]>([]);
-    const [prevEditCustomPolyline, setPrevCustomPolyline] = React.useState<number[][] | null>(null);
-    const [prevEditModeActive, setPrevEditModeActive] = React.useState<boolean>(false);
-    const [hoveredPolylineIndex, setHoveredPolylineIndex] = React.useState<number | null>(null);
-    const [selectedPolylineIndex, setSelectedPolylineIndex] = React.useState<number | null>(null);
-    const [userCameraInteractionActive, setUserCameraInteractionActive] = React.useState<boolean>(true);
-
-    if (!isEqual(props.editCustomPolyline, prevEditCustomPolyline)) {
-        setEditPolyline(props.editCustomPolyline ?? []);
-        setSelectedPolylineIndex(props.editCustomPolyline ? props.editCustomPolyline.length - 1 : null);
-        setPrevCustomPolyline(props.editCustomPolyline);
-    }
-
-    if (!isEqual(props.editModeActive, prevEditModeActive)) {
-        setPrevEditModeActive(props.editModeActive);
-        if (!props.editModeActive) {
-            setSelectedPolylineIndex(null);
-            setHoveredPolylineIndex(null);
-            setEditPolyline([]);
-        }
-    }
 
     const bounds: [number, number, number, number] | undefined = props.boundingBox3d
         ? [props.boundingBox3d.xmin, props.boundingBox3d.ymin, props.boundingBox3d.xmax, props.boundingBox3d.ymax]
@@ -93,13 +67,6 @@ export function Grid3D(props: Grid3DProps): JSX.Element {
               props.boundingBox3d.zmax,
           ]
         : [0, 0, 0, 100, 100, 100];
-
-    let zMid = 0;
-    let zExtension = 0;
-    if (props.boundingBox3d) {
-        zMid = -(props.boundingBox3d.zmin + (props.boundingBox3d.zmax - props.boundingBox3d.zmin) / 2);
-        zExtension = Math.abs(props.boundingBox3d.zmax - props.boundingBox3d.zmin) + 100;
-    }
 
     const colorTables = createContinuousColorScaleForMap(props.colorScale);
 
@@ -231,101 +198,7 @@ export function Grid3D(props: Grid3DProps): JSX.Element {
         layers.push(pointsLayer);
     }
 
-    const currentlyEditedPolylineData = makePolylineData(
-        editPolyline,
-        zMid,
-        zExtension,
-        selectedPolylineIndex,
-        hoveredPolylineIndex,
-        [255, 255, 255, 255]
-    );
-
-    const userPolylinePolygonsData = currentlyEditedPolylineData.polygonData;
-    const userPolylineColumnsData = currentlyEditedPolylineData.columnData;
-
-    const userPolylineLineLayer = new SolidPolygonLayer({
-        id: "user-polyline-line-layer",
-        data: userPolylinePolygonsData,
-        getPolygon: (d) => d.polygon,
-        getFillColor: (d) => d.color,
-        getElevation: zExtension,
-        getLineColor: [255, 255, 255],
-        getLineWidth: 20,
-        lineWidthMinPixels: 1,
-        extruded: true,
-    });
-    layers.push(userPolylineLineLayer);
-
-    const userPolylinePointLayer = new ColumnLayer({
-        id: "user-polyline-point-layer",
-        data: userPolylineColumnsData,
-        getElevation: zExtension,
-        getPosition: (d) => d.centroid,
-        getFillColor: (d) => d.color,
-        extruded: true,
-        radius: 50,
-        radiusUnits: "pixels",
-        pickable: true,
-        onHover(pickingInfo) {
-            if (!props.editModeActive) {
-                return;
-            }
-            if (pickingInfo.object && pickingInfo.object.index < editPolyline.length) {
-                setHoveredPolylineIndex(pickingInfo.object.index);
-            } else {
-                setHoveredPolylineIndex(null);
-            }
-        },
-        onClick(pickingInfo, event) {
-            if (!props.editModeActive) {
-                return;
-            }
-
-            if (pickingInfo.object && pickingInfo.object.index < editPolyline.length) {
-                setSelectedPolylineIndex(pickingInfo.object.index);
-                event.stopPropagation();
-                event.handled = true;
-            } else {
-                setSelectedPolylineIndex(null);
-            }
-        },
-        onDragStart(pickingInfo) {
-            if (!props.editModeActive) {
-                return;
-            }
-            if (pickingInfo.object && selectedPolylineIndex === pickingInfo.object.index) {
-                setUserCameraInteractionActive(false);
-            }
-        },
-        onDragEnd() {
-            setUserCameraInteractionActive(true);
-        },
-        onDrag(pickingInfo) {
-            if (!props.editModeActive) {
-                return;
-            }
-
-            if (pickingInfo.object) {
-                const index = pickingInfo.object.index;
-                if (!pickingInfo.coordinate) {
-                    return;
-                }
-                setEditPolyline((prev) => {
-                    const newPolyline = prev.reduce((acc, point, i) => {
-                        if (i === index && pickingInfo.coordinate) {
-                            return [...acc, [pickingInfo.coordinate[0], pickingInfo.coordinate[1]]];
-                        }
-                        return [...acc, point];
-                    }, [] as number[][]);
-
-                    props.onEditPolylineChange(newPolyline);
-                    return newPolyline;
-                });
-            }
-        },
-    });
-    layers.push(userPolylinePointLayer);
-
+    /*
     const handleMouseEvent = React.useCallback(
         function handleMouseEvent(event: MapMouseEvent) {
             if (event.type === "click" && props.editModeActive) {
@@ -411,88 +284,23 @@ export function Grid3D(props: Grid3DProps): JSX.Element {
             selectedPolylineIndex,
         ]
     );
+    */
 
-    React.useEffect(() => {
-        function handleKeyboardEvent(event: KeyboardEvent) {
-            if (!props.editModeActive) {
-                return;
-            }
-            if (event.key === "Delete" && selectedPolylineIndex !== null) {
-                setSelectedPolylineIndex((prev) => (prev === null || prev === 0 ? null : prev - 1));
-                setEditPolyline((prev) => {
-                    const newPolyline = prev.filter((_, i) => i !== selectedPolylineIndex);
-                    props.onEditPolylineChange(newPolyline);
-                    return newPolyline;
-                });
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyboardEvent);
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyboardEvent);
-        };
-    }, [selectedPolylineIndex, setEditPolyline, setSelectedPolylineIndex, props.editModeActive]);
+    if (!props.boundingBox3d) {
+        return null;
+    }
 
     return (
         <div className="relative w-full h-1/2">
-            <SubsurfaceViewerWithCameraState
-                id="subsurface-view"
-                userCameraInteractionActive={userCameraInteractionActive}
+            <SubsurfaceViewerWrapper
                 layers={layers}
-                bounds={bounds}
+                boundingBox={props.boundingBox3d}
                 colorTables={colorTables}
-                views={{
-                    layout: [1, 1],
-                    showLabel: false,
-                    viewports: [
-                        {
-                            id: "view_3d",
-                            isSync: true,
-                            show3D: true,
-                            layerIds: [
-                                "north-arrow-layer",
-                                "axes-layer",
-                                "wells-layer",
-                                "hovered-md-point-layer",
-                                "selected-well-layer",
-                                "grid-3d-layer",
-                                "grid-3d-intersection-layer",
-                                "user-polyline-point-layer",
-                                "user-polyline-line-layer",
-                            ],
-                        },
-                    ],
-                }}
-                onMouseEvent={handleMouseEvent}
+                show3D
+                enableIntersectionPolylineEditing={props.editModeActive}
             />
         </div>
     );
-}
-
-type SubsurfaceViewerWithCameraStateProps = SubsurfaceViewerProps & {
-    userCameraInteractionActive?: boolean;
-};
-
-function SubsurfaceViewerWithCameraState(props: SubsurfaceViewerWithCameraStateProps): React.ReactNode {
-    const [prevBounds, setPrevBounds] = React.useState<[number, number, number, number] | undefined>(undefined);
-    const [cameraPosition, setCameraPosition] = React.useState<ViewStateType | undefined>(undefined);
-
-    if (!isEqual(props.bounds, prevBounds)) {
-        setPrevBounds(props.bounds);
-        setCameraPosition(undefined);
-    }
-
-    const handleCameraChange = React.useCallback(
-        function handleCameraChange(viewport: ViewStateType): void {
-            if (props.userCameraInteractionActive || props.userCameraInteractionActive === undefined) {
-                setCameraPosition(viewport);
-            }
-        },
-        [props.userCameraInteractionActive]
-    );
-
-    return <SubsurfaceViewer {...props} cameraPosition={cameraPosition} getCameraPosition={handleCameraChange} />;
 }
 
 interface PolyDataVtk {
@@ -625,92 +433,4 @@ export function createContinuousColorScaleForMap(colorScale: ColorScale): colorT
     });
 
     return [{ name: "Continuous", discrete: false, colors: rgbArr }];
-}
-
-function makePolylineData(
-    polyline: number[][],
-    zMid: number,
-    zExtension: number,
-    selectedPolylineIndex: number | null,
-    hoveredPolylineIndex: number | null,
-    color: [number, number, number, number]
-): {
-    polygonData: { polygon: number[][]; color: number[] }[];
-    columnData: { index: number; centroid: number[]; color: number[] }[];
-} {
-    const polygonData: {
-        polygon: number[][];
-        color: number[];
-    }[] = [];
-
-    const columnData: {
-        index: number;
-        centroid: number[];
-        color: number[];
-    }[] = [];
-
-    const width = 10;
-    for (let i = 0; i < polyline.length; i++) {
-        const startPoint = polyline[i];
-        const endPoint = polyline[i + 1];
-
-        if (i < polyline.length - 1) {
-            const lineVector = [endPoint[0] - startPoint[0], endPoint[1] - startPoint[1], 0];
-            const zVector = [0, 0, 1];
-            const normalVector = [
-                lineVector[1] * zVector[2] - lineVector[2] * zVector[1],
-                lineVector[2] * zVector[0] - lineVector[0] * zVector[2],
-                lineVector[0] * zVector[1] - lineVector[1] * zVector[0],
-            ];
-            const normalizedNormalVector = [
-                normalVector[0] / Math.sqrt(normalVector[0] ** 2 + normalVector[1] ** 2 + normalVector[2] ** 2),
-                normalVector[1] / Math.sqrt(normalVector[0] ** 2 + normalVector[1] ** 2 + normalVector[2] ** 2),
-            ];
-
-            const point1 = [
-                startPoint[0] - (normalizedNormalVector[0] * width) / 2,
-                startPoint[1] - (normalizedNormalVector[1] * width) / 2,
-                zMid - zExtension / 2,
-            ];
-
-            const point2 = [
-                endPoint[0] - (normalizedNormalVector[0] * width) / 2,
-                endPoint[1] - (normalizedNormalVector[1] * width) / 2,
-                zMid - zExtension / 2,
-            ];
-
-            const point3 = [
-                endPoint[0] + (normalizedNormalVector[0] * width) / 2,
-                endPoint[1] + (normalizedNormalVector[1] * width) / 2,
-                zMid - zExtension / 2,
-            ];
-
-            const point4 = [
-                startPoint[0] + (normalizedNormalVector[0] * width) / 2,
-                startPoint[1] + (normalizedNormalVector[1] * width) / 2,
-                zMid - zExtension / 2,
-            ];
-
-            const polygon: number[][] = [point1, point2, point3, point4];
-            polygonData.push({ polygon, color: [color[0], color[1], color[2], color[3] / 2] });
-        }
-
-        let adjustedColor = color;
-        if (i === selectedPolylineIndex) {
-            if (i === 0 || i === polyline.length - 1) {
-                adjustedColor = [0, 255, 0, color[3]];
-            } else {
-                adjustedColor = [0, 0, 255, color[3]];
-            }
-        } else if (i === hoveredPolylineIndex) {
-            adjustedColor = [120, 120, 255, color[3]];
-        }
-        columnData.push({
-            index: i,
-            centroid: [startPoint[0], startPoint[1], zMid - zExtension / 2],
-            color: adjustedColor,
-        });
-    }
-
-    return { polygonData, columnData };
 }

@@ -2,9 +2,11 @@ import React from "react";
 
 import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
+import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dialog } from "@lib/components/Dialog";
@@ -33,6 +35,7 @@ import {
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
+    availableUserCreatedIntersectionPolylinesAtom,
     gridModelDimensionsAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
@@ -45,7 +48,6 @@ import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
     addCustomIntersectionPolylineEditModeActiveAtom,
     currentCustomIntersectionPolylineAtom,
-    customIntersectionPolylinesAtom,
     editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
@@ -96,9 +98,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedWellboreHeader = useAtomValue(selectedWellboreUuidAtom);
     const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
 
-    const [availableCustomIntersectionPolylines, setAvailableCustomIntersectionPolylines] = useAtom(
-        customIntersectionPolylinesAtom
-    );
+    const availableUserCreatedIntersectionPolylines = useAtomValue(availableUserCreatedIntersectionPolylinesAtom);
     const selectedCustomIntersectionPolylineId = useAtomValue(selectedCustomIntersectionPolylineIdAtom);
     const setSelectedCustomIntersectionPolylineId = useSetAtom(userSelectedCustomIntersectionPolylineIdAtom);
 
@@ -181,6 +181,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         polylineNameInputRef.current?.focus();
     }
 
+    /*
     function handleEditPolylineModeChange() {
         if (!polylineEditModeActive) {
             setPolylineEditModeActive(true);
@@ -202,6 +203,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setPolylineEditModeActive(false);
         setCurrentCustomIntersectionPolyline([]);
     }
+    */
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
         setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
@@ -213,7 +215,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             return;
         }
 
-        if (availableCustomIntersectionPolylines.some((el) => el.name === currentCustomPolylineName)) {
+        if (availableUserCreatedIntersectionPolylines.some((el) => el.name === currentCustomPolylineName)) {
             setCurrentCustomPolylineNameMessage("A polyline with this name already exists");
             return;
         }
@@ -225,10 +227,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             polyline: currentCustomIntersectionPolyline,
         };
         setSelectedCustomIntersectionPolylineId(uuid);
+        /*
         setAvailableCustomIntersectionPolylines([
             ...availableCustomIntersectionPolylines,
             newCustomIntersectionPolyline,
         ]);
+        */
         setPolylineAddModeActive(false);
         setPolylineEditModeActive(false);
         setCurrentCustomPolylineName("");
@@ -256,16 +260,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setCurrentCustomPolylineName(event.target.value);
     }
 
-    function handleRemoveCustomPolyline() {
-        setAvailableCustomIntersectionPolylines((prev) =>
-            prev.filter((el) => el.id !== selectedCustomIntersectionPolylineId)
-        );
-        setSelectedCustomIntersectionPolylineId(null);
-        setPolylineAddModeActive(false);
-        setPolylineEditModeActive(false);
-        setCurrentCustomIntersectionPolyline([]);
-    }
-
+    /*
     React.useEffect(() => {
         function handleKeyboardEvent(event: KeyboardEvent) {
             if (!polylineAddModeActive && !polylineEditModeActive) {
@@ -292,6 +287,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             document.removeEventListener("keydown", handleKeyboardEvent);
         };
     }, [polylineAddModeActive, polylineEditModeActive]);
+    */
 
     React.useEffect(
         function handleShowDialog() {
@@ -405,9 +401,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                         />
                         <TableSelect
                             options={makeCustomIntersectionPolylineOptions(
-                                availableCustomIntersectionPolylines,
+                                availableUserCreatedIntersectionPolylines,
                                 selectedCustomIntersectionPolylineId,
-                                <div className="flex items-center">
+                                <></>
+                                /*<div className="flex items-center">
                                     <div
                                         onClick={handleEditPolylineModeChange}
                                         className={resolveClassNames("p-1 hover:underline cursor-pointer", {
@@ -429,7 +426,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                     >
                                         <Delete fontSize="small" />
                                     </div>
-                                </div>
+                        </div>
+                        */
                             )}
                             value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
                             headerLabels={["Polyline name", "Actions"]}
@@ -548,7 +546,7 @@ function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[
 }
 
 function makeCustomIntersectionPolylineOptions(
-    polylines: CustomIntersectionPolyline[],
+    polylines: IntersectionPolyline[],
     selectedId: string | null,
     actions: React.ReactNode
 ): TableSelectOption[] {

@@ -4,6 +4,7 @@ import { Ensemble } from "./Ensemble";
 import { EnsembleIdent } from "./EnsembleIdent";
 import { EnsembleSet } from "./EnsembleSet";
 import { RealizationFilterSet } from "./RealizationFilterSet";
+import { UserCreatedItems } from "./UserCreatedItems";
 
 export type EnsembleRealizationFilterFunction = (ensembleIdent: EnsembleIdent) => readonly number[];
 
@@ -23,6 +24,7 @@ export class WorkbenchSession {
     private _subscribersMap: Map<keyof WorkbenchSessionEvent, Set<(payload: any) => void>> = new Map();
     protected _ensembleSet: EnsembleSet = new EnsembleSet([]);
     protected _realizationFilterSet = new RealizationFilterSet();
+    protected _userCreatedItems: UserCreatedItems = new UserCreatedItems();
 
     getEnsembleSet(): EnsembleSet {
         return this._ensembleSet;
@@ -30,6 +32,10 @@ export class WorkbenchSession {
 
     getRealizationFilterSet(): RealizationFilterSet {
         return this._realizationFilterSet;
+    }
+
+    getUserCreatedItems(): UserCreatedItems {
+        return this._userCreatedItems;
     }
 
     subscribe<T extends Exclude<WorkbenchSessionEvent, keyof WorkbenchSessionPayloads>>(

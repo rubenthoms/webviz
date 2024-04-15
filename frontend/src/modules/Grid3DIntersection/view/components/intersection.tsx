@@ -112,23 +112,25 @@ export function Intersection(props: IntersectionProps): JSX.Element {
             hasShoe: false,
         }));
 
-        layers.push({
-            id: "schematic",
-            type: LayerType.SCHEMATIC,
-            hoverable: true,
-            options: {
-                data: {
-                    holeSizes: [],
-                    casings,
-                    cements: [],
-                    completion: [],
-                    pAndA: [],
-                    symbols: {},
-                    perforations: [],
+        if (props.intersectionType === IntersectionType.WELLBORE) {
+            layers.push({
+                id: "schematic",
+                type: LayerType.SCHEMATIC,
+                hoverable: true,
+                options: {
+                    data: {
+                        holeSizes: [],
+                        casings,
+                        cements: [],
+                        completion: [],
+                        pAndA: [],
+                        symbols: {},
+                        perforations: [],
+                    },
+                    order: 7,
                 },
-                order: 7,
-            },
-        });
+            });
+        }
     }
 
     const viewport: [number, number, number] = [0, 0, 0];

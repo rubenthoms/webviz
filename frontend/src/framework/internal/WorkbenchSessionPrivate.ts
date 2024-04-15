@@ -1,8 +1,9 @@
 import { AtomStoreMaster } from "@framework/AtomStoreMaster";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { UserCreatedItems } from "@framework/UserCreatedItems";
 
 import { EnsembleSet } from "../EnsembleSet";
-import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "../GlobalAtoms";
+import { EnsembleSetAtom, RealizationFilterSetAtom, UserCreatedItemsAtom } from "../GlobalAtoms";
 import { WorkbenchSession, WorkbenchSessionEvent } from "../WorkbenchSession";
 
 export class WorkbenchSessionPrivate extends WorkbenchSession {
@@ -11,6 +12,8 @@ export class WorkbenchSessionPrivate extends WorkbenchSession {
     constructor(atomStoreMaster: AtomStoreMaster) {
         super();
         this._atomStoreMaster = atomStoreMaster;
+        this._atomStoreMaster.setAtomValue(UserCreatedItemsAtom, this._userCreatedItems);
+        this._atomStoreMaster.setAtomValue(RealizationFilterSetAtom, this._realizationFilterSet);
     }
 
     setEnsembleSetLoadingState(isLoading: boolean): void {
@@ -21,11 +24,6 @@ export class WorkbenchSessionPrivate extends WorkbenchSession {
         this._ensembleSet = newEnsembleSet;
         this._realizationFilterSet.synchronizeWithEnsembleSet(this._ensembleSet);
         this._atomStoreMaster.setAtomValue(EnsembleSetAtom, newEnsembleSet);
-        this._atomStoreMaster.setAtomValue(
-            EnsembleRealizationFilterFunctionAtom,
-            () => (ensembleIdent: EnsembleIdent) =>
-                this._realizationFilterSet.getRealizationFilterForEnsembleIdent(ensembleIdent).getFilteredRealizations()
-        );
         this.notifySubscribers(WorkbenchSessionEvent.EnsembleSetChanged);
         this.notifySubscribers(WorkbenchSessionEvent.RealizationFilterSetChanged);
     }

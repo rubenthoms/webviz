@@ -1,7 +1,6 @@
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
 import {
-    currentCustomIntersectionPolylineAtom,
-    customIntersectionPolylinesAtom,
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
     selectedWellboreUuidAtom,
@@ -14,7 +13,7 @@ import { fieldWellboreTrajectoriesQueryAtom } from "./queryAtoms";
 
 export const selectedCustomIntersectionPolylineAtom = atom((get) => {
     const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
-    const customIntersectionPolylines = get(customIntersectionPolylinesAtom);
+    const customIntersectionPolylines = get(UserCreatedItemsAtom).getIntersectionPolylines().getPolylines();
 
     return customIntersectionPolylines.find((el) => el.id === customIntersectionPolylineId);
 });
@@ -51,11 +50,11 @@ export const intersectionReferenceSystemAtom = atom((get) => {
             return referenceSystem;
         }
     } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && customIntersectionPolyline) {
-        if (customIntersectionPolyline.polyline.length < 2) {
+        if (customIntersectionPolyline.points.length < 2) {
             return null;
         }
         const referenceSystem = new IntersectionReferenceSystem(
-            customIntersectionPolyline.polyline.map((point) => [point[0], point[1], 0])
+            customIntersectionPolyline.points.map((point) => [point[0], point[1], 0])
         );
         referenceSystem.offset = 0;
 

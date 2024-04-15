@@ -83,7 +83,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 polylineUtmXy.push(point[0], point[1]);
             }
         } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {
-            for (const point of selectedCustomIntersectionPolyline.polyline) {
+            for (const point of selectedCustomIntersectionPolyline.points) {
                 polylineUtmXy.push(point[0], point[1]);
             }
         }
@@ -182,9 +182,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 fieldWellboreTrajectoriesData={fieldWellboreTrajectoriesQuery.data ?? null}
                 selectedWellboreUuid={wellboreUuid}
                 polylineIntersectionData={polylineIntersectionQuery.data ?? null}
-                editCustomPolyline={
-                    editPolylineModeActive ? selectedCustomIntersectionPolyline?.polyline ?? null : null
-                }
+                editCustomPolyline={editPolylineModeActive ? selectedCustomIntersectionPolyline?.points ?? null : null}
                 boundingBox3d={gridModelBoundingBox3d}
                 colorScale={colorScale}
                 showGridLines={showGridLines}

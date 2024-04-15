@@ -1,5 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { EnsembleSetAtom } from "@framework/GlobalAtoms";
+import { EnsembleSetAtom, UserCreatedItemsAtom } from "@framework/GlobalAtoms";
 
 import { atom } from "jotai";
 
@@ -46,10 +46,9 @@ export const editCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(fa
 
 export const currentCustomIntersectionPolylineAtom = atom<number[][]>([]);
 
-export const customIntersectionPolylinesAtom = atom<CustomIntersectionPolyline[]>([]);
 export const selectedCustomIntersectionPolylineIdAtom = atom((get) => {
     const userSelectedCustomIntersectionPolylineId = get(userSelectedCustomIntersectionPolylineIdAtom);
-    const customIntersectionPolylines = get(customIntersectionPolylinesAtom);
+    const customIntersectionPolylines = get(UserCreatedItemsAtom).getIntersectionPolylines().getPolylines();
 
     if (!customIntersectionPolylines.length) {
         return null;

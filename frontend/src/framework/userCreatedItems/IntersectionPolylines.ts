@@ -10,8 +10,13 @@ export type IntersectionPolyline = {
 
 export type IntersectionPolylineWithoutId = Omit<IntersectionPolyline, "id">;
 
+export enum IntersectionPolylinesEvent {
+    CHANGE = "IntersectionPolylinesChange",
+}
+
 export class IntersectionPolylines implements UserCreatedItemSet {
     private _polylines: IntersectionPolyline[] = [];
+    private _subscribersMap: Map<IntersectionPolylinesEvent, Set<() => void>> = new Map();
 
     serialize(): string {
         return JSON.stringify(this._polylines);
@@ -19,6 +24,7 @@ export class IntersectionPolylines implements UserCreatedItemSet {
 
     populateFromData(data: string): void {
         this._polylines = JSON.parse(data);
+        this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 
     add(polyline: IntersectionPolylineWithoutId): void {
@@ -27,10 +33,12 @@ export class IntersectionPolylines implements UserCreatedItemSet {
             id,
             ...polyline,
         });
+        this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 
     remove(id: string): void {
         this._polylines = this._polylines.filter((polyline) => polyline.id !== id);
+        this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 
     getPolylines(): IntersectionPolyline[] {
@@ -47,5 +55,24 @@ export class IntersectionPolylines implements UserCreatedItemSet {
             id,
             ...polyline,
         };
+        this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
+    }
+
+    subscribe(event: IntersectionPolylinesEvent, cb: () => void): () => void {
+        const subscribersSet = this._subscribersMap.get(event) || new Set();
+        subscribersSet.add(cb);
+        this._subscribersMap.set(event, subscribersSet);
+        return () => {
+            subscribersSet.delete(cb);
+        };
+    }
+
+    private notifySubscribers(event: IntersectionPolylinesEvent): void {
+        const subscribersSet = this._subscribersMap.get(event);
+        if (!subscribersSet) return;
+
+        for (const callbackFn of subscribersSet) {
+            callbackFn();
+        }
     }
 }

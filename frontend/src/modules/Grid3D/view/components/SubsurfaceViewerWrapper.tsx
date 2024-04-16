@@ -8,7 +8,6 @@ import { IconButton } from "@lib/components/IconButton";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { Select, SelectOption } from "@lib/components/Select";
-import { ToggleButton } from "@lib/components/ToggleButton";
 import { ArrowBack, ArrowForward, Delete, Polyline, Save } from "@mui/icons-material";
 import { SubsurfaceViewerProps, ViewStateType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
@@ -39,16 +38,10 @@ export type SubsurfaceViewerWrapperProps = {
     colorTables: colorTablesArray;
     enableIntersectionPolylineEditing?: boolean;
     onAddIntersectionPolyline?: (intersectionPolyline: IntersectionPolylineWithoutId) => void;
-} & (
-    | {
-          onIntersectionPolylineChange: (intersectionPolyline: IntersectionPolyline) => void;
-          intersectionPolyline: IntersectionPolyline;
-      }
-    | {
-          onIntersectionPolylineChange?: never;
-          intersectionPolyline?: never;
-      }
-);
+    onIntersectionPolylineChange?: (intersectionPolyline: IntersectionPolyline) => void;
+    onIntersectionPolylineEditCancel?: () => void;
+    intersectionPolyline?: IntersectionPolyline;
+};
 
 type IntersectionZValues = {
     zMid: number;
@@ -65,8 +58,12 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const [selectedPolylinePointIndex, setSelectedPolylinePointIndex] = React.useState<number | null>(null);
     const [hoveredPolylinePointIndex, setHoveredPolylinePointIndex] = React.useState<number | null>(null);
     const [userCameraInteractionActive, setUserCameraInteractionActive] = React.useState<boolean>(true);
+    const [hoverPreviewPoint, setHoverPreviewPoint] = React.useState<number[] | null>(null);
 
     const [prevBoundingBox, setPrevBoundingBox] = React.useState<BoundingBox2D | BoundingBox3D | undefined>(undefined);
+    const [prevIntersectionPolyline, setPrevIntersectionPolyline] = React.useState<IntersectionPolyline | undefined>(
+        undefined
+    );
 
     const internalRef = React.useRef<HTMLDivElement>(null);
 
@@ -84,6 +81,21 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             zMid,
             zExtension,
         });
+    }
+
+    if (!isEqual(props.intersectionPolyline, prevIntersectionPolyline)) {
+        setPrevIntersectionPolyline(props.intersectionPolyline);
+        if (props.intersectionPolyline) {
+            setCurrentlyEditedPolyline(props.intersectionPolyline.points);
+            setPolylineEditingActive(true);
+            setPolylineEditPointsModusActive(true);
+            setSelectedPolylinePointIndex(0);
+        } else {
+            setPolylineEditingActive(false);
+            setPolylineEditPointsModusActive(false);
+            setCurrentlyEditedPolyline([]);
+            setSelectedPolylinePointIndex(null);
+        }
     }
 
     const layers: Layer[] = [];
@@ -149,6 +161,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         }
 
         function handleDragStart(pickingInfo: PickingInfo): void {
+            setHoverPreviewPoint(null);
             if (!polylineEditPointsModusActive) {
                 return;
             }
@@ -204,6 +217,28 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         });
         layers.push(userPolylinePointLayer);
         layerIds.push(userPolylinePointLayer.id);
+
+        const previewData: { centroid: number[]; color: [number, number, number, number] }[] = [];
+        if (hoverPreviewPoint) {
+            previewData.push({
+                centroid: hoverPreviewPoint,
+                color: [255, 255, 255, 100],
+            });
+        }
+
+        const userPolylineHoverPointLayer = new ColumnLayer({
+            id: "user-polyline-hover-point-layer",
+            data: previewData,
+            getElevation: zExtension,
+            getPosition: (d) => d.centroid,
+            getFillColor: (d) => d.color,
+            extruded: true,
+            radius: 50,
+            radiusUnits: "pixels",
+            pickable: true,
+        });
+        layers.push(userPolylineHoverPointLayer);
+        layerIds.push(userPolylineHoverPointLayer.id);
     }
 
     function handleMouseClick(event: MapMouseEvent): void {
@@ -236,14 +271,43 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             } else {
                 newPolyline = prev;
             }
-            // props.onEditPolylineChange(newPolyline);
             return newPolyline;
         });
+
+        setHoverPreviewPoint(null);
+    }
+
+    function handleMouseHover(event: MapMouseEvent): void {
+        if (!polylineEditPointsModusActive) {
+            setHoverPreviewPoint(null);
+            return;
+        }
+
+        if (event.x === undefined || event.y === undefined) {
+            setHoverPreviewPoint(null);
+            return;
+        }
+
+        if (
+            selectedPolylinePointIndex !== null &&
+            selectedPolylinePointIndex !== 0 &&
+            selectedPolylinePointIndex !== currentlyEditedPolyline.length - 1
+        ) {
+            setHoverPreviewPoint(null);
+            return;
+        }
+
+        setHoverPreviewPoint([event.x, event.y, intersectionZValues?.zMid ?? 0]);
     }
 
     function handleMouseEvent(event: MapMouseEvent): void {
         if (event.type === "click") {
             handleMouseClick(event);
+            return;
+        }
+        if (event.type === "hover") {
+            handleMouseHover(event);
+            return;
         }
     }
 
@@ -252,16 +316,29 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         setPolylineEditPointsModusActive(false);
         setCurrentlyEditedPolyline([]);
         setSelectedPolylinePointIndex(null);
+        if (props.onIntersectionPolylineEditCancel) {
+            props.onIntersectionPolylineEditCancel();
+        }
     }
 
     function handlePolylineEditingFinish(name: string): void {
-        if (props.onAddIntersectionPolyline && currentlyEditedPolyline.length > 1) {
-            props.onAddIntersectionPolyline({
-                name,
-                points: currentlyEditedPolyline,
-            });
+        if (props.intersectionPolyline) {
+            if (props.onIntersectionPolylineChange && currentlyEditedPolyline.length > 1) {
+                props.onIntersectionPolylineChange({
+                    ...props.intersectionPolyline,
+                    name,
+                    points: currentlyEditedPolyline,
+                });
+            }
+        } else {
+            if (props.onAddIntersectionPolyline && currentlyEditedPolyline.length > 1) {
+                props.onAddIntersectionPolyline({
+                    name,
+                    points: currentlyEditedPolyline,
+                });
+            }
+            handlePolylineEditingCancel();
         }
-        handlePolylineEditingCancel();
     }
 
     const handleDeleteCurrentlySelectedPoint = React.useCallback(function handleDeleteCurrentlySelectedPoint() {
@@ -334,12 +411,17 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     return (
         <div ref={internalRef} className="w-full h-full relative">
             <SubsurfaceViewerToolbar
-                visible={!polylineEditingActive && props.enableIntersectionPolylineEditing !== undefined}
+                visible={
+                    props.intersectionPolyline === undefined &&
+                    !polylineEditingActive &&
+                    props.enableIntersectionPolylineEditing !== undefined
+                }
                 onAddPolyline={handleAddPolyline}
             />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}
+                    currentlyEditedPolylineName={props.intersectionPolyline?.name}
                     selectedPolylineIndex={selectedPolylinePointIndex}
                     hoveredPolylineIndex={hoveredPolylinePointIndex}
                     onPolylinePointSelectionChange={setSelectedPolylinePointIndex}
@@ -401,6 +483,7 @@ export function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): Re
 
 type PolylineEditingPanelProps = {
     currentlyEditedPolyline: number[][];
+    currentlyEditedPolylineName?: string;
     selectedPolylineIndex: number | null;
     hoveredPolylineIndex: number | null;
     onPolylinePointSelectionChange: (index: number | null) => void;
@@ -412,7 +495,7 @@ type PolylineEditingPanelProps = {
 
 export function PolylineEditingPanel(props: PolylineEditingPanelProps): React.ReactNode {
     const [pointEditingFinished, setPointEditingFinished] = React.useState<boolean>(false);
-    const [polylineName, setPolylineName] = React.useState<string>("");
+    const [polylineName, setPolylineName] = React.useState<string>(props.currentlyEditedPolylineName ?? "");
 
     function handlePolylinePointSelectionChange(values: string[]): void {
         if (values.length === 0) {
@@ -643,8 +726,14 @@ function makePolylineData(
         if (i === selectedPolylineIndex) {
             if (i === 0 || i === polyline.length - 1) {
                 adjustedColor = [0, 255, 0, color[3]];
+                if (i === hoveredPolylineIndex) {
+                    adjustedColor = [200, 255, 200, color[3]];
+                }
             } else {
-                adjustedColor = [0, 0, 255, color[3]];
+                adjustedColor = [60, 60, 255, color[3]];
+                if (i === hoveredPolylineIndex) {
+                    adjustedColor = [120, 120, 255, color[3]];
+                }
             }
         } else if (i === hoveredPolylineIndex) {
             adjustedColor = [120, 120, 255, color[3]];

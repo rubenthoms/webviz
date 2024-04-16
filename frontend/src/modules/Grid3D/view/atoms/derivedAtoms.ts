@@ -21,8 +21,13 @@ export const selectedCustomIntersectionPolylineAtom = atom((get) => {
 export const intersectionReferenceSystemAtom = atom((get) => {
     const fieldWellboreTrajectories = get(fieldWellboreTrajectoriesQueryAtom);
     const wellboreUuid = get(selectedWellboreUuidAtom);
+    const userCreatedItems = get(UserCreatedItemsAtom);
+    const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
 
-    const customIntersectionPolyline = get(selectedCustomIntersectionPolylineAtom);
+    const customIntersectionPolyline = userCreatedItems
+        .getIntersectionPolylines()
+        .getPolyline(customIntersectionPolylineId ?? "");
+
     const intersectionType = get(intersectionTypeAtom);
 
     if (intersectionType === IntersectionType.WELLBORE) {

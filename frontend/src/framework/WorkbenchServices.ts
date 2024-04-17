@@ -3,8 +3,9 @@ import React from "react";
 import { isEqual } from "lodash";
 
 import { EnsembleIdent } from "./EnsembleIdent";
-import { Wellbore } from "./Wellbore";
 import { Workbench } from "./Workbench";
+import { Intersection } from "./types/intersection";
+import { Wellbore } from "./types/wellbore";
 
 export type NavigatorTopicDefinitions = {
     "navigator.dummyPlaceholder": string;
@@ -26,6 +27,7 @@ export type GlobalTopicDefinitions = {
         rotationOrbit: number;
     };
     "global.syncValue.wellBore": Wellbore;
+    "global.intersection": Intersection;
 };
 
 export type AllTopicDefinitions = NavigatorTopicDefinitions & GlobalTopicDefinitions;

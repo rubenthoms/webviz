@@ -5,6 +5,7 @@ import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
+import { IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
@@ -35,7 +36,6 @@ import {
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { IntersectionType } from "../typesAndEnums";
 
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): React.ReactNode {
     const statusWriter = useViewStatusWriter(props.viewContext);
@@ -64,11 +64,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const [editPolylineModeActive, setEditPolylineModeActive] = useAtom(
         editCustomIntersectionPolylineEditModeActiveAtom
     );
-    const intersectionType = useAtomValue(intersectionTypeAtom);
+    const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
     const [hoveredMd3dGrid, setHoveredMd3dGrid] = React.useState<number | null>(null);
-    const selectedCustomIntersectionPolylineId = useAtomValue(userSelectedCustomIntersectionPolylineIdAtom);
+    const [selectedCustomIntersectionPolylineId, setSelectedCustomIntersectionPolylineId] = useAtom(
+        userSelectedCustomIntersectionPolylineIdAtom
+    );
 
     const fieldWellboreTrajectoriesQuery = useFieldWellboreTrajectoriesQuery(ensembleIdent?.getCaseUuid() ?? undefined);
 
@@ -209,7 +211,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         intersectionType === IntersectionType.WELLBORE ? intersectionExtensionLength : 0;
 
     function handleAddPolyline(polyline: IntersectionPolylineWithoutId) {
-        intersectionPolylines.add(polyline);
+        const id = intersectionPolylines.add(polyline);
+        setSelectedCustomIntersectionPolylineId(id);
+        setIntersectionType(IntersectionType.CUSTOM_POLYLINE);
     }
 
     function handlePolylineChange(polyline: IntersectionPolyline) {
@@ -252,7 +256,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     }
 
     if (fieldWellboreTrajectoriesQuery.data) {
-        layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, wellboreUuid));
+        const maybeWellboreUuid = intersectionType === IntersectionType.WELLBORE ? wellboreUuid : null;
+        layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, maybeWellboreUuid));
     }
 
     return (
@@ -266,6 +271,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 onAddIntersectionPolyline={handleAddPolyline}
                 intersectionPolyline={editPolylineModeActive ? customIntersectionPolyline : undefined}
                 onIntersectionPolylineChange={handlePolylineChange}
+                onIntersectionPolylineEditCancel={handleEditPolylineCancel}
             />
         </div>
     );

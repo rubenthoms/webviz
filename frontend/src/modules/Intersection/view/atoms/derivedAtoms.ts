@@ -1,40 +1,36 @@
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
-import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
+import { IntersectionType } from "@framework/types/intersection";
+import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import {
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
-    selectedWellboreUuidAtom,
-} from "@modules/Grid3D/sharedAtoms/sharedAtoms";
-import { IntersectionType } from "@modules/Grid3D/typesAndEnums";
+} from "@modules/Intersection/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
 
-import { fieldWellboreTrajectoriesQueryAtom } from "./queryAtoms";
+import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
 
 export const selectedCustomIntersectionPolylineAtom = atom((get) => {
     const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
-    const customIntersectionPolylines = get(UserCreatedItemsAtom).getIntersectionPolylines().getPolylines();
+    const customIntersectionPolylines = get(IntersectionPolylinesAtom);
 
     return customIntersectionPolylines.find((el) => el.id === customIntersectionPolylineId);
 });
 
 export const intersectionReferenceSystemAtom = atom((get) => {
-    const fieldWellboreTrajectories = get(fieldWellboreTrajectoriesQueryAtom);
-    const wellboreUuid = get(selectedWellboreUuidAtom);
+    const wellboreTrajectoryQuery = get(wellboreTrajectoryQueryAtom);
 
     const customIntersectionPolyline = get(selectedCustomIntersectionPolylineAtom);
     const intersectionType = get(intersectionTypeAtom);
 
     if (intersectionType === IntersectionType.WELLBORE) {
-        if (!fieldWellboreTrajectories.data || !wellboreUuid) {
+        if (!wellboreTrajectoryQuery.data) {
             return null;
         }
 
-        const wellboreTrajectory = fieldWellboreTrajectories.data.find(
-            (wellbore) => wellbore.wellbore_uuid === wellboreUuid
-        );
+        const wellboreTrajectory = wellboreTrajectoryQuery.data;
 
-        if (wellboreTrajectory) {
+        if (wellboreTrajectoryQuery) {
             const path: number[][] = [];
             for (const [index, northing] of wellboreTrajectory.northing_arr.entries()) {
                 const easting = wellboreTrajectory.easting_arr[index];

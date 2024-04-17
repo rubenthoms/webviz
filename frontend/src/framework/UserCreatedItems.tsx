@@ -17,8 +17,8 @@ export class UserCreatedItems {
     private _intersectionPolylines: IntersectionPolylines;
     private _subscribersMap: Map<UserCreatedItemsEvent, Set<() => void>> = new Map();
 
-    constructor() {
-        this._intersectionPolylines = new IntersectionPolylines();
+    constructor(atomStoreMaster: AtomStoreMaster) {
+        this._intersectionPolylines = new IntersectionPolylines(atomStoreMaster);
         this._intersectionPolylines.subscribe(IntersectionPolylinesEvent.CHANGE, () => {
             this.notifySubscribers(UserCreatedItemsEvent.INTERSECTION_POLYLINES_CHANGE);
         });

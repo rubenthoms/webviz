@@ -1,11 +1,11 @@
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
-import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
+import { IntersectionType } from "@framework/types/intersection";
+import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import {
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
     selectedWellboreUuidAtom,
 } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
-import { IntersectionType } from "@modules/Grid3D/typesAndEnums";
 
 import { atom } from "jotai";
 
@@ -13,7 +13,7 @@ import { fieldWellboreTrajectoriesQueryAtom } from "./queryAtoms";
 
 export const selectedCustomIntersectionPolylineAtom = atom((get) => {
     const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
-    const customIntersectionPolylines = get(UserCreatedItemsAtom).getIntersectionPolylines().getPolylines();
+    const customIntersectionPolylines = get(IntersectionPolylinesAtom);
 
     return customIntersectionPolylines.find((el) => el.id === customIntersectionPolylineId);
 });
@@ -21,12 +21,10 @@ export const selectedCustomIntersectionPolylineAtom = atom((get) => {
 export const intersectionReferenceSystemAtom = atom((get) => {
     const fieldWellboreTrajectories = get(fieldWellboreTrajectoriesQueryAtom);
     const wellboreUuid = get(selectedWellboreUuidAtom);
-    const userCreatedItems = get(UserCreatedItemsAtom);
+    const customIntersectionPolylines = get(IntersectionPolylinesAtom);
     const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
 
-    const customIntersectionPolyline = userCreatedItems
-        .getIntersectionPolylines()
-        .getPolyline(customIntersectionPolylineId ?? "");
+    const customIntersectionPolyline = customIntersectionPolylines.find((el) => el.id === customIntersectionPolylineId);
 
     const intersectionType = get(intersectionTypeAtom);
 

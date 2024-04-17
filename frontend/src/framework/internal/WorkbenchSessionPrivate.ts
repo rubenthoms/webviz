@@ -3,16 +3,15 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { UserCreatedItems } from "@framework/UserCreatedItems";
 
 import { EnsembleSet } from "../EnsembleSet";
-import { EnsembleSetAtom, RealizationFilterSetAtom, UserCreatedItemsAtom } from "../GlobalAtoms";
+import { EnsembleSetAtom, RealizationFilterSetAtom } from "../GlobalAtoms";
 import { WorkbenchSession, WorkbenchSessionEvent } from "../WorkbenchSession";
 
 export class WorkbenchSessionPrivate extends WorkbenchSession {
     private _atomStoreMaster: AtomStoreMaster;
 
     constructor(atomStoreMaster: AtomStoreMaster) {
-        super();
+        super(atomStoreMaster);
         this._atomStoreMaster = atomStoreMaster;
-        this._atomStoreMaster.setAtomValue(UserCreatedItemsAtom, this._userCreatedItems);
         this._atomStoreMaster.setAtomValue(RealizationFilterSetAtom, this._realizationFilterSet);
     }
 

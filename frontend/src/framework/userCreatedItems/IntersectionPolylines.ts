@@ -1,5 +1,7 @@
+import { AtomStoreMaster } from "@framework/AtomStoreMaster";
 import { UserCreatedItemSet } from "@framework/UserCreatedItems";
 
+import { atom } from "jotai";
 import { v4 } from "uuid";
 
 export type IntersectionPolyline = {
@@ -15,8 +17,13 @@ export enum IntersectionPolylinesEvent {
 }
 
 export class IntersectionPolylines implements UserCreatedItemSet {
+    private _atomStoreMaster: AtomStoreMaster;
     private _polylines: IntersectionPolyline[] = [];
     private _subscribersMap: Map<IntersectionPolylinesEvent, Set<() => void>> = new Map();
+
+    constructor(atomStoreMaster: AtomStoreMaster) {
+        this._atomStoreMaster = atomStoreMaster;
+    }
 
     serialize(): string {
         return JSON.stringify(this._polylines);
@@ -27,13 +34,18 @@ export class IntersectionPolylines implements UserCreatedItemSet {
         this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 
-    add(polyline: IntersectionPolylineWithoutId): void {
+    /*
+        Adds a new polyline to the set of polylines and returns the id of the newly added polyline.
+    */
+    add(polyline: IntersectionPolylineWithoutId): string {
         const id = v4();
         this._polylines.push({
             id,
             ...polyline,
         });
         this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
+
+        return id;
     }
 
     remove(id: string): void {
@@ -74,5 +86,9 @@ export class IntersectionPolylines implements UserCreatedItemSet {
         for (const callbackFn of subscribersSet) {
             callbackFn();
         }
+
+        this._atomStoreMaster.setAtomValue(IntersectionPolylinesAtom, this._polylines);
     }
 }
+
+export const IntersectionPolylinesAtom = atom<IntersectionPolyline[]>([]);

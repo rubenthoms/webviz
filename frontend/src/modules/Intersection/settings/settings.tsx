@@ -2,10 +2,11 @@ import React from "react";
 
 import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
+import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
+import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
@@ -18,10 +19,9 @@ import { Radio } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
-import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { Check, Delete, Edit } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { isEqual } from "lodash";
 import { v4 } from "uuid";
 
 import {
@@ -55,7 +55,7 @@ import {
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { CustomIntersectionPolyline, IntersectionType } from "../typesAndEnums";
+import { CustomIntersectionPolyline } from "../typesAndEnums";
 import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
@@ -70,6 +70,14 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [polylineEditModeActive, setPolylineEditModeActive] = useAtom(
         editCustomIntersectionPolylineEditModeActiveAtom
     );
+
+    const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
+
+    const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
+    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
+
+    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.intersection");
+
     const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
@@ -113,6 +121,19 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     const polylineNameInputRef = React.useRef<HTMLInputElement>(null);
 
+    if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
+        setPrevSyncedIntersection(syncedIntersection);
+        if (syncedIntersection) {
+            setIntersectionType(syncedIntersection.type);
+
+            if (syncedIntersection.type === IntersectionType.WELLBORE) {
+                setSelectedWellboreHeader(syncedIntersection.uuid);
+            } else if (syncedIntersection.type === IntersectionType.CUSTOM_POLYLINE) {
+                setSelectedCustomIntersectionPolylineId(syncedIntersection.uuid);
+            }
+        }
+    }
+
     let gridModelErrorMessage = "";
     if (gridModelInfos.isError) {
         statusWriter.addError("Failed to load grid model infos");
@@ -147,6 +168,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleWellHeaderSelectionChange(wellHeader: string[]) {
         setSelectedWellboreHeader(wellHeader.at(0) ?? null);
+        const uuid = wellHeader.at(0);
+        const intersection: Intersection = {
+            type: IntersectionType.WELLBORE,
+            uuid: uuid ?? "",
+        };
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
     }
 
     function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -167,18 +194,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleIntersectionTypeChange(type: IntersectionType) {
         setIntersectionType(type);
-    }
-
-    function handleAddPolylineModeChange() {
-        if (!polylineAddModeActive) {
-            setCurrentCustomIntersectionPolyline([]);
-            setPolylineAddModeActive(true);
-            return;
-        }
-
-        setPolylineAddModeActive(false);
-        setShowDialog(true);
-        polylineNameInputRef.current?.focus();
+        const uuid = type === IntersectionType.WELLBORE ? selectedWellboreHeader : selectedCustomIntersectionPolylineId;
+        const intersection: Intersection = {
+            type: type,
+            uuid: uuid ?? "",
+        };
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
     }
 
     /*
@@ -207,6 +228,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
         setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
+        const uuid = customPolylineId.at(0) ?? null;
+        const intersection: Intersection = {
+            type: IntersectionType.CUSTOM_POLYLINE,
+            uuid: uuid ?? "",
+        };
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
     }
 
     function maybeSaveAndApplyCustomIntersectionPolyline() {
@@ -404,30 +431,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 availableUserCreatedIntersectionPolylines,
                                 selectedCustomIntersectionPolylineId,
                                 <></>
-                                /*<div className="flex items-center">
-                                    <div
-                                        onClick={handleEditPolylineModeChange}
-                                        className={resolveClassNames("p-1 hover:underline cursor-pointer", {
-                                            "hover:text-blue-200": !polylineEditModeActive,
-                                            "hover:text-green-400": polylineEditModeActive,
-                                        })}
-                                        title={polylineEditModeActive ? "Finish editing polyline" : "Edit polyline"}
-                                    >
-                                        {polylineEditModeActive ? (
-                                            <Check fontSize="small" />
-                                        ) : (
-                                            <Edit fontSize="small" />
-                                        )}
-                                    </div>
-                                    <div
-                                        onClick={handleRemoveCustomPolyline}
-                                        className="p-1 hover:underline cursor-pointer hover:text-red-400"
-                                        title="Remove polyline"
-                                    >
-                                        <Delete fontSize="small" />
-                                    </div>
-                        </div>
-                        */
                             )}
                             value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
                             headerLabels={["Polyline name", "Actions"]}
@@ -436,15 +439,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             columnSizesInPercent={[80, 20]}
                             disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
                         />
-                        <Button
-                            onClick={handleAddPolylineModeChange}
-                            className={resolveClassNames("text-xs", {
-                                "bg-blue-800 text-white": polylineAddModeActive,
-                            })}
-                            variant="contained"
-                        >
-                            {polylineAddModeActive ? "Finish adding new polyline" : "Start adding new polyline"}
-                        </Button>
                     </div>
                 </div>
             </CollapsibleGroup>

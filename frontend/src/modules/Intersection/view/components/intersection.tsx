@@ -2,8 +2,11 @@ import React from "react";
 
 import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { Button } from "@lib/components/Button";
+import { ButtonProps } from "@lib/components/Button/button";
+import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { ColorScale } from "@lib/utils/ColorScale";
-import { IntersectionType } from "@modules/Grid3D/typesAndEnums";
+import { IntersectionType } from "@modules/Intersection/typesAndEnums";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -16,6 +19,7 @@ import {
     getAdditionalInformationFromReadoutItem,
     getLabelFromLayerData,
 } from "@modules/_shared/components/EsvIntersection/utils/readoutItemUtils";
+import { Add, FilterCenterFocus, Remove } from "@mui/icons-material";
 
 import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 
@@ -26,17 +30,18 @@ export type IntersectionProps = {
     gridBoundingBox3d: BoundingBox3d_api | null;
     colorScale: ColorScale;
     showGridLines: boolean;
-    zFactor: number;
     intersectionExtensionLength: number;
     hoveredMd: number | null;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
     intersectionType: IntersectionType;
 };
 
-export function Intersection(props: IntersectionProps): JSX.Element {
+export function Intersection(props: IntersectionProps): React.ReactNode {
     const { onReadout } = props;
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
+    const [verticalScale, setVerticalScale] = React.useState<number>(1);
+
     const layers: LayerItem[] = [];
 
     if (props.intersectionType === IntersectionType.WELLBORE) {
@@ -165,11 +170,19 @@ export function Intersection(props: IntersectionProps): JSX.Element {
         });
     }
 
+    function handleVerticalScaleIncrease() {
+        setVerticalScale((prev) => prev + 0.1);
+    }
+
+    function handleVerticalScaleDecrease() {
+        setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
+    }
+
     return (
-        <div className="relative w-full h-1/2">
+        <div className="relative h-full mr-20">
             <EsvIntersection
                 showGrid
-                zFactor={props.zFactor}
+                zFactor={verticalScale}
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
                 layers={layers}
@@ -183,6 +196,13 @@ export function Intersection(props: IntersectionProps): JSX.Element {
                 onReadout={handleReadoutItemsChange}
             />
             <ReadoutBox readoutItems={readoutItems} />
+            <Toolbar
+                visible
+                zFactor={verticalScale}
+                onFitInView={() => {}}
+                onVerticalScaleIncrease={handleVerticalScaleIncrease}
+                onVerticalScaleDecrease={handleVerticalScaleDecrease}
+            />
         </div>
     );
 }
@@ -224,4 +244,56 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
             ))}
         </div>
     );
+}
+
+type ToolbarProps = {
+    visible: boolean;
+    zFactor: number;
+    onFitInView: () => void;
+    onVerticalScaleIncrease: () => void;
+    onVerticalScaleDecrease: () => void;
+};
+
+function Toolbar(props: ToolbarProps): React.ReactNode {
+    function handleFitInViewClick() {
+        props.onFitInView();
+    }
+
+    function handleVerticalScaleIncrease() {
+        props.onVerticalScaleIncrease();
+    }
+
+    function handleVerticalScaleDecrease() {
+        props.onVerticalScaleDecrease();
+    }
+
+    if (!props.visible) {
+        return null;
+    }
+
+    return (
+        <div className="absolute -right-20 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
+            <Button onClick={handleFitInViewClick} title="Focus top view">
+                <FilterCenterFocus fontSize="inherit" />
+            </Button>
+            <ToolBarDivider />
+            <HoldPressedIntervalCallbackButton
+                onHoldPressedIntervalCallback={handleVerticalScaleIncrease}
+                title="Increase vertical scale"
+            >
+                <Add fontSize="inherit" />
+            </HoldPressedIntervalCallbackButton>
+            <span title="Vertical scale">{props.zFactor.toFixed(2)}</span>
+            <HoldPressedIntervalCallbackButton
+                onHoldPressedIntervalCallback={handleVerticalScaleDecrease}
+                title="Decrease vertical scale"
+            >
+                <Remove fontSize="inherit" />
+            </HoldPressedIntervalCallbackButton>
+        </div>
+    );
+}
+
+function ToolBarDivider(): React.ReactNode {
+    return <div className="w-full h-[1px] bg-gray-300" />;
 }

@@ -1,4 +1,5 @@
 import { ModuleRegistry } from "@framework/ModuleRegistry";
+import { SyncSettingKey } from "@framework/SyncSettings";
 
 import { preview } from "./preview";
 import { SettingsToViewInterface } from "./settingsToViewInterface";
@@ -11,4 +12,5 @@ ModuleRegistry.registerModule<State, SettingsToViewInterface>({
     defaultTitle: "Intersection",
     description: "Intersection",
     preview,
+    syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.INTERSECTION],
 });

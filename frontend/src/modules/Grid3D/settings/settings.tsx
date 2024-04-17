@@ -2,11 +2,12 @@ import React from "react";
 
 import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { UserCreatedItemsAtom } from "@framework/GlobalAtoms";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
+import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
+import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
@@ -23,6 +24,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Check, Delete, Edit } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { isEqual } from "lodash";
 import { v4 } from "uuid";
 
 import {
@@ -56,7 +58,7 @@ import {
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { CustomIntersectionPolyline, IntersectionType } from "../typesAndEnums";
+import { CustomIntersectionPolyline } from "../typesAndEnums";
 import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
@@ -71,6 +73,14 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [polylineEditModeActive, setPolylineEditModeActive] = useAtom(
         editCustomIntersectionPolylineEditModeActiveAtom
     );
+
+    const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
+
+    const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
+    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
+
+    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.intersection");
+
     const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
@@ -103,16 +113,18 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedCustomIntersectionPolylineId = useAtomValue(userSelectedCustomIntersectionPolylineIdAtom);
     const setSelectedCustomIntersectionPolylineId = useSetAtom(userSelectedCustomIntersectionPolylineIdAtom);
 
-    const [currentCustomIntersectionPolyline, setCurrentCustomIntersectionPolyline] = useAtom(
-        currentCustomIntersectionPolylineAtom
-    );
-    const selectedCustomIntersectionPolyline = useAtomValue(selectedCustomIntersectionPolylineAtom);
+    if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
+        setPrevSyncedIntersection(syncedIntersection);
+        if (syncedIntersection) {
+            setIntersectionType(syncedIntersection.type);
 
-    const [showDialog, setShowDialog] = React.useState<boolean>(false);
-    const [currentCustomPolylineName, setCurrentCustomPolylineName] = React.useState<string>("");
-    const [currentCustomPolylineNameMessage, setCurrentCustomPolylineNameMessage] = React.useState<string | null>(null);
-
-    const polylineNameInputRef = React.useRef<HTMLInputElement>(null);
+            if (syncedIntersection.type === IntersectionType.WELLBORE) {
+                setSelectedWellboreHeader(syncedIntersection.uuid);
+            } else if (syncedIntersection.type === IntersectionType.CUSTOM_POLYLINE) {
+                setSelectedCustomIntersectionPolylineId(syncedIntersection.uuid);
+            }
+        }
+    }
 
     let gridModelErrorMessage = "";
     if (gridModelInfos.isError) {
@@ -170,123 +182,22 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setIntersectionType(type);
     }
 
-    function handleAddPolylineModeChange() {
-        if (!polylineAddModeActive) {
-            setCurrentCustomIntersectionPolyline([]);
-            setPolylineAddModeActive(true);
-            return;
-        }
-
-        setPolylineAddModeActive(false);
-        setShowDialog(true);
-        polylineNameInputRef.current?.focus();
-    }
-
-    function handleEditPolylineModeChange() {
-        if (!polylineEditModeActive) {
-            setPolylineEditModeActive(true);
-            return;
-        }
-
-        setPolylineEditModeActive(false);
+    function handleEditPolyline() {
+        setPolylineEditModeActive(true);
     }
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
         setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
     }
 
-    function maybeSaveAndApplyCustomIntersectionPolyline() {
-        if (currentCustomPolylineName === "") {
-            setCurrentCustomPolylineNameMessage("Name must not be empty");
-            return;
-        }
-
-        if (availableUserCreatedIntersectionPolylines.some((el) => el.name === currentCustomPolylineName)) {
-            setCurrentCustomPolylineNameMessage("A polyline with this name already exists");
-            return;
-        }
-
-        const uuid = v4();
-        const newCustomIntersectionPolyline: CustomIntersectionPolyline = {
-            id: uuid,
-            name: currentCustomPolylineName,
-            polyline: currentCustomIntersectionPolyline,
-        };
-        setSelectedCustomIntersectionPolylineId(uuid);
-        /*
-        setAvailableCustomIntersectionPolylines([
-            ...availableCustomIntersectionPolylines,
-            newCustomIntersectionPolyline,
-        ]);
-        */
-        setPolylineAddModeActive(false);
-        setPolylineEditModeActive(false);
-        setCurrentCustomPolylineName("");
-        setCurrentCustomPolylineNameMessage(null);
-        setCurrentCustomIntersectionPolyline([]);
-        setShowDialog(false);
-    }
-
-    function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key === "Enter") {
-            maybeSaveAndApplyCustomIntersectionPolyline();
-        }
-    }
-
-    function discardCustomIntersectionPolyline() {
-        setCurrentCustomIntersectionPolyline([]);
-        setPolylineAddModeActive(false);
-        setPolylineEditModeActive(false);
-        setCurrentCustomPolylineName("");
-        setCurrentCustomPolylineNameMessage(null);
-        setShowDialog(false);
-    }
-
-    function handleCurrentCustomPolylineNameChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setCurrentCustomPolylineName(event.target.value);
-    }
-
     function handleRemoveCustomPolyline() {
-        return;
-    }
-
-    /*
-    React.useEffect(() => {
-        function handleKeyboardEvent(event: KeyboardEvent) {
-            if (!polylineAddModeActive && !polylineEditModeActive) {
-                return;
-            }
-
-            if (event.key === "Escape") {
-                discardCustomIntersectionPolyline();
-            }
-
-            if (event.key === "Enter") {
-                if (polylineAddModeActive) {
-                    setShowDialog(true);
-                }
-                if (polylineEditModeActive) {
-                    handleEditPolylineModeChange();
-                }
-            }
+        if (selectedCustomIntersectionPolylineId) {
+            props.workbenchSession
+                .getUserCreatedItems()
+                .getIntersectionPolylines()
+                .remove(selectedCustomIntersectionPolylineId);
         }
-
-        document.addEventListener("keydown", handleKeyboardEvent);
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyboardEvent);
-        };
-    }, [polylineAddModeActive, polylineEditModeActive]);
-    */
-
-    React.useEffect(
-        function handleShowDialog() {
-            if (showDialog && polylineNameInputRef.current) {
-                polylineNameInputRef.current.getElementsByTagName("input")[0].focus();
-            }
-        },
-        [showDialog]
-    );
+    }
 
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
@@ -395,18 +306,11 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 selectedCustomIntersectionPolylineId,
                                 <div className="flex items-center">
                                     <div
-                                        onClick={handleEditPolylineModeChange}
-                                        className={resolveClassNames("p-1 hover:underline cursor-pointer", {
-                                            "hover:text-blue-200": !polylineEditModeActive,
-                                            "hover:text-green-400": polylineEditModeActive,
-                                        })}
-                                        title={polylineEditModeActive ? "Finish editing polyline" : "Edit polyline"}
+                                        onClick={handleEditPolyline}
+                                        className="p-1 hover:underline cursor-pointer hover:text-blue-200"
+                                        title="Edit polyline"
                                     >
-                                        {polylineEditModeActive ? (
-                                            <Check fontSize="small" />
-                                        ) : (
-                                            <Edit fontSize="small" />
-                                        )}
+                                        <Edit fontSize="small" />
                                     </div>
                                     <div
                                         onClick={handleRemoveCustomPolyline}

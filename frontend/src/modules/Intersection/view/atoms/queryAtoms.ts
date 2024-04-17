@@ -1,20 +1,21 @@
+import { WellboreTrajectory_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { selectedEnsembleIdentAtom } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
+import { selectedWellboreUuidAtom } from "@modules/Intersection/sharedAtoms/sharedAtoms";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-export const fieldWellboreTrajectoriesQueryAtom = atomWithQuery((get) => {
-    const ensembleIdent = get(selectedEnsembleIdentAtom);
-    const caseUuid = ensembleIdent?.getCaseUuid();
+export const wellboreTrajectoryQueryAtom = atomWithQuery((get) => {
+    const wellboreUuid = get(selectedWellboreUuidAtom);
 
     return {
-        queryKey: ["getFieldWellboreTrajectories", caseUuid ?? ""],
-        queryFn: () => apiService.well.getFieldWellTrajectories(caseUuid ?? ""),
+        queryKey: ["getWellboreTrajectory", wellboreUuid ?? ""],
+        queryFn: () => apiService.well.getWellTrajectories(wellboreUuid ? [wellboreUuid] : []),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: caseUuid ? true : false,
+        select: (data: WellboreTrajectory_api[]) => data[0],
+        enabled: wellboreUuid ? true : false,
     };
 });

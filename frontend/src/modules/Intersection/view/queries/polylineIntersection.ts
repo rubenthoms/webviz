@@ -3,7 +3,7 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import {
     PolylineIntersection_trans,
     transformPolylineIntersection,
-} from "@modules/Grid3D/view/queries/queryDataTransforms";
+} from "@modules/Intersection/view/queries/queryDataTransforms";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 export function useGridPolylineIntersection(

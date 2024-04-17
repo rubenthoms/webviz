@@ -1,5 +1,6 @@
 import React from "react";
 
+import { AtomStoreMaster } from "./AtomStoreMaster";
 import { Ensemble } from "./Ensemble";
 import { EnsembleIdent } from "./EnsembleIdent";
 import { EnsembleSet } from "./EnsembleSet";
@@ -24,7 +25,11 @@ export class WorkbenchSession {
     private _subscribersMap: Map<keyof WorkbenchSessionEvent, Set<(payload: any) => void>> = new Map();
     protected _ensembleSet: EnsembleSet = new EnsembleSet([]);
     protected _realizationFilterSet = new RealizationFilterSet();
-    protected _userCreatedItems: UserCreatedItems = new UserCreatedItems();
+    protected _userCreatedItems: UserCreatedItems;
+
+    constructor(atomStoreMaster: AtomStoreMaster) {
+        this._userCreatedItems = new UserCreatedItems(atomStoreMaster);
+    }
 
     getEnsembleSet(): EnsembleSet {
         return this._ensembleSet;

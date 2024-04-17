@@ -4,11 +4,24 @@ import { Layer, PickingInfo } from "@deck.gl/core/typed";
 import { ColumnLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
+import { ButtonProps } from "@lib/components/Button/button";
+import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { IconButton } from "@lib/components/IconButton";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { Select, SelectOption } from "@lib/components/Select";
-import { ArrowBack, ArrowForward, Delete, Polyline, Save } from "@mui/icons-material";
+import {
+    Add,
+    ArrowBack,
+    ArrowDownward,
+    ArrowForward,
+    ArrowUpward,
+    Delete,
+    FilterCenterFocus,
+    Polyline,
+    Remove,
+    Save,
+} from "@mui/icons-material";
 import { SubsurfaceViewerProps, ViewStateType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 
@@ -59,6 +72,9 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const [hoveredPolylinePointIndex, setHoveredPolylinePointIndex] = React.useState<number | null>(null);
     const [userCameraInteractionActive, setUserCameraInteractionActive] = React.useState<boolean>(true);
     const [hoverPreviewPoint, setHoverPreviewPoint] = React.useState<number[] | null>(null);
+    const [cameraPositionSetByAction, setCameraPositionSetByAction] = React.useState<ViewStateType | null>(null);
+    const [isDragging, setIsDragging] = React.useState<boolean>(false);
+    const [verticalScale, setVerticalScale] = React.useState<number>(1);
 
     const [prevBoundingBox, setPrevBoundingBox] = React.useState<BoundingBox2D | BoundingBox3D | undefined>(undefined);
     const [prevIntersectionPolyline, setPrevIntersectionPolyline] = React.useState<IntersectionPolyline | undefined>(
@@ -162,6 +178,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
 
         function handleDragStart(pickingInfo: PickingInfo): void {
             setHoverPreviewPoint(null);
+            setIsDragging(true);
             if (!polylineEditPointsModusActive) {
                 return;
             }
@@ -171,6 +188,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         }
 
         function handleDragEnd(): void {
+            setIsDragging(false);
             setUserCameraInteractionActive(true);
         }
 
@@ -366,15 +384,11 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         return () => {
             document.removeEventListener("keydown", handleKeyboardEvent);
         };
-    }, [
-        selectedPolylinePointIndex,
-        setCurrentlyEditedPolyline,
-        setSelectedPolylinePointIndex,
-        polylineEditPointsModusActive,
-    ]);
+    }, [selectedPolylinePointIndex, polylineEditPointsModusActive, handleDeleteCurrentlySelectedPoint]);
 
     function handleAddPolyline(): void {
         setPolylineEditingActive(true);
+        handleFocusTopViewClick();
         setPolylineEditPointsModusActive(true);
         setCurrentlyEditedPolyline([]);
         setSelectedPolylinePointIndex(null);
@@ -384,32 +398,92 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         setPolylineEditPointsModusActive(active);
     }
 
-    function makeTooltip(): string | null {
+    function handleFocusTopViewClick(): void {
+        const targetX = (props.boundingBox.xmin + props.boundingBox.xmax) / 2;
+        const targetY = (props.boundingBox.ymin + props.boundingBox.ymax) / 2;
+        const targetZ = intersectionZValues?.zMid ?? 0;
+
+        setCameraPositionSetByAction({
+            rotationOrbit: 0,
+            rotationX: 90,
+            target: [targetX, targetY, targetZ],
+            zoom: NaN,
+        });
+    }
+
+    function handleVerticalScaleIncrease(): void {
+        setVerticalScale((prev) => prev + 0.1);
+    }
+
+    function handleVerticalScaleDecrease(): void {
+        setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
+    }
+
+    function makeTooltip(pickingInfo: PickingInfo): string | null {
+        if (!polylineEditPointsModusActive) {
+            return null;
+        }
+
+        if (isDragging) {
+            return null;
+        }
+
+        if (
+            selectedPolylinePointIndex !== null &&
+            selectedPolylinePointIndex !== 0 &&
+            selectedPolylinePointIndex !== currentlyEditedPolyline.length - 1
+        ) {
+            return null;
+        }
+
+        if (!pickingInfo.coordinate) {
+            return null;
+        }
+
+        return `x: ${pickingInfo.coordinate[0].toFixed(2)}, y: ${pickingInfo.coordinate[1].toFixed(2)}`;
+    }
+
+    function makeHelperText(): React.ReactNode {
         if (!props.enableIntersectionPolylineEditing) {
             return null;
         }
 
-        if (!polylineEditingActive) {
+        if (!polylineEditPointsModusActive) {
             return null;
         }
 
+        let nodes: React.ReactNode[] = [];
+
         if (selectedPolylinePointIndex === null) {
-            return "Click on map to add first point to polyline";
+            nodes.push("Click on map to add first point to polyline");
+        } else if (selectedPolylinePointIndex === currentlyEditedPolyline.length - 1) {
+            nodes.push(<div>Click on map to add new point to end of polyline</div>);
+            nodes.push(
+                <div>
+                    Press <KeyboardButton text="Delete" /> to remove selected point
+                </div>
+            );
+        } else if (selectedPolylinePointIndex === 0) {
+            nodes.push(<div>Click on map to add new point to start of polyline</div>);
+            nodes.push(
+                <div>
+                    Press <KeyboardButton text="Delete" /> to remove selected point
+                </div>
+            );
+        } else {
+            nodes.push(<div>Select either end of polyline to add new point</div>);
+            nodes.push(
+                <div>
+                    Press <KeyboardButton text="Delete" /> to remove selected point
+                </div>
+            );
         }
 
-        if (selectedPolylinePointIndex === currentlyEditedPolyline.length - 1) {
-            return "Click on map to add new point to end of polyline";
-        }
-
-        if (selectedPolylinePointIndex === 0) {
-            return "Click on map to add new point to start of polyline";
-        }
-
-        return "Select either end of polyline to add new point";
+        return nodes;
     }
 
     return (
-        <div ref={internalRef} className="w-full h-full relative">
+        <div ref={internalRef} className="w-full h-full relative overflow-hidden">
             <SubsurfaceViewerToolbar
                 visible={
                     props.intersectionPolyline === undefined &&
@@ -417,6 +491,10 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                     props.enableIntersectionPolylineEditing !== undefined
                 }
                 onAddPolyline={handleAddPolyline}
+                onFocusTopView={handleFocusTopViewClick}
+                onVerticalScaleIncrease={handleVerticalScaleIncrease}
+                onVerticalScaleDecrease={handleVerticalScaleDecrease}
+                zFactor={verticalScale}
             />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
@@ -438,6 +516,8 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 colorTables={props.colorTables}
                 onMouseEvent={handleMouseEvent}
                 userCameraInteractionActive={userCameraInteractionActive}
+                cameraPosition={cameraPositionSetByAction ?? undefined}
+                onCameraPositionApplied={() => setCameraPositionSetByAction(null)}
                 views={{
                     layout: [1, 1],
                     showLabel: false,
@@ -450,22 +530,52 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                         },
                     ],
                 }}
+                getTooltip={makeTooltip}
+                verticalScale={verticalScale}
             />
             <div className="absolute bottom-0 right-0 z-30 bg-white bg-opacity-50 p-2 pointer-events-none">
-                {makeTooltip()}
+                {makeHelperText()}
             </div>
         </div>
     );
 }
 
-type SubsurfaceViewerToolbarProps = {
-    visible: boolean;
-    onAddPolyline: () => void;
+type KeyboardButtonProps = {
+    text: string;
 };
 
-export function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): React.ReactNode {
+function KeyboardButton(props: KeyboardButtonProps): React.ReactNode {
+    return (
+        <span className="bg-gray-200 p-1 m-2 rounded text-sm text-gray-800 border border-gray-400 shadow inline-flex items-center justify-center">
+            {props.text}
+        </span>
+    );
+}
+
+type SubsurfaceViewerToolbarProps = {
+    visible: boolean;
+    zFactor: number;
+    onAddPolyline: () => void;
+    onFocusTopView: () => void;
+    onVerticalScaleIncrease: () => void;
+    onVerticalScaleDecrease: () => void;
+};
+
+function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): React.ReactNode {
     function handleAddPolylineClick() {
         props.onAddPolyline();
+    }
+
+    function handleFocusTopViewClick() {
+        props.onFocusTopView();
+    }
+
+    function handleVerticalScaleIncrease() {
+        props.onVerticalScaleIncrease();
+    }
+
+    function handleVerticalScaleDecrease() {
+        props.onVerticalScaleDecrease();
     }
 
     if (!props.visible) {
@@ -473,12 +583,33 @@ export function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): Re
     }
 
     return (
-        <div className="absolute right-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm">
+        <div className="absolute right-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
             <Button onClick={handleAddPolylineClick} title="Add new custom intersection polyline">
                 <Polyline fontSize="inherit" />
             </Button>
+            <Button onClick={handleFocusTopViewClick} title="Focus top view">
+                <FilterCenterFocus fontSize="inherit" />
+            </Button>
+            <ToolBarDivider />
+            <HoldPressedIntervalCallbackButton
+                onHoldPressedIntervalCallback={handleVerticalScaleIncrease}
+                title="Increase vertical scale"
+            >
+                <Add fontSize="inherit" />
+            </HoldPressedIntervalCallbackButton>
+            <span title="Vertical scale">{props.zFactor.toFixed(2)}</span>
+            <HoldPressedIntervalCallbackButton
+                onHoldPressedIntervalCallback={handleVerticalScaleDecrease}
+                title="Decrease vertical scale"
+            >
+                <Remove fontSize="inherit" />
+            </HoldPressedIntervalCallbackButton>
         </div>
     );
+}
+
+function ToolBarDivider(): React.ReactNode {
+    return <div className="w-full h-[1px] bg-gray-300" />;
 }
 
 type PolylineEditingPanelProps = {
@@ -631,10 +762,12 @@ function makeSelectOptionsFromPoints(points: number[][]): SelectOption[] {
 
 type SubsurfaceViewerWithCameraStateProps = SubsurfaceViewerProps & {
     userCameraInteractionActive?: boolean;
+    onCameraPositionApplied?: () => void;
 };
 
 function SubsurfaceViewerWithCameraState(props: SubsurfaceViewerWithCameraStateProps): React.ReactNode {
     const [prevBounds, setPrevBounds] = React.useState<[number, number, number, number] | undefined>(undefined);
+    const [prevCameraPosition, setPrevCameraPosition] = React.useState<ViewStateType | undefined>(undefined);
     const [cameraPosition, setCameraPosition] = React.useState<ViewStateType | undefined>(undefined);
 
     if (!isEqual(props.bounds, prevBounds)) {
@@ -642,9 +775,18 @@ function SubsurfaceViewerWithCameraState(props: SubsurfaceViewerWithCameraStateP
         setCameraPosition(undefined);
     }
 
+    if (!isEqual(props.cameraPosition, prevCameraPosition)) {
+        setPrevCameraPosition(props.cameraPosition);
+        if (props.cameraPosition) {
+            setCameraPosition(props.cameraPosition);
+            props.onCameraPositionApplied?.();
+        }
+    }
+
     const handleCameraChange = React.useCallback(
         function handleCameraChange(viewport: ViewStateType): void {
             if (props.userCameraInteractionActive || props.userCameraInteractionActive === undefined) {
+                console.debug(viewport);
                 setCameraPosition(viewport);
             }
         },

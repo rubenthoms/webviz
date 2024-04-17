@@ -1,5 +1,6 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom, UserCreatedItemsAtom } from "@framework/GlobalAtoms";
+import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
+import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import { selectedEnsembleIdentAtom } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
@@ -160,6 +161,6 @@ export const selectedGridModelParameterDateOrIntervalAtom = atom((get) => {
 });
 
 export const availableUserCreatedIntersectionPolylinesAtom = atom((get) => {
-    const userCreatedItems = get(UserCreatedItemsAtom);
-    return userCreatedItems.getIntersectionPolylines().getPolylines();
+    const intersectionPolylines = get(IntersectionPolylinesAtom);
+    return intersectionPolylines;
 });

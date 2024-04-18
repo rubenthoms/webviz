@@ -1,7 +1,9 @@
 import { BoundingBox3d_api, WellboreTrajectory_api } from "@api";
 import { Layer, PickingInfo } from "@deck.gl/core/typed";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { AxesLayer, Grid3DLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
+import { Rgb, formatRgb, parse } from "culori";
 import { Feature } from "geojson";
 
 import {
@@ -43,7 +45,7 @@ export function makeGrid3DLayer(
     gridSurfaceData: GridSurface_trans,
     gridParameterData: GridMappedProperty_trans,
     showGridLines: boolean,
-    gridMinAndMaxPropValues: [number, number]
+    colorScale: ColorScale
 ): WorkingGrid3dLayer {
     const offsetXyz = [gridSurfaceData.origin_utm_x, gridSurfaceData.origin_utm_y, 0];
     const pointsNumberArray = gridSurfaceData.pointsFloat32Arr.map((val, i) => val + offsetXyz[i % 3]);
@@ -53,12 +55,19 @@ export function makeGrid3DLayer(
         pointsData: pointsNumberArray,
         polysData: polysNumberArray,
         propertiesData: gridParameterData.polyPropsFloat32Arr,
-        colorMapName: "Continuous",
-        colorMapRange: gridMinAndMaxPropValues,
         ZIncreasingDownwards: false,
         gridLines: showGridLines,
         material: { ambient: 0.4, diffuse: 0.7, shininess: 8, specularColor: [25, 25, 25] },
         pickable: true,
+        colorMapFunction: (value: number) => {
+            const interpolatedColor = colorScale.getColorPalette().getInterpolatedColor(value);
+            // const nonNormalizedValue = value * (colorScale.getMax() - colorScale.getMin()) + colorScale.getMin();
+            const color = parse(interpolatedColor) as Rgb; // colorScale.getColorForValue(nonNormalizedValue)) as Rgb;
+            if (color === undefined) {
+                return [0, 0, 0];
+            }
+            return [color.r * 255, color.g * 255, color.b * 255];
+        },
     });
     return grid3dLayer as unknown as WorkingGrid3dLayer;
 }

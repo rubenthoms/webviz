@@ -140,6 +140,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         ensembleIdent ?? null,
         gridModelName,
         gridModelParameterName,
+        gridModelParameterDateOrInterval,
         realization,
         polylineUtmXy
     );
@@ -244,9 +245,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (gridSurfaceQuery.data && gridParameterQuery.data) {
         const minPropValue = gridParameterQuery.data.min_grid_prop_value;
         const maxPropValue = gridParameterQuery.data.max_grid_prop_value;
-        layers.push(
-            makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines, [minPropValue, maxPropValue])
-        );
+        colorScale.setRange(minPropValue, maxPropValue);
+        layers.push(makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines, colorScale));
 
         if (polylineIntersectionQuery.data) {
             layers.push(

@@ -177,7 +177,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             }
         }
 
-        function handleDragStart(pickingInfo: PickingInfo): void {
+        function handleDragStart(): void {
             setHoverPreviewPoint(null);
             setIsDragging(true);
             if (!polylineEditPointsModusActive) {
@@ -514,7 +514,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             <SubsurfaceViewerWithCameraState
                 id={subsurfaceViewerId}
                 layers={layers}
-                coords={{ visible: false, multiPicking: true }}
+                coords={{ visible: false, multiPicking: polylineEditPointsModusActive }}
                 colorTables={props.colorTables}
                 onMouseEvent={handleMouseEvent}
                 userCameraInteractionActive={userCameraInteractionActive}
@@ -788,7 +788,6 @@ function SubsurfaceViewerWithCameraState(props: SubsurfaceViewerWithCameraStateP
     const handleCameraChange = React.useCallback(
         function handleCameraChange(viewport: ViewStateType): void {
             if (props.userCameraInteractionActive || props.userCameraInteractionActive === undefined) {
-                console.debug(viewport);
                 setCameraPosition(viewport);
             }
         },

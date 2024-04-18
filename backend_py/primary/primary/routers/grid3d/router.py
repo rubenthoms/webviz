@@ -128,7 +128,6 @@ async def grid_parameter(
         Optional[str], Query(description="Time point or time interval string")
     ] = None,
     single_k_layer: Annotated[int, Query(description="Show only a single k layer")] = -1,
-    parameter_date_or_interval: Annotated[Optional[str], Query(description="Grid parameter date or interval")] = None,
 ) -> schemas.Grid3dMappedProperty:
     """Get a grid parameter"""
 

@@ -10,6 +10,7 @@ export function useGridPolylineIntersection(
     ensembleIdent: EnsembleIdent | null,
     gridModelName: string | null,
     gridModelParameterName: string | null,
+    gridModelDateOrInterval: string | null,
     realizationNum: number | null,
     polyline_utm_xy: number[]
 ): UseQueryResult<PolylineIntersection_trans> {
@@ -19,6 +20,7 @@ export function useGridPolylineIntersection(
             ensembleIdent?.toString() ?? "",
             gridModelName,
             gridModelParameterName,
+            gridModelDateOrInterval,
             realizationNum,
             polyline_utm_xy,
         ],
@@ -29,7 +31,8 @@ export function useGridPolylineIntersection(
                 gridModelName ?? "",
                 gridModelParameterName ?? "",
                 realizationNum ?? 0,
-                { polyline_utm_xy }
+                { polyline_utm_xy },
+                gridModelDateOrInterval
             ),
         select: transformPolylineIntersection,
         staleTime: 0,

@@ -20,7 +20,9 @@ import { Radio } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 import { Check, Delete, Edit } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -199,6 +201,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         }
     }
 
+    function handleColorScaleChange(colorScale: ColorScale, range: [number, number]) {}
+
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
@@ -270,6 +274,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             max={gridModelDimensions?.k_count}
                         />
                     </Label>
+                    <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Intersection" expanded>

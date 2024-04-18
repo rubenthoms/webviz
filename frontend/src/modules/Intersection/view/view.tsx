@@ -89,7 +89,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         ensembleIdent ?? null,
         gridModelName,
         gridModelParameterName,
+        gridModelParameterDateOrInterval,
         realization,
+
         polylineUtmXy
     );
     if (polylineIntersectionQuery.isError) {

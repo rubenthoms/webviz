@@ -187,6 +187,10 @@ export class WorkbenchSettings {
         };
     }
 
+    getColorPalettes(): Record<ColorPaletteType, ColorPalette[]> {
+        return this._colorPalettes;
+    }
+
     useColorSet(): ColorSet {
         const [colorSet, setColorSet] = React.useState<ColorSet>(
             new ColorSet(this.getSelectedColorPalette(ColorPaletteType.Categorical))

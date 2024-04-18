@@ -62,8 +62,8 @@ export function useGridParameterQuery(
                 gridName ?? "",
                 parameterName ?? "",
                 realizationNum ?? 0,
-                singleKLayer,
-                parameterDateOrValue
+                parameterDateOrValue,
+                singleKLayer
             ),
         select: transformGridMappedProperty,
         staleTime: 0,

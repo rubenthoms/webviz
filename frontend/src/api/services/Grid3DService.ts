@@ -108,8 +108,8 @@ export class Grid3DService {
      * @param gridName Grid name
      * @param parameterName Grid parameter
      * @param realizationNum Realization
+     * @param parameterTimeOrIntervalStr Time point or time interval string
      * @param singleKLayer Show only a single k layer
-     * @param parameterDateOrInterval Grid parameter date or interval
      * @returns Grid3dMappedProperty Successful Response
      * @throws ApiError
      */
@@ -119,8 +119,8 @@ export class Grid3DService {
         gridName: string,
         parameterName: string,
         realizationNum: number,
+        parameterTimeOrIntervalStr?: (string | null),
         singleKLayer: number = -1,
-        parameterDateOrInterval?: (string | null),
     ): CancelablePromise<Grid3dMappedProperty> {
         return this.httpRequest.request({
             method: 'GET',
@@ -131,8 +131,8 @@ export class Grid3DService {
                 'grid_name': gridName,
                 'parameter_name': parameterName,
                 'realization_num': realizationNum,
+                'parameter_time_or_interval_str': parameterTimeOrIntervalStr,
                 'single_k_layer': singleKLayer,
-                'parameter_date_or_interval': parameterDateOrInterval,
             },
             errors: {
                 422: `Validation Error`,
@@ -147,6 +147,7 @@ export class Grid3DService {
      * @param parameterName Grid parameter
      * @param realizationNum Realization
      * @param requestBody
+     * @param parameterTimeOrIntervalStr Time point or time interval string
      * @returns PolylineIntersection Successful Response
      * @throws ApiError
      */
@@ -157,6 +158,7 @@ export class Grid3DService {
         parameterName: string,
         realizationNum: number,
         requestBody: Body_post_get_polyline_intersection,
+        parameterTimeOrIntervalStr?: (string | null),
     ): CancelablePromise<PolylineIntersection> {
         return this.httpRequest.request({
             method: 'POST',
@@ -167,6 +169,7 @@ export class Grid3DService {
                 'grid_name': gridName,
                 'parameter_name': parameterName,
                 'realization_num': realizationNum,
+                'parameter_time_or_interval_str': parameterTimeOrIntervalStr,
             },
             body: requestBody,
             mediaType: 'application/json',

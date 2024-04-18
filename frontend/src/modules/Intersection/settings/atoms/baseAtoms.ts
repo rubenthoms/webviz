@@ -1,4 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { SeismicDataType, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
 
 import { atom } from "jotai";
 
@@ -9,3 +10,7 @@ export const userSelectedGridModelParameterNameAtom = atom<string | null>(null);
 export const userSelectedGridModelParameterDateOrIntervalAtom = atom<string | null>(null);
 export const userSelectedWellboreUuidAtom = atom<string | null>(null);
 export const userSelectedCustomIntersectionPolylineIdAtom = atom<string | null>(null);
+export const userSelectedSeismicDataTypeAtom = atom<SeismicDataType>(SeismicDataType.SIMULATED);
+export const userSelectedSeismicSurveyTypeAtom = atom<SeismicSurveyType>(SeismicSurveyType.THREE_D);
+export const userSelectedSeismicAttributeAtom = atom<string | null>(null);
+export const userSelectedSeismicTimestampAtom = atom<number | null>(null);

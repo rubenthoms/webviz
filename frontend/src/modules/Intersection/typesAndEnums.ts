@@ -8,3 +8,23 @@ export type CustomIntersectionPolyline = {
     name: string;
     polyline: number[][];
 };
+
+export enum SeismicDataType {
+    SIMULATED = "simulated",
+    OBSERVED = "observed",
+}
+
+export enum SeismicSurveyType {
+    THREE_D = "3D",
+    FOUR_D = "4D",
+}
+
+export const SeismicDataTypeToStringMapping = {
+    [SeismicDataType.SIMULATED]: "Simulated",
+    [SeismicDataType.OBSERVED]: "Observed",
+};
+
+export const SeismicSurveyTypeToStringMapping = {
+    [SeismicSurveyType.THREE_D]: "3D",
+    [SeismicSurveyType.FOUR_D]: "4D",
+};

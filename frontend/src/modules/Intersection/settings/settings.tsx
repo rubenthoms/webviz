@@ -8,21 +8,17 @@ import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
-import { Button } from "@lib/components/Button";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
-import { Dialog } from "@lib/components/Dialog";
 import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { Radio } from "@lib/components/RadioGroup";
+import { Radio, RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
-import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { v4 } from "uuid";
 
 import {
     userSelectedCustomIntersectionPolylineIdAtom,
@@ -31,6 +27,8 @@ import {
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
+    userSelectedSeismicDataTypeAtom,
+    userSelectedSeismicSurveyTypeAtom,
     userSelectedWellboreUuidAtom,
 } from "./atoms/baseAtoms";
 import {
@@ -55,7 +53,12 @@ import {
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { CustomIntersectionPolyline } from "../typesAndEnums";
+import {
+    SeismicDataType,
+    SeismicDataTypeToStringMapping,
+    SeismicSurveyType,
+    SeismicSurveyTypeToStringMapping,
+} from "../typesAndEnums";
 import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
@@ -63,13 +66,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
     const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
-    const [gridLayer, setGridLayer] = props.settingsContext.useSettingsToViewInterfaceState("gridLayer");
     const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
-    const [polylineEditModeActive, setPolylineEditModeActive] = useAtom(
-        editCustomIntersectionPolylineEditModeActiveAtom
-    );
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
 
@@ -81,8 +80,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
-
-    const gridModelDimensions = useAtomValue(gridModelDimensionsAtom);
 
     const selectedEnsembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const setSelectedEnsembleIdent = useSetAtom(userSelectedEnsembleIdentAtom);
@@ -106,20 +103,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedWellboreHeader = useAtomValue(selectedWellboreUuidAtom);
     const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
 
+    const [selectedSeismicDataType, setSelectedSeismicDataType] = useAtom(userSelectedSeismicDataTypeAtom);
+    const [selectedSeismicSurveyType, setSelectedSeismicSurveyType] = useAtom(userSelectedSeismicSurveyTypeAtom);
+
     const availableUserCreatedIntersectionPolylines = useAtomValue(availableUserCreatedIntersectionPolylinesAtom);
     const selectedCustomIntersectionPolylineId = useAtomValue(selectedCustomIntersectionPolylineIdAtom);
     const setSelectedCustomIntersectionPolylineId = useSetAtom(userSelectedCustomIntersectionPolylineIdAtom);
-
-    const [currentCustomIntersectionPolyline, setCurrentCustomIntersectionPolyline] = useAtom(
-        currentCustomIntersectionPolylineAtom
-    );
-    const selectedCustomIntersectionPolyline = useAtomValue(selectedCustomIntersectionPolylineAtom);
-
-    const [showDialog, setShowDialog] = React.useState<boolean>(false);
-    const [currentCustomPolylineName, setCurrentCustomPolylineName] = React.useState<string>("");
-    const [currentCustomPolylineNameMessage, setCurrentCustomPolylineNameMessage] = React.useState<string | null>(null);
-
-    const polylineNameInputRef = React.useRef<HTMLInputElement>(null);
 
     if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
         setPrevSyncedIntersection(syncedIntersection);
@@ -180,10 +169,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setShowGridLines(event.target.checked);
     }
 
-    function handleGridLayerChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setGridLayer(parseInt(event.target.value));
-    }
-
     function handleZFactorChange(event: React.ChangeEvent<HTMLInputElement>) {
         setZFactor(parseFloat(event.target.value));
     }
@@ -202,30 +187,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
     }
 
-    /*
-    function handleEditPolylineModeChange() {
-        if (!polylineEditModeActive) {
-            setPolylineEditModeActive(true);
-            setCurrentCustomIntersectionPolyline(selectedCustomIntersectionPolyline?.polyline ?? []);
-            return;
-        }
-
-        setAvailableCustomIntersectionPolylines((prev) =>
-            prev.map((el) => {
-                if (el.id === selectedCustomIntersectionPolylineId) {
-                    return {
-                        ...el,
-                        polyline: currentCustomIntersectionPolyline,
-                    };
-                }
-                return el;
-            })
-        );
-        setPolylineEditModeActive(false);
-        setCurrentCustomIntersectionPolyline([]);
-    }
-    */
-
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
         setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
         const uuid = customPolylineId.at(0) ?? null;
@@ -236,94 +197,13 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
     }
 
-    function maybeSaveAndApplyCustomIntersectionPolyline() {
-        if (currentCustomPolylineName === "") {
-            setCurrentCustomPolylineNameMessage("Name must not be empty");
-            return;
-        }
-
-        if (availableUserCreatedIntersectionPolylines.some((el) => el.name === currentCustomPolylineName)) {
-            setCurrentCustomPolylineNameMessage("A polyline with this name already exists");
-            return;
-        }
-
-        const uuid = v4();
-        const newCustomIntersectionPolyline: CustomIntersectionPolyline = {
-            id: uuid,
-            name: currentCustomPolylineName,
-            polyline: currentCustomIntersectionPolyline,
-        };
-        setSelectedCustomIntersectionPolylineId(uuid);
-        /*
-        setAvailableCustomIntersectionPolylines([
-            ...availableCustomIntersectionPolylines,
-            newCustomIntersectionPolyline,
-        ]);
-        */
-        setPolylineAddModeActive(false);
-        setPolylineEditModeActive(false);
-        setCurrentCustomPolylineName("");
-        setCurrentCustomPolylineNameMessage(null);
-        setCurrentCustomIntersectionPolyline([]);
-        setShowDialog(false);
+    function handleSeismicDataTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setSelectedSeismicDataType(event.target.value as SeismicDataType);
     }
 
-    function handleInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key === "Enter") {
-            maybeSaveAndApplyCustomIntersectionPolyline();
-        }
+    function handleSeismicSurveyTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setSelectedSeismicSurveyType(event.target.value as SeismicSurveyType);
     }
-
-    function discardCustomIntersectionPolyline() {
-        setCurrentCustomIntersectionPolyline([]);
-        setPolylineAddModeActive(false);
-        setPolylineEditModeActive(false);
-        setCurrentCustomPolylineName("");
-        setCurrentCustomPolylineNameMessage(null);
-        setShowDialog(false);
-    }
-
-    function handleCurrentCustomPolylineNameChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setCurrentCustomPolylineName(event.target.value);
-    }
-
-    /*
-    React.useEffect(() => {
-        function handleKeyboardEvent(event: KeyboardEvent) {
-            if (!polylineAddModeActive && !polylineEditModeActive) {
-                return;
-            }
-
-            if (event.key === "Escape") {
-                discardCustomIntersectionPolyline();
-            }
-
-            if (event.key === "Enter") {
-                if (polylineAddModeActive) {
-                    setShowDialog(true);
-                }
-                if (polylineEditModeActive) {
-                    handleEditPolylineModeChange();
-                }
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyboardEvent);
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyboardEvent);
-        };
-    }, [polylineAddModeActive, polylineEditModeActive]);
-    */
-
-    React.useEffect(
-        function handleShowDialog() {
-            if (showDialog && polylineNameInputRef.current) {
-                polylineNameInputRef.current.getElementsByTagName("input")[0].focus();
-            }
-        },
-        [showDialog]
-    );
 
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
@@ -331,7 +211,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         gridModelInfo?.property_info_arr.filter((el) => el.property_name === selectedGridModelParameterName) ?? [];
 
     return (
-        <>
+        <div className="flex flex-col gap-1">
             <CollapsibleGroup title="Ensemble & realization" expanded>
                 <Label text="Ensemble">
                     <EnsembleDropdown
@@ -387,15 +267,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             />
                         </PendingWrapper>
                     </Label>
-                    <Label text="Grid layer">
-                        <Input
-                            type="number"
-                            defaultValue={gridLayer}
-                            onChange={handleGridLayerChange}
-                            min={-1}
-                            max={gridModelDimensions?.k_count}
-                        />
-                    </Label>
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Intersection" expanded>
@@ -426,20 +297,53 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             onChange={() => handleIntersectionTypeChange(IntersectionType.CUSTOM_POLYLINE)}
                             label={<strong>Use custom polyline</strong>}
                         />
-                        <TableSelect
-                            options={makeCustomIntersectionPolylineOptions(
-                                availableUserCreatedIntersectionPolylines,
-                                selectedCustomIntersectionPolylineId,
-                                <></>
-                            )}
+                        <Select
+                            options={makeCustomIntersectionPolylineOptions(availableUserCreatedIntersectionPolylines)}
                             value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
-                            headerLabels={["Polyline name", "Actions"]}
                             onChange={handleCustomPolylineSelectionChange}
                             size={5}
-                            columnSizesInPercent={[80, 20]}
                             disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
+                            placeholder="No custom polylines"
                         />
                     </div>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Seismic" expanded>
+                <div className="flex flex-col gap-2">
+                    <Label text="Seismic data type">
+                        <RadioGroup
+                            options={[
+                                {
+                                    label: SeismicDataTypeToStringMapping[SeismicDataType.SIMULATED],
+                                    value: SeismicDataType.SIMULATED,
+                                },
+                                {
+                                    label: SeismicDataTypeToStringMapping[SeismicDataType.OBSERVED],
+                                    value: SeismicDataType.OBSERVED,
+                                },
+                            ]}
+                            value={selectedSeismicDataType}
+                            onChange={handleSeismicDataTypeChange}
+                            direction="horizontal"
+                        />
+                    </Label>
+                    <Label text="Seismic survey type">
+                        <RadioGroup
+                            options={[
+                                {
+                                    label: SeismicSurveyTypeToStringMapping[SeismicSurveyType.THREE_D],
+                                    value: SeismicSurveyType.THREE_D,
+                                },
+                                {
+                                    label: SeismicSurveyTypeToStringMapping[SeismicSurveyType.FOUR_D],
+                                    value: SeismicSurveyType.FOUR_D,
+                                },
+                            ]}
+                            value={selectedSeismicSurveyType}
+                            onChange={handleSeismicSurveyTypeChange}
+                            direction="horizontal"
+                        />
+                    </Label>
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Visualization options" expanded>
@@ -458,36 +362,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     />
                 </Label>
             </CollapsibleGroup>
-            <Dialog
-                title="Save and use edited intersection polyline?"
-                open={showDialog}
-                onClose={discardCustomIntersectionPolyline}
-                actions={[
-                    <Button key="discard" onClick={discardCustomIntersectionPolyline} color="danger">
-                        Discard
-                    </Button>,
-                    <Button key="save" onClick={maybeSaveAndApplyCustomIntersectionPolyline}>
-                        Save
-                    </Button>,
-                ]}
-                modal
-            >
-                <Label text="Polyline name">
-                    <>
-                        <Input
-                            value={currentCustomPolylineName}
-                            type="text"
-                            onChange={handleCurrentCustomPolylineNameChange}
-                            onKeyDown={handleInputKeyDown}
-                            ref={polylineNameInputRef}
-                        />
-                        {currentCustomPolylineNameMessage && (
-                            <p className="text-red-500 text-xs mt-2">{currentCustomPolylineNameMessage}</p>
-                        )}
-                    </>
-                </Label>
-            </Dialog>
-        </>
+        </div>
     );
 }
 
@@ -539,13 +414,9 @@ function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[
     }));
 }
 
-function makeCustomIntersectionPolylineOptions(
-    polylines: IntersectionPolyline[],
-    selectedId: string | null,
-    actions: React.ReactNode
-): TableSelectOption[] {
+function makeCustomIntersectionPolylineOptions(polylines: IntersectionPolyline[]): SelectOption[] {
     return polylines.map((polyline) => ({
-        id: polyline.id,
-        values: [{ label: polyline.name }, { label: "", adornment: selectedId === polyline.id ? actions : undefined }],
+        label: polyline.name,
+        value: polyline.id,
     }));
 }

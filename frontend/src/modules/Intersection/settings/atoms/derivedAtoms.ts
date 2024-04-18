@@ -164,3 +164,5 @@ export const availableUserCreatedIntersectionPolylinesAtom = atom((get) => {
     const intersectionPolylines = get(IntersectionPolylinesAtom);
     return intersectionPolylines;
 });
+
+export const selectedSeismicAttributeAtom = atom((get) => {});

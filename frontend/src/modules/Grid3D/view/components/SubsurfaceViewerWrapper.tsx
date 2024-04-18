@@ -130,7 +130,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             currentlyEditedPolyline,
             zMid,
             zExtension,
-            selectedPolylinePointIndex,
+            polylineEditPointsModusActive ? selectedPolylinePointIndex : -1,
             hoveredPolylinePointIndex,
             [255, 255, 255, 255]
         );
@@ -168,6 +168,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 return;
             }
             if (pickingInfo.object && pickingInfo.object.index < currentlyEditedPolyline.length) {
+                setHoverPreviewPoint(null);
                 setSelectedPolylinePointIndex(pickingInfo.object.index);
                 event.stopPropagation();
                 event.handled = true;
@@ -182,9 +183,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             if (!polylineEditPointsModusActive) {
                 return;
             }
-            if (pickingInfo.object && selectedPolylinePointIndex === pickingInfo.object.index) {
-                setUserCameraInteractionActive(false);
-            }
+            setUserCameraInteractionActive(false);
         }
 
         function handleDragEnd(): void {
@@ -359,15 +358,18 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         }
     }
 
-    const handleDeleteCurrentlySelectedPoint = React.useCallback(function handleDeleteCurrentlySelectedPoint() {
-        if (selectedPolylinePointIndex !== null) {
-            setSelectedPolylinePointIndex((prev) => (prev === null || prev === 0 ? null : prev - 1));
-            setCurrentlyEditedPolyline((prev) => {
-                const newPolyline = prev.filter((_, i) => i !== selectedPolylinePointIndex);
-                return newPolyline;
-            });
-        }
-    }, []);
+    const handleDeleteCurrentlySelectedPoint = React.useCallback(
+        function handleDeleteCurrentlySelectedPoint() {
+            if (selectedPolylinePointIndex !== null) {
+                setSelectedPolylinePointIndex((prev) => (prev === null || prev === 0 ? null : prev - 1));
+                setCurrentlyEditedPolyline((prev) => {
+                    const newPolyline = prev.filter((_, i) => i !== selectedPolylinePointIndex);
+                    return newPolyline;
+                });
+            }
+        },
+        [selectedPolylinePointIndex]
+    );
 
     React.useEffect(() => {
         function handleKeyboardEvent(event: KeyboardEvent) {
@@ -512,7 +514,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             <SubsurfaceViewerWithCameraState
                 id={subsurfaceViewerId}
                 layers={layers}
-                coords={{ visible: false }}
+                coords={{ visible: false, multiPicking: true }}
                 colorTables={props.colorTables}
                 onMouseEvent={handleMouseEvent}
                 userCameraInteractionActive={userCameraInteractionActive}

@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, Sequence
+from typing import Literal, Sequence, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -183,13 +183,20 @@ class UserGrid3dService:
         ensemble_name: str,
         realization: int,
         grid_name: str,
-        property_name: str,
+        parameter_name: str,
         ijk_index_filter: IJKIndexFilter | None,
+        parameter_time_or_interval_str: Optional[str] = None,
     ) -> MappedGridProperties:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name
+            self._sumo_client,
+            self._case_uuid,
+            ensemble_name,
+            realization,
+            grid_name,
+            parameter_name,
+            parameter_time_or_interval_str,
         )
         LOGGER.debug(f".get_mapped_grid_properties_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_mapped_grid_properties_async() - {property_blob_object_uuid=}")
@@ -232,12 +239,24 @@ class UserGrid3dService:
         return ret_obj
 
     async def get_polyline_intersection_async(
-        self, ensemble_name: str, realization: int, grid_name: str, property_name: str, polyline_utm_xy: list[float]
+        self,
+        ensemble_name: str,
+        realization: int,
+        grid_name: str,
+        parameter_name: str,
+        polyline_utm_xy: list[float],
+        parameter_time_or_interval_str: Optional[str] = None,
     ) -> PolylineIntersection:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name
+            self._sumo_client,
+            self._case_uuid,
+            ensemble_name,
+            realization,
+            grid_name,
+            parameter_name,
+            parameter_time_or_interval_str,
         )
         LOGGER.debug(f".get_polyline_intersection_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_polyline_intersection_async() - {property_blob_object_uuid=}")

@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, Sequence
+from typing import Literal, Sequence, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,12 +46,19 @@ class BoundingBox3D(BaseModel):
     max_z: float
 
 
+class GridDimensions(BaseModel):
+    i_count: int
+    j_count: int
+    k_count: int
+
+
 class GridGeometry(BaseModel):
     vertices_b64arr: B64FloatArray
     polys_b64arr: B64UintArray
     poly_source_cell_indices_b64arr: B64UintArray
     origin_utm_x: float
     origin_utm_y: float
+    grid_dimensions: GridDimensions
     bounding_box: BoundingBox3D
 
 
@@ -77,6 +84,7 @@ class FenceMeshSection(BaseModel):
 
 class PolylineIntersection(BaseModel):
     fence_mesh_sections: list[FenceMeshSection]
+    grid_dimensions: GridDimensions
     min_grid_prop_value: float
     max_grid_prop_value: float
 
@@ -160,6 +168,7 @@ class UserGrid3dService:
             poly_source_cell_indices_b64arr=api_obj.poly_source_cell_indices_b64arr,
             origin_utm_x=api_obj.origin_utm_x,
             origin_utm_y=api_obj.origin_utm_y,
+            grid_dimensions=GridDimensions.model_validate(api_obj.grid_dimensions.model_dump()),
             bounding_box=BoundingBox3D.model_validate(api_obj.bounding_box.model_dump()),
         )
         perf_metrics.record_lap("convert")
@@ -174,14 +183,20 @@ class UserGrid3dService:
         ensemble_name: str,
         realization: int,
         grid_name: str,
-        property_name: str,
-        property_date_or_interval: str | None,
+        parameter_name: str,
         ijk_index_filter: IJKIndexFilter | None,
+        parameter_time_or_interval_str: Optional[str] = None,
     ) -> MappedGridProperties:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name, property_date_or_interval
+            self._sumo_client,
+            self._case_uuid,
+            ensemble_name,
+            realization,
+            grid_name,
+            parameter_name,
+            parameter_time_or_interval_str,
         )
         LOGGER.debug(f".get_mapped_grid_properties_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_mapped_grid_properties_async() - {property_blob_object_uuid=}")
@@ -224,12 +239,24 @@ class UserGrid3dService:
         return ret_obj
 
     async def get_polyline_intersection_async(
-        self, ensemble_name: str, realization: int, grid_name: str, property_name: str, polyline_utm_xy: list[float]
+        self,
+        ensemble_name: str,
+        realization: int,
+        grid_name: str,
+        parameter_name: str,
+        polyline_utm_xy: list[float],
+        parameter_time_or_interval_str: Optional[str] = None,
     ) -> PolylineIntersection:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name, None
+            self._sumo_client,
+            self._case_uuid,
+            ensemble_name,
+            realization,
+            grid_name,
+            parameter_name,
+            parameter_time_or_interval_str,
         )
         LOGGER.debug(f".get_polyline_intersection_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_polyline_intersection_async() - {property_blob_object_uuid=}")
@@ -277,6 +304,7 @@ class UserGrid3dService:
 
         ret_obj = PolylineIntersection(
             fence_mesh_sections=ret_mesh_section_list,
+            grid_dimensions=GridDimensions.model_validate(api_obj.grid_dimensions.model_dump()),
             min_grid_prop_value=api_obj.min_grid_prop_value,
             max_grid_prop_value=api_obj.max_grid_prop_value,
         )

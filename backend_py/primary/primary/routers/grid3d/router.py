@@ -124,6 +124,9 @@ async def grid_parameter(
     grid_name: Annotated[str, Query(description="Grid name")],
     parameter_name: Annotated[str, Query(description="Grid parameter")],
     realization_num: Annotated[int, Query(description="Realization")],
+    parameter_time_or_interval_str: Annotated[
+        Optional[str], Query(description="Time point or time interval string")
+    ] = None,
     single_k_layer: Annotated[int, Query(description="Show only a single k layer")] = -1,
     parameter_date_or_interval: Annotated[Optional[str], Query(description="Grid parameter date or interval")] = None,
 ) -> schemas.Grid3dMappedProperty:
@@ -143,8 +146,8 @@ async def grid_parameter(
     mapped_grid_properties = await grid_service.get_mapped_grid_properties_async(
         ensemble_name=ensemble_name,
         grid_name=grid_name,
-        property_name=parameter_name,
-        property_date_or_interval=parameter_date_or_interval,
+        parameter_name=parameter_name,
+        parameter_time_or_interval_str=parameter_time_or_interval_str,
         realization=realization_num,
         ijk_index_filter=ijk_index_filter,
     )
@@ -173,6 +176,9 @@ async def post_get_polyline_intersection(
     grid_name: Annotated[str, Query(description="Grid name")],
     parameter_name: Annotated[str, Query(description="Grid parameter")],
     realization_num: Annotated[int, Query(description="Realization")],
+    parameter_time_or_interval_str: Annotated[
+        Optional[str], Query(description="Time point or time interval string")
+    ] = None,
     polyline_utm_xy: list[float] = Body(embed=True),
 ) -> PolylineIntersection:
     perf_metrics = PerfMetrics()
@@ -183,7 +189,8 @@ async def post_get_polyline_intersection(
     polyline_intersection = await grid_service.get_polyline_intersection_async(
         ensemble_name=ensemble_name,
         grid_name=grid_name,
-        property_name=parameter_name,
+        parameter_name=parameter_name,
+        parameter_time_or_interval_str=parameter_time_or_interval_str,
         realization=realization_num,
         polyline_utm_xy=polyline_utm_xy,
     )

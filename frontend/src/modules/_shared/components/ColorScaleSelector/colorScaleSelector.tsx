@@ -1,6 +1,7 @@
 import React from "react";
 
 import { ColorPaletteType, WorkbenchSettings } from "@framework/WorkbenchSettings";
+import { Checkbox } from "@lib/components/Checkbox";
 import { ColorGradient } from "@lib/components/ColorGradient";
 import { ColorPaletteSelector, ColorPaletteSelectorType } from "@lib/components/ColorPaletteSelector";
 import { Input } from "@lib/components/Input";
@@ -158,15 +159,18 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
                     onChange={handleColorPaletteChange}
                 />
             </Label>
-            <Label text="Min">
-                <Input
-                    type="number"
-                    min={-1}
-                    max={10}
-                    value={colorScale.getMin()}
-                    onChange={(e) => setMin(parseFloat(e.target.value))}
-                />
-            </Label>
+            <Checkbox
+                label="Min"
+                checked={colorScale.getMin() === -1}
+                onChange={(e) => setMin(e.target.checked ? -1 : 0)}
+            />
+            <Input
+                type="number"
+                min={-1}
+                max={10}
+                value={colorScale.getMin()}
+                onChange={(e) => setMin(parseFloat(e.target.value))}
+            />
             <Label text="Max">
                 <Input type="number" value={colorScale.getMax()} onChange={(e) => setMax(parseFloat(e.target.value))} />
             </Label>

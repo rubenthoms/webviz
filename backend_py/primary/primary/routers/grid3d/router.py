@@ -74,20 +74,21 @@ async def grid_surface(
     ensemble_name: Annotated[str, Query(description="Ensemble name")],
     grid_name: Annotated[str, Query(description="Grid name")],
     realization_num: Annotated[int, Query(description="Realization")],
-    single_k_layer: Annotated[int, Query(description="Show only a single k layer")] = -1,
+    i_min: Annotated[int, Query(description="Min i index")] = 0,
+    i_max: Annotated[int, Query(description="Max i index")] = -1,
+    j_min: Annotated[int, Query(description="Min j index")] = 0,
+    j_max: Annotated[int, Query(description="Max j index")] = -1,
+    k_min: Annotated[int, Query(description="Min k index")] = 0,
+    k_max: Annotated[int, Query(description="Max k index")] = -1,
 ) -> schemas.Grid3dGeometry:
     """Get a grid"""
 
     perf_metrics = PerfMetrics()
 
-    ijk_index_filter = None
-    if single_k_layer >= 0:
-        ijk_index_filter = IJKIndexFilter(
-            min_i=-1, max_i=-1, min_j=-1, max_j=-1, min_k=single_k_layer, max_k=single_k_layer
-        )
-
     grid_service = await UserGrid3dService.create_async(authenticated_user, case_uuid)
     perf_metrics.record_lap("create-service")
+
+    ijk_index_filter = IJKIndexFilter(min_i=i_min, max_i=i_max, min_j=j_min, max_j=j_max, min_k=k_min, max_k=k_max)
 
     grid_geometry = await grid_service.get_grid_geometry_async(
         ensemble_name=ensemble_name,
@@ -127,17 +128,18 @@ async def grid_parameter(
     parameter_time_or_interval_str: Annotated[
         Optional[str], Query(description="Time point or time interval string")
     ] = None,
-    single_k_layer: Annotated[int, Query(description="Show only a single k layer")] = -1,
+    i_min: Annotated[int, Query(description="Min i index")] = 0,
+    i_max: Annotated[int, Query(description="Max i index")] = -1,
+    j_min: Annotated[int, Query(description="Min j index")] = 0,
+    j_max: Annotated[int, Query(description="Max j index")] = -1,
+    k_min: Annotated[int, Query(description="Min k index")] = 0,
+    k_max: Annotated[int, Query(description="Max k index")] = -1,
 ) -> schemas.Grid3dMappedProperty:
     """Get a grid parameter"""
 
     perf_metrics = PerfMetrics()
 
-    ijk_index_filter = None
-    if single_k_layer >= 0:
-        ijk_index_filter = IJKIndexFilter(
-            min_i=-1, max_i=-1, min_j=-1, max_j=-1, min_k=single_k_layer, max_k=single_k_layer
-        )
+    ijk_index_filter = IJKIndexFilter(min_i=i_min, max_i=i_max, min_j=j_min, max_j=j_max, min_k=k_min, max_k=k_max)
 
     grid_service = await UserGrid3dService.create_async(authenticated_user, case_uuid)
     perf_metrics.record_lap("create-service")

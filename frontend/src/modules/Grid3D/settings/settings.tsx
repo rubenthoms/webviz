@@ -10,6 +10,7 @@ import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
+import { Checkbox } from "@lib/components/Checkbox";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dialog } from "@lib/components/Dialog";
 import { Dropdown } from "@lib/components/Dropdown";
@@ -18,6 +19,7 @@ import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Radio } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
+import { Slider } from "@lib/components/Slider";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
 import { ColorScale } from "@lib/utils/ColorScale";
@@ -32,6 +34,7 @@ import { v4 } from "uuid";
 import {
     userSelectedCustomIntersectionPolylineIdAtom,
     userSelectedEnsembleIdentAtom,
+    userSelectedGridCellIndexRangesAtom,
     userSelectedGridModelNameAtom,
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
@@ -42,12 +45,14 @@ import {
     availableRealizationsAtom,
     availableUserCreatedIntersectionPolylinesAtom,
     gridModelDimensionsAtom,
+    selectedGridCellIndexRangesAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
 } from "./atoms/derivedAtoms";
 import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atoms/queryAtoms";
+import { GridCellIndexFilter } from "./components/gridCellIndexFilter";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
@@ -60,7 +65,7 @@ import {
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { CustomIntersectionPolyline } from "../typesAndEnums";
+import { CustomIntersectionPolyline, GridCellIndexRanges } from "../typesAndEnums";
 import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
@@ -77,6 +82,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     );
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
+    const [pickSingleGridCellIndexI, setPickSingleGridCellIndexI] = React.useState<boolean>(false);
+    const [pickSingleGridCellIndexJ, setPickSingleGridCellIndexJ] = React.useState<boolean>(false);
+    const [pickSingleGridCellIndexK, setPickSingleGridCellIndexK] = React.useState<boolean>(false);
 
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
@@ -114,6 +122,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const availableUserCreatedIntersectionPolylines = useIntersectionPolylines(props.workbenchSession).getPolylines();
     const selectedCustomIntersectionPolylineId = useAtomValue(userSelectedCustomIntersectionPolylineIdAtom);
     const setSelectedCustomIntersectionPolylineId = useSetAtom(userSelectedCustomIntersectionPolylineIdAtom);
+
+    const selectedGridCellIndexRanges = useAtomValue(selectedGridCellIndexRangesAtom);
+    const setSelectedGridCellIndexRanges = useSetAtom(userSelectedGridCellIndexRangesAtom);
 
     if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
         setPrevSyncedIntersection(syncedIntersection);
@@ -201,7 +212,31 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         }
     }
 
-    function handleColorScaleChange(colorScale: ColorScale, range: [number, number]) {}
+    function handleGridCellIndexRangesChange(direction: "i" | "j" | "k", value: [number, number]) {
+        const newGridCellIndexRanges: GridCellIndexRanges = {
+            ...selectedGridCellIndexRanges,
+            [direction]: value,
+        };
+        setSelectedGridCellIndexRanges(newGridCellIndexRanges);
+    }
+
+    function handleGridCellIndexRangeMinChange(direction: "i" | "j" | "k", value: number) {
+        const newGridCellIndexRanges: GridCellIndexRanges = {
+            ...selectedGridCellIndexRanges,
+            [direction]: [value, selectedGridCellIndexRanges[direction][1]],
+        };
+        setSelectedGridCellIndexRanges(newGridCellIndexRanges);
+    }
+
+    function handleGridCellIndexRangeMaxChange(direction: "i" | "j" | "k", value: number) {
+        const newGridCellIndexRanges: GridCellIndexRanges = {
+            ...selectedGridCellIndexRanges,
+            [direction]: [selectedGridCellIndexRanges[direction][0], value],
+        };
+        setSelectedGridCellIndexRanges(newGridCellIndexRanges);
+    }
+
+    function handleColorScaleChange(colorScale: ColorScale) {}
 
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
@@ -265,16 +300,35 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             />
                         </PendingWrapper>
                     </Label>
-                    <Label text="Grid layer">
-                        <Input
-                            type="number"
-                            defaultValue={gridLayer}
-                            onChange={handleGridLayerChange}
-                            min={-1}
-                            max={gridModelDimensions?.k_count}
-                        />
-                    </Label>
                     <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Grid cell filter" expanded>
+                <div className="flex flex-col gap-4">
+                    <GridCellIndexFilter
+                        labelTitle="I filter"
+                        max={gridModelDimensions?.i_count ?? 0}
+                        range={selectedGridCellIndexRanges.i}
+                        pickSingle={pickSingleGridCellIndexI}
+                        onPickSingleChange={setPickSingleGridCellIndexI}
+                        onChange={(range) => handleGridCellIndexRangesChange("i", range)}
+                    />
+                    <GridCellIndexFilter
+                        labelTitle="J filter"
+                        max={gridModelDimensions?.j_count ?? 0}
+                        range={selectedGridCellIndexRanges.j}
+                        pickSingle={pickSingleGridCellIndexJ}
+                        onPickSingleChange={setPickSingleGridCellIndexJ}
+                        onChange={(range) => handleGridCellIndexRangesChange("j", range)}
+                    />
+                    <GridCellIndexFilter
+                        labelTitle="K filter"
+                        max={gridModelDimensions?.k_count ?? 0}
+                        range={selectedGridCellIndexRanges.k}
+                        pickSingle={pickSingleGridCellIndexK}
+                        onPickSingleChange={setPickSingleGridCellIndexK}
+                        onChange={(range) => handleGridCellIndexRangesChange("k", range)}
+                    />
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Intersection" expanded>

@@ -1,4 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { GridCellIndexRanges } from "@modules/Grid3D/typesAndEnums";
 
 import { atom } from "jotai";
 
@@ -9,3 +10,4 @@ export const userSelectedGridModelParameterNameAtom = atom<string | null>(null);
 export const userSelectedGridModelParameterDateOrIntervalAtom = atom<string | null>(null);
 export const userSelectedWellboreUuidAtom = atom<string | null>(null);
 export const userSelectedCustomIntersectionPolylineIdAtom = atom<string | null>(null);
+export const userSelectedGridCellIndexRangesAtom = atom<GridCellIndexRanges | null>(null);

@@ -1,11 +1,14 @@
+import { Grid3dDimensions_api, GridDimensions_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import { selectedEnsembleIdentAtom } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
+import { GridCellIndexRanges } from "@modules/Grid3D/typesAndEnums";
 
 import { atom } from "jotai";
 
 import {
+    userSelectedGridCellIndexRangesAtom,
     userSelectedGridModelNameAtom,
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
@@ -164,3 +167,68 @@ export const availableUserCreatedIntersectionPolylinesAtom = atom((get) => {
     const intersectionPolylines = get(IntersectionPolylinesAtom);
     return intersectionPolylines;
 });
+
+export const selectedGridCellIndexRangesAtom = atom<GridCellIndexRanges>((get) => {
+    const userSelectedGridCellIndexRanges = get(userSelectedGridCellIndexRangesAtom);
+    const gridModelDimensions = get(gridModelDimensionsAtom);
+
+    if (!gridModelDimensions && !userSelectedGridCellIndexRanges) {
+        return {
+            i: [0, 1],
+            j: [0, 1],
+            k: [0, 1],
+        };
+    }
+
+    if (!gridModelDimensions && userSelectedGridCellIndexRanges) {
+        return userSelectedGridCellIndexRanges;
+    }
+
+    if (gridModelDimensions && !userSelectedGridCellIndexRanges) {
+        return {
+            i: [0, gridModelDimensions.i_count],
+            j: [0, gridModelDimensions.j_count],
+            k: [0, gridModelDimensions.k_count],
+        };
+    }
+
+    return assertGridDimensionRangesContainedInGridDimensions(
+        userSelectedGridCellIndexRanges as GridCellIndexRanges,
+        gridModelDimensions as Grid3dDimensions_api
+    );
+});
+
+function assertGridDimensionRangesContainedInGridDimensions(
+    cellIndexRanges: GridCellIndexRanges,
+    other: Grid3dDimensions_api
+): GridCellIndexRanges {
+    const assertedGridDimensionRanges: GridCellIndexRanges = {
+        ...cellIndexRanges,
+    };
+
+    if (other.i_count < cellIndexRanges.i[1]) {
+        assertedGridDimensionRanges.i[1] = other.i_count;
+    }
+
+    if (cellIndexRanges.i[0] > assertedGridDimensionRanges.i[1]) {
+        assertedGridDimensionRanges.i[0] = assertedGridDimensionRanges.i[1];
+    }
+
+    if (other.j_count < cellIndexRanges.j[1]) {
+        assertedGridDimensionRanges.j[1] = other.j_count;
+    }
+
+    if (cellIndexRanges.j[0] > assertedGridDimensionRanges.j[1]) {
+        assertedGridDimensionRanges.j[0] = assertedGridDimensionRanges.j[1];
+    }
+
+    if (other.k_count < cellIndexRanges.k[1]) {
+        assertedGridDimensionRanges.k[1] = other.k_count;
+    }
+
+    if (cellIndexRanges.k[0] > assertedGridDimensionRanges.k[1]) {
+        assertedGridDimensionRanges.k[0] = assertedGridDimensionRanges.k[1];
+    }
+
+    return assertedGridDimensionRanges;
+}

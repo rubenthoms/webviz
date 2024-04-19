@@ -8,3 +8,9 @@ export type CustomIntersectionPolyline = {
     name: string;
     polyline: number[][];
 };
+
+export type GridCellIndexRanges = {
+    i: [number, number];
+    j: [number, number];
+    k: [number, number];
+};

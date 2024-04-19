@@ -15,5 +15,5 @@ export function createContinuousColorScaleForMap(colorScale: ColorScale): colorT
         }
     });
 
-    return [{ name: "Continuous", discrete: false, colors: rgbArr }];
+    return [{ name: "Continuous", discrete: false, colors: rgbArr, colorNaN: [255, 255, 255] }];
 }

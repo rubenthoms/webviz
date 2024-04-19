@@ -59,6 +59,9 @@ export function makeGrid3DLayer(
         gridLines: showGridLines,
         material: { ambient: 0.4, diffuse: 0.7, shininess: 8, specularColor: [25, 25, 25] },
         pickable: true,
+        colorMapName: "Continuous",
+        colorMapClampColor: true,
+        /*
         colorMapFunction: (value: number) => {
             const interpolatedColor = colorScale.getColorPalette().getInterpolatedColor(value);
             // const nonNormalizedValue = value * (colorScale.getMax() - colorScale.getMin()) + colorScale.getMin();
@@ -68,6 +71,7 @@ export function makeGrid3DLayer(
             }
             return [color.r * 255, color.g * 255, color.b * 255];
         },
+        */
     });
     return grid3dLayer as unknown as WorkingGrid3dLayer;
 }

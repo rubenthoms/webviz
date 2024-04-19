@@ -54,10 +54,10 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
     );
+    const gridCellIndexRanges = props.viewContext.useSettingsToViewInterfaceValue("gridCellIndexRanges");
     const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const gridLayer = props.viewContext.useSettingsToViewInterfaceValue("gridLayer");
-    const zFactor = props.viewContext.useSettingsToViewInterfaceValue("zFactor");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const addPolylineModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
@@ -160,7 +160,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         ensembleIdent?.getEnsembleName() ?? null,
         gridModelName,
         realization,
-        gridLayer
+        gridCellIndexRanges.i[0],
+        gridCellIndexRanges.i[1],
+        gridCellIndexRanges.j[0],
+        gridCellIndexRanges.j[1],
+        gridCellIndexRanges.k[0],
+        gridCellIndexRanges.k[1]
     );
     if (gridSurfaceQuery.isError) {
         statusWriter.addError(gridSurfaceQuery.error.message);
@@ -174,7 +179,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         gridModelParameterName,
         gridModelParameterDateOrInterval,
         realization,
-        gridLayer
+        gridCellIndexRanges.i[0],
+        gridCellIndexRanges.i[1],
+        gridCellIndexRanges.j[0],
+        gridCellIndexRanges.j[1],
+        gridCellIndexRanges.k[0],
+        gridCellIndexRanges.k[1]
     );
     if (gridParameterQuery.isError) {
         statusWriter.addError(gridParameterQuery.error.message);

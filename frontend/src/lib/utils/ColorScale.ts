@@ -112,6 +112,14 @@ export class ColorScale {
         return this._max;
     }
 
+    getType(): ColorScaleType {
+        return this._type;
+    }
+
+    getGradientType(): ColorScaleGradientType {
+        return this._gradientType;
+    }
+
     getDivMidPoint(): number {
         return this._divMidPoint;
     }

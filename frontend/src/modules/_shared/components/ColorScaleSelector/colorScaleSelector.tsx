@@ -2,50 +2,110 @@ import React from "react";
 
 import { ColorPaletteType, WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { ColorGradient } from "@lib/components/ColorGradient";
+import { ColorPaletteSelector, ColorPaletteSelectorType } from "@lib/components/ColorPaletteSelector";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 
+import { isEqual } from "lodash";
+
 export type ColorScaleSelectorProps = {
     workbenchSettings: WorkbenchSettings;
     colorScale?: ColorScale;
-    range?: [number, number];
-    onChange: (colorScale: ColorScale, range: [number, number]) => void;
+    onChange: (colorScale: ColorScale) => void;
 };
 
 export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactNode {
-    const [colorPalette, setColorPalette] = React.useState<ColorPalette>(
-        props.workbenchSettings.getColorPalettes()[ColorPaletteType.ContinuousSequential][0]
+    const [colorScale, setColorScale] = React.useState<ColorScale>(
+        props.workbenchSettings.useContinuousColorScale({ gradientType: ColorScaleGradientType.Sequential })
     );
-    const [type, setType] = React.useState<ColorScaleType>(ColorScaleType.Continuous);
-    const [gradientType, setGradientType] = React.useState<ColorScaleGradientType>(ColorScaleGradientType.Sequential);
-    const [min, setMin] = React.useState<number>(0);
-    const [max, setMax] = React.useState<number>(0);
+
+    const [prevColorScale, setPrevColorScale] = React.useState<ColorScale | undefined>(undefined);
+
+    if (!isEqual(props.colorScale, prevColorScale)) {
+        setPrevColorScale(props.colorScale);
+        if (props.colorScale) {
+            setColorScale(props.colorScale);
+        }
+    }
 
     function handleTypeChange(e: React.ChangeEvent<HTMLInputElement>) {
-        setType(e.target.value as ColorScaleType);
+        const newType = e.target.value as ColorScaleType;
+        makeAndPropagateColorScale(
+            colorScale.getColorPalette(),
+            newType,
+            colorScale.getGradientType(),
+            colorScale.getMin(),
+            colorScale.getMax()
+        );
     }
 
     function handleGradientTypeChange(e: React.ChangeEvent<HTMLInputElement>) {
-        setGradientType(e.target.value as ColorScaleGradientType);
+        const newGradientType = e.target.value as ColorScaleGradientType;
+        makeAndPropagateColorScale(
+            colorScale.getColorPalette(),
+            colorScale.getType(),
+            newGradientType,
+            colorScale.getMin(),
+            colorScale.getMax()
+        );
     }
 
-    const colorScale =
-        type === ColorScaleType.Continuous
-            ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType,
-              })
-            : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType,
-              });
+    function handleColorPaletteChange(colorPalette: ColorPalette) {
+        makeAndPropagateColorScale(
+            colorPalette,
+            colorScale.getType(),
+            colorScale.getGradientType(),
+            colorScale.getMin(),
+            colorScale.getMax()
+        );
+    }
+
+    function setMin(min: number) {
+        makeAndPropagateColorScale(
+            colorScale.getColorPalette(),
+            colorScale.getType(),
+            colorScale.getGradientType(),
+            min,
+            colorScale.getMax()
+        );
+    }
+
+    function setMax(max: number) {
+        makeAndPropagateColorScale(
+            colorScale.getColorPalette(),
+            colorScale.getType(),
+            colorScale.getGradientType(),
+            colorScale.getMin(),
+            max
+        );
+    }
+
+    function makeAndPropagateColorScale(
+        colorPalette: ColorPalette,
+        type: ColorScaleType,
+        gradientType: ColorScaleGradientType,
+        min: number,
+        max: number
+    ) {
+        const colorScale = new ColorScale({
+            colorPalette,
+            type,
+            gradientType,
+            steps: 10,
+        });
+        colorScale.setRange(min, max);
+        setColorScale(colorScale);
+        props.onChange(colorScale);
+    }
 
     return (
         <div className="flex flex-col gap-4">
             <Label text="Type">
                 <RadioGroup
-                    value={type}
+                    value={colorScale.getType()}
                     onChange={handleTypeChange}
                     options={[
                         {
@@ -75,7 +135,7 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
             </Label>
             <Label text="Gradient type">
                 <RadioGroup
-                    value={gradientType}
+                    value={colorScale.getGradientType()}
                     onChange={handleGradientTypeChange}
                     options={[
                         {
@@ -90,17 +150,25 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
                     direction="horizontal"
                 />
             </Label>
+            <Label text="Color palette">
+                <ColorPaletteSelector
+                    type={ColorPaletteSelectorType.Continuous}
+                    colorPalettes={props.workbenchSettings.getColorPalettes()[ColorPaletteType.ContinuousDiverging]}
+                    selectedColorPaletteId={colorScale.getColorPalette().getId()}
+                    onChange={handleColorPaletteChange}
+                />
+            </Label>
             <Label text="Min">
                 <Input
                     type="number"
                     min={-1}
                     max={10}
-                    value={min}
+                    value={colorScale.getMin()}
                     onChange={(e) => setMin(parseFloat(e.target.value))}
                 />
             </Label>
             <Label text="Max">
-                <Input type="number" value={max} onChange={(e) => setMax(parseFloat(e.target.value))} />
+                <Input type="number" value={colorScale.getMax()} onChange={(e) => setMax(parseFloat(e.target.value))} />
             </Label>
         </div>
     );

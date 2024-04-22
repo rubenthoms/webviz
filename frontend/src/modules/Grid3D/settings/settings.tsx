@@ -300,8 +300,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             />
                         </PendingWrapper>
                     </Label>
-                    <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
                 </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Parameter color scale" expanded>
+                <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
             </CollapsibleGroup>
             <CollapsibleGroup title="Grid cell filter" expanded>
                 <div className="flex flex-col gap-4">

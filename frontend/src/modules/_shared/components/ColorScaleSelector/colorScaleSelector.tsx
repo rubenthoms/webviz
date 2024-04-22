@@ -153,8 +153,8 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
             </Label>
             <Label text="Color palette">
                 <ColorPaletteSelector
-                    type={ColorPaletteSelectorType.Continuous}
-                    colorPalettes={props.workbenchSettings.getColorPalettes()[ColorPaletteType.ContinuousDiverging]}
+                    type={getColorPaletteSelectorTypeFromColorScale(colorScale)}
+                    colorPalettes={props.workbenchSettings.getColorPalettes()[getPaletteTypeFromColorScale(colorScale)]}
                     selectedColorPaletteId={colorScale.getColorPalette().getId()}
                     onChange={handleColorPaletteChange}
                 />
@@ -176,4 +176,18 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
             </Label>
         </div>
     );
+}
+
+function getPaletteTypeFromColorScale(colorScale: ColorScale): ColorPaletteType {
+    if (colorScale.getGradientType() === ColorScaleGradientType.Sequential) {
+        return ColorPaletteType.ContinuousSequential;
+    }
+    return ColorPaletteType.ContinuousDiverging;
+}
+
+function getColorPaletteSelectorTypeFromColorScale(colorScale: ColorScale): ColorPaletteSelectorType {
+    if (colorScale.getType() === ColorScaleType.Continuous) {
+        return ColorPaletteSelectorType.Continuous;
+    }
+    return ColorPaletteSelectorType.Discrete;
 }

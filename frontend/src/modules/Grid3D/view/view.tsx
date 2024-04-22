@@ -103,7 +103,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 intersectionReferenceSystem.offset = offset;
 
                 const extendedTrajectory = intersectionReferenceSystem.getExtendedTrajectory(
-                    10,
+                    1000,
                     intersectionExtensionLength,
                     intersectionExtensionLength
                 );

@@ -12,5 +12,9 @@ ModuleRegistry.registerModule<State, SettingsToViewInterface>({
     defaultTitle: "Intersection",
     description: "Intersection",
     preview,
-    syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.INTERSECTION],
+    syncableSettingKeys: [
+        SyncSettingKey.ENSEMBLE,
+        SyncSettingKey.INTERSECTION,
+        SyncSettingKey.CAMERA_POSITION_INTERSECTION,
+    ],
 });

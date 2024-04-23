@@ -521,13 +521,19 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 cameraPosition={cameraPositionSetByAction ?? undefined}
                 onCameraPositionApplied={() => setCameraPositionSetByAction(null)}
                 views={{
-                    layout: [1, 1],
+                    layout: [1, 2],
                     showLabel: false,
                     viewports: [
                         {
                             id: "main",
                             isSync: true,
                             show3D: props.show3D,
+                            layerIds,
+                        },
+                        {
+                            id: "main2",
+                            isSync: true,
+                            show3D: false,
                             layerIds,
                         },
                     ],

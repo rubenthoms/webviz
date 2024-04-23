@@ -41,6 +41,7 @@
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-plotly.js": "^2.6.0",
+        "simplify-js": "^1.2.4",
         "uuid": "^9.0.0",
         "wonka": "^6.3.4"
     },

@@ -1,6 +1,7 @@
 import React from "react";
 
 import { Layer } from "@deck.gl/core/typed";
+import { GeoJsonLayer } from "@deck.gl/layers/typed";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
@@ -12,8 +13,10 @@ import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
 import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
 import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
-import { AxesLayer, NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
+import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
+import { AxesLayer, NorthArrow3DLayer, PolylinesLayer } from "@webviz/subsurface-viewer/dist/layers";
 
+import { FeatureCollection } from "geojson";
 import { useAtom, useAtomValue } from "jotai";
 
 import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
@@ -79,6 +82,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     }
 
     const polylineUtmXy: number[] = [];
+    const oldPolylineUtmXy: number[] = [];
     let hoveredMdPoint3d: number[] | null = null;
 
     let intersectionReferenceSystem: IntersectionReferenceSystem | null = null;
@@ -102,15 +106,17 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 intersectionReferenceSystem = new IntersectionReferenceSystem(path);
                 intersectionReferenceSystem.offset = offset;
 
+                polylineUtmXy.push(
+                    ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(path, intersectionExtensionLength, 5).flat()
+                );
+
                 const extendedTrajectory = intersectionReferenceSystem.getExtendedTrajectory(
-                    1000,
+                    100,
                     intersectionExtensionLength,
                     intersectionExtensionLength
                 );
 
-                for (const point of extendedTrajectory.points) {
-                    polylineUtmXy.push(point[0], point[1]);
-                }
+                oldPolylineUtmXy.push(...extendedTrajectory.points.flat());
             }
         }
     } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE) {
@@ -252,6 +258,22 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
 
     const layers: Layer[] = [northArrowLayer, axesLayer];
 
+    if (polylineUtmXy) {
+        const polyLineLayer = new GeoJsonLayer({
+            id: "polyline-layer",
+            data: polyLineToGeojsonLineString(polylineUtmXy, oldPolylineUtmXy),
+            pickable: true,
+            stroked: false,
+            getLineColor: (d: any) => d.properties.color,
+            getPointRadius: (d: any) => d.properties.size,
+            getFillColor: (d: any) => d.properties.color,
+            filled: true,
+            lineWidthScale: 2,
+            lineWidthMinPixels: 2,
+        });
+        layers.push(polyLineLayer);
+    }
+
     if (gridSurfaceQuery.data && gridParameterQuery.data) {
         const minPropValue = gridParameterQuery.data.min_grid_prop_value;
         const maxPropValue = gridParameterQuery.data.max_grid_prop_value;
@@ -285,4 +307,73 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             />
         </div>
     );
+}
+
+function polyLineToGeojsonLineString(polyLine1: number[], polyLine2: number[]): FeatureCollection {
+    // Expect an array with even numbers of elements.
+    // Each pair of elements is a coordinate.
+    const coordinates1 = [];
+    for (let i = 0; i < polyLine1.length; i += 2) {
+        coordinates1.push([polyLine1[i], polyLine1[i + 1], 0]);
+    }
+    const coordinates2 = [];
+    for (let i = 0; i < polyLine2.length; i += 2) {
+        coordinates2.push([polyLine2[i], polyLine2[i + 1], -100]);
+    }
+
+    const featureCollection: FeatureCollection = {
+        type: "FeatureCollection",
+        features: [
+            {
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: coordinates1,
+                },
+                properties: {
+                    color: [0, 255, 0, 100], // Custom property to use in styling (optional)
+                },
+            },
+            {
+                type: "Feature",
+                geometry: {
+                    type: "LineString",
+                    coordinates: coordinates2,
+                },
+                properties: {
+                    color: [255, 0, 0, 100], // Custom property to use in styling (optional)
+                },
+            },
+        ],
+    };
+
+    coordinates1.forEach((coord) => {
+        featureCollection.features.push({
+            type: "Feature",
+            geometry: {
+                type: "Point",
+                coordinates: coord,
+            },
+            properties: {
+                color: [0, 255, 0], // Custom property to use in styling (optional)
+                size: 10,
+            },
+        });
+    });
+
+    coordinates2.forEach((coord) => {
+        featureCollection.features.push({
+            type: "Feature",
+            geometry: {
+                type: "Point",
+                coordinates: coord,
+            },
+            properties: {
+                color: [255, 0, 0], // Custom property to use in styling (optional)
+                size: 10,
+            },
+        });
+    });
+
+    return featureCollection;
 }

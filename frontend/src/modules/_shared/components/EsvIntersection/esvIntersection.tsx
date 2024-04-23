@@ -15,6 +15,7 @@ import {
     IntersectionReferenceSystem,
     Layer,
     LayerOptions,
+    OnRescaleEvent,
     PixiRenderApplication,
     ReferenceLine,
     ReferenceLineLayer,
@@ -112,6 +113,8 @@ export type Bounds = {
 
 export type Viewport = [number, number, number];
 
+export type ZoomTransform = OnRescaleEvent["transform"];
+
 export type EsvIntersectionProps = {
     size?: Size2D;
     showGrid?: boolean;
@@ -121,11 +124,13 @@ export type EsvIntersectionProps = {
     layers?: LayerItem[];
     bounds?: Bounds;
     viewport?: Viewport;
+    transform?: ZoomTransform;
     intersectionReferenceSystem?: IntersectionReferenceSystem;
     zFactor?: number;
     intersectionThreshold?: number;
     highlightItems?: HighlightItem[];
     onReadout?: (event: EsvIntersectionReadoutEvent) => void;
+    onZoomTransformChange?: (transform: ZoomTransform) => void;
 };
 
 function makeLayer<T extends keyof LayerDataTypeMap>(
@@ -191,7 +196,7 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 }
 
 export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
-    const { onReadout: onHover } = props;
+    const { onReadout, onZoomTransformChange } = props;
 
     const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | null | undefined>(null);
     const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
@@ -202,6 +207,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const [prevLayers, setPrevLayers] = React.useState<LayerItem[] | null | undefined>(null);
     const [prevBounds, setPrevBounds] = React.useState<Bounds | null | undefined>(null);
     const [prevViewport, setPrevViewport] = React.useState<Viewport | null | undefined>(null);
+    const [prevZoomTransform, setPrevZoomTransform] = React.useState<ZoomTransform | null | undefined>(null);
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | null | undefined>(null);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | null | undefined>(null);
     const [prevZFactor, setPrevZFactor] = React.useState<number | null | undefined>(null);
@@ -313,6 +319,14 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             setPrevViewport(props.viewport);
         }
 
+        if (!isEqual(prevZoomTransform, props.transform)) {
+            if (props.transform) {
+                esvController.zoomPanHandler.applyTransform(props.transform);
+                esvController.zoomPanHandler.recalculateZoomTransform();
+            }
+            setPrevZoomTransform(props.transform);
+        }
+
         if (!isEqual(prevLayers, props.layers)) {
             let newLayerIds = layerIds;
 
@@ -372,6 +386,15 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 },
             });
 
+            const oldOnRescaleFunction = newEsvController.zoomPanHandler.onRescale;
+
+            newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
+                if (onZoomTransformChange) {
+                    onZoomTransformChange(event.transform);
+                }
+                oldOnRescaleFunction(event);
+            };
+
             const gridLayer = new GridLayer("grid");
             newEsvController.addLayer(gridLayer);
             newEsvController.hideLayer("grid");
@@ -385,8 +408,8 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             function handleReadoutItemsChange(
                 payload: InteractionHandlerTopicPayload[InteractionHandlerTopic.READOUT_ITEMS_CHANGE]
             ) {
-                if (onHover) {
-                    onHover({ readoutItems: payload.items });
+                if (onReadout) {
+                    onReadout({ readoutItems: payload.items });
                 }
             }
 
@@ -427,7 +450,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onHover, props.intersectionThreshold]
+        [onReadout, onZoomTransformChange, props.intersectionThreshold]
     );
 
     return (

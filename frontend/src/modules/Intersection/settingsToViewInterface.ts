@@ -16,6 +16,7 @@ export type SettingsToViewInterface = {
         gridLayer: number;
         zFactor: number;
         intersectionExtensionLength: number;
+        curveFittingEpsilon: number;
     };
     derivedStates: {
         realization: number | null;
@@ -32,6 +33,7 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         gridLayer: 1,
         zFactor: 1,
         intersectionExtensionLength: 1000,
+        curveFittingEpsilon: 0.1,
     },
     derivedStates: {
         realization: (get) => {

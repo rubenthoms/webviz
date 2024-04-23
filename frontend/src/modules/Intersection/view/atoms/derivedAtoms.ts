@@ -7,6 +7,7 @@ import {
 } from "@modules/Intersection/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
+import simplify from "simplify-js";
 
 import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
 
@@ -19,7 +20,6 @@ export const selectedCustomIntersectionPolylineAtom = atom((get) => {
 
 export const intersectionReferenceSystemAtom = atom((get) => {
     const wellboreTrajectoryQuery = get(wellboreTrajectoryQueryAtom);
-
     const customIntersectionPolyline = get(selectedCustomIntersectionPolylineAtom);
     const intersectionType = get(intersectionTypeAtom);
 

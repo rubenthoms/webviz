@@ -20,6 +20,7 @@ export enum SyncSettingKey {
     TIME_SERIES = "TIME_SERIES",
     SURFACE = "SURFACE",
     CAMERA_POSITION_MAP = "SUBSURFACE_MAP_CAMERA_POSITION",
+    CAMERA_POSITION_INTERSECTION = "INTERSECTION_CAMERA_POSITION",
     WELLBORE = "WELLBORE",
     INTERSECTION = "INTERSECTION",
 }
@@ -32,6 +33,10 @@ export const SyncSettingsMeta = {
     [SyncSettingKey.CAMERA_POSITION_MAP]: { name: "Camera Position Map", abbreviation: "CAM_POS_MAP" },
     [SyncSettingKey.WELLBORE]: { name: "Wellbore", abbreviation: "WELLBORE" },
     [SyncSettingKey.INTERSECTION]: { name: "Intersection", abbreviation: "INT" },
+    [SyncSettingKey.CAMERA_POSITION_INTERSECTION]: {
+        name: "Camera Position Intersection",
+        abbreviation: "CAM_POS_INT",
+    },
 };
 
 export class SyncSettingsHelper {

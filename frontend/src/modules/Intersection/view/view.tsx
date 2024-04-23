@@ -3,14 +3,18 @@ import React from "react";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
+import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
 import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
 import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
+import { ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
+import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
 import { useAtom, useAtomValue } from "jotai";
+import simplify from "simplify-js";
 
 import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
 import { Intersection } from "./components/intersection";
@@ -39,6 +43,14 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const intersectionReferenceSystem = useAtomValue(intersectionReferenceSystemAtom);
 
+    const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
+    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
+
+    const syncedZoomTransform = syncHelper.useValue(
+        SyncSettingKey.CAMERA_POSITION_INTERSECTION,
+        "global.syncValue.cameraPositionIntersection"
+    );
+
     const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
     const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
     const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
@@ -51,6 +63,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const zFactor = props.viewContext.useSettingsToViewInterfaceValue("zFactor");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
+    const curveFittingEpsilon = props.viewContext.useSettingsToViewInterfaceValue("curveFittingEpsilon");
     const intersectionType = useAtomValue(intersectionTypeAtom);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
@@ -62,15 +75,14 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
 
     if (intersectionReferenceSystem) {
         if (intersectionType === IntersectionType.WELLBORE) {
-            const extendedTrajectory = intersectionReferenceSystem.getExtendedTrajectory(
-                10,
-                intersectionExtensionLength,
-                intersectionExtensionLength
+            const path = intersectionReferenceSystem.path;
+            polylineUtmXy.push(
+                ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
+                    path,
+                    intersectionExtensionLength,
+                    curveFittingEpsilon
+                ).flat()
             );
-
-            for (const point of extendedTrajectory.points) {
-                polylineUtmXy.push(point[0], point[1]);
-            }
         } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {
             for (const point of selectedCustomIntersectionPolyline.points) {
                 polylineUtmXy.push(point[0], point[1]);
@@ -91,7 +103,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         gridModelParameterName,
         gridModelParameterDateOrInterval,
         realization,
-
         polylineUtmXy
     );
     if (polylineIntersectionQuery.isError) {
@@ -122,6 +133,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         setHoveredMd(md);
     }, []);
 
+    const handleZoomTransformChange = React.useCallback(function handleZoomTransformChange(
+        zoomTransform: ZoomTransform
+    ) {
+        props.workbenchServices.publishGlobalData("global.syncValue.cameraPositionIntersection", zoomTransform);
+    },
+    []);
+
     const potentialIntersectionExtensionLength =
         intersectionType === IntersectionType.WELLBORE ? intersectionExtensionLength : 0;
 
@@ -137,7 +155,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 intersectionExtensionLength={potentialIntersectionExtensionLength}
                 hoveredMd={hoveredMd3dGrid}
                 onReadout={handleReadout}
+                onZoomTransformChange={handleZoomTransformChange}
                 intersectionType={intersectionType}
+                zoomTransform={syncedZoomTransform}
             />
         </div>
     );

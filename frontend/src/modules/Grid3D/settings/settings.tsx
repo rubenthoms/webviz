@@ -89,7 +89,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
-    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.intersection");
+    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection");
 
     const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
 

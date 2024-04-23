@@ -13,6 +13,7 @@ import {
     LayerItem,
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
+import { ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
 import { getColorFromLayerData } from "@modules/_shared/components/EsvIntersection/utils/intersectionConversion";
 import {
@@ -20,6 +21,8 @@ import {
     getLabelFromLayerData,
 } from "@modules/_shared/components/EsvIntersection/utils/readoutItemUtils";
 import { Add, FilterCenterFocus, Remove } from "@mui/icons-material";
+
+import { isEqual } from "lodash";
 
 import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 
@@ -32,12 +35,14 @@ export type IntersectionProps = {
     showGridLines: boolean;
     intersectionExtensionLength: number;
     hoveredMd: number | null;
+    zoomTransform?: ZoomTransform;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
+    onZoomTransformChange?: (transform: ZoomTransform) => void;
     intersectionType: IntersectionType;
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
-    const { onReadout } = props;
+    const { onReadout, onZoomTransformChange } = props;
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
     const [verticalScale, setVerticalScale] = React.useState<number>(1);
@@ -138,7 +143,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         }
     }
 
-    const viewport: [number, number, number] = [0, 0, 0];
+    const newViewport: [number, number, number] = [0, 0, 0];
     if (props.referenceSystem) {
         const firstPoint = props.referenceSystem.projectedPath[0];
         const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
@@ -147,9 +152,9 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         const yMax = Math.max(firstPoint[1], lastPoint[1]);
         const yMin = Math.min(firstPoint[1], lastPoint[1]);
 
-        viewport[0] = xMin + (xMax - xMin) / 2;
-        viewport[1] = yMin + (yMax - yMin) / 2;
-        viewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
+        newViewport[0] = xMin + (xMax - xMin) / 2;
+        newViewport[1] = yMin + (yMax - yMin) / 2;
+        newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
     }
 
     const handleReadoutItemsChange = React.useCallback(
@@ -178,6 +183,15 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
     }
 
+    const handleZoomTransformChange = React.useCallback(
+        function handleZoomTransform(transform: ZoomTransform) {
+            if (onZoomTransformChange) {
+                onZoomTransformChange(transform);
+            }
+        },
+        [onZoomTransformChange]
+    );
+
     return (
         <div className="relative h-full mr-20">
             <EsvIntersection
@@ -190,10 +204,12 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     x: [props.gridBoundingBox3d?.xmin ?? 0, props.gridBoundingBox3d?.xmax ?? 1],
                     y: [props.gridBoundingBox3d?.ymin ?? 0, props.gridBoundingBox3d?.ymax ?? 1],
                 }}
-                viewport={viewport}
+                viewport={newViewport}
+                transform={props.zoomTransform}
                 intersectionThreshold={50}
                 highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
+                onZoomTransformChange={handleZoomTransformChange}
             />
             <ReadoutBox readoutItems={readoutItems} />
             <Toolbar

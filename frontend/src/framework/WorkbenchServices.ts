@@ -1,5 +1,7 @@
 import React from "react";
 
+import { ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+
 import { isEqual } from "lodash";
 
 import { EnsembleIdent } from "./EnsembleIdent";
@@ -27,7 +29,8 @@ export type GlobalTopicDefinitions = {
         rotationOrbit: number;
     };
     "global.syncValue.wellBore": Wellbore;
-    "global.intersection": Intersection;
+    "global.syncValue.intersection": Intersection;
+    "global.syncValue.cameraPositionIntersection": ZoomTransform;
 };
 
 export type AllTopicDefinitions = NavigatorTopicDefinitions & GlobalTopicDefinitions;

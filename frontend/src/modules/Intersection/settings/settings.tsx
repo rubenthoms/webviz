@@ -69,13 +69,14 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
+    const [epsilon, setEpsilon] = props.settingsContext.useSettingsToViewInterfaceState("curveFittingEpsilon");
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
 
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
-    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.intersection");
+    const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection");
 
     const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
 
@@ -162,7 +163,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             type: IntersectionType.WELLBORE,
             uuid: uuid ?? "",
         };
-        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
     function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -177,6 +178,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setIntersectionExtensionLength(parseFloat(event.target.value));
     }
 
+    function handleEpsilonChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setEpsilon(parseFloat(event.target.value));
+    }
+
     function handleIntersectionTypeChange(type: IntersectionType) {
         setIntersectionType(type);
         const uuid = type === IntersectionType.WELLBORE ? selectedWellboreHeader : selectedCustomIntersectionPolylineId;
@@ -184,7 +189,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             type: type,
             uuid: uuid ?? "",
         };
-        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
@@ -194,7 +199,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             type: IntersectionType.CUSTOM_POLYLINE,
             uuid: uuid ?? "",
         };
-        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.intersection", intersection);
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
     function handleSeismicDataTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -360,6 +365,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                         min={0}
                         onChange={handleIntersectionExtensionLengthChange}
                     />
+                </Label>
+                <Label text="Epsilon">
+                    <Input type="number" value={epsilon} min={0} onChange={handleEpsilonChange} />
                 </Label>
             </CollapsibleGroup>
         </div>

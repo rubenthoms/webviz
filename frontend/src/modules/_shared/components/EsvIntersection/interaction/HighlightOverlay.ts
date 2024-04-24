@@ -76,16 +76,33 @@ export class HighlightOverlay {
                 svgLayer.appendChild(line);
             }
             if (item.shape === HighlightItemShape.POLYGON) {
-                const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                const polygonElement = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
                 const adjustedPoints = item.polygon.map((point) => {
                     return {
                         x: xScale(point[0]),
                         y: yScale(point[1]),
                     };
                 });
-                polygon.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
-                polygon.setAttribute("style", `fill:${item.color};stroke:${item.color};stroke-width:2;`);
-                svgLayer.appendChild(polygon);
+                polygonElement.setAttribute("points", adjustedPoints.map((point) => `${point.x},${point.y}`).join(" "));
+                polygonElement.setAttribute("style", `fill:${item.color};stroke:${item.color};stroke-width:2;`);
+                svgLayer.appendChild(polygonElement);
+            }
+            if (item.shape === HighlightItemShape.POLYGONS) {
+                for (const polygon of item.polygons) {
+                    const polygonElement = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                    const adjustedPoints = polygon.map((point) => {
+                        return {
+                            x: xScale(point[0]),
+                            y: yScale(point[1]),
+                        };
+                    });
+                    polygonElement.setAttribute(
+                        "points",
+                        adjustedPoints.map((point) => `${point.x},${point.y}`).join(" ")
+                    );
+                    polygonElement.setAttribute("style", `fill:${item.color};`);
+                    svgLayer.appendChild(polygonElement);
+                }
             }
             if (item.shape === HighlightItemShape.POINTS) {
                 for (const point of item.points) {

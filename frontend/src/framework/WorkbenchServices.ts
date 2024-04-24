@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { CameraPosition } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 
 import { isEqual } from "lodash";
 
@@ -30,7 +30,7 @@ export type GlobalTopicDefinitions = {
     };
     "global.syncValue.wellBore": Wellbore;
     "global.syncValue.intersection": Intersection;
-    "global.syncValue.cameraPositionIntersection": ZoomTransform;
+    "global.syncValue.cameraPositionIntersection": CameraPosition;
 };
 
 export type AllTopicDefinitions = NavigatorTopicDefinitions & GlobalTopicDefinitions;

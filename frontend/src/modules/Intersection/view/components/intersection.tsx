@@ -3,7 +3,6 @@ import React from "react";
 import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { Button } from "@lib/components/Button";
-import { ButtonProps } from "@lib/components/Button/button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { IntersectionType } from "@modules/Intersection/typesAndEnums";
@@ -13,8 +12,13 @@ import {
     LayerItem,
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
-import { ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
-import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
+import { CameraPosition, ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import {
+    AdditionalInformationKey,
+    HighlightItem,
+    HighlightItemShape,
+    ReadoutItem,
+} from "@modules/_shared/components/EsvIntersection/types";
 import { getColorFromLayerData } from "@modules/_shared/components/EsvIntersection/utils/intersectionConversion";
 import {
     getAdditionalInformationFromReadoutItem,
@@ -37,15 +41,25 @@ export type IntersectionProps = {
     hoveredMd: number | null;
     zoomTransform?: ZoomTransform;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
-    onZoomTransformChange?: (transform: ZoomTransform) => void;
+    onCameraPositionChange?: (cameraPosition: CameraPosition) => void;
     intersectionType: IntersectionType;
+    verticalScale?: number;
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
-    const { onReadout, onZoomTransformChange } = props;
+    const { onReadout, onCameraPositionChange } = props;
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
-    const [verticalScale, setVerticalScale] = React.useState<number>(1);
+    const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
+    const [prevIntersectionData, setPrevIntersectionData] = React.useState<PolylineIntersection_trans | null>(null);
+    const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
+
+    if (!isEqual(prevVerticalScale, props.verticalScale)) {
+        setPrevVerticalScale(props.verticalScale);
+        if (props.verticalScale) {
+            setVerticalScale(props.verticalScale);
+        }
+    }
 
     const layers: LayerItem[] = [];
 
@@ -162,7 +176,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             setReadoutItems(event.readoutItems);
             onReadout(event);
         },
-        [onReadout]
+        [onReadout, props.polylineIntersectionData]
     );
 
     const highlightItems: HighlightItem[] = [];
@@ -183,13 +197,13 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
     }
 
-    const handleZoomTransformChange = React.useCallback(
-        function handleZoomTransform(transform: ZoomTransform) {
-            if (onZoomTransformChange) {
-                onZoomTransformChange(transform);
+    const handleCameraPositionChange = React.useCallback(
+        function handleCameraPositionChange(cameraPosition: CameraPosition) {
+            if (onCameraPositionChange) {
+                onCameraPositionChange(cameraPosition);
             }
         },
-        [onZoomTransformChange]
+        [onCameraPositionChange]
     );
 
     return (
@@ -209,7 +223,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 intersectionThreshold={50}
                 highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
-                onZoomTransformChange={handleZoomTransformChange}
+                onCameraPositionChange={handleCameraPositionChange}
             />
             <ReadoutBox readoutItems={readoutItems} />
             <Toolbar
@@ -227,20 +241,93 @@ export type ReadoutBoxProps = {
     readoutItems: ReadoutItem[];
 };
 
+function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
+    const additionalInformation = getAdditionalInformationFromReadoutItem(item);
+    return Object.entries(additionalInformation).map(([key, value], index) => {
+        switch (key) {
+            case AdditionalInformationKey.CELL_INDEX:
+                return (
+                    <span key={index} className="block">
+                        Cell index: {(value as number).toFixed(0)}
+                    </span>
+                );
+            case AdditionalInformationKey.PROP_VALUE:
+                return (
+                    <span key={index} className="block">
+                        Property value: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.MD:
+                return (
+                    <span key={index} className="block">
+                        MD: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.MAX:
+                return (
+                    <span key={index} className="block">
+                        Max: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.MIN:
+                return (
+                    <span key={index} className="block">
+                        Min: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.P10:
+                return (
+                    <span key={index} className="block">
+                        P10: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.P90:
+                return (
+                    <span key={index} className="block">
+                        P90: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.P50:
+                return (
+                    <span key={index} className="block">
+                        P50: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.MEAN:
+                return (
+                    <span key={index} className="block">
+                        Mean: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.SCHEMATIC_INFO:
+                return (
+                    <span key={index} className="block">
+                        {(value as string[]).map((el) => (
+                            <span key={el}>{el}</span>
+                        ))}
+                    </span>
+                );
+            case AdditionalInformationKey.X:
+                return (
+                    <span key={index} className="block">
+                        X: {(value as number).toFixed(2)}
+                    </span>
+                );
+            case AdditionalInformationKey.Y:
+                return (
+                    <span key={index} className="block">
+                        Y: {(value as number).toFixed(2)}
+                    </span>
+                );
+            default:
+                return null;
+        }
+    });
+}
+
 function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     if (props.readoutItems.length === 0) {
         return null;
-    }
-
-    function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
-        const additionalInformation = getAdditionalInformationFromReadoutItem(item);
-        return Object.entries(additionalInformation).map(([key, value], index) => {
-            return (
-                <span key={index} className="block">
-                    {key}: {value}
-                </span>
-            );
-        });
     }
 
     return (

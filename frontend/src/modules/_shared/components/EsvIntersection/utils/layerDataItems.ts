@@ -99,6 +99,7 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                         vertices: fenceMeshSection.verticesUzArr,
                         polygonIndices: fenceMeshSection.polyIndicesArr,
                         polygonSizes: fenceMeshSection.verticesPerPolyArr,
+                        polygonCellIndices: fenceMeshSection.polySourceCellIndicesArr,
                         xMin: startU,
                         xMax: startU + uVectorLength,
                         yMin: fenceMeshSection.minZ,

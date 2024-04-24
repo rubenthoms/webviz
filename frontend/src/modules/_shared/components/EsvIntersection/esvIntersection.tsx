@@ -32,7 +32,18 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
-import { isEqual } from "lodash";
+import {
+    cloneDeep,
+    differenceWith,
+    entries,
+    get,
+    has,
+    isEqual,
+    isObjectLike,
+    isUndefined,
+    keys,
+    toPairs,
+} from "lodash";
 
 import {
     InteractionHandler,
@@ -113,7 +124,12 @@ export type Bounds = {
 
 export type Viewport = [number, number, number];
 
-export type ZoomTransform = OnRescaleEvent["transform"];
+export type ZoomTransform = { x: number; y: number; k: number };
+
+export type CameraPosition = {
+    transform: ZoomTransform;
+    zFactor: number;
+};
 
 export type EsvIntersectionProps = {
     size?: Size2D;
@@ -130,7 +146,7 @@ export type EsvIntersectionProps = {
     intersectionThreshold?: number;
     highlightItems?: HighlightItem[];
     onReadout?: (event: EsvIntersectionReadoutEvent) => void;
-    onZoomTransformChange?: (transform: ZoomTransform) => void;
+    onCameraPositionChange?: (cameraPosition: CameraPosition) => void;
 };
 
 function makeLayer<T extends keyof LayerDataTypeMap>(
@@ -196,7 +212,7 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 }
 
 export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
-    const { onReadout, onZoomTransformChange } = props;
+    const { onReadout, onCameraPositionChange } = props;
 
     const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | null | undefined>(null);
     const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
@@ -345,7 +361,12 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             if (props.layers) {
                 for (const layer of props.layers) {
                     if (!esvController.getLayer(layer.id)) {
-                        const newLayer = makeLayer(layer.type, layer.id, layer.options, pixiRenderApplication);
+                        const newLayer = makeLayer(
+                            layer.type,
+                            layer.id,
+                            cloneDeep(layer.options),
+                            pixiRenderApplication
+                        );
                         newLayerIds.push(layer.id);
                         esvController.addLayer(newLayer);
                         newLayer?.element?.setAttribute("width", containerSize.width.toString());
@@ -356,7 +377,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                     } else {
                         const existingLayer = esvController.getLayer(layer.id);
                         if (existingLayer) {
-                            existingLayer.onUpdate({ data: layer.options.data });
+                            existingLayer.onUpdate({ data: cloneDeep(layer.options.data) });
                             interactionHandler.removeLayer(layer.id);
                             if (layer.hoverable) {
                                 interactionHandler.addLayer(existingLayer);
@@ -367,7 +388,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             }
 
             setLayerIds(newLayerIds);
-            setPrevLayers(props.layers);
+            setPrevLayers(cloneDeep(props.layers));
         }
     }
 
@@ -389,9 +410,12 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             const oldOnRescaleFunction = newEsvController.zoomPanHandler.onRescale;
 
             newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
-                if (onZoomTransformChange) {
-                    onZoomTransformChange(event.transform);
-                }
+                // if (onCameraPositionChange) {
+                //     onCameraPositionChange({
+                //         zFactor: event.zFactor,
+                //         transform: event.transform,
+                //     });
+                // }
                 oldOnRescaleFunction(event);
             };
 
@@ -450,7 +474,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onReadout, onZoomTransformChange, props.intersectionThreshold]
+        [onReadout, onCameraPositionChange, props.intersectionThreshold]
     );
 
     return (

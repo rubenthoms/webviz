@@ -35,13 +35,13 @@ export class IntersectionHandler {
         this.makeOverlay();
     }
 
-    addIntersectionObject(intersectionObject: IntersectionItem) {
+    addIntersectionItem(intersectionItem: IntersectionItem) {
         const intersectionCalculator = makeIntersectionCalculatorFromIntersectionItem(
-            intersectionObject,
+            intersectionItem,
             this._options,
             this._controller
         );
-        this._intersectionCalculators.set(intersectionObject.id, intersectionCalculator);
+        this._intersectionCalculators.set(intersectionItem.id, intersectionCalculator);
     }
 
     removeIntersectionObject(id: string) {
@@ -110,8 +110,7 @@ export class IntersectionHandler {
 
         this._controller.currentStateAsEvent.xScale;
 
-        const intersections: IntersectionHandlerTopicPayload[IntersectionHandlerTopic.INTERSECTION]["intersections"] =
-            [];
+        const intersections: Intersection[] = [];
 
         const calcDistance = (point: number[]): number => {
             const x1 = xScale(point[0]);

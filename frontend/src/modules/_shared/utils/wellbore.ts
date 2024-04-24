@@ -20,6 +20,7 @@ export function calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
     const adjustedWellboreTrajectory = wellboreTrajectory.map((point) => ({ x: point[0], y: point[1] }));
 
     const simplifiedCurve = simplify(adjustedWellboreTrajectory, epsilon).map((point) => [point.x, point.y]);
+    console.debug("Simplified wellbore points count: ", simplifiedCurve.length);
 
     for (const point of simplifiedCurve) {
         polylineUtmXy.push([point[0], point[1]]);

@@ -53,7 +53,7 @@ export class InteractionHandler {
 
         const layerDataObjects = makeLayerDataItems(layer);
         for (const layerDataObject of layerDataObjects) {
-            this._intersectionHandler.addIntersectionObject(layerDataObject.intersectionItem);
+            this._intersectionHandler.addIntersectionItem(layerDataObject.intersectionItem);
         }
         this._layerDataItems.push(...layerDataObjects);
     }

@@ -12,7 +12,7 @@ import {
     isWellborepathLayer,
 } from "./layers";
 
-import { ReadoutItem } from "../types/types";
+import { AdditionalInformation, AdditionalInformationKey, ReadoutItem } from "../types/types";
 
 export function getLabelFromLayerData(readoutItem: ReadoutItem): string {
     const layer = readoutItem.layer;
@@ -110,10 +110,8 @@ export function makeSchematicInfo<T extends keyof Omit<SchematicData, "symbols">
     return arr;
 }
 
-export function getAdditionalInformationFromReadoutItem(
-    readoutItem: ReadoutItem
-): Record<string, string | string[] | number | null> {
-    const infoObject: Record<string, string | string[] | number | null> = {};
+export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem): AdditionalInformation {
+    const infoObject: AdditionalInformation = {};
     const layer = readoutItem.layer;
 
     if (isPolylineIntersectionLayer(layer) && layer.data) {
@@ -121,15 +119,17 @@ export function getAdditionalInformationFromReadoutItem(
             const cellIndexOffset = layer.data.fenceMeshSections
                 .slice(0, readoutItem.index)
                 .reduce((acc, section) => acc + section.polySourceCellIndicesArr.length, 0);
-            infoObject["polygon-index"] = cellIndexOffset + readoutItem.polygonIndex;
+            infoObject[AdditionalInformationKey.GLOBAL_POLYGON_INDEX] = cellIndexOffset + readoutItem.polygonIndex;
+            infoObject[AdditionalInformationKey.CELL_INDEX] =
+                layer.data.fenceMeshSections[readoutItem.index].polySourceCellIndicesArr[readoutItem.polygonIndex];
 
             const propValue = layer.data.fenceMeshSections[readoutItem.index].polyPropsArr[readoutItem.polygonIndex];
-            infoObject["prop-value"] = propValue;
+            infoObject[AdditionalInformationKey.PROP_VALUE] = propValue;
         }
     }
 
     if (isWellborepathLayer(layer)) {
-        infoObject["md"] = readoutItem.md ?? null;
+        infoObject[AdditionalInformationKey.MD] = readoutItem.md ?? undefined;
     }
 
     if (isStatisticalFanchartsCanvasLayer(layer) && layer.data) {
@@ -158,8 +158,27 @@ export function getAdditionalInformationFromReadoutItem(
             });
 
             for (const [index, point] of readoutItem.points.entries()) {
-                const label = keys[index];
-                infoObject[label] = point[1];
+                const key = keys[index] as keyof AdditionalInformation;
+                switch (key) {
+                    case "mean":
+                        infoObject[AdditionalInformationKey.MEAN] = point[1];
+                        break;
+                    case "min":
+                        infoObject[AdditionalInformationKey.MIN] = point[1];
+                        break;
+                    case "max":
+                        infoObject[AdditionalInformationKey.MAX] = point[1];
+                        break;
+                    case "p10":
+                        infoObject[AdditionalInformationKey.P10] = point[1];
+                        break;
+                    case "p90":
+                        infoObject[AdditionalInformationKey.P90] = point[1];
+                        break;
+                    case "p50":
+                        infoObject[AdditionalInformationKey.P50] = point[1];
+                        break;
+                }
             }
         }
     }
@@ -167,8 +186,8 @@ export function getAdditionalInformationFromReadoutItem(
     if (isCalloutCanvasLayer(layer) && layer.data) {
         const md = layer.data[readoutItem.index].md;
         if (md) {
-            infoObject["label"] = layer.data[readoutItem.index].label;
-            infoObject["md"] = md;
+            infoObject[AdditionalInformationKey.LABEL] = layer.data[readoutItem.index].label;
+            infoObject[AdditionalInformationKey.MD] = md;
         }
     }
 
@@ -176,15 +195,15 @@ export function getAdditionalInformationFromReadoutItem(
         if (layer.data) {
             const schematicType = readoutItem.schematicType;
             if (schematicType && layer.data[schematicType] && schematicType !== "symbols") {
-                infoObject["schematic-info"] = makeSchematicInfo(
+                infoObject[AdditionalInformationKey.SCHEMATIC_INFO] = makeSchematicInfo(
                     schematicType,
                     layer.data[schematicType][readoutItem.index]
                 );
             }
         }
     } else {
-        infoObject["x"] = readoutItem.point[0];
-        infoObject["y"] = readoutItem.point[1];
+        infoObject[AdditionalInformationKey.X] = readoutItem.point[0];
+        infoObject[AdditionalInformationKey.Y] = readoutItem.point[1];
     }
 
     if (isSeismicCanvasLayer(layer)) {
@@ -200,9 +219,9 @@ export function getAdditionalInformationFromReadoutItem(
                 const imageY = transformedPoint.y;
                 const imageData = ctx.getImageData(imageX, imageY, 1, 1);
 
-                infoObject["r"] = imageData.data[0];
-                infoObject["g"] = imageData.data[1];
-                infoObject["b"] = imageData.data[2];
+                infoObject[AdditionalInformationKey.R] = imageData.data[0];
+                infoObject[AdditionalInformationKey.G] = imageData.data[1];
+                infoObject[AdditionalInformationKey.B] = imageData.data[2];
             }
         }
     }

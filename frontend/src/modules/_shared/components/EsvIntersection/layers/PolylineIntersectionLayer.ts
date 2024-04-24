@@ -10,6 +10,8 @@ import { pointDistance } from "@lib/utils/geometry";
 
 import { Graphics } from "pixi.js";
 
+import { polygonFromVerticesAndIndices } from "../utils/geometry";
+
 export type FenceMeshSection = {
     verticesUzArr: Float32Array; // [u, z]
     polyIndicesArr: Uint32Array | Uint16Array | Uint8Array;
@@ -33,9 +35,12 @@ export type PolylineIntersectionData = {
     colorScale: ColorScale;
 };
 
+type CellIndexPolygonsLookupMap = Map<number, { sectionIndex: number; polygonIndex: number; startOffset: number }[]>;
+
 export type PolylineIntersectionLayerOptions = LayerOptions<PolylineIntersectionData>;
 export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionData> {
     private _isPreRendered = false;
+    private _cellIndexPolygonsLookupMap: CellIndexPolygonsLookupMap = new Map();
 
     constructor(ctx: PixiRenderApplication, id: string, options: PolylineIntersectionLayerOptions) {
         super(ctx, id, options);
@@ -60,6 +65,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
         this._isPreRendered = false;
         this.clearLayer();
         this.preRender();
+        this.makeCellIndexPolygonsLookupMap();
         this.render();
     }
 
@@ -72,6 +78,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
 
         const showGridlines = !(this.data?.hideGridlines ?? false);
         let startU = -(this.data?.extensionLengthStart ?? 0);
+        let totalPolyCount = 0;
         this.data.fenceMeshSections.forEach((section) => {
             this.createFenceMeshSection(startU, section, showGridlines);
             const uVectorLength = pointDistance(
@@ -85,7 +92,11 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
                 }
             );
             startU += uVectorLength;
+            totalPolyCount += section.verticesPerPolyArr.length;
         });
+
+        console.debug("Total section count: ", this.data.fenceMeshSections.length);
+        console.debug("Total poly count: ", totalPolyCount);
 
         this._isPreRendered = true;
     }
@@ -128,5 +139,65 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
         }
 
         this.addChild(graphics);
+    }
+
+    private makeCellIndexPolygonsLookupMap() {
+        if (!this.data) {
+            return;
+        }
+
+        this._cellIndexPolygonsLookupMap.clear();
+
+        let startOffset = 0;
+        for (const [sectionIndex, section] of this.data?.fenceMeshSections.entries()) {
+            for (let polygonIndex = 0; polygonIndex < section.polySourceCellIndicesArr.length; polygonIndex++) {
+                const cellIndex = section.polySourceCellIndicesArr[polygonIndex];
+                if (!this._cellIndexPolygonsLookupMap.has(cellIndex)) {
+                    this._cellIndexPolygonsLookupMap.set(cellIndex, []);
+                }
+
+                this._cellIndexPolygonsLookupMap.get(cellIndex)?.push({ sectionIndex, polygonIndex, startOffset });
+            }
+
+            startOffset += pointDistance(
+                {
+                    x: section.startUtmX,
+                    y: section.startUtmY,
+                },
+                {
+                    x: section.endUtmX,
+                    y: section.endUtmY,
+                }
+            );
+        }
+    }
+
+    extractPolygonsForCellIndex(cellIndex: number): number[][][] {
+        const polygonsPoints: number[][][] = [];
+
+        const polygons = this._cellIndexPolygonsLookupMap.get(cellIndex);
+        if (!polygons || !this.data) {
+            return [];
+        }
+
+        for (const { sectionIndex, polygonIndex, startOffset } of polygons) {
+            const sectionData = this.data.fenceMeshSections[sectionIndex];
+            const numVertices = sectionData.verticesPerPolyArr[polygonIndex];
+            let firstVerticeIndex = 0;
+            for (let i = 0; i < polygonIndex; i++) {
+                firstVerticeIndex += sectionData.verticesPerPolyArr[i];
+            }
+            const polygonIndices = sectionData.polyIndicesArr.subarray(
+                firstVerticeIndex,
+                firstVerticeIndex + numVertices
+            );
+
+            let polygon = polygonFromVerticesAndIndices(startOffset, sectionData.verticesUzArr, polygonIndices);
+            polygon = polygon.map((point) => [point[0] - (this.data?.extensionLengthStart ?? 0), point[1]]);
+
+            polygonsPoints.push(polygon);
+        }
+
+        return polygonsPoints;
     }
 }

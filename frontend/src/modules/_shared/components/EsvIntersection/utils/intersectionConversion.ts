@@ -74,7 +74,7 @@ export function getColorFromLayerData(layer: Layer<unknown>, index: number): str
     }
 
     if (isPolylineIntersectionLayer(layer) && layer.data) {
-        return "rgba(0, 0, 255, 0.3)";
+        return "rgba(255, 255, 255, 0.75)";
     }
 
     if (isStatisticalFanchartsCanvasLayer(layer) && layer.data) {
@@ -135,9 +135,18 @@ export function makeHighlightItemFromIntersectionResult(
         };
     }
     if (isPolygonsIntersectionResult(intersectionResult)) {
+        if (!isPolylineIntersectionLayer(layer) || !layer.data) {
+            return {
+                shape: HighlightItemShape.POLYGON,
+                polygon: intersectionResult.polygon,
+                color,
+            };
+        }
+        const cellIndex = layer.data.fenceMeshSections[index].polySourceCellIndicesArr[intersectionResult.polygonIndex];
+        const polygons = layer.extractPolygonsForCellIndex(cellIndex);
         return {
-            shape: HighlightItemShape.POLYGON,
-            polygon: intersectionResult.polygon,
+            shape: HighlightItemShape.POLYGONS,
+            polygons,
             color,
         };
     }

@@ -19,6 +19,7 @@ export enum HighlightItemShape {
     POINT = "point",
     LINE = "line",
     POLYGON = "polygon",
+    POLYGONS = "polygons",
     POINTS = "points",
 }
 
@@ -26,6 +27,7 @@ export type PolygonData = {
     vertices: Float32Array;
     polygonIndices: Uint32Array | Uint16Array | Uint8Array;
     polygonSizes: Uint32Array | Uint16Array | Uint8Array;
+    polygonCellIndices: Uint32Array | Uint16Array | Uint8Array;
     xMin: number;
     xMax: number;
     yMin: number;
@@ -92,6 +94,10 @@ export type HighlightItem = {
           polygon: number[][];
       }
     | {
+          shape: HighlightItemShape.POLYGONS;
+          polygons: number[][][];
+      }
+    | {
           shape: HighlightItemShape.POINTS;
           points: number[][];
       }
@@ -116,4 +122,44 @@ export type LayerDataItem = {
     layer: Layer<unknown>;
     index: number;
     intersectionItem: IntersectionItem;
+};
+
+export enum AdditionalInformationKey {
+    GLOBAL_POLYGON_INDEX = "polygon-index",
+    CELL_INDEX = "cell-index",
+    PROP_VALUE = "prop-value",
+    MD = "md",
+    MEAN = "mean",
+    MIN = "min",
+    MAX = "max",
+    P10 = "p10",
+    P90 = "p90",
+    P50 = "p50",
+    SCHEMATIC_INFO = "schematic-info",
+    X = "x",
+    Y = "y",
+    R = "r",
+    G = "g",
+    B = "b",
+    LABEL = "label",
+}
+
+export type AdditionalInformation = {
+    [AdditionalInformationKey.B]?: number;
+    [AdditionalInformationKey.G]?: number;
+    [AdditionalInformationKey.R]?: number;
+    [AdditionalInformationKey.X]?: number;
+    [AdditionalInformationKey.Y]?: number;
+    [AdditionalInformationKey.MEAN]?: number;
+    [AdditionalInformationKey.MIN]?: number;
+    [AdditionalInformationKey.MAX]?: number;
+    [AdditionalInformationKey.P10]?: number;
+    [AdditionalInformationKey.P90]?: number;
+    [AdditionalInformationKey.P50]?: number;
+    [AdditionalInformationKey.GLOBAL_POLYGON_INDEX]?: number;
+    [AdditionalInformationKey.CELL_INDEX]?: number;
+    [AdditionalInformationKey.PROP_VALUE]?: number;
+    [AdditionalInformationKey.MD]?: number;
+    [AdditionalInformationKey.LABEL]?: string;
+    [AdditionalInformationKey.SCHEMATIC_INFO]?: string[];
 };

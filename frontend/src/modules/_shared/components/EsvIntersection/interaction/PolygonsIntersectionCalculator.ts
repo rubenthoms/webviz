@@ -1,18 +1,7 @@
 import { BoundingBox2D } from "./BoundingBox2D";
 
 import { IntersectedItem, IntersectionCalculator, IntersectionItemShape, PolygonData } from "../types/types";
-
-function polygonFromVerticesAndIndices(
-    startOffset: number,
-    vertices: Float32Array,
-    indices: Uint32Array | Uint16Array | Uint8Array
-): number[][] {
-    const polygon: number[][] = [];
-    for (let i = 0; i < indices.length; i++) {
-        polygon.push([startOffset + vertices[indices[i] * 2], vertices[indices[i] * 2 + 1]]);
-    }
-    return polygon;
-}
+import { polygonFromVerticesAndIndices } from "../utils/geometry";
 
 function isPointInPolygon(
     point: number[],

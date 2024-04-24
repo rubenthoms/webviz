@@ -33,7 +33,7 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         gridLayer: 1,
         zFactor: 1,
         intersectionExtensionLength: 1000,
-        curveFittingEpsilon: 0.1,
+        curveFittingEpsilon: 5,
     },
     derivedStates: {
         realization: (get) => {

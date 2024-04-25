@@ -125,11 +125,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         function handleReadout(event: EsvIntersectionReadoutEvent) {
             const items = event.readoutItems;
             const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
-            if (!wellboreReadoutItem) {
-                setHoveredMd(null);
-                return;
-            }
-            const md = wellboreReadoutItem.md;
+            const md = wellboreReadoutItem?.md;
             if (!md) {
                 props.workbenchServices.publishGlobalData("global.md", null);
                 return;

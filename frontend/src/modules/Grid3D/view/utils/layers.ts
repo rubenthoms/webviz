@@ -4,7 +4,6 @@ import { ColorScale } from "@lib/utils/ColorScale";
 import { TGrid3DColoringMode } from "@webviz/subsurface-viewer";
 import { AxesLayer, Grid3DLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
-import { Rgb, formatRgb, parse } from "culori";
 import { Feature } from "geojson";
 
 import {
@@ -45,8 +44,7 @@ type WorkingGrid3dLayer = {
 export function makeGrid3DLayer(
     gridSurfaceData: GridSurface_trans,
     gridParameterData: GridMappedProperty_trans,
-    showGridLines: boolean,
-    colorScale: ColorScale
+    showGridLines: boolean
 ): WorkingGrid3dLayer {
     const offsetXyz = [gridSurfaceData.origin_utm_x, gridSurfaceData.origin_utm_y, 0];
     const pointsNumberArray = gridSurfaceData.pointsFloat32Arr.map((val, i) => val + offsetXyz[i % 3]);

@@ -1,11 +1,13 @@
 import React from "react";
 
 import { Layer } from "@deck.gl/core/typed";
+import { GeoJsonLayer } from "@deck.gl/layers/typed";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
+import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -27,7 +29,6 @@ import { makeAxesLayer, makeGrid3DLayer, makeIntersectionLayer, makeWellsLayer }
 import { userSelectedCustomIntersectionPolylineIdAtom } from "../settings/atoms/baseAtoms";
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
-    addCustomIntersectionPolylineEditModeActiveAtom,
     editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
     selectedEnsembleIdentAtom,
@@ -43,6 +44,15 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const colorScale = props.workbenchSettings.useContinuousColorScale({
         gradientType: ColorScaleGradientType.Sequential,
     });
+
+    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
+    const [prevHoveredMd, setPrevHoveredMd] = React.useState<number | undefined>(undefined);
+    const syncedHoveredMd = useSubscribedValue("global.md", props.workbenchServices);
+
+    if (syncedHoveredMd?.md !== prevHoveredMd) {
+        setPrevHoveredMd(syncedHoveredMd?.md);
+        setHoveredMd(syncedHoveredMd?.md ?? null);
+    }
 
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const intersectionPolylines = useIntersectionPolylines(props.workbenchSession);
@@ -64,8 +74,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     );
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
 
-    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
-    const [hoveredMd3dGrid, setHoveredMd3dGrid] = React.useState<number | null>(null);
     const [selectedCustomIntersectionPolylineId, setSelectedCustomIntersectionPolylineId] = useAtom(
         userSelectedCustomIntersectionPolylineIdAtom
     );
@@ -133,7 +141,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (hoveredMd && intersectionReferenceSystem) {
         const [x, y] = intersectionReferenceSystem.getPosition(hoveredMd);
         const [, z] = intersectionReferenceSystem.project(hoveredMd);
-        hoveredMdPoint3d = [x, y, z];
+        hoveredMdPoint3d = [x, y, -z];
     }
 
     // Polyline intersection query
@@ -215,10 +223,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         setHoveredMd(md);
     }, []);
 
-    const handleGrid3DMdChange = React.useCallback(function handleGrid3DMdChange(md: number | null) {
-        setHoveredMd3dGrid(md);
-    }, []);
-
     function handleAddPolyline(polyline: IntersectionPolylineWithoutId) {
         const id = intersectionPolylines.add(polyline);
         setSelectedCustomIntersectionPolylineId(id);
@@ -259,7 +263,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         const minPropValue = gridParameterQuery.data.min_grid_prop_value;
         const maxPropValue = gridParameterQuery.data.max_grid_prop_value;
         colorScale.setRange(minPropValue, maxPropValue);
-        layers.push(makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines, colorScale));
+        layers.push(makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines));
 
         if (polylineIntersectionQuery.data) {
             layers.push(
@@ -271,6 +275,36 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (fieldWellboreTrajectoriesQuery.data) {
         const maybeWellboreUuid = intersectionType === IntersectionType.WELLBORE ? wellboreUuid : null;
         layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, maybeWellboreUuid));
+    }
+
+    if (hoveredMdPoint3d) {
+        const pointLayer = new GeoJsonLayer({
+            id: "hovered-md-point",
+            data: {
+                type: "FeatureCollection",
+                features: [
+                    {
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: hoveredMdPoint3d,
+                        },
+                        properties: {
+                            color: [255, 0, 0], // Custom property to use in styling (optional)
+                        },
+                    },
+                ],
+            },
+            hoveredMdPoint3d,
+            pickable: false,
+            getPosition: (d: number[]) => d,
+            getRadius: 10,
+            pointRadiusUnits: "pixels",
+            getFillColor: [255, 0, 0],
+            getLineColor: [255, 0, 0],
+            getLineWidth: 2,
+        });
+        layers.push(pointLayer);
     }
 
     return (

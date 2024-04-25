@@ -241,87 +241,45 @@ export type ReadoutBoxProps = {
     readoutItems: ReadoutItem[];
 };
 
+function additionalInformationItemToReadableString(key: string, value: unknown): string {
+    switch (key) {
+        case AdditionalInformationKey.CELL_INDEX:
+            return `Cell index: ${(value as number).toFixed(0)}`;
+        case AdditionalInformationKey.PROP_VALUE:
+            return `Property value: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.MD:
+            return `MD: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.MAX:
+            return `Max: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.MIN:
+            return `Min: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.P10:
+            return `P10: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.P90:
+            return `P90: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.P50:
+            return `P50: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.MEAN:
+            return `Mean: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.SCHEMATIC_INFO:
+            return (value as string[]).join(", ");
+        case AdditionalInformationKey.X:
+            return `X: ${(value as number).toFixed(2)}`;
+        case AdditionalInformationKey.Y:
+            return `Y: ${(value as number).toFixed(2)}`;
+        default:
+            return "";
+    }
+}
+
 function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
     const additionalInformation = getAdditionalInformationFromReadoutItem(item);
     return Object.entries(additionalInformation).map(([key, value], index) => {
-        switch (key) {
-            case AdditionalInformationKey.CELL_INDEX:
-                return (
-                    <span key={index} className="block">
-                        Cell index: {(value as number).toFixed(0)}
-                    </span>
-                );
-            case AdditionalInformationKey.PROP_VALUE:
-                return (
-                    <span key={index} className="block">
-                        Property value: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.MD:
-                return (
-                    <span key={index} className="block">
-                        MD: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.MAX:
-                return (
-                    <span key={index} className="block">
-                        Max: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.MIN:
-                return (
-                    <span key={index} className="block">
-                        Min: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.P10:
-                return (
-                    <span key={index} className="block">
-                        P10: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.P90:
-                return (
-                    <span key={index} className="block">
-                        P90: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.P50:
-                return (
-                    <span key={index} className="block">
-                        P50: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.MEAN:
-                return (
-                    <span key={index} className="block">
-                        Mean: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.SCHEMATIC_INFO:
-                return (
-                    <span key={index} className="block">
-                        {(value as string[]).map((el) => (
-                            <span key={el}>{el}</span>
-                        ))}
-                    </span>
-                );
-            case AdditionalInformationKey.X:
-                return (
-                    <span key={index} className="block">
-                        X: {(value as number).toFixed(2)}
-                    </span>
-                );
-            case AdditionalInformationKey.Y:
-                return (
-                    <span key={index} className="block">
-                        Y: {(value as number).toFixed(2)}
-                    </span>
-                );
-            default:
-                return null;
-        }
+        return (
+            <span key={index} className="block">
+                {additionalInformationItemToReadableString(key, value)}
+            </span>
+        );
     });
 }
 

@@ -244,7 +244,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         gridModelInfo?.property_info_arr.filter((el) => el.property_name === selectedGridModelParameterName) ?? [];
 
     return (
-        <>
+        <div className="flex flex-col gap-1">
             <CollapsibleGroup title="Ensemble & realization" expanded>
                 <Label text="Ensemble">
                     <EnsembleDropdown
@@ -408,7 +408,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     />
                 </Label>
             </CollapsibleGroup>
-        </>
+        </div>
     );
 }
 

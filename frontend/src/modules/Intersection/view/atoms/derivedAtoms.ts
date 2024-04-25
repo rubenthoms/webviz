@@ -7,7 +7,6 @@ import {
 } from "@modules/Intersection/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
-import simplify from "simplify-js";
 
 import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
 

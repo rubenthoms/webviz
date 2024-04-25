@@ -1,37 +1,25 @@
 import React from "react";
 
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
-import { useWellboreTrajectoriesQuery } from "@modules/_shared/WellBore";
-import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
 import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
-import { CameraPosition, ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { CameraPosition } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
-import { useAtom, useAtomValue } from "jotai";
-import simplify from "simplify-js";
+import { useAtomValue } from "jotai";
 
 import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
 import { Intersection } from "./components/intersection";
-import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
-import {
-    addCustomIntersectionPolylineEditModeActiveAtom,
-    currentCustomIntersectionPolylineAtom,
-    editCustomIntersectionPolylineEditModeActiveAtom,
-    intersectionTypeAtom,
-    selectedEnsembleIdentAtom,
-    selectedWellboreUuidAtom,
-} from "../sharedAtoms/sharedAtoms";
+import { intersectionTypeAtom, selectedEnsembleIdentAtom, selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JSX.Element {
@@ -60,7 +48,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
     );
-    const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
+    const wellboreHeader = useAtomValue(selectedWellboreAtom);
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
@@ -78,7 +66,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     }
 
     props.viewContext.setInstanceTitle(
-        `${wellboreUuid} - ${gridModelName}, ${gridModelParameterName}, ${gridModelParameterDateOrInterval} (${ensembleName})`
+        `${wellboreHeader?.identifier} - ${gridModelName}, ${gridModelParameterName}, ${gridModelParameterDateOrInterval} (${ensembleName})`
     );
 
     const polylineUtmXy: number[] = [];
@@ -123,7 +111,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     }
 
     // Wellbore casing query
-    const wellboreCasingQuery = useWellboreCasingQuery(wellboreUuid ?? undefined);
+    const wellboreCasingQuery = useWellboreCasingQuery(wellboreHeader?.uuid ?? undefined);
     if (wellboreCasingQuery.isError) {
         statusWriter.addError(wellboreCasingQuery.error.message);
     }

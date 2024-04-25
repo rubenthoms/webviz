@@ -50,7 +50,7 @@ import {
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
     selectedEnsembleIdentAtom,
-    selectedWellboreUuidAtom,
+    selectedWellboreAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 import {
@@ -101,7 +101,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedGridModelParameterDateOrInterval = useAtomValue(selectedGridModelParameterDateOrIntervalAtom);
     const setSelectedGridModelParameterDateOrInterval = useSetAtom(userSelectedGridModelParameterDateOrIntervalAtom);
 
-    const selectedWellboreHeader = useAtomValue(selectedWellboreUuidAtom);
+    const selectedWellboreHeader = useAtomValue(selectedWellboreAtom);
     const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
 
     const [selectedSeismicDataType, setSelectedSeismicDataType] = useAtom(userSelectedSeismicDataTypeAtom);
@@ -184,7 +184,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleIntersectionTypeChange(type: IntersectionType) {
         setIntersectionType(type);
-        const uuid = type === IntersectionType.WELLBORE ? selectedWellboreHeader : selectedCustomIntersectionPolylineId;
+        const uuid =
+            type === IntersectionType.WELLBORE ? selectedWellboreHeader?.uuid : selectedCustomIntersectionPolylineId;
         const intersection: Intersection = {
             type: type,
             uuid: uuid ?? "",
@@ -286,7 +287,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
                         <Select
                             options={makeWellHeaderOptions(wellHeaders.data ?? [])}
-                            value={selectedWellboreHeader ? [selectedWellboreHeader] : []}
+                            value={selectedWellboreHeader ? [selectedWellboreHeader.uuid] : []}
                             onChange={handleWellHeaderSelectionChange}
                             size={5}
                             filter

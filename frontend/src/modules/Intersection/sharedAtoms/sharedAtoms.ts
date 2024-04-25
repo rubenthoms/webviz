@@ -23,7 +23,7 @@ export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {
     return userSelectedEnsembleIdent;
 });
 
-export const selectedWellboreUuidAtom = atom((get) => {
+export const selectedWellboreAtom = atom((get) => {
     const userSelectedWellboreUuid = get(userSelectedWellboreUuidAtom);
     const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
 
@@ -31,14 +31,22 @@ export const selectedWellboreUuidAtom = atom((get) => {
         return null;
     }
 
-    if (
-        !userSelectedWellboreUuid ||
-        !wellboreHeaders.data.some((el) => el.wellbore_uuid === userSelectedWellboreUuid)
-    ) {
-        return wellboreHeaders.data[0].wellbore_uuid ?? null;
+    const userSelectedWellboreHeader = wellboreHeaders.data.find((el) => el.wellbore_uuid === userSelectedWellboreUuid);
+
+    if (!userSelectedWellboreUuid || !userSelectedWellboreHeader) {
+        if (wellboreHeaders.data.length === 0) {
+            return null;
+        }
+        return {
+            uuid: wellboreHeaders.data[0].wellbore_uuid,
+            identifier: wellboreHeaders.data[0].unique_wellbore_identifier,
+        };
     }
 
-    return userSelectedWellboreUuid;
+    return {
+        uuid: userSelectedWellboreUuid,
+        identifier: userSelectedWellboreHeader.unique_wellbore_identifier,
+    };
 });
 
 export const intersectionTypeAtom = atom<IntersectionType>(IntersectionType.WELLBORE);

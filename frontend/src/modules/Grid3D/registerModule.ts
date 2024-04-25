@@ -9,8 +9,8 @@ export const MODULE_NAME = "Grid3D";
 
 ModuleRegistry.registerModule<State, SettingsToViewInterface>({
     moduleName: MODULE_NAME,
-    defaultTitle: "Grid 3D",
-    description: "Grid 3D",
+    defaultTitle: "3D Viewer",
+    description: "3D Viewer",
     preview,
     syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.INTERSECTION],
 });

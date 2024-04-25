@@ -66,7 +66,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     }
 
     props.viewContext.setInstanceTitle(
-        `${wellboreHeader?.identifier} - ${gridModelName}, ${gridModelParameterName}, ${gridModelParameterDateOrInterval} (${ensembleName})`
+        `${wellboreHeader?.identifier} - ${gridModelName ?? "-"}, ${gridModelParameterName ?? "-"}, ${
+            gridModelParameterDateOrInterval ?? "-"
+        } (${ensembleName})`
     );
 
     const polylineUtmXy: number[] = [];
@@ -119,27 +121,30 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     // Set loading status
     statusWriter.setLoading(polylineIntersectionQuery.isFetching || wellboreCasingQuery.isFetching);
 
-    const handleReadout = React.useCallback(function handleReadout(event: EsvIntersectionReadoutEvent) {
-        const items = event.readoutItems;
-        const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
-        if (!wellboreReadoutItem) {
-            setHoveredMd(null);
-            return;
-        }
-        const md = wellboreReadoutItem.md;
-        if (!md) {
-            setHoveredMd(null);
-            return;
-        }
-        setHoveredMd(md);
-    }, []);
+    const handleReadout = React.useCallback(
+        function handleReadout(event: EsvIntersectionReadoutEvent) {
+            const items = event.readoutItems;
+            const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
+            if (!wellboreReadoutItem) {
+                setHoveredMd(null);
+                return;
+            }
+            const md = wellboreReadoutItem.md;
+            if (!md) {
+                props.workbenchServices.publishGlobalData("global.md", null);
+                return;
+            }
+            props.workbenchServices.publishGlobalData("global.md", { md: md });
+        },
+        [props.workbenchServices]
+    );
 
-    const handleCameraPositionChange = React.useCallback(function handleCameraPositionChange(
-        cameraPosition: CameraPosition
-    ) {
-        props.workbenchServices.publishGlobalData("global.syncValue.cameraPositionIntersection", cameraPosition);
-    },
-    []);
+    const handleCameraPositionChange = React.useCallback(
+        function handleCameraPositionChange(cameraPosition: CameraPosition) {
+            props.workbenchServices.publishGlobalData("global.syncValue.cameraPositionIntersection", cameraPosition);
+        },
+        [props.workbenchServices]
+    );
 
     const potentialIntersectionExtensionLength =
         intersectionType === IntersectionType.WELLBORE ? intersectionExtensionLength : 0;

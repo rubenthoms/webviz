@@ -34,7 +34,6 @@ import {
 import {
     availableRealizationsAtom,
     availableUserCreatedIntersectionPolylinesAtom,
-    gridModelDimensionsAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
@@ -45,8 +44,6 @@ import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atom
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
     addCustomIntersectionPolylineEditModeActiveAtom,
-    currentCustomIntersectionPolylineAtom,
-    editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
     selectedEnsembleIdentAtom,
@@ -59,7 +56,6 @@ import {
     SeismicSurveyType,
     SeismicSurveyTypeToStringMapping,
 } from "../typesAndEnums";
-import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
     const ensembleSet = props.workbenchSession.getEnsembleSet();
@@ -72,13 +68,15 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [epsilon, setEpsilon] = props.settingsContext.useSettingsToViewInterfaceState("curveFittingEpsilon");
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
+    const [prevSyncedEnsembles, setPrevSyncedEnsembles] = React.useState<EnsembleIdent[] | null>(null);
 
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
+    const syncedEnsembles = syncHelper.useValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles");
     const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection");
 
-    const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
+    const polylineAddModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
 
@@ -124,6 +122,13 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         }
     }
 
+    if (!isEqual(syncedEnsembles, prevSyncedEnsembles)) {
+        setPrevSyncedEnsembles(syncedEnsembles);
+        if (syncedEnsembles) {
+            setSelectedEnsembleIdent(syncedEnsembles[0]);
+        }
+    }
+
     let gridModelErrorMessage = "";
     if (gridModelInfos.isError) {
         statusWriter.addError("Failed to load grid model infos");
@@ -138,6 +143,11 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleEnsembleSelectionChange(ensembleIdent: EnsembleIdent | null) {
         setSelectedEnsembleIdent(ensembleIdent);
+        syncHelper.publishValue(
+            SyncSettingKey.ENSEMBLE,
+            "global.syncValue.ensembles",
+            ensembleIdent ? [ensembleIdent] : []
+        );
     }
 
     function handleRealizationSelectionChange(realization: string) {
@@ -157,8 +167,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     }
 
     function handleWellHeaderSelectionChange(wellHeader: string[]) {
-        setSelectedWellboreHeader(wellHeader.at(0) ?? null);
         const uuid = wellHeader.at(0);
+        setSelectedWellboreHeader(uuid ?? null);
         const intersection: Intersection = {
             type: IntersectionType.WELLBORE,
             uuid: uuid ?? "",
@@ -194,8 +204,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     }
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
-        setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
         const uuid = customPolylineId.at(0) ?? null;
+        setSelectedCustomIntersectionPolylineId(uuid);
         const intersection: Intersection = {
             type: IntersectionType.CUSTOM_POLYLINE,
             uuid: uuid ?? "",

@@ -16,25 +16,28 @@ export type GridCellIndexFilterProps = {
 export function GridCellIndexFilter(props: GridCellIndexFilterProps): React.ReactNode {
     function handleSliderChange(_: any, value: number[] | number) {
         if (typeof value === "number") {
+            props.onChange([value, value]);
             return;
         }
         if (!props.pickSingle) {
             props.onChange(value as [number, number]);
             return;
         }
-        if (value[0] !== props.range[0]) {
-            props.onChange([value[0], value[0]]);
-            return;
-        }
-
-        props.onChange([value[1], value[1]]);
     }
 
     function handleRangeMinChange(e: React.ChangeEvent<HTMLInputElement>) {
+        if (props.pickSingle) {
+            props.onChange([parseInt(e.target.value), parseInt(e.target.value)]);
+            return;
+        }
         props.onChange([parseInt(e.target.value), props.range[1]]);
     }
 
     function handleRangeMaxChange(e: React.ChangeEvent<HTMLInputElement>) {
+        if (props.pickSingle) {
+            props.onChange([parseInt(e.target.value), parseInt(e.target.value)]);
+            return;
+        }
         props.onChange([props.range[0], parseInt(e.target.value)]);
     }
 
@@ -56,10 +59,11 @@ export function GridCellIndexFilter(props: GridCellIndexFilterProps): React.Reac
                         min={0}
                         max={props.max}
                         step={1}
-                        value={props.range}
+                        value={props.pickSingle ? props.range[0] : props.range}
                         valueLabelDisplay="auto"
                         onChange={handleSliderChange}
                         debounceTimeMs={500}
+                        track={props.pickSingle ? false : "normal"}
                     />
                 </div>
                 <Input

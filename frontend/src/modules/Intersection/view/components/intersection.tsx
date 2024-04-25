@@ -51,7 +51,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
     const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
-    const [prevIntersectionData, setPrevIntersectionData] = React.useState<PolylineIntersection_trans | null>(null);
     const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
 
     if (!isEqual(prevVerticalScale, props.verticalScale)) {
@@ -117,7 +116,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     hideGridlines: !props.showGridLines,
                     extensionLengthStart: props.intersectionExtensionLength,
                 },
-                order: 5,
+                order: 1,
             },
         });
     }
@@ -151,7 +150,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         symbols: {},
                         perforations: [],
                     },
-                    order: 7,
+                    order: 5,
                 },
             });
         }
@@ -176,7 +175,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             setReadoutItems(event.readoutItems);
             onReadout(event);
         },
-        [onReadout, props.polylineIntersectionData]
+        [onReadout]
     );
 
     const highlightItems: HighlightItem[] = [];

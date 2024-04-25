@@ -32,18 +32,7 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
-import {
-    cloneDeep,
-    differenceWith,
-    entries,
-    get,
-    has,
-    isEqual,
-    isObjectLike,
-    isUndefined,
-    keys,
-    toPairs,
-} from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 
 import {
     InteractionHandler,
@@ -410,12 +399,12 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             const oldOnRescaleFunction = newEsvController.zoomPanHandler.onRescale;
 
             newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
-                // if (onCameraPositionChange) {
-                //     onCameraPositionChange({
-                //         zFactor: event.zFactor,
-                //         transform: event.transform,
-                //     });
-                // }
+                if (onCameraPositionChange) {
+                    onCameraPositionChange({
+                        zFactor: event.zFactor,
+                        transform: event.transform,
+                    });
+                }
                 oldOnRescaleFunction(event);
             };
 

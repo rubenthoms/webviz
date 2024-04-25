@@ -43,7 +43,6 @@ import {
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
-    availableUserCreatedIntersectionPolylinesAtom,
     gridModelDimensionsAtom,
     selectedGridCellIndexRangesAtom,
     selectedGridModelNameAtom,
@@ -57,31 +56,26 @@ import { GridCellIndexFilter } from "./components/gridCellIndexFilter";
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
     addCustomIntersectionPolylineEditModeActiveAtom,
-    currentCustomIntersectionPolylineAtom,
     editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
-    selectedCustomIntersectionPolylineIdAtom,
     selectedEnsembleIdentAtom,
     selectedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { CustomIntersectionPolyline, GridCellIndexRanges } from "../typesAndEnums";
-import { selectedCustomIntersectionPolylineAtom } from "../view/atoms/derivedAtoms";
+import { GridCellIndexRanges } from "../typesAndEnums";
 
 export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
     const ensembleSet = props.workbenchSession.getEnsembleSet();
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
     const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
-    const [gridLayer, setGridLayer] = props.settingsContext.useSettingsToViewInterfaceState("gridLayer");
     const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
-    const [polylineEditModeActive, setPolylineEditModeActive] = useAtom(
-        editCustomIntersectionPolylineEditModeActiveAtom
-    );
+    const setPolylineEditModeActive = useSetAtom(editCustomIntersectionPolylineEditModeActiveAtom);
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
+    const [prevSyncedEnsembles, setPrevSyncedEnsembles] = React.useState<EnsembleIdent[] | null>(null);
     const [pickSingleGridCellIndexI, setPickSingleGridCellIndexI] = React.useState<boolean>(false);
     const [pickSingleGridCellIndexJ, setPickSingleGridCellIndexJ] = React.useState<boolean>(false);
     const [pickSingleGridCellIndexK, setPickSingleGridCellIndexK] = React.useState<boolean>(false);
@@ -89,9 +83,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
+    const syncedEnsembles = syncHelper.useValue(SyncSettingKey.ENSEMBLE, "global.syncValue.ensembles");
     const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection");
 
-    const [polylineAddModeActive, setPolylineAddModeActive] = useAtom(addCustomIntersectionPolylineEditModeActiveAtom);
+    const polylineAddModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
 
@@ -139,6 +134,13 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         }
     }
 
+    if (!isEqual(syncedEnsembles, prevSyncedEnsembles)) {
+        setPrevSyncedEnsembles(syncedEnsembles);
+        if (syncedEnsembles) {
+            setSelectedEnsembleIdent(syncedEnsembles[0]);
+        }
+    }
+
     let gridModelErrorMessage = "";
     if (gridModelInfos.isError) {
         statusWriter.addError("Failed to load grid model infos");
@@ -153,6 +155,11 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleEnsembleSelectionChange(ensembleIdent: EnsembleIdent | null) {
         setSelectedEnsembleIdent(ensembleIdent);
+        syncHelper.publishValue(
+            SyncSettingKey.ENSEMBLE,
+            "global.syncValue.ensembles",
+            ensembleIdent ? [ensembleIdent] : []
+        );
     }
 
     function handleRealizationSelectionChange(realization: string) {
@@ -172,15 +179,17 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     }
 
     function handleWellHeaderSelectionChange(wellHeader: string[]) {
-        setSelectedWellboreHeader(wellHeader.at(0) ?? null);
+        const uuid = wellHeader.at(0);
+        setSelectedWellboreHeader(uuid ?? null);
+        const intersection: Intersection = {
+            type: IntersectionType.WELLBORE,
+            uuid: uuid ?? "",
+        };
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
     function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
         setShowGridLines(event.target.checked);
-    }
-
-    function handleGridLayerChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setGridLayer(parseInt(event.target.value));
     }
 
     function handleZFactorChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -201,6 +210,13 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleCustomPolylineSelectionChange(customPolylineId: string[]) {
         setSelectedCustomIntersectionPolylineId(customPolylineId.at(0) ?? null);
+        const uuid = customPolylineId.at(0) ?? null;
+        setSelectedCustomIntersectionPolylineId(uuid);
+        const intersection: Intersection = {
+            type: IntersectionType.CUSTOM_POLYLINE,
+            uuid: uuid ?? "",
+        };
+        syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
     function handleRemoveCustomPolyline() {
@@ -216,22 +232,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         const newGridCellIndexRanges: GridCellIndexRanges = {
             ...selectedGridCellIndexRanges,
             [direction]: value,
-        };
-        setSelectedGridCellIndexRanges(newGridCellIndexRanges);
-    }
-
-    function handleGridCellIndexRangeMinChange(direction: "i" | "j" | "k", value: number) {
-        const newGridCellIndexRanges: GridCellIndexRanges = {
-            ...selectedGridCellIndexRanges,
-            [direction]: [value, selectedGridCellIndexRanges[direction][1]],
-        };
-        setSelectedGridCellIndexRanges(newGridCellIndexRanges);
-    }
-
-    function handleGridCellIndexRangeMaxChange(direction: "i" | "j" | "k", value: number) {
-        const newGridCellIndexRanges: GridCellIndexRanges = {
-            ...selectedGridCellIndexRanges,
-            [direction]: [selectedGridCellIndexRanges[direction][0], value],
         };
         setSelectedGridCellIndexRanges(newGridCellIndexRanges);
     }
@@ -302,7 +302,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Parameter color scale" expanded>
+            <CollapsibleGroup title="Parameter color scale">
                 <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
             </CollapsibleGroup>
             <CollapsibleGroup title="Grid cell filter" expanded>

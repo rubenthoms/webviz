@@ -1,6 +1,5 @@
 import logging
-from typing import List
-from typing import Annotated
+from typing import Annotated, List, Optional
 
 import numpy as np
 from fastapi import APIRouter, Depends, Query, Body
@@ -144,8 +143,8 @@ async def grid_parameter(
     mapped_grid_properties = await grid_service.get_mapped_grid_properties_async(
         ensemble_name=ensemble_name,
         grid_name=grid_name,
-        parameter_name=parameter_name,
-        parameter_time_or_interval_str=parameter_time_or_interval_str,
+        property_name=parameter_name,
+        property_time_or_interval_str=parameter_time_or_interval_str,
         realization=realization_num,
         ijk_index_filter=ijk_index_filter,
     )
@@ -187,8 +186,8 @@ async def post_get_polyline_intersection(
     polyline_intersection = await grid_service.get_polyline_intersection_async(
         ensemble_name=ensemble_name,
         grid_name=grid_name,
-        parameter_name=parameter_name,
-        parameter_time_or_interval_str=parameter_time_or_interval_str,
+        property_name=parameter_name,
+        property_time_or_interval_str=parameter_time_or_interval_str,
         realization=realization_num,
         polyline_utm_xy=polyline_utm_xy,
     )

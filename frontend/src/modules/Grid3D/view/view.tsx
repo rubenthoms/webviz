@@ -7,7 +7,7 @@ import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
-import { useSubscribedValue } from "@framework/WorkbenchServices";
+import { GlobalTopicDefinitions, useSubscribedValue } from "@framework/WorkbenchServices";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -18,6 +18,7 @@ import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_sha
 import { NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { useAtom, useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 
 import { SubsurfaceViewerWrapper } from "./components/SubsurfaceViewerWrapper";
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
@@ -45,13 +46,17 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         gradientType: ColorScaleGradientType.Sequential,
     });
 
-    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
-    const [prevHoveredMd, setPrevHoveredMd] = React.useState<number | undefined>(undefined);
-    const syncedHoveredMd = useSubscribedValue("global.md", props.workbenchServices);
     const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
+    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
+    const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);
+    const syncedHoveredMd = useSubscribedValue(
+        "global.hoverMd",
+        props.workbenchServices,
+        props.viewContext.getInstanceIdString()
+    );
 
-    if (syncedHoveredMd?.md !== prevHoveredMd) {
-        setPrevHoveredMd(syncedHoveredMd?.md);
+    if (!isEqual(syncedHoveredMd, prevHoveredMd)) {
+        setPrevHoveredMd(syncedHoveredMd);
         if (syncedHoveredMd?.wellboreUuid === wellboreUuid) {
             setHoveredMd(syncedHoveredMd?.md ?? null);
         } else {
@@ -281,7 +286,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, maybeWellboreUuid));
     }
 
-    if (hoveredMdPoint3d) {
+    if (hoveredMdPoint3d && false) {
         const pointLayer = new GeoJsonLayer({
             id: "hovered-md-point",
             data: {

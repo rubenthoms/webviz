@@ -3,7 +3,7 @@ import React from "react";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
-import { useSubscribedValue } from "@framework/WorkbenchServices";
+import { GlobalTopicDefinitions, useSubscribedValue } from "@framework/WorkbenchServices";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -13,6 +13,7 @@ import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
 import { useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 
 import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
 import { Intersection } from "./components/intersection";
@@ -38,11 +39,15 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
-    const [prevHoveredMd, setPrevHoveredMd] = React.useState<number | undefined>(undefined);
-    const syncedHoveredMd = useSubscribedValue("global.md", props.workbenchServices);
+    const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);
+    const syncedHoveredMd = useSubscribedValue(
+        "global.hoverMd",
+        props.workbenchServices,
+        props.viewContext.getInstanceIdString()
+    );
 
-    if (syncedHoveredMd?.md !== prevHoveredMd) {
-        setPrevHoveredMd(syncedHoveredMd?.md);
+    if (!isEqual(syncedHoveredMd, prevHoveredMd)) {
+        setPrevHoveredMd(syncedHoveredMd);
         if (syncedHoveredMd?.wellboreUuid === wellboreHeader?.uuid) {
             setHoveredMd(syncedHoveredMd?.md ?? null);
         } else {
@@ -136,12 +141,16 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
             const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
             const md = wellboreReadoutItem?.md;
             if (!md || !wellboreHeader) {
-                props.workbenchServices.publishGlobalData("global.md", null);
+                props.workbenchServices.publishGlobalData("global.hoverMd", null);
                 return;
             }
-            props.workbenchServices.publishGlobalData("global.md", { wellboreUuid: wellboreHeader.uuid, md: md });
+            props.workbenchServices.publishGlobalData(
+                "global.hoverMd",
+                { wellboreUuid: wellboreHeader.uuid, md: md },
+                props.viewContext.getInstanceIdString()
+            );
         },
-        [props.workbenchServices]
+        [props.workbenchServices, wellboreHeader, props.viewContext.getInstanceIdString()]
     );
 
     const handleCameraPositionChange = React.useCallback(

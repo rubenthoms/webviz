@@ -48,10 +48,15 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
     const [prevHoveredMd, setPrevHoveredMd] = React.useState<number | undefined>(undefined);
     const syncedHoveredMd = useSubscribedValue("global.md", props.workbenchServices);
+    const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
 
     if (syncedHoveredMd?.md !== prevHoveredMd) {
         setPrevHoveredMd(syncedHoveredMd?.md);
-        setHoveredMd(syncedHoveredMd?.md ?? null);
+        if (syncedHoveredMd?.wellboreUuid === wellboreUuid) {
+            setHoveredMd(syncedHoveredMd?.md ?? null);
+        } else {
+            setHoveredMd(null);
+        }
     }
 
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
@@ -65,7 +70,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         "gridModelParameterDateOrInterval"
     );
     const gridCellIndexRanges = props.viewContext.useSettingsToViewInterfaceValue("gridCellIndexRanges");
-    const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");

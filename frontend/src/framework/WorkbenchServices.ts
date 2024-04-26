@@ -17,7 +17,7 @@ export type GlobalTopicDefinitions = {
     "global.infoMessage": string;
     "global.hoverRealization": { realization: number } | null;
     "global.hoverTimestamp": { timestampUtcMs: number } | null;
-    "global.md": { md: number } | null;
+    "global.md": { wellboreUuid: string; md: number } | null;
 
     "global.syncValue.ensembles": EnsembleIdent[];
     "global.syncValue.date": { timeOrInterval: string };

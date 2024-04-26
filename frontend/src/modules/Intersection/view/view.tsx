@@ -3,6 +3,7 @@ import React from "react";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
+import { useSubscribedValue } from "@framework/WorkbenchServices";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -25,6 +26,8 @@ import { State } from "../state";
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JSX.Element {
     const statusWriter = useViewStatusWriter(props.viewContext);
     const ensembleSet = useEnsembleSet(props.workbenchSession);
+    const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
+    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
     const colorScale = props.workbenchSettings.useContinuousColorScale({
         gradientType: ColorScaleGradientType.Sequential,
@@ -32,9 +35,20 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
 
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const intersectionReferenceSystem = useAtomValue(intersectionReferenceSystemAtom);
+    const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
-    const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
-    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
+    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
+    const [prevHoveredMd, setPrevHoveredMd] = React.useState<number | undefined>(undefined);
+    const syncedHoveredMd = useSubscribedValue("global.md", props.workbenchServices);
+
+    if (syncedHoveredMd?.md !== prevHoveredMd) {
+        setPrevHoveredMd(syncedHoveredMd?.md);
+        if (syncedHoveredMd?.wellboreUuid === wellboreHeader?.uuid) {
+            setHoveredMd(syncedHoveredMd?.md ?? null);
+        } else {
+            setHoveredMd(null);
+        }
+    }
 
     const syncedCameraPosition = syncHelper.useValue(
         SyncSettingKey.CAMERA_POSITION_INTERSECTION,
@@ -48,15 +62,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
     );
-    const wellboreHeader = useAtomValue(selectedWellboreAtom);
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const curveFittingEpsilon = props.viewContext.useSettingsToViewInterfaceValue("curveFittingEpsilon");
     const intersectionType = useAtomValue(intersectionTypeAtom);
 
-    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
-    const [hoveredMd3dGrid, setHoveredMd3dGrid] = React.useState<number | null>(null);
     const selectedCustomIntersectionPolyline = useAtomValue(selectedCustomIntersectionPolylineAtom);
 
     let ensembleName = "";
@@ -77,7 +88,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     if (intersectionReferenceSystem) {
         if (intersectionType === IntersectionType.WELLBORE) {
             const path = intersectionReferenceSystem.path;
-            console.debug("Wellbore points count: ", path.length);
             polylineUtmXy.push(
                 ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
                     path,
@@ -85,7 +95,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                     curveFittingEpsilon
                 ).flat()
             );
-            console.debug("Wellbore points count after extension: ", polylineUtmXy.length / 2);
         } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {
             for (const point of selectedCustomIntersectionPolyline.points) {
                 polylineUtmXy.push(point[0], point[1]);
@@ -126,11 +135,11 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
             const items = event.readoutItems;
             const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
             const md = wellboreReadoutItem?.md;
-            if (!md) {
+            if (!md || !wellboreHeader) {
                 props.workbenchServices.publishGlobalData("global.md", null);
                 return;
             }
-            props.workbenchServices.publishGlobalData("global.md", { md: md });
+            props.workbenchServices.publishGlobalData("global.md", { wellboreUuid: wellboreHeader.uuid, md: md });
         },
         [props.workbenchServices]
     );
@@ -155,7 +164,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 colorScale={colorScale}
                 showGridLines={showGridLines}
                 intersectionExtensionLength={potentialIntersectionExtensionLength}
-                hoveredMd={hoveredMd3dGrid}
+                hoveredMd={hoveredMd}
                 onReadout={handleReadout}
                 onCameraPositionChange={handleCameraPositionChange}
                 intersectionType={intersectionType}

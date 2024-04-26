@@ -177,8 +177,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 onReadout={handleReadout}
                 onCameraPositionChange={handleCameraPositionChange}
                 intersectionType={intersectionType}
-                zoomTransform={syncedCameraPosition?.transform}
-                verticalScale={syncedCameraPosition?.zFactor}
+                // zoomTransform={syncedCameraPosition ?? undefined}
+                // verticalScale={syncedCameraPosition?.zFactor}
             />
         </div>
     );

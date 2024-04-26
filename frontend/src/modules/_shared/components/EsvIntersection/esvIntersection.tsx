@@ -116,8 +116,9 @@ export type Viewport = [number, number, number];
 export type ZoomTransform = { x: number; y: number; k: number };
 
 export type CameraPosition = {
-    transform: ZoomTransform;
-    zFactor: number;
+    x: number;
+    y: number;
+    zoom: number;
 };
 
 export type EsvIntersectionProps = {
@@ -225,6 +226,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const [pixiRenderApplication, setPixiRenderApplication] = React.useState<PixiRenderApplication | null>(null);
 
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const automaticChanges = React.useRef<boolean>(false);
 
     const containerSize = useElementSize(containerRef);
 
@@ -326,8 +328,10 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
 
         if (!isEqual(prevZoomTransform, props.transform)) {
             if (props.transform) {
-                esvController.zoomPanHandler.applyTransform(props.transform);
+                const adjustedTransform = { ...props.transform, y: props.transform.y * (props.zFactor ?? 1) };
+                esvController.zoomPanHandler.applyTransform(adjustedTransform);
                 esvController.zoomPanHandler.recalculateZoomTransform();
+                automaticChanges.current = true;
             }
             setPrevZoomTransform(props.transform);
         }
@@ -399,12 +403,17 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             const oldOnRescaleFunction = newEsvController.zoomPanHandler.onRescale;
 
             newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
-                if (onCameraPositionChange) {
-                    onCameraPositionChange({
-                        zFactor: event.zFactor,
-                        transform: event.transform,
-                    });
+                if (onCameraPositionChange && !automaticChanges.current) {
+                    let dx0 = 0;
+                    let dx1 = 0;
+
+                    let cx = dx0 + displ / 2;
+                    let cy = 0;
+                    let displ = dx;
+
+                    onCameraPositionChange({ ...event.transform, y: event.transform.y / event.zFactor });
                 }
+                automaticChanges.current = false;
                 oldOnRescaleFunction(event);
             };
 

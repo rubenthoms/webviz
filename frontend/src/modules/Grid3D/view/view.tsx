@@ -20,6 +20,7 @@ import { NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 
+import { InteractionUpdateWrapper } from "./components/InteractionUpdateWrapper";
 import { SubsurfaceViewerWrapper } from "./components/SubsurfaceViewerWrapper";
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
@@ -47,22 +48,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     });
 
     const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
-    const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
-    const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);
-    const syncedHoveredMd = useSubscribedValue(
-        "global.hoverMd",
-        props.workbenchServices,
-        props.viewContext.getInstanceIdString()
-    );
-
-    if (!isEqual(syncedHoveredMd, prevHoveredMd)) {
-        setPrevHoveredMd(syncedHoveredMd);
-        if (syncedHoveredMd?.wellboreUuid === wellboreUuid) {
-            setHoveredMd(syncedHoveredMd?.md ?? null);
-        } else {
-            setHoveredMd(null);
-        }
-    }
 
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const intersectionPolylines = useIntersectionPolylines(props.workbenchSession);
@@ -147,12 +132,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         }
     }
 
-    if (hoveredMd && intersectionReferenceSystem) {
-        const [x, y] = intersectionReferenceSystem.getPosition(hoveredMd);
-        const [, z] = intersectionReferenceSystem.project(hoveredMd);
-        hoveredMdPoint3d = [x, y, -z];
-    }
-
     // Polyline intersection query
     const polylineIntersectionQuery = useGridPolylineIntersectionQuery(
         ensembleIdent ?? null,
@@ -217,21 +196,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             gridParameterQuery.isFetching
     );
 
-    const handleReadout = React.useCallback(function handleReadout(event: EsvIntersectionReadoutEvent) {
-        const items = event.readoutItems;
-        const wellboreReadoutItem = items.find((item) => isWellborepathLayer(item.layer));
-        if (!wellboreReadoutItem) {
-            setHoveredMd(null);
-            return;
-        }
-        const md = wellboreReadoutItem.md;
-        if (!md) {
-            setHoveredMd(null);
-            return;
-        }
-        setHoveredMd(md);
-    }, []);
-
     function handleAddPolyline(polyline: IntersectionPolylineWithoutId) {
         const id = intersectionPolylines.add(polyline);
         setSelectedCustomIntersectionPolylineId(id);
@@ -286,39 +250,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, maybeWellboreUuid));
     }
 
-    if (hoveredMdPoint3d && false) {
-        const pointLayer = new GeoJsonLayer({
-            id: "hovered-md-point",
-            data: {
-                type: "FeatureCollection",
-                features: [
-                    {
-                        type: "Feature",
-                        geometry: {
-                            type: "Point",
-                            coordinates: hoveredMdPoint3d,
-                        },
-                        properties: {
-                            color: [255, 0, 0], // Custom property to use in styling (optional)
-                        },
-                    },
-                ],
-            },
-            hoveredMdPoint3d,
-            pickable: false,
-            getPosition: (d: number[]) => d,
-            getRadius: 10,
-            pointRadiusUnits: "pixels",
-            getFillColor: [255, 0, 0],
-            getLineColor: [255, 0, 0],
-            getLineWidth: 2,
-        });
-        layers.push(pointLayer);
-    }
-
     return (
         <div className="w-full h-full">
-            <SubsurfaceViewerWrapper
+            <InteractionUpdateWrapper
                 boundingBox={gridModelBoundingBox3d ?? undefined}
                 colorTables={colorTables}
                 layers={layers}
@@ -328,6 +262,10 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 intersectionPolyline={editPolylineModeActive ? customIntersectionPolyline : undefined}
                 onIntersectionPolylineChange={handlePolylineChange}
                 onIntersectionPolylineEditCancel={handleEditPolylineCancel}
+                wellboreUuid={wellboreUuid}
+                intersectionReferenceSystem={intersectionReferenceSystem ?? undefined}
+                workbenchServices={props.workbenchServices}
+                viewContext={props.viewContext}
             />
         </div>
     );

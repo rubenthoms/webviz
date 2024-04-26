@@ -110,7 +110,7 @@ export class WorkbenchServices {
             return;
         }
         for (const { subscriberId, callbackFn } of subscribersSet) {
-            if (subscriberId !== publisherId) {
+            if (subscriberId === undefined || publisherId === undefined || subscriberId !== publisherId) {
                 callbackFn(value);
             }
         }

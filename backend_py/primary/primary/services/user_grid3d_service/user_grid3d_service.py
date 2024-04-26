@@ -1,29 +1,26 @@
 import logging
-from typing import Literal, Sequence, Optional
+from typing import Literal, Sequence
 
+import httpx
 import numpy as np
 from numpy.typing import NDArray
-import httpx
 from pydantic import BaseModel
 from sumo.wrapper import SumoClient
-from webviz_pkg.core_utils.perf_metrics import PerfMetrics, make_metrics_string_s
-from webviz_pkg.core_utils.b64 import B64FloatArray, B64UintArray, B64IntArray
+
+from webviz_pkg.core_utils.b64 import B64FloatArray, B64IntArray, B64UintArray
 from webviz_pkg.core_utils.b64 import b64_decode_float_array_to_list, b64_decode_int_array
 from webviz_pkg.core_utils.b64 import b64_encode_float_array_as_float32
+from webviz_pkg.core_utils.perf_metrics import PerfMetrics, make_metrics_string_s
 from webviz_pkg.server_schemas.user_grid3d_ri import api_schemas as server_api_schemas
 
+from primary import config
 from primary.auth.auth_helper import AuthenticatedUser
-from primary.services.user_session_manager.user_session_manager import UserSessionManager, UserComponent
 from primary.services.service_exceptions import Service
-from primary.services.service_exceptions import ServiceUnavailableError, ServiceTimeoutError, ServiceRequestError
-
-# Dirty imports!!
-from primary.services.surface_query_service.surface_query_service import _get_sas_token_and_blob_store_base_uri_for_case
-from primary.services.sumo_access._helpers import create_sumo_client_instance
-from primary.services.sumo_access.queries.grid3d import (
-    get_grid_geometry_and_property_blob_ids_async,
-    get_grid_geometry_blob_id_async,
-)
+from primary.services.service_exceptions import ServiceRequestError, ServiceTimeoutError, ServiceUnavailableError
+from primary.services.sumo_access.queries.grid3d import get_grid_geometry_and_property_blob_ids_async
+from primary.services.sumo_access.queries.grid3d import get_grid_geometry_blob_id_async
+from primary.services.sumo_access.sumo_blob_access import get_sas_token_and_blob_store_base_uri_for_case
+from primary.services.user_session_manager.user_session_manager import UserComponent, UserSessionManager
 
 LOGGER = logging.getLogger(__name__)
 
@@ -99,22 +96,23 @@ class UserGrid3dService:
         self._sas_token = sas_token
         self._blob_store_base_uri = blob_store_base_uri
         self._call_timeout = 60
+        self._include_inactive_cells = False
 
     @classmethod
     async def create_async(cls, authenticated_user: AuthenticatedUser, case_uuid: str) -> "UserGrid3dService":
         perf_metrics = PerfMetrics()
 
-        session_manager = UserSessionManager(authenticated_user.get_user_id())
+        session_manager = UserSessionManager(authenticated_user.get_user_id(), authenticated_user.get_username())
         session_base_url = await session_manager.get_or_create_session_async(UserComponent.GRID3D_RI, None)
         if session_base_url is None:
             raise ServiceUnavailableError("Failed to get user session URL", Service.USER_SESSION)
         perf_metrics.record_lap("get-session")
 
         sumo_access_token = authenticated_user.get_sumo_access_token()
-        sumo_client = create_sumo_client_instance(sumo_access_token)
+        sumo_client = SumoClient(env=config.SUMO_ENV, token=sumo_access_token, interactive=False)
         perf_metrics.record_lap("sumo-client")
 
-        sas_token, blob_store_base_uri = _get_sas_token_and_blob_store_base_uri_for_case(sumo_access_token, case_uuid)
+        sas_token, blob_store_base_uri = get_sas_token_and_blob_store_base_uri_for_case(sumo_access_token, case_uuid)
         perf_metrics.record_lap("sas-token")
 
         service_object = UserGrid3dService(
@@ -148,6 +146,7 @@ class UserGrid3dService:
             sas_token=self._sas_token,
             blob_store_base_uri=self._blob_store_base_uri,
             grid_blob_object_uuid=grid_blob_object_uuid,
+            include_inactive_cells=self._include_inactive_cells,
             ijk_index_filter=effective_ijk_index_filter,
         )
 
@@ -183,20 +182,13 @@ class UserGrid3dService:
         ensemble_name: str,
         realization: int,
         grid_name: str,
-        parameter_name: str,
+        property_name: str,
         ijk_index_filter: IJKIndexFilter | None,
-        parameter_time_or_interval_str: Optional[str] = None,
     ) -> MappedGridProperties:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client,
-            self._case_uuid,
-            ensemble_name,
-            realization,
-            grid_name,
-            parameter_name,
-            parameter_time_or_interval_str,
+            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name
         )
         LOGGER.debug(f".get_mapped_grid_properties_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_mapped_grid_properties_async() - {property_blob_object_uuid=}")
@@ -211,6 +203,7 @@ class UserGrid3dService:
             blob_store_base_uri=self._blob_store_base_uri,
             grid_blob_object_uuid=grid_blob_object_uuid,
             property_blob_object_uuid=property_blob_object_uuid,
+            include_inactive_cells=self._include_inactive_cells,
             ijk_index_filter=effective_ijk_index_filter,
         )
 
@@ -239,24 +232,12 @@ class UserGrid3dService:
         return ret_obj
 
     async def get_polyline_intersection_async(
-        self,
-        ensemble_name: str,
-        realization: int,
-        grid_name: str,
-        parameter_name: str,
-        polyline_utm_xy: list[float],
-        parameter_time_or_interval_str: Optional[str] = None,
+        self, ensemble_name: str, realization: int, grid_name: str, property_name: str, polyline_utm_xy: list[float]
     ) -> PolylineIntersection:
         perf_metrics = PerfMetrics()
 
         grid_blob_object_uuid, property_blob_object_uuid = await get_grid_geometry_and_property_blob_ids_async(
-            self._sumo_client,
-            self._case_uuid,
-            ensemble_name,
-            realization,
-            grid_name,
-            parameter_name,
-            parameter_time_or_interval_str,
+            self._sumo_client, self._case_uuid, ensemble_name, realization, grid_name, property_name
         )
         LOGGER.debug(f".get_polyline_intersection_async() - {grid_blob_object_uuid=}")
         LOGGER.debug(f".get_polyline_intersection_async() - {property_blob_object_uuid=}")
@@ -267,6 +248,7 @@ class UserGrid3dService:
             blob_store_base_uri=self._blob_store_base_uri,
             grid_blob_object_uuid=grid_blob_object_uuid,
             property_blob_object_uuid=property_blob_object_uuid,
+            include_inactive_cells=self._include_inactive_cells,
             polyline_utm_xy=polyline_utm_xy,
         )
 

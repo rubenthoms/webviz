@@ -1,14 +1,11 @@
 import logging
-from typing import List, Optional
+from typing import List
 from typing import Annotated
 
 import numpy as np
-from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
-from starlette.requests import Request
+from fastapi import APIRouter, Depends, Query, Body
 
 from webviz_pkg.core_utils.perf_metrics import PerfMetrics
-from webviz_pkg.core_utils.b64 import b64_decode_float_array_to_list
-from webviz_pkg.core_utils.perf_timer import PerfTimer
 from webviz_pkg.core_utils.b64 import b64_encode_float_array_as_float32, b64_decode_int_array
 from webviz_pkg.core_utils.b64 import B64FloatArray, B64IntArray
 

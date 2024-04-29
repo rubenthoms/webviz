@@ -115,12 +115,6 @@ export type Viewport = [number, number, number];
 
 export type ZoomTransform = { x: number; y: number; k: number };
 
-export type CameraPosition = {
-    x: number;
-    y: number;
-    zoom: number;
-};
-
 export type EsvIntersectionProps = {
     size?: Size2D;
     showGrid?: boolean;
@@ -136,7 +130,7 @@ export type EsvIntersectionProps = {
     intersectionThreshold?: number;
     highlightItems?: HighlightItem[];
     onReadout?: (event: EsvIntersectionReadoutEvent) => void;
-    onCameraPositionChange?: (cameraPosition: CameraPosition) => void;
+    onViewportChange?: (viewport: Viewport) => void;
 };
 
 function makeLayer<T extends keyof LayerDataTypeMap>(
@@ -202,7 +196,7 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 }
 
 export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
-    const { onReadout, onCameraPositionChange } = props;
+    const { onReadout, onViewportChange: onViewportChange } = props;
 
     const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | null | undefined>(null);
     const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
@@ -319,7 +313,14 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             setPrevBounds(props.bounds);
         }
 
-        if (!isEqual(prevViewport, props.viewport)) {
+        if (
+            !(prevViewport && props.viewport) ||
+            (!prevViewport && props.viewport) ||
+            (prevViewport && !props.viewport) ||
+            !fuzzyCompare(prevViewport[0], props.viewport[0], 0.0001) ||
+            !fuzzyCompare(prevViewport[1], props.viewport[1], 0.0001) ||
+            !fuzzyCompare(prevViewport[2], props.viewport[2], 0.0001)
+        ) {
             if (props.viewport) {
                 esvController.setViewport(...props.viewport);
             }
@@ -403,15 +404,21 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             const oldOnRescaleFunction = newEsvController.zoomPanHandler.onRescale;
 
             newEsvController.zoomPanHandler.onRescale = function handleRescale(event: OnRescaleEvent) {
-                if (onCameraPositionChange && !automaticChanges.current) {
-                    let dx0 = 0;
-                    let dx1 = 0;
+                if (onViewportChange && !automaticChanges.current) {
+                    const k = event.transform.k;
+                    const xSpan = newEsvController.zoomPanHandler.xSpan;
+                    const displ = xSpan / k;
+                    const unitsPerPixel = displ / event.width;
 
-                    let cx = dx0 + displ / 2;
-                    let cy = 0;
-                    let displ = dx;
+                    const dx0 = event.xBounds[0] - event.transform.x * unitsPerPixel;
+                    const cx = dx0 + displ / 2;
 
-                    onCameraPositionChange({ ...event.transform, y: event.transform.y / event.zFactor });
+                    const dy0 = event.yBounds[0] - event.transform.y * (unitsPerPixel / (props.zFactor ?? 1));
+                    const cy = dy0 + displ / event.zFactor / event.viewportRatio / 2;
+
+                    console.debug("Viewport change", [cx, cy, displ]);
+
+                    onViewportChange([cx, cy, displ]);
                 }
                 automaticChanges.current = false;
                 oldOnRescaleFunction(event);
@@ -472,7 +479,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onReadout, onCameraPositionChange, props.intersectionThreshold]
+        [onReadout, onViewportChange, props.intersectionThreshold]
     );
 
     return (
@@ -484,4 +491,8 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             ></div>
         </>
     );
+}
+
+function fuzzyCompare(a: number, b: number, epsilon: number): boolean {
+    return Math.abs(a - b) < epsilon;
 }

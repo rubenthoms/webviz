@@ -7,8 +7,7 @@ import { GlobalTopicDefinitions, useSubscribedValue } from "@framework/Workbench
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
-import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
-import { CameraPosition } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { EsvIntersectionReadoutEvent, Viewport } from "@modules/_shared/components/EsvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
@@ -154,7 +153,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     );
 
     const handleCameraPositionChange = React.useCallback(
-        function handleCameraPositionChange(cameraPosition: CameraPosition) {
+        function handleCameraPositionChange(cameraPosition: Viewport) {
             props.workbenchServices.publishGlobalData("global.syncValue.cameraPositionIntersection", cameraPosition);
         },
         [props.workbenchServices]
@@ -175,8 +174,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 intersectionExtensionLength={potentialIntersectionExtensionLength}
                 hoveredMd={hoveredMd}
                 onReadout={handleReadout}
-                onCameraPositionChange={handleCameraPositionChange}
+                onViewportChange={handleCameraPositionChange}
                 intersectionType={intersectionType}
+                viewport={syncedCameraPosition ?? undefined}
                 // zoomTransform={syncedCameraPosition ?? undefined}
                 // verticalScale={syncedCameraPosition?.zFactor}
             />

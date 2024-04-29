@@ -12,7 +12,7 @@ import {
     LayerItem,
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
-import { CameraPosition, ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { Viewport, ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 import {
     AdditionalInformationKey,
     HighlightItem,
@@ -41,13 +41,14 @@ export type IntersectionProps = {
     hoveredMd: number | null;
     zoomTransform?: ZoomTransform;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
-    onCameraPositionChange?: (cameraPosition: CameraPosition) => void;
+    onViewportChange?: (viewport: Viewport) => void;
     intersectionType: IntersectionType;
     verticalScale?: number;
+    viewport?: Viewport;
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
-    const { onReadout, onCameraPositionChange } = props;
+    const { onReadout, onViewportChange: onViewportChange } = props;
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
     const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
@@ -156,8 +157,8 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         }
     }
 
-    const newViewport: [number, number, number] = [0, 0, 0];
-    if (props.referenceSystem) {
+    let newViewport: [number, number, number] = [0, 0, 2000];
+    if (props.viewport === undefined && props.referenceSystem) {
         const firstPoint = props.referenceSystem.projectedPath[0];
         const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
         const xMax = Math.max(firstPoint[0], lastPoint[0]);
@@ -167,7 +168,9 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
         newViewport[0] = xMin + (xMax - xMin) / 2;
         newViewport[1] = yMin + (yMax - yMin) / 2;
-        newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
+        newViewport[2] = 2000; // Math.max(xMax - xMin, yMax - yMin) * 5;
+    } else {
+        newViewport = props.viewport ?? newViewport;
     }
 
     const handleReadoutItemsChange = React.useCallback(
@@ -196,13 +199,13 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
     }
 
-    const handleCameraPositionChange = React.useCallback(
-        function handleCameraPositionChange(cameraPosition: CameraPosition) {
-            if (onCameraPositionChange) {
-                onCameraPositionChange(cameraPosition);
+    const handleViewportChange = React.useCallback(
+        function handleViewportChange(viewport: Viewport) {
+            if (onViewportChange) {
+                onViewportChange(viewport);
             }
         },
-        [onCameraPositionChange]
+        [onViewportChange]
     );
 
     return (
@@ -222,7 +225,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 intersectionThreshold={50}
                 highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
-                onCameraPositionChange={handleCameraPositionChange}
+                onViewportChange={handleViewportChange}
             />
             <ReadoutBox readoutItems={readoutItems} />
             <Toolbar

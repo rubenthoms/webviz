@@ -1,6 +1,6 @@
 import React from "react";
 
-import { CameraPosition } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { Viewport } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 
 import { isEqual } from "lodash";
 
@@ -32,7 +32,7 @@ export type GlobalTopicDefinitions = {
     };
     "global.syncValue.wellBore": Wellbore;
     "global.syncValue.intersection": Intersection;
-    "global.syncValue.cameraPositionIntersection": CameraPosition;
+    "global.syncValue.cameraPositionIntersection": Viewport;
 };
 
 export type AllTopicDefinitions = NavigatorTopicDefinitions & GlobalTopicDefinitions;

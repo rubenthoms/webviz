@@ -38,6 +38,7 @@ import {
     availableSeismicAttributesAtom,
     availableSeismicDateOrIntervalStringsAtom,
     availableUserCreatedIntersectionPolylinesAtom,
+    selectedCustomIntersectionPolylineIdAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
@@ -54,8 +55,6 @@ import {
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
     addCustomIntersectionPolylineEditModeActiveAtom,
-    intersectionTypeAtom,
-    selectedCustomIntersectionPolylineIdAtom,
     selectedEnsembleIdentAtom,
     selectedWellboreAtom,
 } from "../sharedAtoms/sharedAtoms";
@@ -66,8 +65,11 @@ import {
     SeismicSurveyType,
     SeismicSurveyTypeToStringMapping,
 } from "../typesAndEnums";
+import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
-export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): JSX.Element {
+export function Settings(
+    props: ModuleSettingsProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
+): JSX.Element {
     const ensembleSet = props.workbenchSession.getEnsembleSet();
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
@@ -88,7 +90,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     const polylineAddModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
 
-    const [intersectionType, setIntersectionType] = useAtom(intersectionTypeAtom);
+    const [intersectionType, setIntersectionType] =
+        props.settingsContext.useSettingsToViewInterfaceState("intersectionType");
 
     const selectedEnsembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const setSelectedEnsembleIdent = useSetAtom(userSelectedEnsembleIdentAtom);

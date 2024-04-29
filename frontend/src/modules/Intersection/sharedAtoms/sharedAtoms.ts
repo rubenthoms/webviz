@@ -49,26 +49,7 @@ export const selectedWellboreAtom = atom((get) => {
     };
 });
 
-export const intersectionTypeAtom = atom<IntersectionType>(IntersectionType.WELLBORE);
 export const addCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
 export const editCustomIntersectionPolylineEditModeActiveAtom = atom<boolean>(false);
 
 export const currentCustomIntersectionPolylineAtom = atom<number[][]>([]);
-
-export const selectedCustomIntersectionPolylineIdAtom = atom((get) => {
-    const userSelectedCustomIntersectionPolylineId = get(userSelectedCustomIntersectionPolylineIdAtom);
-    const customIntersectionPolylines = get(IntersectionPolylinesAtom);
-
-    if (!customIntersectionPolylines.length) {
-        return null;
-    }
-
-    if (
-        !userSelectedCustomIntersectionPolylineId ||
-        !customIntersectionPolylines.some((el) => el.id === userSelectedCustomIntersectionPolylineId)
-    ) {
-        return customIntersectionPolylines[0].id;
-    }
-
-    return userSelectedCustomIntersectionPolylineId;
-});

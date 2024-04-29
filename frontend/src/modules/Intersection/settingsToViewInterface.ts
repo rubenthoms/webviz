@@ -1,9 +1,11 @@
 import { BoundingBox3d_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToViewInterface";
+import { IntersectionType } from "@framework/types/intersection";
 
 import { userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
 import {
+    selectedCustomIntersectionPolylineIdAtom,
     selectedGridModelBoundingBox3dAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
@@ -12,6 +14,7 @@ import {
     selectedSeismicAttributeAtom,
     selectedSeismicDateOrIntervalStringAtom,
 } from "./settings/atoms/derivedAtoms";
+import { selectedEnsembleIdentAtom } from "./sharedAtoms/sharedAtoms";
 import { SeismicDataType } from "./typesAndEnums";
 
 export type SettingsToViewInterface = {
@@ -20,9 +23,11 @@ export type SettingsToViewInterface = {
         gridLayer: number;
         zFactor: number;
         intersectionExtensionLength: number;
+        intersectionType: IntersectionType;
         curveFittingEpsilon: number;
     };
     derivedStates: {
+        ensembleIdent: EnsembleIdent | null;
         realization: number | null;
         gridModelName: string | null;
         gridModelBoundingBox3d: BoundingBox3d_api | null;
@@ -31,6 +36,7 @@ export type SettingsToViewInterface = {
         seismicAttribute: string | null;
         seismicDateOrIntervalString: string | null;
         seismicDataType: SeismicDataType;
+        selectedCustomIntersectionPolylineId: string | null;
     };
 };
 
@@ -40,9 +46,13 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         gridLayer: 1,
         zFactor: 1,
         intersectionExtensionLength: 1000,
+        intersectionType: IntersectionType.WELLBORE,
         curveFittingEpsilon: 5,
     },
     derivedStates: {
+        ensembleIdent: (get) => {
+            return get(selectedEnsembleIdentAtom);
+        },
         realization: (get) => {
             return get(selectedRealizationAtom);
         },
@@ -66,6 +76,9 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         },
         seismicDataType: (get) => {
             return get(userSelectedSeismicDataTypeAtom);
+        },
+        selectedCustomIntersectionPolylineId: (get) => {
+            return get(selectedCustomIntersectionPolylineIdAtom);
         },
     },
 };

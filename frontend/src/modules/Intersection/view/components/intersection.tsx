@@ -5,6 +5,7 @@ import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { ColorScale } from "@lib/utils/ColorScale";
+import { SeismicFenceData_trans } from "@modules/Intersection/queryDataTransforms";
 import { IntersectionType } from "@modules/Intersection/typesAndEnums";
 import {
     EsvIntersection,
@@ -33,6 +34,7 @@ import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
     polylineIntersectionData: PolylineIntersection_trans | null;
+    seismicFenceData: SeismicFenceData_trans | null;
     wellboreCasingData: WellboreCasing_api[] | null;
     gridBoundingBox3d: BoundingBox3d_api | null;
     colorScale: ColorScale;
@@ -118,6 +120,19 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     extensionLengthStart: props.intersectionExtensionLength,
                 },
                 order: 1,
+            },
+        });
+    }
+
+    if (props.seismicFenceData) {
+        layers.push({
+            id: "seismic",
+            type: LayerType.SEISMIC_CANVAS,
+            options: {
+                data: {
+                    image: "",
+                    options: {},
+                },
             },
         });
     }

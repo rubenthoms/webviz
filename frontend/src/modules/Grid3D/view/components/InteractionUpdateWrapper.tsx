@@ -14,7 +14,7 @@ export type InteractionUpdateWrapperProps = {
     wellboreUuid: string | null;
     intersectionReferenceSystem?: IntersectionReferenceSystem;
     workbenchServices: WorkbenchServices;
-    viewContext: ViewContext<any, any>;
+    viewContext: ViewContext<any, any, any, any>;
 } & SubsurfaceViewerWrapperProps;
 
 export function InteractionUpdateWrapper(props: InteractionUpdateWrapperProps): React.ReactNode {

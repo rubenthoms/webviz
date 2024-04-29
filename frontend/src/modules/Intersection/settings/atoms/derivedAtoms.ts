@@ -8,6 +8,7 @@ import { SeismicDataType, SeismicSurveyType } from "@modules/Intersection/typesA
 import { atom } from "jotai";
 
 import {
+    userSelectedCustomIntersectionPolylineIdAtom,
     userSelectedGridModelNameAtom,
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
@@ -252,4 +253,22 @@ export const selectedSeismicDateOrIntervalStringAtom = atom((get) => {
     }
 
     return userSelectedSeismicDateOrIntervalString;
+});
+
+export const selectedCustomIntersectionPolylineIdAtom = atom((get) => {
+    const userSelectedCustomIntersectionPolylineId = get(userSelectedCustomIntersectionPolylineIdAtom);
+    const customIntersectionPolylines = get(IntersectionPolylinesAtom);
+
+    if (!customIntersectionPolylines.length) {
+        return null;
+    }
+
+    if (
+        !userSelectedCustomIntersectionPolylineId ||
+        !customIntersectionPolylines.some((el) => el.id === userSelectedCustomIntersectionPolylineId)
+    ) {
+        return customIntersectionPolylines[0].id;
+    }
+
+    return userSelectedCustomIntersectionPolylineId;
 });

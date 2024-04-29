@@ -14,16 +14,18 @@ import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_sha
 import { useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 
-import { intersectionReferenceSystemAtom, selectedCustomIntersectionPolylineAtom } from "./atoms/derivedAtoms";
+import { ViewAtoms } from "./atoms/atomDefinitions";
 import { Intersection } from "./components/intersection";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
-import { intersectionTypeAtom, selectedEnsembleIdentAtom, selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
+import { selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 
-export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JSX.Element {
+export function View(
+    props: ModuleViewProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
+): JSX.Element {
     const statusWriter = useViewStatusWriter(props.viewContext);
     const ensembleSet = useEnsembleSet(props.workbenchSession);
     const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
@@ -33,8 +35,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         gradientType: ColorScaleGradientType.Sequential,
     });
 
-    const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
-    const intersectionReferenceSystem = useAtomValue(intersectionReferenceSystemAtom);
+    const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
+    const intersectionReferenceSystem = props.viewContext.useViewAtomValue("intersectionReferenceSystemAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
@@ -71,10 +73,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
-    const curveFittingEpsilon = props.viewContext.useSettingsToViewInterfaceValue("curveFittingEpsilon");
-    const intersectionType = useAtomValue(intersectionTypeAtom);
-
-    const selectedCustomIntersectionPolyline = useAtomValue(selectedCustomIntersectionPolylineAtom);
+    const intersectionType = props.viewContext.useSettingsToViewInterfaceValue("intersectionType");
 
     let ensembleName = "";
     if (ensembleIdent) {
@@ -92,21 +91,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
     let hoveredMdPoint3d: number[] | null = null;
 
     if (intersectionReferenceSystem) {
-        if (intersectionType === IntersectionType.WELLBORE) {
-            const path = intersectionReferenceSystem.path;
-            polylineUtmXy.push(
-                ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
-                    path,
-                    intersectionExtensionLength,
-                    curveFittingEpsilon
-                ).flat()
-            );
-        } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {
-            for (const point of selectedCustomIntersectionPolyline.points) {
-                polylineUtmXy.push(point[0], point[1]);
-            }
-        }
-
         if (hoveredMd) {
             const [x, y] = intersectionReferenceSystem.getPosition(hoveredMd);
             const [, z] = intersectionReferenceSystem.project(hoveredMd);

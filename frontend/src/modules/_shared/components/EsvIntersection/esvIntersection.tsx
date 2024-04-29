@@ -124,7 +124,6 @@ export type EsvIntersectionProps = {
     layers?: LayerItem[];
     bounds?: Bounds;
     viewport?: Viewport;
-    transform?: ZoomTransform;
     intersectionReferenceSystem?: IntersectionReferenceSystem;
     zFactor?: number;
     intersectionThreshold?: number;
@@ -207,7 +206,6 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const [prevLayers, setPrevLayers] = React.useState<LayerItem[] | null | undefined>(null);
     const [prevBounds, setPrevBounds] = React.useState<Bounds | null | undefined>(null);
     const [prevViewport, setPrevViewport] = React.useState<Viewport | null | undefined>(null);
-    const [prevZoomTransform, setPrevZoomTransform] = React.useState<ZoomTransform | null | undefined>(null);
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | null | undefined>(null);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | null | undefined>(null);
     const [prevZFactor, setPrevZFactor] = React.useState<number | null | undefined>(null);
@@ -325,16 +323,6 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 esvController.setViewport(...props.viewport);
             }
             setPrevViewport(props.viewport);
-        }
-
-        if (!isEqual(prevZoomTransform, props.transform)) {
-            if (props.transform) {
-                const adjustedTransform = { ...props.transform, y: props.transform.y * (props.zFactor ?? 1) };
-                esvController.zoomPanHandler.applyTransform(adjustedTransform);
-                esvController.zoomPanHandler.recalculateZoomTransform();
-                automaticChanges.current = true;
-            }
-            setPrevZoomTransform(props.transform);
         }
 
         if (!isEqual(prevLayers, props.layers)) {

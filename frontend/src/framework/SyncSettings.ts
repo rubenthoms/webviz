@@ -23,6 +23,7 @@ export enum SyncSettingKey {
     CAMERA_POSITION_INTERSECTION = "INTERSECTION_CAMERA_POSITION",
     WELLBORE = "WELLBORE",
     INTERSECTION = "INTERSECTION",
+    VERTICAL_SCALE = "VERTICAL_SCALE",
 }
 
 export const SyncSettingsMeta = {
@@ -35,8 +36,9 @@ export const SyncSettingsMeta = {
     [SyncSettingKey.INTERSECTION]: { name: "Intersection", abbreviation: "INT" },
     [SyncSettingKey.CAMERA_POSITION_INTERSECTION]: {
         name: "Camera Position Intersection",
-        abbreviation: "CAM_POS_INT",
+        abbreviation: "CAM",
     },
+    [SyncSettingKey.VERTICAL_SCALE]: { name: "Vertical Scale", abbreviation: "VSCAL" },
 };
 
 export class SyncSettingsHelper {

@@ -16,5 +16,6 @@ ModuleRegistry.registerModule<State, SettingsToViewInterface>({
         SyncSettingKey.ENSEMBLE,
         SyncSettingKey.INTERSECTION,
         SyncSettingKey.CAMERA_POSITION_INTERSECTION,
+        SyncSettingKey.VERTICAL_SCALE,
     ],
 });

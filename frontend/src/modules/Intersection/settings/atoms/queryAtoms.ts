@@ -37,3 +37,18 @@ export const drilledWellboreHeadersQueryAtom = atomWithQuery((get) => {
         enabled: Boolean(caseUuid),
     };
 });
+
+export const seismicCubeMetaListQueryAtom = atomWithQuery((get) => {
+    const ensembleIdent = get(selectedEnsembleIdentAtom);
+
+    const caseUuid = ensembleIdent?.getCaseUuid() ?? "";
+    const ensembleName = ensembleIdent?.getEnsembleName() ?? "";
+
+    return {
+        queryKey: ["getSeismicCubeMetaList", caseUuid, ensembleName],
+        queryFn: () => apiService.seismic.getSeismicCubeMetaList(caseUuid, ensembleName),
+        staleTime: STALE_TIME,
+        gcTime: CACHE_TIME,
+        enabled: Boolean(caseUuid && ensembleName),
+    };
+});

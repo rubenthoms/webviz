@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
+import { Grid3dInfo_api, Grid3dPropertyInfo_api, SeismicCubeMeta_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
@@ -27,19 +27,29 @@ import {
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
+    userSelectedSeismicAttributeAtom,
     userSelectedSeismicDataTypeAtom,
+    userSelectedSeismicDateOrIntervalStringAtom,
     userSelectedSeismicSurveyTypeAtom,
     userSelectedWellboreUuidAtom,
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
+    availableSeismicAttributesAtom,
+    availableSeismicDateOrIntervalStringsAtom,
     availableUserCreatedIntersectionPolylinesAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
+    selectedSeismicAttributeAtom,
+    selectedSeismicDateOrIntervalStringAtom,
 } from "./atoms/derivedAtoms";
-import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atoms/queryAtoms";
+import {
+    drilledWellboreHeadersQueryAtom,
+    gridModelInfosQueryAtom,
+    seismicCubeMetaListQueryAtom,
+} from "./atoms/queryAtoms";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
@@ -89,6 +99,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     const gridModelInfos = useAtomValue(gridModelInfosQueryAtom);
     const wellHeaders = useAtomValue(drilledWellboreHeadersQueryAtom);
+    const seismicCubeMetaList = useAtomValue(seismicCubeMetaListQueryAtom);
 
     const selectedGridModelName = useAtomValue(selectedGridModelNameAtom);
     const setSelectedGridModelName = useSetAtom(userSelectedGridModelNameAtom);
@@ -108,6 +119,14 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const availableUserCreatedIntersectionPolylines = useAtomValue(availableUserCreatedIntersectionPolylinesAtom);
     const selectedCustomIntersectionPolylineId = useAtomValue(selectedCustomIntersectionPolylineIdAtom);
     const setSelectedCustomIntersectionPolylineId = useSetAtom(userSelectedCustomIntersectionPolylineIdAtom);
+
+    const availableSeismicAttributes = useAtomValue(availableSeismicAttributesAtom);
+    const selectedSeismicAttribute = useAtomValue(selectedSeismicAttributeAtom);
+    const setSelectedSeismicAttribute = useSetAtom(userSelectedSeismicAttributeAtom);
+
+    const availableSeismicDateOrIntervalStrings = useAtomValue(availableSeismicDateOrIntervalStringsAtom);
+    const selectedSeismicDateOrIntervalString = useAtomValue(selectedSeismicDateOrIntervalStringAtom);
+    const setSelectedSeismicDateOrIntervalString = useSetAtom(userSelectedSeismicDateOrIntervalStringAtom);
 
     if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
         setPrevSyncedIntersection(syncedIntersection);
@@ -139,6 +158,12 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     if (wellHeaders.isError) {
         statusWriter.addError("Failed to load well headers");
         wellHeadersErrorMessage = "Failed to load well headers";
+    }
+
+    let seismicCubeMetaListErrorMessage = "";
+    if (seismicCubeMetaList.isError) {
+        statusWriter.addError("Failed to load seismic cube meta list");
+        seismicCubeMetaListErrorMessage = "Failed to load seismic cube meta list";
     }
 
     function handleEnsembleSelectionChange(ensembleIdent: EnsembleIdent | null) {
@@ -219,6 +244,14 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleSeismicSurveyTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
         setSelectedSeismicSurveyType(event.target.value as SeismicSurveyType);
+    }
+
+    function handleSeismicAttributeChange(seismicAttribute: string[]) {
+        setSelectedSeismicAttribute(seismicAttribute.at(0) ?? null);
+    }
+
+    function handleSeismicDateOrIntervalStringChange(dateOrInterval: string[]) {
+        setSelectedSeismicDateOrIntervalString(dateOrInterval.at(0) ?? null);
     }
 
     const realizationOptions = makeRealizationOptions(availableRealizations);
@@ -360,6 +393,34 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             direction="horizontal"
                         />
                     </Label>
+                    <Label text="Attribute">
+                        <PendingWrapper
+                            isPending={seismicCubeMetaList.isFetching}
+                            errorMessage={seismicCubeMetaListErrorMessage}
+                        >
+                            <Select
+                                options={makeSeismicAttributeOptions(availableSeismicAttributes)}
+                                value={selectedSeismicAttribute ? [selectedSeismicAttribute] : []}
+                                onChange={handleSeismicAttributeChange}
+                                size={5}
+                                placeholder="No seismic attributes"
+                            />
+                        </PendingWrapper>
+                    </Label>
+                    <Label text="Date or interval">
+                        <PendingWrapper
+                            isPending={seismicCubeMetaList.isFetching}
+                            errorMessage={seismicCubeMetaListErrorMessage}
+                        >
+                            <Select
+                                options={makeSeismicAttributeOptions(availableSeismicDateOrIntervalStrings)}
+                                value={selectedSeismicDateOrIntervalString ? [selectedSeismicDateOrIntervalString] : []}
+                                onChange={handleSeismicDateOrIntervalStringChange}
+                                size={5}
+                                placeholder="No seismic dates or intervals"
+                            />
+                        </PendingWrapper>
+                    </Label>
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Visualization options" expanded>
@@ -437,5 +498,19 @@ function makeCustomIntersectionPolylineOptions(polylines: IntersectionPolyline[]
     return polylines.map((polyline) => ({
         label: polyline.name,
         value: polyline.id,
+    }));
+}
+
+function makeSeismicAttributeOptions(availableSeismicAttributes: string[]): SelectOption[] {
+    return availableSeismicAttributes.map((attribute) => ({
+        label: attribute,
+        value: attribute,
+    }));
+}
+
+function makeSeismicDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings: string[]): SelectOption[] {
+    return availableSeismicDateOrIntervalStrings.map((dateOrInterval) => ({
+        label: dateOrInterval,
+        value: dateOrInterval,
     }));
 }

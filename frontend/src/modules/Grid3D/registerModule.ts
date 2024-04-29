@@ -12,5 +12,5 @@ ModuleRegistry.registerModule<State, SettingsToViewInterface>({
     defaultTitle: "3D Viewer",
     description: "3D Viewer",
     preview,
-    syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.INTERSECTION],
+    syncableSettingKeys: [SyncSettingKey.ENSEMBLE, SyncSettingKey.INTERSECTION, SyncSettingKey.VERTICAL_SCALE],
 });

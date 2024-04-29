@@ -39,9 +39,9 @@ export type IntersectionProps = {
     showGridLines: boolean;
     intersectionExtensionLength: number;
     hoveredMd: number | null;
-    zoomTransform?: ZoomTransform;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
     onViewportChange?: (viewport: Viewport) => void;
+    onVerticalScaleChange?: (verticalScale: number) => void;
     intersectionType: IntersectionType;
     verticalScale?: number;
     viewport?: Viewport;
@@ -192,11 +192,19 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     }
 
     function handleVerticalScaleIncrease() {
-        setVerticalScale((prev) => prev + 0.1);
+        const newVerticalScale = verticalScale + 0.1;
+        setVerticalScale(newVerticalScale);
+        if (props.onVerticalScaleChange) {
+            props.onVerticalScaleChange(newVerticalScale);
+        }
     }
 
     function handleVerticalScaleDecrease() {
-        setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
+        const newVerticalScale = Math.max(0.1, verticalScale - 0.1);
+        setVerticalScale(newVerticalScale);
+        if (props.onVerticalScaleChange) {
+            props.onVerticalScaleChange(newVerticalScale);
+        }
     }
 
     const handleViewportChange = React.useCallback(
@@ -221,7 +229,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     y: [props.gridBoundingBox3d?.ymin ?? 0, props.gridBoundingBox3d?.ymax ?? 1],
                 }}
                 viewport={newViewport}
-                transform={props.zoomTransform}
                 intersectionThreshold={50}
                 highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
@@ -291,7 +298,7 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     }
 
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 left-0 bg-white p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border-2 border-neutral-300 bottom-10 left-0 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
             {props.readoutItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
                     <div

@@ -2,13 +2,17 @@ import { BoundingBox3d_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToViewInterface";
 
+import { userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
 import {
     selectedGridModelBoundingBox3dAtom,
     selectedGridModelNameAtom,
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
+    selectedSeismicAttributeAtom,
+    selectedSeismicDateOrIntervalStringAtom,
 } from "./settings/atoms/derivedAtoms";
+import { SeismicDataType } from "./typesAndEnums";
 
 export type SettingsToViewInterface = {
     baseStates: {
@@ -24,6 +28,9 @@ export type SettingsToViewInterface = {
         gridModelBoundingBox3d: BoundingBox3d_api | null;
         gridModelParameterName: string | null;
         gridModelParameterDateOrInterval: string | null;
+        seismicAttribute: string | null;
+        seismicDateOrIntervalString: string | null;
+        seismicDataType: SeismicDataType;
     };
 };
 
@@ -50,6 +57,15 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         },
         gridModelParameterDateOrInterval: (get) => {
             return get(selectedGridModelParameterDateOrIntervalAtom);
+        },
+        seismicAttribute: (get) => {
+            return get(selectedSeismicAttributeAtom);
+        },
+        seismicDateOrIntervalString: (get) => {
+            return get(selectedSeismicDateOrIntervalStringAtom);
+        },
+        seismicDataType: (get) => {
+            return get(userSelectedSeismicDataTypeAtom);
         },
     },
 };

@@ -59,6 +59,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         "global.syncValue.cameraPositionIntersection"
     );
 
+    const syncedVerticalScale = syncHelper.useValue(SyncSettingKey.VERTICAL_SCALE, "global.syncValue.verticalScale");
+
     const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
     const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
     const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
@@ -159,6 +161,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
         [props.workbenchServices]
     );
 
+    const handleVerticalScaleChange = React.useCallback(
+        function handleVerticalScaleChange(verticalScale: number) {
+            props.workbenchServices.publishGlobalData("global.syncValue.verticalScale", verticalScale);
+        },
+        [props.workbenchServices]
+    );
+
     const potentialIntersectionExtensionLength =
         intersectionType === IntersectionType.WELLBORE ? intersectionExtensionLength : 0;
 
@@ -175,10 +184,10 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): JS
                 hoveredMd={hoveredMd}
                 onReadout={handleReadout}
                 onViewportChange={handleCameraPositionChange}
+                onVerticalScaleChange={handleVerticalScaleChange}
                 intersectionType={intersectionType}
                 viewport={syncedCameraPosition ?? undefined}
-                // zoomTransform={syncedCameraPosition ?? undefined}
-                // verticalScale={syncedCameraPosition?.zFactor}
+                verticalScale={syncedVerticalScale ?? undefined}
             />
         </div>
     );

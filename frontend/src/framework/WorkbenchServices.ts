@@ -5,7 +5,6 @@ import { Viewport } from "@modules/_shared/components/EsvIntersection/esvInterse
 import { isEqual } from "lodash";
 
 import { EnsembleIdent } from "./EnsembleIdent";
-import { ModuleContext } from "./ModuleContext";
 import { Workbench } from "./Workbench";
 import { Intersection } from "./types/intersection";
 import { Wellbore } from "./types/wellbore";
@@ -33,6 +32,7 @@ export type GlobalTopicDefinitions = {
     "global.syncValue.wellBore": Wellbore;
     "global.syncValue.intersection": Intersection;
     "global.syncValue.cameraPositionIntersection": Viewport;
+    "global.syncValue.verticalScale": number;
 };
 
 export type AllTopicDefinitions = NavigatorTopicDefinitions & GlobalTopicDefinitions;

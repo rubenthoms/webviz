@@ -236,7 +236,7 @@ export function Settings({
     }
     return (
         <div className="flex flex-col gap-4 overflow-y-auto">
-            <CollapsibleGroup title="Ensemble and Realization" expanded={true}>
+            <CollapsibleGroup titleNode="Ensemble and Realization" expanded={true}>
                 <div className="flex flex-col gap-4 overflow-y-auto">
                     <Label text="Ensemble" synced={syncHelper.isSynced(SyncSettingKey.ENSEMBLE)}>
                         <EnsembleDropdown
@@ -253,7 +253,7 @@ export function Settings({
                     />
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Well trajectory">
+            <CollapsibleGroup expanded={true} titleNode="Well trajectory">
                 <QueryStateWrapper
                     queryResult={wellHeadersQuery}
                     errorComponent={"Error loading wells"}
@@ -275,7 +275,7 @@ export function Settings({
                     </Label>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Surfaces" expanded>
+            <CollapsibleGroup titleNode="Surfaces" expanded>
                 <QueryStateWrapper
                     queryResult={surfaceDirectoryQuery}
                     errorComponent={"Error loading seismic directory"}
@@ -302,7 +302,7 @@ export function Settings({
                     </div>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Visualization">
+            <CollapsibleGroup expanded={true} titleNode="Visualization">
                 <RadioGroup
                     value={visualizationMode}
                     options={Object.values(VisualizationMode).map((val: VisualizationMode) => {
@@ -323,7 +323,7 @@ export function Settings({
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Intersection Settings" expanded={false}>
+            <CollapsibleGroup titleNode="Intersection Settings" expanded={false}>
                 <IntersectionSettingsSelect
                     intersectionSettings={intersectionSettings}
                     onChange={setIntersectionSettings}

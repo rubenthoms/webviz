@@ -2,6 +2,7 @@ import { BoundingBox3d_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToViewInterface";
 import { IntersectionType } from "@framework/types/intersection";
+import { ColorScale } from "@lib/utils/ColorScale";
 
 import { userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
 import {
@@ -25,6 +26,8 @@ export type SettingsToViewInterface = {
         intersectionExtensionLength: number;
         intersectionType: IntersectionType;
         curveFittingEpsilon: number;
+        seismicColorScale: ColorScale | null;
+        showSeismic: boolean;
     };
     derivedStates: {
         ensembleIdent: EnsembleIdent | null;
@@ -48,6 +51,8 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         intersectionExtensionLength: 1000,
         intersectionType: IntersectionType.WELLBORE,
         curveFittingEpsilon: 5,
+        seismicColorScale: null,
+        showSeismic: false,
     },
     derivedStates: {
         ensembleIdent: (get) => {

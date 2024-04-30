@@ -1,6 +1,8 @@
 import {
     LayerOptions,
+    OnMountEvent,
     OnRescaleEvent,
+    OnUnmountEvent,
     OnUpdateEvent,
     PixiLayer,
     PixiRenderApplication,

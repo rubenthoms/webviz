@@ -8,6 +8,7 @@ import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
+import { Checkbox } from "@lib/components/Checkbox";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
@@ -16,6 +17,8 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Radio, RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
+import { ColorScale } from "@lib/utils/ColorScale";
+import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
@@ -78,6 +81,9 @@ export function Settings(
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
     const [epsilon, setEpsilon] = props.settingsContext.useSettingsToViewInterfaceState("curveFittingEpsilon");
+    const [seismicColorScale, setSeismicColorScale] =
+        props.settingsContext.useSettingsToViewInterfaceState("seismicColorScale");
+    const [showSeismic, setShowSeismic] = props.settingsContext.useSettingsToViewInterfaceState("showSeismic");
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
     const [prevSyncedEnsembles, setPrevSyncedEnsembles] = React.useState<EnsembleIdent[] | null>(null);
@@ -257,6 +263,16 @@ export function Settings(
         setSelectedSeismicDateOrIntervalString(dateOrInterval.at(0) ?? null);
     }
 
+    function handleSeismicColorScaleChange(colorScale: ColorScale) {
+        setSeismicColorScale(colorScale);
+    }
+
+    function handleToggleShowSeismic(event: React.ChangeEvent<HTMLInputElement>, checked: boolean) {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowSeismic(checked);
+    }
+
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
@@ -264,7 +280,7 @@ export function Settings(
 
     return (
         <div className="flex flex-col gap-1">
-            <CollapsibleGroup title="Ensemble & realization" expanded>
+            <CollapsibleGroup titleNode="Ensemble & realization" expanded>
                 <Label text="Ensemble">
                     <EnsembleDropdown
                         ensembleSet={ensembleSet}
@@ -280,7 +296,7 @@ export function Settings(
                     />
                 </Label>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Grid model" expanded>
+            <CollapsibleGroup titleNode="Grid model" expanded>
                 <div className="flex flex-col gap-2">
                     <Label text="Grid model">
                         <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
@@ -321,7 +337,7 @@ export function Settings(
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Intersection" expanded>
+            <CollapsibleGroup titleNode="Intersection" expanded>
                 <div className="flex flex-col gap-4 text-sm mb-4">
                     <Radio
                         name="intersectionType"
@@ -360,7 +376,14 @@ export function Settings(
                     </div>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Seismic" expanded>
+            <CollapsibleGroup
+                titleNode={
+                    <>
+                        <Checkbox onChange={handleToggleShowSeismic} checked={showSeismic} /> Seismic
+                    </>
+                }
+                expanded
+            >
                 <div className="flex flex-col gap-2">
                     <Label text="Seismic data type">
                         <RadioGroup
@@ -424,9 +447,15 @@ export function Settings(
                             />
                         </PendingWrapper>
                     </Label>
+                    <Label text="Color scale">
+                        <ColorScaleSelector
+                            workbenchSettings={props.workbenchSettings}
+                            onChange={handleSeismicColorScaleChange}
+                        />
+                    </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Visualization options" expanded>
+            <CollapsibleGroup titleNode="Visualization options" expanded>
                 <Label text="Show grid lines" position="left">
                     <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
                 </Label>

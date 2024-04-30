@@ -1,3 +1,5 @@
+import { ColorScale } from "@lib/utils/ColorScale";
+
 export enum IntersectionType {
     CUSTOM_POLYLINE = "custom-polyline",
     WELLBORE = "wellbore",
@@ -27,4 +29,15 @@ export const SeismicDataTypeToStringMapping = {
 export const SeismicSurveyTypeToStringMapping = {
     [SeismicSurveyType.THREE_D]: "3D",
     [SeismicSurveyType.FOUR_D]: "4D",
+};
+
+export type SeismicSliceImageOptions = {
+    datapoints: number[][];
+    yAxisValues: number[];
+    trajectory: number[][];
+    colorScale: ColorScale;
+};
+
+export type SeismicSliceImageData = SeismicSliceImageOptions & {
+    image: ImageBitmap | null;
 };

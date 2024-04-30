@@ -15,7 +15,17 @@ export type SliderProps = {
 } & Omit<SliderUnstyledProps, "valueLabelFormat">;
 
 export const Slider = React.forwardRef((props: SliderProps, ref: React.ForwardedRef<HTMLDivElement>) => {
-    const { valueLabelDisplay, value: propsValue, max, min, valueLabelFormat, orientation, track, ...rest } = props;
+    const {
+        valueLabelDisplay,
+        value: propsValue,
+        max,
+        min,
+        valueLabelFormat,
+        orientation,
+        track,
+        debounceTimeMs,
+        ...rest
+    } = props;
     const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const [value, setValue] = React.useState<number | number[]>(propsValue ?? 0);
@@ -158,7 +168,7 @@ export const Slider = React.forwardRef((props: SliderProps, ref: React.Forwarded
         debounceTimerRef.current = setTimeout(() => {
             debounceTimerRef.current = null;
             props.onChange?.(event, value, activeThumb);
-        }, props.debounceTimeMs ?? 0);
+        }, debounceTimeMs ?? 0);
     }
 
     function makeLabel(): React.ReactNode {

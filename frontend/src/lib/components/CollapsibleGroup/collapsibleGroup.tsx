@@ -7,7 +7,7 @@ import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 
 export type CollapsibleGroupProps = {
     icon?: React.ReactElement;
-    title: string;
+    titleNode: React.ReactNode;
     children: React.ReactNode;
     expanded?: boolean;
     onChange?: (expanded: boolean) => void;
@@ -39,7 +39,7 @@ export const CollapsibleGroup: React.FC<CollapsibleGroupProps> = (props) => {
                     title={expanded ? "Collapse" : "Expand"}
                 >
                     {props.icon && React.cloneElement(props.icon, { className: "w-4 h-4" })}
-                    <h3 className="text-sm font-semibold flex-grow leading-none">{props.title}</h3>
+                    <h3 className="text-sm font-semibold flex-grow leading-none">{props.titleNode}</h3>
                     {expanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
                 </div>
                 <div

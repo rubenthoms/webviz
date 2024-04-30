@@ -6,7 +6,7 @@ import { IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import { transformSeismicFenceData } from "@modules/Intersection/queryDataTransforms";
 import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
-import { SeismicDataType } from "@modules/Intersection/typesAndEnums";
+import { SeismicDataType, SeismicSliceImageOptions } from "@modules/Intersection/typesAndEnums";
 import { SeismicFenceData_trans } from "@modules/SeismicIntersection/utils/queryDataTransforms";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 import { QueryObserverResult } from "@tanstack/react-query";
@@ -16,9 +16,16 @@ import { atomWithQuery } from "jotai-tanstack-query";
 
 import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
 
+import {
+    createSeismicSliceImageDatapointsArrayFromFenceData,
+    createSeismicSliceImageYAxisValuesArrayFromFenceData,
+} from "../utils/seismicDataConversion";
+
 export type ViewAtoms = {
     seismicFenceDataQueryAtom: QueryObserverResult<SeismicFenceData_trans>;
     intersectionReferenceSystemAtom: IntersectionReferenceSystem | null;
+    seismicSliceImageOptionsAtom: SeismicSliceImageOptions | null;
+    polylineAtom: number[];
 };
 
 const STALE_TIME = 60 * 1000;
@@ -113,16 +120,20 @@ export function viewAtomsInitialization(
         const seismicAttribute = get(settingsToViewInterface.getAtom("seismicAttribute"));
         const timeOrIntervalStr = get(settingsToViewInterface.getAtom("seismicDateOrIntervalString"));
         const observed = get(settingsToViewInterface.getAtom("seismicDataType")) === SeismicDataType.OBSERVED;
-        const polyline = get(polylineAtom);
+        const intersectionReferenceSystem = get(intersectionReferenceSystemAtom);
+        const extensionLength = get(settingsToViewInterface.getAtom("intersectionExtensionLength"));
+
+        const polyline =
+            intersectionReferenceSystem?.getExtendedTrajectory(1000, extensionLength, extensionLength).points ?? [];
 
         const caseUuid = ensembleIdent?.getCaseUuid();
         const ensembleName = ensembleIdent?.getEnsembleName();
 
         const xPoints: number[] = [];
         const yPoints: number[] = [];
-        for (let i = 0; i < polyline.length; i += 2) {
-            xPoints.push(polyline[i]);
-            yPoints.push(polyline[i + 1]);
+        for (let i = 0; i < polyline.length; i++) {
+            xPoints.push(polyline[i][0]);
+            yPoints.push(polyline[i][1]);
         }
 
         return {
@@ -149,12 +160,53 @@ export function viewAtomsInitialization(
             select: transformSeismicFenceData,
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,
-            enabled: !!(caseUuid && ensembleName && realizationNum !== null && seismicAttribute && timeOrIntervalStr),
+            enabled: !!(
+                caseUuid &&
+                ensembleName &&
+                realizationNum !== null &&
+                seismicAttribute &&
+                timeOrIntervalStr &&
+                observed !== null &&
+                polyline !== null
+            ),
         };
+    });
+
+    const seismicSliceImageOptionsAtom = atom((get) => {
+        const seismicFenceDataQuery = get(seismicFenceDataQueryAtom);
+        const intersectionReferenceSystem = get(intersectionReferenceSystemAtom);
+        const seismicColorScale = get(settingsToViewInterface.getAtom("seismicColorScale"));
+        const intersectionExtensionLength = get(settingsToViewInterface.getAtom("intersectionExtensionLength"));
+
+        if (!seismicFenceDataQuery.data || !intersectionReferenceSystem || !seismicColorScale) {
+            return null;
+        }
+
+        const datapoints = createSeismicSliceImageDatapointsArrayFromFenceData(seismicFenceDataQuery.data);
+        const yAxisValues = createSeismicSliceImageYAxisValuesArrayFromFenceData(seismicFenceDataQuery.data);
+        const trajectory = intersectionReferenceSystem.getExtendedTrajectory(
+            seismicFenceDataQuery.data.num_traces,
+            intersectionExtensionLength,
+            intersectionExtensionLength
+        );
+        const trajectoryXyProjection = IntersectionReferenceSystem.toDisplacement(trajectory.points, trajectory.offset);
+
+        console.debug(trajectoryXyProjection[0], trajectoryXyProjection[trajectoryXyProjection.length - 1]);
+
+        const sliceImageOptions: SeismicSliceImageOptions = {
+            datapoints,
+            yAxisValues,
+            trajectory: trajectoryXyProjection,
+            colorScale: seismicColorScale,
+        };
+
+        return sliceImageOptions;
     });
 
     return {
         seismicFenceDataQueryAtom,
         intersectionReferenceSystemAtom,
+        seismicSliceImageOptionsAtom,
+        polylineAtom,
     };
 }

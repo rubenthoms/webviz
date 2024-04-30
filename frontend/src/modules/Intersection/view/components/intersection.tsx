@@ -1,12 +1,12 @@
 import React from "react";
 
 import { BoundingBox3d_api, WellboreCasing_api } from "@api";
-import { Casing, IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { SeismicFenceData_trans } from "@modules/Intersection/queryDataTransforms";
-import { IntersectionType } from "@modules/Intersection/typesAndEnums";
+import { IntersectionType, SeismicSliceImageData } from "@modules/Intersection/typesAndEnums";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -34,7 +34,7 @@ import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
     polylineIntersectionData: PolylineIntersection_trans | null;
-    seismicFenceData: SeismicFenceData_trans | null;
+    seismicSliceImageData: SeismicSliceImageData | null;
     wellboreCasingData: WellboreCasing_api[] | null;
     gridBoundingBox3d: BoundingBox3d_api | null;
     colorScale: ColorScale;
@@ -119,20 +119,42 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     hideGridlines: !props.showGridLines,
                     extensionLengthStart: props.intersectionExtensionLength,
                 },
-                order: 1,
+                order: 2,
             },
         });
     }
 
-    if (props.seismicFenceData) {
+    if (props.seismicSliceImageData && props.seismicSliceImageData.image) {
+        const seismicInfo = getSeismicInfo(
+            {
+                ...props.seismicSliceImageData,
+            },
+            props.seismicSliceImageData.trajectory
+        );
+
+        if (seismicInfo) {
+            seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
+            seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
+        }
+
+        const seismicOptions = getSeismicOptions(seismicInfo);
+
+        console.debug(
+            props.seismicSliceImageData.trajectory[0],
+            props.seismicSliceImageData.trajectory[props.seismicSliceImageData.trajectory.length - 1]
+        );
+        console.debug(seismicInfo?.minX, seismicInfo?.maxX);
+
         layers.push({
             id: "seismic",
             type: LayerType.SEISMIC_CANVAS,
             options: {
                 data: {
-                    image: "",
-                    options: {},
+                    image: props.seismicSliceImageData.image,
+                    options: getSeismicOptions(seismicInfo),
                 },
+                order: 1,
+                layerOpacity: 1,
             },
         });
     }

@@ -84,14 +84,14 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
 
     return (
         <div className="flex flex-col gap-2">
-            <CollapsibleGroup title="Reference sensitivity" expanded>
+            <CollapsibleGroup titleNode="Reference sensitivity" expanded>
                 <Dropdown
                     value={referenceSensitivityName ?? ""}
                     options={sensitivityNames.map((s) => ({ label: s, value: s }))}
                     onChange={setReferenceSensitivityName}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup title="View component" expanded>
+            <CollapsibleGroup titleNode="View component" expanded>
                 <RadioGroup
                     value={displayComponentType}
                     options={[
@@ -107,7 +107,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleDisplayComponentChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup title="View settings" expanded>
+            <CollapsibleGroup titleNode="View settings" expanded>
                 <div className="flex flex-col gap-4">
                     <Checkbox
                         checked={hideZeroY}

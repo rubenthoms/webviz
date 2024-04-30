@@ -68,7 +68,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
 
     return (
         <div className="flex flex-col gap-2">
-            <CollapsibleGroup title="Visualization Type" expanded>
+            <CollapsibleGroup titleNode="Visualization Type" expanded>
                 <RadioGroup
                     options={Object.values(ParameterDistributionPlotType).map((type: ParameterDistributionPlotType) => {
                         return { value: type, label: ParameterDistributionPlotTypeEnumToStringMapping[type] };
@@ -77,7 +77,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleVisualizationTypeChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup title="Plot options" expanded>
+            <CollapsibleGroup titleNode="Plot options" expanded>
                 <div className="flex flex-col gap-2">
                     {"Show additional data"}
                     <Checkbox
@@ -92,7 +92,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     />
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Ensembles" expanded>
+            <CollapsibleGroup titleNode="Ensembles" expanded>
                 <EnsembleSelect
                     ensembleSet={ensembleSet}
                     onChange={handleEnsembleSelectionChange}
@@ -101,7 +101,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     multiple={true}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup title="Parameters" expanded>
+            <CollapsibleGroup titleNode="Parameters" expanded>
                 <Checkbox
                     label="Show nonvarying parameters"
                     checked={showConstantParameters}

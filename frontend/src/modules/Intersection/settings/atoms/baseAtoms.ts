@@ -1,4 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { SeismicDataType, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
 
 import { atom } from "jotai";

@@ -111,14 +111,14 @@ export function Settings({ settingsContext, workbenchServices, workbenchSession 
     }
     return (
         <div>
-            <CollapsibleGroup expanded={true} title="Ensembles">
+            <CollapsibleGroup expanded={true} titleNode="Ensembles">
                 <EnsembleDropdown
                     ensembleSet={ensembleSet}
                     value={computedEnsembleIdent}
                     onChange={handleEnsembleSelectionChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Well">
+            <CollapsibleGroup expanded={true} titleNode="Well">
                 <Select
                     size={10}
                     filter={true}

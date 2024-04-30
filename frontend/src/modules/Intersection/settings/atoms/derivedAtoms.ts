@@ -15,6 +15,7 @@ import {
     userSelectedRealizationAtom,
     userSelectedSeismicAttributeAtom,
     userSelectedSeismicDataTypeAtom,
+    userSelectedSeismicDateOrIntervalStringAtom,
     userSelectedSeismicSurveyTypeAtom,
 } from "./baseAtoms";
 import { gridModelInfosQueryAtom, seismicCubeMetaListQueryAtom } from "./queryAtoms";
@@ -242,7 +243,7 @@ export const availableSeismicDateOrIntervalStringsAtom = atom((get) => {
 });
 
 export const selectedSeismicDateOrIntervalStringAtom = atom((get) => {
-    const userSelectedSeismicDateOrIntervalString = get(userSelectedGridModelParameterDateOrIntervalAtom);
+    const userSelectedSeismicDateOrIntervalString = get(userSelectedSeismicDateOrIntervalStringAtom);
     const availableSeismicDateOrIntervalStrings = get(availableSeismicDateOrIntervalStringsAtom);
 
     if (

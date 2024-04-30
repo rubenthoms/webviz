@@ -19,6 +19,8 @@ export type ColorScaleSelectorProps = {
 };
 
 export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactNode {
+    const { onChange } = props;
+
     const [colorScale, setColorScale] = React.useState<ColorScale>(
         props.workbenchSettings.useContinuousColorScale({ gradientType: ColorScaleGradientType.Sequential })
     );
@@ -101,6 +103,13 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
         setColorScale(colorScale);
         props.onChange(colorScale);
     }
+
+    React.useEffect(
+        function handleMount() {
+            onChange(colorScale);
+        },
+        [onChange]
+    );
 
     return (
         <div className="flex flex-col gap-4">

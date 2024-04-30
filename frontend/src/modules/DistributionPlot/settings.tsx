@@ -62,7 +62,7 @@ export function Settings({ settingsContext, initialSettings }: ModuleSettingsPro
 
         if (plotType === PlotType.Histogram) {
             content.push(
-                <CollapsibleGroup title="Plot settings" expanded>
+                <CollapsibleGroup titleNode="Plot settings" expanded>
                     <Label text="Number of bins" key="number-of-bins">
                         <Slider
                             value={numBins}
@@ -78,7 +78,7 @@ export function Settings({ settingsContext, initialSettings }: ModuleSettingsPro
 
         if (plotType === PlotType.BarChart) {
             content.push(
-                <CollapsibleGroup title="Plot settings" expanded>
+                <CollapsibleGroup titleNode="Plot settings" expanded>
                     <Label text="Orientation" key="orientation">
                         <RadioGroup
                             options={[
@@ -104,7 +104,7 @@ export function Settings({ settingsContext, initialSettings }: ModuleSettingsPro
 
     return (
         <div className="flex flex-col gap-2">
-            <CollapsibleGroup title="Plot type" expanded>
+            <CollapsibleGroup titleNode="Plot type" expanded>
                 <Dropdown value={plotType as string} options={plotTypes} onChange={handlePlotTypeChanged} />
             </CollapsibleGroup>
             {makeContent()}

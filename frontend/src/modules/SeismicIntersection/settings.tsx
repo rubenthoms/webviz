@@ -356,7 +356,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     return (
         <div className="flex flex-col gap-4 overflow-y-auto">
-            <CollapsibleGroup title="Ensemble and Realization" expanded={true}>
+            <CollapsibleGroup titleNode="Ensemble and Realization" expanded={true}>
                 <div className="flex flex-col gap-4 overflow-y-auto">
                     <Label text="Ensemble" synced={syncHelper.isSynced(SyncSettingKey.ENSEMBLE)}>
                         <EnsembleDropdown
@@ -381,7 +381,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Well trajectory">
+            <CollapsibleGroup expanded={true} titleNode="Well trajectory">
                 <QueryStateWrapper
                     queryResult={wellHeadersQuery}
                     errorComponent={"Error loading wells"}
@@ -403,7 +403,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Surface specifications">
+            <CollapsibleGroup titleNode="Surface specifications">
                 <QueryStateWrapper
                     queryResult={surfaceDirectoryQuery}
                     errorComponent={"Error loading surface directory"}
@@ -447,7 +447,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </div>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Seismic specifications">
+            <CollapsibleGroup titleNode="Seismic specifications">
                 <div className="flex flex-col gap-4 overflow-y-auto">
                     <Label text="Seismic data type">
                         <RadioGroup
@@ -497,7 +497,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </QueryStateWrapper>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Intersection Settings" expanded={false}>
+            <CollapsibleGroup titleNode="Intersection Settings" expanded={false}>
                 <Label text="Extension">
                     <Input
                         type={"number"}

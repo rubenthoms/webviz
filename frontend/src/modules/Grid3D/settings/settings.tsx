@@ -245,7 +245,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     return (
         <div className="flex flex-col gap-1">
-            <CollapsibleGroup title="Ensemble & realization" expanded>
+            <CollapsibleGroup titleNode="Ensemble & realization" expanded>
                 <Label text="Ensemble">
                     <EnsembleDropdown
                         ensembleSet={ensembleSet}
@@ -261,7 +261,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     />
                 </Label>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Grid model" expanded>
+            <CollapsibleGroup titleNode="Grid model" expanded>
                 <div className="flex flex-col gap-2">
                     <Label text="Grid model">
                         <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
@@ -302,10 +302,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Parameter color scale">
+            <CollapsibleGroup titleNode="Parameter color scale">
                 <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
             </CollapsibleGroup>
-            <CollapsibleGroup title="Grid cell filter" expanded>
+            <CollapsibleGroup titleNode="Grid cell filter" expanded>
                 <div className="flex flex-col gap-4">
                     <GridCellIndexFilter
                         labelTitle="I filter"
@@ -333,7 +333,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     />
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Intersection" expanded>
+            <CollapsibleGroup titleNode="Intersection" expanded>
                 <div className="flex flex-col gap-4 text-sm mb-4">
                     <Radio
                         name="intersectionType"
@@ -392,7 +392,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     </div>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Visualization options" expanded>
+            <CollapsibleGroup titleNode="Visualization options" expanded>
                 <Label text="Show grid lines" position="left">
                     <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
                 </Label>

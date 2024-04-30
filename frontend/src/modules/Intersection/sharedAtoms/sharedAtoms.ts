@@ -1,15 +1,9 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { IntersectionType } from "@framework/types/intersection";
-import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 
 import { atom } from "jotai";
 
-import {
-    userSelectedCustomIntersectionPolylineIdAtom,
-    userSelectedEnsembleIdentAtom,
-    userSelectedWellboreUuidAtom,
-} from "../settings/atoms/baseAtoms";
+import { userSelectedEnsembleIdentAtom, userSelectedWellboreUuidAtom } from "../settings/atoms/baseAtoms";
 import { drilledWellboreHeadersQueryAtom } from "../settings/atoms/queryAtoms";
 
 export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {

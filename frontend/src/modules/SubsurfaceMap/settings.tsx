@@ -471,7 +471,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     }
     return (
         <div className="flex flex-col gap-2 overflow-y-auto">
-            <CollapsibleGroup expanded={true} title="Ensemble and realization">
+            <CollapsibleGroup expanded={true} titleNode="Ensemble and realization">
                 <Label text="Ensemble" synced={syncHelper.isSynced(SyncSettingKey.ENSEMBLE)}>
                     <EnsembleDropdown
                         ensembleSet={ensembleSet}
@@ -489,7 +489,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 )}
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Depth surface">
+            <CollapsibleGroup expanded={true} titleNode="Depth surface">
                 <QueryStateWrapper
                     queryResult={meshSurfDirQuery}
                     errorComponent={"Error loading surface directory"}
@@ -519,7 +519,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} title="Property surface (color)">
+            <CollapsibleGroup expanded={false} titleNode="Property surface (color)">
                 <>
                     <Label
                         wrapperClassName=" flow-root mt-4 mb-2"
@@ -588,7 +588,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     )}
                 </>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} title="Polygons">
+            <CollapsibleGroup expanded={false} titleNode="Polygons">
                 <Label
                     wrapperClassName=" flow-root mt-4 mb-2"
                     labelClassName="float-left block text-sm font-medium text-gray-700 dark:text-gray-200"
@@ -644,7 +644,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </QueryStateWrapper>
                 )}
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} title="Well data">
+            <CollapsibleGroup expanded={false} titleNode="Well data">
                 <QueryStateWrapper
                     queryResult={wellHeadersQuery}
                     errorComponent={"Error loading wells"}
@@ -677,7 +677,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 </QueryStateWrapper>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} title="View settings">
+            <CollapsibleGroup expanded={false} titleNode="View settings">
                 <div>
                     <div className="p-2">
                         <Header text="Surface" />

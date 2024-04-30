@@ -145,7 +145,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
 
     return (
         <>
-            <CollapsibleGroup expanded={true} title="Ensemble">
+            <CollapsibleGroup expanded={true} titleNode="Ensemble">
                 <EnsembleDropdown
                     ensembleSet={ensembleSet}
                     value={computedEnsembleIdent}
@@ -157,7 +157,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                 loadingComponent={<CircularProgress />}
                 errorComponent={"Could not load the vectors for selected ensembles"}
             >
-                <CollapsibleGroup expanded={true} title="Time Series">
+                <CollapsibleGroup expanded={true} titleNode="Time Series">
                     <Label text="Vector">
                         <VectorSelector
                             data={computedVectorSelectorData}
@@ -181,7 +181,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     </Label>
                 </CollapsibleGroup>
             </QueryStateWrapper>
-            <CollapsibleGroup expanded={false} title="Visualization">
+            <CollapsibleGroup expanded={false} titleNode="Visualization">
                 <Checkbox
                     label="Mean over realizations"
                     checked={showStatistics}
@@ -194,7 +194,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                 />{" "}
                 <Checkbox label="Show historical" checked={showHistorical} onChange={handleShowHistorical} />
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} title="Sensitivity filter">
+            <CollapsibleGroup expanded={true} titleNode="Sensitivity filter">
                 <Select
                     options={sensitivityOptions}
                     value={selectedSensitivities ?? []}

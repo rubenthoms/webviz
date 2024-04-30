@@ -404,8 +404,6 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                     const dy0 = event.yBounds[0] - event.transform.y * (unitsPerPixel / (props.zFactor ?? 1));
                     const cy = dy0 + displ / event.zFactor / event.viewportRatio / 2;
 
-                    console.debug("Viewport change", [cx, cy, displ]);
-
                     onViewportChange([cx, cy, displ]);
                 }
                 automaticChanges.current = false;

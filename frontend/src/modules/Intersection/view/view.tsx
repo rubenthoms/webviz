@@ -9,19 +9,20 @@ import { IntersectionType } from "@framework/types/intersection";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { EsvIntersectionReadoutEvent, Viewport } from "@modules/_shared/components/EsvIntersection";
 import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
-import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
 import { useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 
 import { ViewAtoms } from "./atoms/atomDefinitions";
 import { Intersection } from "./components/intersection";
+import { SeismicSliceImageStatus, useGenerateSeismicSliceImageData } from "./hooks/useGenerateSeismicSliceImageData";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
+import { SeismicSliceImageData } from "../typesAndEnums";
 
 export function View(
     props: ModuleViewProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
@@ -36,8 +37,15 @@ export function View(
     });
 
     const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
+    const showSeismic = props.viewContext.useSettingsToViewInterfaceValue("showSeismic");
     const intersectionReferenceSystem = props.viewContext.useViewAtomValue("intersectionReferenceSystemAtom");
+    const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
+
+    const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
+
+    const { imageData: seismicSliceImageData, status: seismicImageStatus } =
+        useGenerateSeismicSliceImageData(seismicSliceImageOptions);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
     const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);
@@ -87,7 +95,7 @@ export function View(
         } (${ensembleName})`
     );
 
-    const polylineUtmXy: number[] = [];
+    const polylineUtmXy = props.viewContext.useViewAtomValue("polylineAtom");
     let hoveredMdPoint3d: number[] | null = null;
 
     if (intersectionReferenceSystem) {
@@ -118,7 +126,12 @@ export function View(
     }
 
     // Set loading status
-    statusWriter.setLoading(polylineIntersectionQuery.isFetching || wellboreCasingQuery.isFetching);
+    statusWriter.setLoading(
+        polylineIntersectionQuery.isFetching ||
+            wellboreCasingQuery.isFetching ||
+            seismicFenceDataQuery.isFetching ||
+            seismicImageStatus === SeismicSliceImageStatus.LOADING
+    );
 
     const handleReadout = React.useCallback(
         function handleReadout(event: EsvIntersectionReadoutEvent) {
@@ -161,6 +174,7 @@ export function View(
                 referenceSystem={intersectionReferenceSystem}
                 polylineIntersectionData={polylineIntersectionQuery.data ?? null}
                 wellboreCasingData={wellboreCasingQuery.data ?? null}
+                seismicSliceImageData={showSeismic ? seismicSliceImageData : null}
                 gridBoundingBox3d={gridModelBoundingBox3d}
                 colorScale={colorScale}
                 showGridLines={showGridLines}
@@ -170,8 +184,8 @@ export function View(
                 onViewportChange={handleCameraPositionChange}
                 onVerticalScaleChange={handleVerticalScaleChange}
                 intersectionType={intersectionType}
-                viewport={syncedCameraPosition ?? undefined}
-                verticalScale={syncedVerticalScale ?? undefined}
+                // viewport={syncedCameraPosition ?? undefined}
+                // verticalScale={syncedVerticalScale ?? undefined}
             />
         </div>
     );

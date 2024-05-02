@@ -4,27 +4,17 @@ import { Layer, PickingInfo } from "@deck.gl/core/typed";
 import { ColumnLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
-import { ButtonProps } from "@lib/components/Button/button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
 import { IconButton } from "@lib/components/IconButton";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { Select, SelectOption } from "@lib/components/Select";
-import {
-    Add,
-    ArrowBack,
-    ArrowDownward,
-    ArrowForward,
-    ArrowUpward,
-    Delete,
-    FilterCenterFocus,
-    Polyline,
-    Remove,
-    Save,
-} from "@mui/icons-material";
-import { SubsurfaceViewerProps, ViewStateType } from "@webviz/subsurface-viewer";
+import { Add, ArrowBack, ArrowForward, Delete, FilterCenterFocus, Polyline, Remove, Save } from "@mui/icons-material";
+import { LayerPickInfo, SubsurfaceViewerProps, ViewStateType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
+import { WellsPickInfo } from "@webviz/subsurface-viewer/dist/layers/wells/wellsLayer";
 
+import { Feature } from "geojson";
 import { isEqual } from "lodash";
 
 export type BoundingBox3D = {
@@ -48,11 +38,13 @@ export type SubsurfaceViewerWrapperProps = {
     boundingBox: BoundingBox2D | BoundingBox3D;
     layers: Layer[];
     show3D?: boolean;
+    verticalScale?: number;
     colorTables: colorTablesArray;
     enableIntersectionPolylineEditing?: boolean;
     onAddIntersectionPolyline?: (intersectionPolyline: IntersectionPolylineWithoutId) => void;
     onIntersectionPolylineChange?: (intersectionPolyline: IntersectionPolyline) => void;
     onIntersectionPolylineEditCancel?: () => void;
+    onVerticalScaleChange?: (verticalScale: number) => void;
     intersectionPolyline?: IntersectionPolyline;
 };
 
@@ -62,6 +54,8 @@ type IntersectionZValues = {
 };
 
 export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): React.ReactNode {
+    const { onVerticalScaleChange } = props;
+
     const subsurfaceViewerId = useId();
 
     const [intersectionZValues, setIntersectionZValues] = React.useState<IntersectionZValues | undefined>(undefined);
@@ -74,7 +68,16 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const [hoverPreviewPoint, setHoverPreviewPoint] = React.useState<number[] | null>(null);
     const [cameraPositionSetByAction, setCameraPositionSetByAction] = React.useState<ViewStateType | null>(null);
     const [isDragging, setIsDragging] = React.useState<boolean>(false);
+
     const [verticalScale, setVerticalScale] = React.useState<number>(1);
+    const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
+
+    if (props.verticalScale !== prevVerticalScale) {
+        setPrevVerticalScale(props.verticalScale);
+        if (props.verticalScale !== undefined) {
+            setVerticalScale(props.verticalScale ?? 1);
+        }
+    }
 
     const [prevBoundingBox, setPrevBoundingBox] = React.useState<BoundingBox2D | BoundingBox3D | undefined>(undefined);
     const [prevIntersectionPolyline, setPrevIntersectionPolyline] = React.useState<IntersectionPolyline | undefined>(
@@ -122,6 +125,70 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         layerIds.push(...props.layers.map((layer) => layer.id));
     }
 
+    function handleHover(pickingInfo: PickingInfo): void {
+        if (!polylineEditPointsModusActive) {
+            return;
+        }
+        if (pickingInfo.object && pickingInfo.object.index < currentlyEditedPolyline.length) {
+            setHoveredPolylinePointIndex(pickingInfo.object.index);
+        } else {
+            setHoveredPolylinePointIndex(null);
+        }
+    }
+
+    function handleClick(pickingInfo: PickingInfo, event: any): void {
+        if (!polylineEditPointsModusActive) {
+            return;
+        }
+        if (pickingInfo.object && pickingInfo.object.index < currentlyEditedPolyline.length) {
+            setHoverPreviewPoint(null);
+            setSelectedPolylinePointIndex(pickingInfo.object.index);
+            event.stopPropagation();
+            event.handled = true;
+        } else {
+            setSelectedPolylinePointIndex(null);
+        }
+    }
+
+    function handleDragStart(): void {
+        setHoverPreviewPoint(null);
+        setIsDragging(true);
+        if (!polylineEditPointsModusActive) {
+            return;
+        }
+        setUserCameraInteractionActive(false);
+    }
+
+    function handleDragEnd(): void {
+        setIsDragging(false);
+        setUserCameraInteractionActive(true);
+    }
+
+    function handleDrag(pickingInfo: PickingInfo): void {
+        if (!polylineEditPointsModusActive) {
+            return;
+        }
+        if (pickingInfo.object) {
+            const index = pickingInfo.object.index;
+            if (!pickingInfo.coordinate) {
+                return;
+            }
+            setCurrentlyEditedPolyline((prev) => {
+                const newPolyline = prev.reduce((acc, point, i) => {
+                    if (i === index && pickingInfo.coordinate) {
+                        return [...acc, [pickingInfo.coordinate[0], pickingInfo.coordinate[1]]];
+                    }
+                    return [...acc, point];
+                }, [] as number[][]);
+
+                if (props.onIntersectionPolylineChange) {
+                    // props.onIntersectionPolylineChange(newPolyline);
+                }
+                return newPolyline;
+            });
+        }
+    }
+
     if (props.enableIntersectionPolylineEditing && polylineEditingActive) {
         const zMid = intersectionZValues?.zMid || 0;
         const zExtension = intersectionZValues?.zExtension || 10;
@@ -151,70 +218,6 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         });
         layers.push(userPolylineLineLayer);
         layerIds.push(userPolylineLineLayer.id);
-
-        function handleHover(pickingInfo: PickingInfo): void {
-            if (!polylineEditPointsModusActive) {
-                return;
-            }
-            if (pickingInfo.object && pickingInfo.object.index < currentlyEditedPolyline.length) {
-                setHoveredPolylinePointIndex(pickingInfo.object.index);
-            } else {
-                setHoveredPolylinePointIndex(null);
-            }
-        }
-
-        function handleClick(pickingInfo: PickingInfo, event: any): void {
-            if (!polylineEditPointsModusActive) {
-                return;
-            }
-            if (pickingInfo.object && pickingInfo.object.index < currentlyEditedPolyline.length) {
-                setHoverPreviewPoint(null);
-                setSelectedPolylinePointIndex(pickingInfo.object.index);
-                event.stopPropagation();
-                event.handled = true;
-            } else {
-                setSelectedPolylinePointIndex(null);
-            }
-        }
-
-        function handleDragStart(): void {
-            setHoverPreviewPoint(null);
-            setIsDragging(true);
-            if (!polylineEditPointsModusActive) {
-                return;
-            }
-            setUserCameraInteractionActive(false);
-        }
-
-        function handleDragEnd(): void {
-            setIsDragging(false);
-            setUserCameraInteractionActive(true);
-        }
-
-        function handleDrag(pickingInfo: PickingInfo): void {
-            if (!polylineEditPointsModusActive) {
-                return;
-            }
-            if (pickingInfo.object) {
-                const index = pickingInfo.object.index;
-                if (!pickingInfo.coordinate) {
-                    return;
-                }
-                setCurrentlyEditedPolyline((prev) => {
-                    const newPolyline = prev.reduce((acc, point, i) => {
-                        if (i === index && pickingInfo.coordinate) {
-                            return [...acc, [pickingInfo.coordinate[0], pickingInfo.coordinate[1]]];
-                        }
-                        return [...acc, point];
-                    }, [] as number[][]);
-
-                    if (props.onIntersectionPolylineChange) {
-                        // props.onIntersectionPolylineChange(newPolyline);
-                    }
-                    return newPolyline;
-                });
-            }
-        }
 
         const userPolylinePointLayer = new ColumnLayer({
             id: "user-polyline-point-layer",
@@ -413,17 +416,41 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         });
     }
 
-    function handleVerticalScaleIncrease(): void {
-        setVerticalScale((prev) => prev + 0.1);
-    }
+    const handleVerticalScaleIncrease = React.useCallback(
+        function handleVerticalScaleIncrease(): void {
+            setVerticalScale((prev) => {
+                const newVerticalScale = prev + 0.1;
+                if (onVerticalScaleChange) {
+                    onVerticalScaleChange(newVerticalScale);
+                }
+                return newVerticalScale;
+            });
+        },
+        [onVerticalScaleChange]
+    );
 
-    function handleVerticalScaleDecrease(): void {
-        setVerticalScale((prev) => Math.max(0.1, prev - 0.1));
-    }
+    const handleVerticalScaleDecrease = React.useCallback(
+        function handleVerticalScaleIncrease(): void {
+            setVerticalScale((prev) => {
+                const newVerticalScale = Math.max(0.1, prev - 0.1);
+                if (onVerticalScaleChange) {
+                    onVerticalScaleChange(newVerticalScale);
+                }
+                return newVerticalScale;
+            });
+        },
+        [onVerticalScaleChange]
+    );
 
-    function makeTooltip(pickingInfo: PickingInfo): string | null {
+    function makeTooltip(info: PickingInfo): string | null {
         if (!polylineEditPointsModusActive) {
-            return null;
+            if ((info as WellsPickInfo)?.logName) {
+                return (info as WellsPickInfo)?.logName;
+            } else if (info.layer?.id === "drawing-layer") {
+                return (info as LayerPickInfo).propertyValue?.toFixed(2) ?? null;
+            }
+            const feat = info.object as Feature;
+            return feat?.properties?.["name"];
         }
 
         if (isDragging) {
@@ -438,11 +465,11 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             return null;
         }
 
-        if (!pickingInfo.coordinate) {
+        if (!info.coordinate) {
             return null;
         }
 
-        return `x: ${pickingInfo.coordinate[0].toFixed(2)}, y: ${pickingInfo.coordinate[1].toFixed(2)}`;
+        return `x: ${info.coordinate[0].toFixed(2)}, y: ${info.coordinate[1].toFixed(2)}`;
     }
 
     function makeHelperText(): React.ReactNode {
@@ -454,7 +481,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             return null;
         }
 
-        let nodes: React.ReactNode[] = [];
+        const nodes: React.ReactNode[] = [];
 
         if (selectedPolylinePointIndex === null) {
             nodes.push("Click on map to add first point to polyline");

@@ -1,6 +1,5 @@
 import React from "react";
 
-import { Layer } from "@deck.gl/core/typed";
 import { GeoJsonLayer } from "@deck.gl/layers/typed";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ViewContext } from "@framework/ModuleContext";
@@ -10,14 +9,14 @@ import { isEqual } from "lodash";
 
 import { SubsurfaceViewerWrapper, SubsurfaceViewerWrapperProps } from "./SubsurfaceViewerWrapper";
 
-export type InteractionUpdateWrapperProps = {
+export type HoverUpdateWrapperProps = {
     wellboreUuid: string | null;
     intersectionReferenceSystem?: IntersectionReferenceSystem;
     workbenchServices: WorkbenchServices;
     viewContext: ViewContext<any, any, any, any>;
 } & SubsurfaceViewerWrapperProps;
 
-export function InteractionUpdateWrapper(props: InteractionUpdateWrapperProps): React.ReactNode {
+export function HoverUpdateWrapper(props: HoverUpdateWrapperProps): React.ReactNode {
     const [mdLayer, setMdLayer] = React.useState<GeoJsonLayer[]>([]);
 
     const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);

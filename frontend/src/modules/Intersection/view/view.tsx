@@ -22,7 +22,6 @@ import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
-import { SeismicSliceImageData } from "../typesAndEnums";
 
 export function View(
     props: ModuleViewProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
@@ -30,7 +29,7 @@ export function View(
     const statusWriter = useViewStatusWriter(props.viewContext);
     const ensembleSet = useEnsembleSet(props.workbenchSession);
     const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
-    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
+    const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices, props.viewContext);
 
     const colorScale = props.workbenchSettings.useContinuousColorScale({
         gradientType: ColorScaleGradientType.Sequential,
@@ -96,15 +95,6 @@ export function View(
     );
 
     const polylineUtmXy = props.viewContext.useViewAtomValue("polylineAtom");
-    let hoveredMdPoint3d: number[] | null = null;
-
-    if (intersectionReferenceSystem) {
-        if (hoveredMd) {
-            const [x, y] = intersectionReferenceSystem.getPosition(hoveredMd);
-            const [, z] = intersectionReferenceSystem.project(hoveredMd);
-            hoveredMdPoint3d = [x, y, z];
-        }
-    }
 
     // Polyline intersection query
     const polylineIntersectionQuery = useGridPolylineIntersectionQuery(
@@ -148,21 +138,29 @@ export function View(
                 props.viewContext.getInstanceIdString()
             );
         },
-        [props.workbenchServices, wellboreHeader, props.viewContext.getInstanceIdString()]
+        [props.workbenchServices, wellboreHeader, props.viewContext.getInstanceIdString(), props.viewContext]
     );
 
     const handleCameraPositionChange = React.useCallback(
         function handleCameraPositionChange(cameraPosition: Viewport) {
-            props.workbenchServices.publishGlobalData("global.syncValue.cameraPositionIntersection", cameraPosition);
+            props.workbenchServices.publishGlobalData(
+                "global.syncValue.cameraPositionIntersection",
+                cameraPosition,
+                props.viewContext.getInstanceIdString()
+            );
         },
-        [props.workbenchServices]
+        [props.workbenchServices, props.viewContext]
     );
 
     const handleVerticalScaleChange = React.useCallback(
         function handleVerticalScaleChange(verticalScale: number) {
-            props.workbenchServices.publishGlobalData("global.syncValue.verticalScale", verticalScale);
+            props.workbenchServices.publishGlobalData(
+                "global.syncValue.verticalScale",
+                verticalScale,
+                props.viewContext.getInstanceIdString()
+            );
         },
-        [props.workbenchServices]
+        [props.workbenchServices, props.viewContext]
     );
 
     const potentialIntersectionExtensionLength =
@@ -184,8 +182,8 @@ export function View(
                 onViewportChange={handleCameraPositionChange}
                 onVerticalScaleChange={handleVerticalScaleChange}
                 intersectionType={intersectionType}
-                // viewport={syncedCameraPosition ?? undefined}
-                // verticalScale={syncedVerticalScale ?? undefined}
+                viewport={syncedCameraPosition ?? undefined}
+                verticalScale={syncedVerticalScale ?? undefined}
             />
         </div>
     );

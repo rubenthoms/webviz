@@ -81,7 +81,7 @@ export function makeIntersectionLayer(
     gridMinAndMaxPropValues: [number, number]
 ): WorkingGrid3dLayer {
     function handleHover(pickingInfo: PickingInfo) {
-        console.log("Hovering over intersection layer", pickingInfo);
+        console.debug("Hovering over intersection layer", pickingInfo);
     }
 
     const polyData = buildVtkStylePolyDataFromFenceSections(polylineIntersectionData.fenceMeshSections);

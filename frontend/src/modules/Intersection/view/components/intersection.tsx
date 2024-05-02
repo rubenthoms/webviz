@@ -4,8 +4,8 @@ import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
-import { ColorScale } from "@lib/utils/ColorScale";
-import { SeismicFenceData_trans } from "@modules/Intersection/queryDataTransforms";
+import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
+import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { IntersectionType, SeismicSliceImageData } from "@modules/Intersection/typesAndEnums";
 import {
     EsvIntersection,
@@ -13,7 +13,7 @@ import {
     LayerItem,
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
-import { Viewport, ZoomTransform } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { Viewport } from "@modules/_shared/components/EsvIntersection/esvIntersection";
 import {
     AdditionalInformationKey,
     HighlightItem,
@@ -30,6 +30,7 @@ import { Add, FilterCenterFocus, Remove } from "@mui/icons-material";
 import { isEqual } from "lodash";
 
 import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
+import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
@@ -50,7 +51,10 @@ export type IntersectionProps = {
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
-    const { onReadout, onViewportChange: onViewportChange } = props;
+    const { onReadout, onViewportChange, onVerticalScaleChange } = props;
+
+    const divRef = React.useRef<HTMLDivElement>(null);
+    const divSize = useElementBoundingRect(divRef);
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
     const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
@@ -64,6 +68,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     }
 
     const layers: LayerItem[] = [];
+    const colorScales: ColorScaleWithName[] = [];
 
     if (props.intersectionType === IntersectionType.WELLBORE) {
         layers.push({
@@ -122,6 +127,12 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 order: 2,
             },
         });
+        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Intersection");
+        colorScale.setRange(
+            props.polylineIntersectionData.min_grid_prop_value,
+            props.polylineIntersectionData.max_grid_prop_value
+        );
+        colorScales.push(colorScale);
     }
 
     if (props.seismicSliceImageData && props.seismicSliceImageData.image) {
@@ -135,15 +146,11 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         if (seismicInfo) {
             seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
             seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
+
+            const colorScale = ColorScaleWithName.fromColorScale(props.seismicSliceImageData.colorScale, "Seismic");
+            colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
+            colorScales.push(colorScale);
         }
-
-        const seismicOptions = getSeismicOptions(seismicInfo);
-
-        console.debug(
-            props.seismicSliceImageData.trajectory[0],
-            props.seismicSliceImageData.trajectory[props.seismicSliceImageData.trajectory.length - 1]
-        );
-        console.debug(seismicInfo?.minX, seismicInfo?.maxX);
 
         layers.push({
             id: "seismic",
@@ -161,7 +168,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     if (props.wellboreCasingData) {
         const casingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Casing");
-        const tubingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Tubing");
+        // const tubingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Tubing");
 
         const casings: Casing[] = casingData.map((casing, index) => ({
             id: `casing-${index}`,
@@ -228,21 +235,31 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         });
     }
 
-    function handleVerticalScaleIncrease() {
-        const newVerticalScale = verticalScale + 0.1;
-        setVerticalScale(newVerticalScale);
-        if (props.onVerticalScaleChange) {
-            props.onVerticalScaleChange(newVerticalScale);
-        }
-    }
+    const handleVerticalScaleIncrease = React.useCallback(
+        function handleVerticalScaleIncrease(): void {
+            setVerticalScale((prev) => {
+                const newVerticalScale = prev + 0.1;
+                if (onVerticalScaleChange) {
+                    onVerticalScaleChange(newVerticalScale);
+                }
+                return newVerticalScale;
+            });
+        },
+        [onVerticalScaleChange]
+    );
 
-    function handleVerticalScaleDecrease() {
-        const newVerticalScale = Math.max(0.1, verticalScale - 0.1);
-        setVerticalScale(newVerticalScale);
-        if (props.onVerticalScaleChange) {
-            props.onVerticalScaleChange(newVerticalScale);
-        }
-    }
+    const handleVerticalScaleDecrease = React.useCallback(
+        function handleVerticalScaleIncrease(): void {
+            setVerticalScale((prev) => {
+                const newVerticalScale = Math.max(0.1, prev - 0.1);
+                if (onVerticalScaleChange) {
+                    onVerticalScaleChange(newVerticalScale);
+                }
+                return newVerticalScale;
+            });
+        },
+        [onVerticalScaleChange]
+    );
 
     const handleViewportChange = React.useCallback(
         function handleViewportChange(viewport: Viewport) {
@@ -254,7 +271,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     );
 
     return (
-        <div className="relative h-full mr-20">
+        <div className="relative h-full" ref={divRef}>
             <EsvIntersection
                 showGrid
                 zFactor={verticalScale}
@@ -279,7 +296,238 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 onVerticalScaleIncrease={handleVerticalScaleIncrease}
                 onVerticalScaleDecrease={handleVerticalScaleDecrease}
             />
+            <ColorLegendsContainer colorScales={colorScales} height={divSize.height / 2} />
         </div>
+    );
+}
+
+function countDecimalPlaces(value: number): number {
+    const decimalIndex = value.toString().indexOf(".");
+    return decimalIndex >= 0 ? value.toString().length - decimalIndex - 1 : 0;
+}
+
+function formatLegendValue(value: number): string {
+    const numDecimalPlaces = countDecimalPlaces(value);
+    if (Math.log10(Math.abs(value)) > 2) {
+        return value.toExponential(numDecimalPlaces > 2 ? 2 : numDecimalPlaces);
+    }
+    return value.toFixed(numDecimalPlaces > 2 ? 2 : numDecimalPlaces);
+}
+
+type ColorLegendsContainerProps = {
+    colorScales: ColorScaleWithName[];
+    height: number;
+};
+
+function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNode {
+    const width = Math.max(5, Math.min(24, 100 / props.colorScales.length));
+    const lineWidth = 6;
+    const lineColor = "#555";
+    const textGap = 4;
+    const offset = 10;
+    const legendGap = 4;
+    const textWidth = 50;
+    const nameWidth = 10;
+    const minHeight = 100 + 2 * offset;
+
+    const numRows = Math.floor(props.height / minHeight);
+    const numCols = Math.ceil(props.colorScales.length / numRows);
+    const height = Math.max(minHeight, props.height / numRows - (numRows - 1) * legendGap);
+
+    const textStyle: React.CSSProperties = {
+        fontSize: "11px",
+        stroke: "#fff",
+        paintOrder: "stroke",
+        strokeWidth: "6px",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        fontWeight: 800,
+    };
+
+    function makeLegends(): React.ReactNode[] {
+        const legends: React.ReactNode[] = [];
+        let index = 0;
+        for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+                if (index >= props.colorScales.length) {
+                    break;
+                }
+                const colorScale = props.colorScales[index++];
+                const top = row * (height + 2 * offset) + row * legendGap;
+                const left = col * (width + legendGap + lineWidth + textGap + textWidth + nameWidth);
+
+                const markers: React.ReactNode[] = [];
+                markers.push(
+                    <line
+                        key="div-mid-point"
+                        x1={left + width + nameWidth + textGap}
+                        y1={top + offset}
+                        x2={left + width + lineWidth + nameWidth + textGap}
+                        y2={top + offset}
+                        stroke={lineColor}
+                        strokeWidth="1"
+                    />
+                );
+                markers.push(
+                    <text
+                        key="max"
+                        x={left + width + lineWidth + textGap + nameWidth + textGap}
+                        y={top + offset + 3}
+                        fontSize="10"
+                        style={textStyle}
+                    >
+                        {formatLegendValue(colorScale.getMax())}
+                    </text>
+                );
+                if (colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
+                    const y =
+                        (colorScale.getDivMidPoint() - colorScale.getMin()) /
+                        (colorScale.getMax() - colorScale.getMin());
+                    markers.push(
+                        <line
+                            key="div-mid-point"
+                            x1={left + width + nameWidth + textGap}
+                            y1={top + y * height + offset}
+                            x2={left + width + lineWidth + nameWidth + textGap}
+                            y2={top + y * height + offset}
+                            stroke={lineColor}
+                            strokeWidth="2"
+                        />
+                    );
+                    markers.push(
+                        <text
+                            key="min"
+                            x={left + width + lineWidth + textGap + nameWidth + textGap}
+                            y={top + y * height + offset + 3}
+                            fontSize="10"
+                            style={textStyle}
+                        >
+                            {formatLegendValue(colorScale.getDivMidPoint())}
+                        </text>
+                    );
+                } else {
+                    const y = 0.5;
+                    const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * y;
+                    markers.push(
+                        <line
+                            key="div-mid-point"
+                            x1={left + width + nameWidth + textGap}
+                            y1={top + y * height + offset}
+                            x2={left + width + lineWidth + nameWidth + textGap}
+                            y2={top + y * height + offset}
+                            stroke={lineColor}
+                            strokeWidth="1"
+                        />
+                    );
+                    markers.push(
+                        <text
+                            key="mid"
+                            x={left + width + lineWidth + textGap + nameWidth + textGap}
+                            y={top + y * height + offset + 3}
+                            fontSize="10"
+                            style={textStyle}
+                        >
+                            {formatLegendValue(value)}
+                        </text>
+                    );
+                }
+
+                markers.push(
+                    <line
+                        key="div-mid-point"
+                        x1={left + width + nameWidth + textGap}
+                        y1={top + height + offset}
+                        x2={left + width + lineWidth + nameWidth + textGap}
+                        y2={top + height + offset}
+                        stroke={lineColor}
+                        strokeWidth="1"
+                    />
+                );
+                markers.push(
+                    <text
+                        key="min"
+                        x={left + width + lineWidth + textGap + nameWidth + textGap}
+                        y={top + height + offset + 3}
+                        fontSize="10"
+                        style={textStyle}
+                    >
+                        {formatLegendValue(colorScale.getMin())}
+                    </text>
+                );
+
+                legends.push(
+                    <g key={`color-scale-${colorScale.getColorPalette().getId()}`}>
+                        <rect
+                            key={index}
+                            x={left + nameWidth + textGap}
+                            y={top + offset}
+                            width={width}
+                            rx="4"
+                            height={height}
+                            fill={`url(#color-legend-gradient-${colorScale.getColorPalette().getId()})`}
+                            stroke="#555"
+                        />
+                        <text
+                            x={left}
+                            y={top + offset + height / 2 + 6}
+                            width={height}
+                            height={10}
+                            fontSize="10"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            alignmentBaseline="baseline"
+                            transform={`rotate(270, ${left}, ${top + offset + height / 2})`}
+                            style={textStyle}
+                        >
+                            {colorScale.getName()}
+                        </text>
+                        {markers}
+                    </g>
+                );
+            }
+        }
+        return legends;
+    }
+
+    return (
+        <div className="absolute bottom-20 left-0 flex gap-2 z-50">
+            <svg
+                style={{
+                    height: numRows * (height + 2 * offset) + (numRows - 1) * legendGap,
+                    width: numCols * (width + legendGap + lineWidth + textGap + textWidth),
+                }}
+                version="1.1"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <defs>
+                    {props.colorScales.map((colorScale, index) => (
+                        <GradientDef key={index} colorScale={colorScale} />
+                    ))}
+                </defs>
+                {makeLegends()}
+            </svg>
+        </div>
+    );
+}
+
+type GradientDefProps = {
+    colorScale: ColorScale;
+};
+
+function GradientDef(props: GradientDefProps): React.ReactNode {
+    const colorStops = props.colorScale.getColorStops();
+    const gradientId = `color-legend-gradient-${props.colorScale.getColorPalette().getId()}`;
+
+    return (
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            {colorStops.toReversed().map((colorStop, index) => (
+                <stop
+                    key={index}
+                    offset={`${((1 - colorStop.offset) * 100).toFixed(2)}%`}
+                    stopColor={colorStop.color}
+                />
+            ))}
+        </linearGradient>
     );
 }
 
@@ -335,7 +583,7 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     }
 
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 left-0 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
             {props.readoutItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
                     <div
@@ -379,7 +627,7 @@ function Toolbar(props: ToolbarProps): React.ReactNode {
     }
 
     return (
-        <div className="absolute -right-20 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
+        <div className="absolute left-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
             <Button onClick={handleFitInViewClick} title="Focus top view">
                 <FilterCenterFocus fontSize="inherit" />
             </Button>

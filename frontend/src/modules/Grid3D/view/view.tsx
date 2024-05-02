@@ -20,8 +20,9 @@ import { NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 
-import { InteractionUpdateWrapper } from "./components/InteractionUpdateWrapper";
+import { HoverUpdateWrapper } from "./components/HoverUpdateWrapper";
 import { SubsurfaceViewerWrapper } from "./components/SubsurfaceViewerWrapper";
+import { SyncedSettingsUpdateWrapper } from "./components/SyncedSettingsUpdateWrapper";
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
@@ -77,6 +78,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (fieldWellboreTrajectoriesQuery.isError) {
         statusWriter.addError(fieldWellboreTrajectoriesQuery.error.message);
     }
+
+    const syncedVerticalScale = syncHelper.useValue(SyncSettingKey.VERTICAL_SCALE, "global.syncValue.verticalScale");
 
     const polylineUtmXy: number[] = [];
     const oldPolylineUtmXy: number[] = [];
@@ -252,7 +255,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
 
     return (
         <div className="w-full h-full">
-            <InteractionUpdateWrapper
+            <SyncedSettingsUpdateWrapper
                 boundingBox={gridModelBoundingBox3d ?? undefined}
                 colorTables={colorTables}
                 layers={layers}

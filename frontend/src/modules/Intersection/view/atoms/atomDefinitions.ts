@@ -4,18 +4,26 @@ import { ModuleAtoms } from "@framework/Module";
 import { UniDirectionalSettingsToViewInterface } from "@framework/UniDirectionalSettingsToViewInterface";
 import { IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
+import { atomWithQueries } from "@framework/utils/atomUtils";
 import { transformSeismicFenceData } from "@modules/Intersection/queryDataTransforms";
 import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
-import { SeismicDataType, SeismicSliceImageOptions } from "@modules/Intersection/typesAndEnums";
+import {
+    CombinedPolylineIntersectionResults,
+    GridLayer,
+    LayerType,
+    SeismicDataType,
+    SeismicSliceImageOptions,
+} from "@modules/Intersection/typesAndEnums";
 import { SeismicFenceData_trans } from "@modules/SeismicIntersection/utils/queryDataTransforms";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
-import { QueryObserverResult } from "@tanstack/react-query";
+import { QueryObserverResult, UseQueryResult } from "@tanstack/react-query";
 
 import { atom } from "jotai";
 import { atomWithQuery } from "jotai-tanstack-query";
 
 import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
 
+import { PolylineIntersection_trans, transformPolylineIntersection } from "../queries/queryDataTransforms";
 import {
     createSeismicSliceImageDatapointsArrayFromFenceData,
     createSeismicSliceImageYAxisValuesArrayFromFenceData,
@@ -26,6 +34,7 @@ export type ViewAtoms = {
     intersectionReferenceSystemAtom: IntersectionReferenceSystem | null;
     seismicSliceImageOptionsAtom: SeismicSliceImageOptions | null;
     polylineAtom: number[];
+    polylineIntersectionQueriesAtom: CombinedPolylineIntersectionResults;
 };
 
 const STALE_TIME = 60 * 1000;
@@ -112,6 +121,73 @@ export function viewAtomsInitialization(
         }
 
         return polylineUtmXy;
+    });
+
+    const polylineIntersectionQueriesAtom = atomWithQueries((get) => {
+        const layers = get(settingsToViewInterface.getAtom("layers"));
+        const polyline = get(polylineAtom);
+        const ensembleIdent = get(settingsToViewInterface.getAtom("ensembleIdent"));
+        const realizationNum = get(settingsToViewInterface.getAtom("realization"));
+
+        const gridLayers = layers.filter((layer) => layer.type === LayerType.GRID) as GridLayer[];
+
+        const queries = gridLayers
+            .map((el) => {
+                return () => ({
+                    queryKey: [
+                        "postGetIntersection",
+                        ensembleIdent?.getCaseUuid() ?? "",
+                        ensembleIdent?.getEnsembleName() ?? "",
+                        realizationNum,
+                        el.settings.modelName,
+                        el.settings.parameterName,
+                        el.settings.parameterDateOrInterval,
+                        polyline,
+                    ],
+                    queryFn: () =>
+                        apiService.grid3D.postGetPolylineIntersection(
+                            ensembleIdent?.getCaseUuid() ?? "",
+                            ensembleIdent?.getEnsembleName() ?? "",
+                            el.settings.modelName ?? "",
+                            el.settings.parameterName ?? "",
+                            realizationNum ?? 0,
+                            { polyline_utm_xy: polyline },
+                            el.settings.parameterDateOrInterval ?? undefined
+                        ),
+                    select: transformPolylineIntersection,
+                    staleTime: STALE_TIME,
+                    gcTime: CACHE_TIME,
+                    enabled: !!(
+                        ensembleIdent &&
+                        realizationNum !== null &&
+                        polyline.length > 0 &&
+                        el.settings.modelName &&
+                        el.settings.parameterName
+                    ),
+                });
+            })
+            .flat();
+
+        function combine(
+            results: UseQueryResult<PolylineIntersection_trans, Error>[]
+        ): CombinedPolylineIntersectionResults {
+            return {
+                combinedPolylineIntersectionResults: results.map((el, idx) => {
+                    return {
+                        id: gridLayers[idx].id,
+                        polylineIntersection: el.data,
+                    };
+                }),
+                isFetching: results.some((result) => result.isFetching),
+                someQueriesFailed: results.some((result) => result.isError),
+                allQueriesFailed: results.every((result) => result.isError),
+            };
+        }
+
+        return {
+            queries,
+            combine,
+        };
     });
 
     const seismicFenceDataQueryAtom = atomWithQuery((get) => {
@@ -208,5 +284,6 @@ export function viewAtomsInitialization(
         intersectionReferenceSystemAtom,
         seismicSliceImageOptionsAtom,
         polylineAtom,
+        polylineIntersectionQueriesAtom,
     };
 }

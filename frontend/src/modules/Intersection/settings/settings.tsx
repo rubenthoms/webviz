@@ -54,6 +54,7 @@ import {
     gridModelInfosQueryAtom,
     seismicCubeMetaListQueryAtom,
 } from "./atoms/queryAtoms";
+import { Layers } from "./components/layers";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
@@ -77,7 +78,6 @@ export function Settings(
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
     const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
-    const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
     const [epsilon, setEpsilon] = props.settingsContext.useSettingsToViewInterfaceState("curveFittingEpsilon");
@@ -214,10 +214,6 @@ export function Settings(
         setShowGridLines(event.target.checked);
     }
 
-    function handleZFactorChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setZFactor(parseFloat(event.target.value));
-    }
-
     function handleIntersectionExtensionLengthChange(event: React.ChangeEvent<HTMLInputElement>) {
         setIntersectionExtensionLength(parseFloat(event.target.value));
     }
@@ -280,7 +276,7 @@ export function Settings(
 
     return (
         <div className="flex flex-col gap-1">
-            <CollapsibleGroup titleNode="Ensemble & realization" expanded>
+            <CollapsibleGroup title="Ensemble & realization" expanded>
                 <Label text="Ensemble">
                     <EnsembleDropdown
                         ensembleSet={ensembleSet}
@@ -296,7 +292,60 @@ export function Settings(
                     />
                 </Label>
             </CollapsibleGroup>
-            <CollapsibleGroup titleNode="Grid model" expanded>
+            <CollapsibleGroup title="Intersection" expanded>
+                <div className="flex flex-col gap-4 text-sm mb-4">
+                    <Radio
+                        name="intersectionType"
+                        value={intersectionType}
+                        checked={intersectionType === IntersectionType.WELLBORE}
+                        onChange={() => handleIntersectionTypeChange(IntersectionType.WELLBORE)}
+                        label={<strong>Use wellbore</strong>}
+                    />
+                    <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
+                        <Select
+                            options={makeWellHeaderOptions(wellHeaders.data ?? [])}
+                            value={selectedWellboreHeader ? [selectedWellboreHeader.uuid] : []}
+                            onChange={handleWellHeaderSelectionChange}
+                            size={5}
+                            filter
+                            debounceTimeMs={600}
+                            disabled={intersectionType !== IntersectionType.WELLBORE}
+                        />
+                    </PendingWrapper>
+                    <div className="flex flex-col gap-2">
+                        <Radio
+                            name="intersectionType"
+                            value={intersectionType}
+                            checked={intersectionType === IntersectionType.CUSTOM_POLYLINE}
+                            onChange={() => handleIntersectionTypeChange(IntersectionType.CUSTOM_POLYLINE)}
+                            label={<strong>Use custom polyline</strong>}
+                        />
+                        <Select
+                            options={makeCustomIntersectionPolylineOptions(availableUserCreatedIntersectionPolylines)}
+                            value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
+                            onChange={handleCustomPolylineSelectionChange}
+                            size={5}
+                            disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
+                            placeholder="No custom polylines"
+                        />
+                    </div>
+                    <Label text="Intersection extension length">
+                        <Input
+                            type="number"
+                            value={intersectionExtensionLength}
+                            min={0}
+                            onChange={handleIntersectionExtensionLengthChange}
+                        />
+                    </Label>
+                    <Label text="Epsilon">
+                        <Input type="number" value={epsilon} min={0} onChange={handleEpsilonChange} />
+                    </Label>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Layers" expanded>
+                <Layers />
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Grid model" expanded>
                 <div className="flex flex-col gap-2">
                     <Label text="Grid model">
                         <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
@@ -337,53 +386,7 @@ export function Settings(
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup titleNode="Intersection" expanded>
-                <div className="flex flex-col gap-4 text-sm mb-4">
-                    <Radio
-                        name="intersectionType"
-                        value={intersectionType}
-                        checked={intersectionType === IntersectionType.WELLBORE}
-                        onChange={() => handleIntersectionTypeChange(IntersectionType.WELLBORE)}
-                        label={<strong>Use wellbore</strong>}
-                    />
-                    <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
-                        <Select
-                            options={makeWellHeaderOptions(wellHeaders.data ?? [])}
-                            value={selectedWellboreHeader ? [selectedWellboreHeader.uuid] : []}
-                            onChange={handleWellHeaderSelectionChange}
-                            size={5}
-                            filter
-                            debounceTimeMs={600}
-                            disabled={intersectionType !== IntersectionType.WELLBORE}
-                        />
-                    </PendingWrapper>
-                    <div className="flex flex-col gap-2">
-                        <Radio
-                            name="intersectionType"
-                            value={intersectionType}
-                            checked={intersectionType === IntersectionType.CUSTOM_POLYLINE}
-                            onChange={() => handleIntersectionTypeChange(IntersectionType.CUSTOM_POLYLINE)}
-                            label={<strong>Use custom polyline</strong>}
-                        />
-                        <Select
-                            options={makeCustomIntersectionPolylineOptions(availableUserCreatedIntersectionPolylines)}
-                            value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
-                            onChange={handleCustomPolylineSelectionChange}
-                            size={5}
-                            disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
-                            placeholder="No custom polylines"
-                        />
-                    </div>
-                </div>
-            </CollapsibleGroup>
-            <CollapsibleGroup
-                titleNode={
-                    <>
-                        <Checkbox onChange={handleToggleShowSeismic} checked={showSeismic} /> Seismic
-                    </>
-                }
-                expanded
-            >
+            <CollapsibleGroup title="Seismic" expanded>
                 <div className="flex flex-col gap-2">
                     <Label text="Seismic data type">
                         <RadioGroup
@@ -455,23 +458,9 @@ export function Settings(
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup titleNode="Visualization options" expanded>
+            <CollapsibleGroup title="Visualization options" expanded>
                 <Label text="Show grid lines" position="left">
                     <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
-                </Label>
-                <Label text="Z factor">
-                    <Input type="number" value={zFactor} min={0} onChange={handleZFactorChange} />
-                </Label>
-                <Label text="Intersection extension length">
-                    <Input
-                        type="number"
-                        value={intersectionExtensionLength}
-                        min={0}
-                        onChange={handleIntersectionExtensionLengthChange}
-                    />
-                </Label>
-                <Label text="Epsilon">
-                    <Input type="number" value={epsilon} min={0} onChange={handleEpsilonChange} />
                 </Label>
             </CollapsibleGroup>
         </div>

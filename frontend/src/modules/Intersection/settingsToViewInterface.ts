@@ -4,7 +4,7 @@ import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToView
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScale } from "@lib/utils/ColorScale";
 
-import { userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
+import { layersAccessAtom, userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
 import {
     selectedCustomIntersectionPolylineIdAtom,
     selectedGridModelBoundingBox3dAtom,
@@ -16,7 +16,7 @@ import {
     selectedSeismicDateOrIntervalStringAtom,
 } from "./settings/atoms/derivedAtoms";
 import { selectedEnsembleIdentAtom } from "./sharedAtoms/sharedAtoms";
-import { SeismicDataType } from "./typesAndEnums";
+import { Layer, SeismicDataType } from "./typesAndEnums";
 
 export type SettingsToViewInterface = {
     baseStates: {
@@ -40,6 +40,7 @@ export type SettingsToViewInterface = {
         seismicDateOrIntervalString: string | null;
         seismicDataType: SeismicDataType;
         selectedCustomIntersectionPolylineId: string | null;
+        layers: Layer[];
     };
 };
 
@@ -84,6 +85,9 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         },
         selectedCustomIntersectionPolylineId: (get) => {
             return get(selectedCustomIntersectionPolylineIdAtom);
+        },
+        layers: (get) => {
+            return get(layersAccessAtom);
         },
     },
 };

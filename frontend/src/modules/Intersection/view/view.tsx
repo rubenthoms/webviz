@@ -41,6 +41,8 @@ export function View(
     const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
+    const layers = props.viewContext.useSettingsToViewInterfaceValue("layers");
+
     const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
 
     const { imageData: seismicSliceImageData, status: seismicImageStatus } =
@@ -82,6 +84,8 @@ export function View(
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const intersectionType = props.viewContext.useSettingsToViewInterfaceValue("intersectionType");
 
+    const combinedPolylineIntersectionResults = props.viewContext.useViewAtomValue("polylineIntersectionQueriesAtom");
+
     let ensembleName = "";
     if (ensembleIdent) {
         const ensemble = ensembleSet.findEnsemble(ensembleIdent);
@@ -96,6 +100,7 @@ export function View(
 
     const polylineUtmXy = props.viewContext.useViewAtomValue("polylineAtom");
 
+    /*
     // Polyline intersection query
     const polylineIntersectionQuery = useGridPolylineIntersectionQuery(
         ensembleIdent ?? null,
@@ -108,6 +113,7 @@ export function View(
     if (polylineIntersectionQuery.isError) {
         statusWriter.addError(polylineIntersectionQuery.error.message);
     }
+    */
 
     // Wellbore casing query
     const wellboreCasingQuery = useWellboreCasingQuery(wellboreHeader?.uuid ?? undefined);
@@ -117,7 +123,7 @@ export function View(
 
     // Set loading status
     statusWriter.setLoading(
-        polylineIntersectionQuery.isFetching ||
+        combinedPolylineIntersectionResults.isFetching ||
             wellboreCasingQuery.isFetching ||
             seismicFenceDataQuery.isFetching ||
             seismicImageStatus === SeismicSliceImageStatus.LOADING
@@ -170,11 +176,13 @@ export function View(
         <div className="w-full h-full">
             <Intersection
                 referenceSystem={intersectionReferenceSystem}
-                polylineIntersectionData={polylineIntersectionQuery.data ?? null}
+                layers={layers}
+                combinedPolylineIntersectionResults={combinedPolylineIntersectionResults}
+                //polylineIntersectionData={polylineIntersectionQuery.data ?? null}
                 wellboreCasingData={wellboreCasingQuery.data ?? null}
-                seismicSliceImageData={showSeismic ? seismicSliceImageData : null}
-                gridBoundingBox3d={gridModelBoundingBox3d}
-                colorScale={colorScale}
+                //seismicSliceImageData={showSeismic ? seismicSliceImageData : null}
+                //gridBoundingBox3d={gridModelBoundingBox3d}
+                //colorScale={colorScale}
                 showGridLines={showGridLines}
                 intersectionExtensionLength={potentialIntersectionExtensionLength}
                 hoveredMd={hoveredMd}

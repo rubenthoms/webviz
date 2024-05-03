@@ -112,7 +112,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
 
     return (
         <div className="flex flex-col gap-2">
-            <CollapsibleGroup titleNode="Color by" expanded>
+            <CollapsibleGroup title="Color by" expanded>
                 <RadioGroup
                     options={[
                         { label: "Ensemble", value: ColorBy.ENSEMBLE },
@@ -122,7 +122,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleColorByChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup titleNode="Ensembles" expanded>
+            <CollapsibleGroup title="Ensembles" expanded>
                 <EnsembleSelect
                     ensembleSet={ensembleSet}
                     onChange={handleEnsembleSelectionChange}
@@ -131,7 +131,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     multiple={selectedColorBy === ColorBy.ENSEMBLE}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup titleNode="Realizations" expanded>
+            <CollapsibleGroup title="Realizations" expanded>
                 <Select
                     options={makeRealizationOptions(realizations)}
                     value={selectedRealizations.map((el) => el.toString())}
@@ -141,7 +141,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                 />
             </CollapsibleGroup>
             <PendingWrapper isPending={pvtDataQueries.isFetching} errorMessage={errorMessage}>
-                <CollapsibleGroup titleNode="PVT Num" expanded>
+                <CollapsibleGroup title="PVT Num" expanded>
                     <Select
                         options={makePvtNumOptions(pvtDataAccessor.getUniquePvtNums())}
                         value={selectedPvtNums.map((el) => el.toString())}
@@ -150,10 +150,10 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                         multiple={selectedColorBy === ColorBy.PVT_NUM}
                     />
                 </CollapsibleGroup>
-                <CollapsibleGroup titleNode="Phase" expanded>
+                <CollapsibleGroup title="Phase" expanded>
                     <Dropdown options={makePhaseOptions()} value={selectedPhase} onChange={handlePhasesChange} />
                 </CollapsibleGroup>
-                <CollapsibleGroup titleNode="Show plot for" expanded>
+                <CollapsibleGroup title="Show plot for" expanded>
                     <DependentVariableSelector
                         dependentVariables={makeDependentVariableOptions(selectedPhase)}
                         value={selectedDependentVariables}

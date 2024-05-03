@@ -4,9 +4,17 @@ import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
+import { ToggleButton } from "@lib/components/ToggleButton";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
-import { IntersectionType, SeismicSliceImageData } from "@modules/Intersection/typesAndEnums";
+import {
+    CombinedPolylineIntersectionResults,
+    GridLayer,
+    IntersectionType,
+    Layer,
+    SeismicSliceImageData,
+    LayerType as UserLayerType,
+} from "@modules/Intersection/typesAndEnums";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -25,7 +33,7 @@ import {
     getAdditionalInformationFromReadoutItem,
     getLabelFromLayerData,
 } from "@modules/_shared/components/EsvIntersection/utils/readoutItemUtils";
-import { Add, FilterCenterFocus, Remove } from "@mui/icons-material";
+import { Add, FilterCenterFocus, GridOn, Remove } from "@mui/icons-material";
 
 import { isEqual } from "lodash";
 
@@ -34,13 +42,15 @@ import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
-    polylineIntersectionData: PolylineIntersection_trans | null;
-    seismicSliceImageData: SeismicSliceImageData | null;
+    layers: Layer[];
+    combinedPolylineIntersectionResults: CombinedPolylineIntersectionResults;
+    // polylineIntersectionData: PolylineIntersection_trans | null;
+    // seismicSliceImageData: SeismicSliceImageData | null;
     wellboreCasingData: WellboreCasing_api[] | null;
-    gridBoundingBox3d: BoundingBox3d_api | null;
-    colorScale: ColorScale;
-    showGridLines: boolean;
+    // gridBoundingBox3d: BoundingBox3d_api | null;
+    // colorScale: ColorScale;
     intersectionExtensionLength: number;
+    showGridLines: boolean;
     hoveredMd: number | null;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
     onViewportChange?: (viewport: Viewport) => void;
@@ -57,6 +67,8 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     const divSize = useElementBoundingRect(divRef);
 
     const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
+    const [showGrid, setShowGrid] = React.useState<boolean>(true);
+
     const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
     const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
 
@@ -65,6 +77,31 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         if (props.verticalScale) {
             setVerticalScale(props.verticalScale);
         }
+    }
+
+    const [viewport, setViewport] = React.useState<Viewport | null>(null);
+    const [prevViewport, setPrevViewport] = React.useState<Viewport | undefined>(props.viewport);
+
+    if (!isEqual(prevViewport, props.viewport)) {
+        setPrevViewport(props.viewport);
+        if (props.viewport && !isEqual(viewport, props.viewport)) {
+            setViewport(props.viewport);
+        }
+    }
+
+    if (!viewport && props.referenceSystem) {
+        const newViewport: Viewport = [0, 0, 2000];
+        const firstPoint = props.referenceSystem.projectedPath[0];
+        const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
+        const xMax = Math.max(firstPoint[0], lastPoint[0]);
+        const xMin = Math.min(firstPoint[0], lastPoint[0]);
+        const yMax = Math.max(firstPoint[1], lastPoint[1]);
+        const yMin = Math.min(firstPoint[1], lastPoint[1]);
+
+        newViewport[0] = xMin + (xMax - xMin) / 2;
+        newViewport[1] = yMin + (yMax - yMin) / 2;
+        newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
+        setViewport(newViewport);
     }
 
     const layers: LayerItem[] = [];
@@ -83,6 +120,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         });
     }
 
+    /*
     if (props.polylineIntersectionData) {
         layers.push({
             id: "intersection",
@@ -127,7 +165,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 order: 2,
             },
         });
-        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Intersection");
+        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Grid");
         colorScale.setRange(
             props.polylineIntersectionData.min_grid_prop_value,
             props.polylineIntersectionData.max_grid_prop_value
@@ -165,6 +203,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             },
         });
     }
+    */
 
     if (props.wellboreCasingData) {
         const casingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Casing");
@@ -201,22 +240,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         }
     }
 
-    let newViewport: [number, number, number] = [0, 0, 2000];
-    if (props.viewport === undefined && props.referenceSystem) {
-        const firstPoint = props.referenceSystem.projectedPath[0];
-        const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
-        const xMax = Math.max(firstPoint[0], lastPoint[0]);
-        const xMin = Math.min(firstPoint[0], lastPoint[0]);
-        const yMax = Math.max(firstPoint[1], lastPoint[1]);
-        const yMin = Math.min(firstPoint[1], lastPoint[1]);
-
-        newViewport[0] = xMin + (xMax - xMin) / 2;
-        newViewport[1] = yMin + (yMax - yMin) / 2;
-        newViewport[2] = 2000; // Math.max(xMax - xMin, yMax - yMin) * 5;
-    } else {
-        newViewport = props.viewport ?? newViewport;
-    }
-
     const handleReadoutItemsChange = React.useCallback(
         function handleReadoutItemsChange(event: EsvIntersectionReadoutEvent): void {
             setReadoutItems(event.readoutItems);
@@ -234,6 +257,36 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             shape: HighlightItemShape.POINT,
         });
     }
+
+    const handleFitInViewClick = React.useCallback(
+        function handleFitInViewClick(): void {
+            if (props.referenceSystem) {
+                let newViewport: [number, number, number] = [0, 0, 2000];
+                const firstPoint = props.referenceSystem.projectedPath[0];
+                const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
+                const xMax = Math.max(firstPoint[0], lastPoint[0]);
+                const xMin = Math.min(firstPoint[0], lastPoint[0]);
+                const yMax = Math.max(firstPoint[1], lastPoint[1]);
+                const yMin = Math.min(firstPoint[1], lastPoint[1]);
+
+                newViewport[0] = xMin + (xMax - xMin) / 2;
+                newViewport[1] = yMin + (yMax - yMin) / 2;
+                newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
+                setViewport(newViewport);
+                if (onViewportChange) {
+                    onViewportChange(newViewport);
+                }
+            }
+        },
+        [onViewportChange, props.referenceSystem, setViewport]
+    );
+
+    const handleShowGridToggle = React.useCallback(
+        function handleGridLinesToggle(active: boolean): void {
+            setShowGrid(active);
+        },
+        [setShowGrid]
+    );
 
     const handleVerticalScaleIncrease = React.useCallback(
         function handleVerticalScaleIncrease(): void {
@@ -263,6 +316,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     const handleViewportChange = React.useCallback(
         function handleViewportChange(viewport: Viewport) {
+            setViewport(viewport);
             if (onViewportChange) {
                 onViewportChange(viewport);
             }
@@ -270,19 +324,96 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         [onViewportChange]
     );
 
+    function makeBounds() {
+        const bounds: { x: [number, number]; y: [number, number] } = {
+            x: [0, 1],
+            y: [0, 1],
+        };
+        for (const layer of props.layers) {
+            if (layer.boundingBox) {
+                bounds.x = [
+                    Math.min(bounds.x[0], layer.boundingBox.x[0]),
+                    Math.max(bounds.x[1], layer.boundingBox.x[1]),
+                ];
+                bounds.y = [
+                    Math.min(bounds.y[0], layer.boundingBox.y[0]),
+                    Math.max(bounds.y[1], layer.boundingBox.y[1]),
+                ];
+            }
+        }
+        return bounds;
+    }
+
+    for (const layer of props.layers) {
+        if (layer.type === UserLayerType.GRID) {
+            const gridLayer = layer as GridLayer;
+            const data = props.combinedPolylineIntersectionResults.combinedPolylineIntersectionResults.find(
+                (el) => el.id === gridLayer.id
+            )?.polylineIntersection;
+
+            if (!data) {
+                continue;
+            }
+
+            layers.push({
+                id: "intersection",
+                type: LayerType.POLYLINE_INTERSECTION,
+                hoverable: true,
+                options: {
+                    data: {
+                        fenceMeshSections: data.fenceMeshSections.map((section) => {
+                            let zMin = Number.MAX_VALUE;
+                            let zMax = Number.MIN_VALUE;
+
+                            const verticesUzArray: Float32Array = new Float32Array(section.verticesUzFloat32Arr.length);
+
+                            for (let i = 0; i < section.verticesUzFloat32Arr.length; i += 2) {
+                                const z = -section.verticesUzFloat32Arr[i + 1];
+                                zMin = Math.min(zMin, z);
+                                zMax = Math.max(zMax, z);
+                                verticesUzArray[i] = section.verticesUzFloat32Arr[i];
+                                verticesUzArray[i + 1] = z;
+                            }
+
+                            return {
+                                polyIndicesArr: section.polyIndicesUintArr,
+                                verticesUzArr: verticesUzArray,
+                                verticesPerPolyArr: section.verticesPerPolyUintArr,
+                                polySourceCellIndicesArr: section.polySourceCellIndicesUint32Arr,
+                                polyPropsArr: section.polyPropsFloat32Arr,
+                                minZ: zMin,
+                                maxZ: zMax,
+                                startUtmX: section.start_utm_x,
+                                startUtmY: section.start_utm_y,
+                                endUtmX: section.end_utm_x,
+                                endUtmY: section.end_utm_y,
+                            };
+                        }),
+                        minGridPropValue: data.min_grid_prop_value,
+                        maxGridPropValue: data.max_grid_prop_value,
+                        colorScale: gridLayer.settings.colorScale,
+                        hideGridlines: !props.showGridLines,
+                        extensionLengthStart: props.intersectionExtensionLength,
+                    },
+                    order: 2,
+                },
+            });
+
+            const colorScale = ColorScaleWithName.fromColorScale(gridLayer.settings.colorScale, gridLayer.name);
+            colorScales.push(colorScale);
+        }
+    }
+
     return (
         <div className="relative h-full" ref={divRef}>
             <EsvIntersection
-                showGrid
+                showGrid={showGrid}
                 zFactor={verticalScale}
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
                 layers={layers}
-                bounds={{
-                    x: [props.gridBoundingBox3d?.xmin ?? 0, props.gridBoundingBox3d?.xmax ?? 1],
-                    y: [props.gridBoundingBox3d?.ymin ?? 0, props.gridBoundingBox3d?.ymax ?? 1],
-                }}
-                viewport={newViewport}
+                bounds={makeBounds()}
+                viewport={viewport ?? undefined}
                 intersectionThreshold={50}
                 highlightItems={highlightItems}
                 onReadout={handleReadoutItemsChange}
@@ -292,11 +423,13 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             <Toolbar
                 visible
                 zFactor={verticalScale}
-                onFitInView={() => {}}
+                gridVisible={showGrid}
+                onFitInView={handleFitInViewClick}
+                onGridLinesToggle={handleShowGridToggle}
                 onVerticalScaleIncrease={handleVerticalScaleIncrease}
                 onVerticalScaleDecrease={handleVerticalScaleDecrease}
             />
-            <ColorLegendsContainer colorScales={colorScales} height={divSize.height / 2} />
+            <ColorLegendsContainer colorScales={colorScales} height={divSize.height / 2 - 50} />
         </div>
     );
 }
@@ -320,7 +453,7 @@ type ColorLegendsContainerProps = {
 };
 
 function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNode {
-    const width = Math.max(5, Math.min(24, 100 / props.colorScales.length));
+    const width = Math.max(5, Math.min(10, 100 / props.colorScales.length));
     const lineWidth = 6;
     const lineColor = "#555";
     const textGap = 4;
@@ -328,9 +461,9 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
     const legendGap = 4;
     const textWidth = 50;
     const nameWidth = 10;
-    const minHeight = 100 + 2 * offset;
+    const minHeight = Math.min(60 + 2 * offset, props.height);
 
-    const numRows = Math.floor(props.height / minHeight);
+    const numRows = Math.min(Math.floor(props.height / minHeight), props.colorScales.length);
     const numCols = Math.ceil(props.colorScales.length / numRows);
     const height = Math.max(minHeight, props.height / numRows - (numRows - 1) * legendGap);
 
@@ -359,7 +492,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 const markers: React.ReactNode[] = [];
                 markers.push(
                     <line
-                        key="div-mid-point"
+                        key="max-marker"
                         x1={left + width + nameWidth + textGap}
                         y1={top + offset}
                         x2={left + width + lineWidth + nameWidth + textGap}
@@ -370,7 +503,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 );
                 markers.push(
                     <text
-                        key="max"
+                        key="max-text"
                         x={left + width + lineWidth + textGap + nameWidth + textGap}
                         y={top + offset + 3}
                         fontSize="10"
@@ -385,7 +518,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                         (colorScale.getMax() - colorScale.getMin());
                     markers.push(
                         <line
-                            key="div-mid-point"
+                            key="mid-marker"
                             x1={left + width + nameWidth + textGap}
                             y1={top + y * height + offset}
                             x2={left + width + lineWidth + nameWidth + textGap}
@@ -396,7 +529,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                     );
                     markers.push(
                         <text
-                            key="min"
+                            key="mid-text"
                             x={left + width + lineWidth + textGap + nameWidth + textGap}
                             y={top + y * height + offset + 3}
                             fontSize="10"
@@ -410,7 +543,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                     const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * y;
                     markers.push(
                         <line
-                            key="div-mid-point"
+                            key="mid-marker"
                             x1={left + width + nameWidth + textGap}
                             y1={top + y * height + offset}
                             x2={left + width + lineWidth + nameWidth + textGap}
@@ -421,7 +554,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                     );
                     markers.push(
                         <text
-                            key="mid"
+                            key="mid-text"
                             x={left + width + lineWidth + textGap + nameWidth + textGap}
                             y={top + y * height + offset + 3}
                             fontSize="10"
@@ -434,7 +567,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
 
                 markers.push(
                     <line
-                        key="div-mid-point"
+                        key="min-marker"
                         x1={left + width + nameWidth + textGap}
                         y1={top + height + offset}
                         x2={left + width + lineWidth + nameWidth + textGap}
@@ -445,7 +578,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 );
                 markers.push(
                     <text
-                        key="min"
+                        key="min-text"
                         x={left + width + lineWidth + textGap + nameWidth + textGap}
                         y={top + height + offset + 3}
                         fontSize="10"
@@ -490,7 +623,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
     }
 
     return (
-        <div className="absolute bottom-20 left-0 flex gap-2 z-50">
+        <div className="absolute bottom-8 left-0 flex gap-2 z-50">
             <svg
                 style={{
                     height: numRows * (height + 2 * offset) + (numRows - 1) * legendGap,
@@ -604,7 +737,9 @@ function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
 type ToolbarProps = {
     visible: boolean;
     zFactor: number;
+    gridVisible: boolean;
     onFitInView: () => void;
+    onGridLinesToggle: (active: boolean) => void;
     onVerticalScaleIncrease: () => void;
     onVerticalScaleDecrease: () => void;
 };
@@ -612,6 +747,10 @@ type ToolbarProps = {
 function Toolbar(props: ToolbarProps): React.ReactNode {
     function handleFitInViewClick() {
         props.onFitInView();
+    }
+
+    function handleGridVisibilityToggle(active: boolean) {
+        props.onGridLinesToggle(active);
     }
 
     function handleVerticalScaleIncrease() {
@@ -631,6 +770,13 @@ function Toolbar(props: ToolbarProps): React.ReactNode {
             <Button onClick={handleFitInViewClick} title="Focus top view">
                 <FilterCenterFocus fontSize="inherit" />
             </Button>
+            <ToggleButton
+                onToggle={handleGridVisibilityToggle}
+                title="Toggle grid visibility"
+                active={props.gridVisible}
+            >
+                <GridOn fontSize="inherit" />
+            </ToggleButton>
             <ToolBarDivider />
             <HoldPressedIntervalCallbackButton
                 onHoldPressedIntervalCallback={handleVerticalScaleIncrease}

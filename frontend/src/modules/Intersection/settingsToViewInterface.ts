@@ -4,7 +4,7 @@ import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToView
 import { IntersectionType } from "@framework/types/intersection";
 import { ColorScale } from "@lib/utils/ColorScale";
 
-import { layersAccessAtom, userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
+import { userSelectedSeismicDataTypeAtom } from "./settings/atoms/baseAtoms";
 import {
     selectedCustomIntersectionPolylineIdAtom,
     selectedGridModelBoundingBox3dAtom,
@@ -15,6 +15,7 @@ import {
     selectedSeismicAttributeAtom,
     selectedSeismicDateOrIntervalStringAtom,
 } from "./settings/atoms/derivedAtoms";
+import { layersAccessAtom } from "./settings/atoms/layersAtoms";
 import { selectedEnsembleIdentAtom } from "./sharedAtoms/sharedAtoms";
 import { Layer, SeismicDataType } from "./typesAndEnums";
 

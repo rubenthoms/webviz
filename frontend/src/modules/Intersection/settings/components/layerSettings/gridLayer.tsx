@@ -23,14 +23,7 @@ export const GridLayerSettings: React.FC<GridLayerSettingsProps> = (props) => {
     }
 
     function handleGridModelSelectionChange(selected: string) {
-        const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selected);
         props.updateSetting("modelName", selected);
-        if (gridModelInfo) {
-            props.updateBoundingBox({
-                x: [gridModelInfo.bbox.xmin, gridModelInfo.bbox.xmax],
-                y: [gridModelInfo.bbox.ymin, gridModelInfo.bbox.ymin],
-            });
-        }
     }
 
     function handleGridParameterSelectionChange(selected: string) {
@@ -47,7 +40,7 @@ export const GridLayerSettings: React.FC<GridLayerSettingsProps> = (props) => {
         gridModelInfo?.property_info_arr.filter((el) => el.property_name === props.layer.settings.parameterName) ?? [];
 
     return (
-        <div className="table text-sm border-spacing-1">
+        <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
             <div className="table-row">
                 <div className="table-cell">Model</div>
                 <div className="table-cell">

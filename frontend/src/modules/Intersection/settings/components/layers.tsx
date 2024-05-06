@@ -25,12 +25,12 @@ import {
     VisibilityOff,
 } from "@mui/icons-material";
 
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 
 import { GridLayerSettings } from "./layerSettings/gridLayer";
 import { SeismicLayerSettings } from "./layerSettings/seismicLayer";
 
-import { layersAccessAtom, layersAtom } from "../atoms/baseAtoms";
+import { layersAccessAtom, layersAtom } from "../atoms/layersAtoms";
 
 export type LayersProps = {};
 
@@ -162,7 +162,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 className="flex p-0.5 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
             >
                 <div
-                    className="flex items-center justify-center p-0.5 hover:cursor-pointer"
+                    className="p-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
                     onClick={() => handleToggleLayerVisibility(props.layer.id)}
                     title="Toggle visibility"
                 >

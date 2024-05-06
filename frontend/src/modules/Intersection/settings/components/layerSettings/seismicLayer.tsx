@@ -50,7 +50,7 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
     }
 
     return (
-        <div className="table text-sm border-spacing-1">
+        <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
             <div className="table-row">
                 <div className="table-cell">Data type</div>
                 <div className="table-cell">

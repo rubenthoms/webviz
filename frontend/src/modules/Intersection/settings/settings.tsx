@@ -345,47 +345,6 @@ export function Settings(
             <CollapsibleGroup title="Layers" expanded>
                 <Layers />
             </CollapsibleGroup>
-            <CollapsibleGroup title="Grid model" expanded>
-                <div className="flex flex-col gap-2">
-                    <Label text="Grid model">
-                        <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
-                            <Select
-                                options={makeGridModelOptions(gridModelInfos.data ?? [])}
-                                value={selectedGridModelName ? [selectedGridModelName] : []}
-                                onChange={handleGridModelSelectionChange}
-                                size={5}
-                                debounceTimeMs={600}
-                            />
-                        </PendingWrapper>
-                    </Label>
-                    <Label text="Grid parameter">
-                        <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
-                            <Select
-                                options={makeGridParameterNameOptions(gridModelInfo)}
-                                value={selectedGridModelParameterName ? [selectedGridModelParameterName] : []}
-                                onChange={handleGridParameterSelectionChange}
-                                size={5}
-                                debounceTimeMs={600}
-                            />
-                        </PendingWrapper>
-                    </Label>
-                    <Label text="Grid date or interval">
-                        <PendingWrapper isPending={gridModelInfos.isFetching} errorMessage={gridModelErrorMessage}>
-                            <Select
-                                options={makeGridParameterDateOrIntervalOptions(datesOrIntervalsForSelectedParameter)}
-                                value={
-                                    selectedGridModelParameterDateOrInterval
-                                        ? [selectedGridModelParameterDateOrInterval]
-                                        : []
-                                }
-                                onChange={handleGridParameterDateOrIntervalSelectionChange}
-                                size={5}
-                                debounceTimeMs={600}
-                            />
-                        </PendingWrapper>
-                    </Label>
-                </div>
-            </CollapsibleGroup>
             <CollapsibleGroup title="Seismic" expanded>
                 <div className="flex flex-col gap-2">
                     <Label text="Seismic data type">

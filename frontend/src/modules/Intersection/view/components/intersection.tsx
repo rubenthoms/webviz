@@ -345,6 +345,10 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     }
 
     for (const layer of props.layers) {
+        if (!layer.visible) {
+            continue;
+        }
+
         if (layer.type === UserLayerType.GRID) {
             const gridLayer = layer as GridLayer;
             const data = props.combinedPolylineIntersectionResults.combinedPolylineIntersectionResults.find(

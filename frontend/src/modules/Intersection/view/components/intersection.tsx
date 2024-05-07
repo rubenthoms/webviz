@@ -234,6 +234,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             point: [point[0], point[1]],
             color: "red",
             shape: HighlightItemShape.POINT,
+            paintOrder: 6,
         });
     }
 

@@ -54,9 +54,13 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
         return null;
     }
 
+    const sortedReadoutItems = props.readoutItems.sort((a, b) => {
+        return b.layer.order - a.layer.order;
+    });
+
     return (
         <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
-            {props.readoutItems.map((item, index) => {
+            {sortedReadoutItems.map((item, index) => {
                 if (index < (props.maxNumItems ?? 3)) {
                     return (
                         <div key={index} className="flex items-center gap-2">

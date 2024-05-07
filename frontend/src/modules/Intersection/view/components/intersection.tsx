@@ -2,9 +2,6 @@ import React from "react";
 
 import { BoundingBox3d_api, WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
-import { Button } from "@lib/components/Button";
-import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
-import { ToggleButton } from "@lib/components/ToggleButton";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
 import {
@@ -34,6 +31,9 @@ import {
     getLabelFromLayerData,
 } from "@modules/_shared/components/EsvIntersection/utils/readoutItemUtils";
 import { Add, FilterCenterFocus, GridOn, Remove } from "@mui/icons-material";
+import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
+import { ReadoutBox } from "@modules/_shared/components/EsvIntersection/utilityComponents/ReadoutBox";
+import { Toolbar } from "@modules/_shared/components/EsvIntersection/utilityComponents/Toolbar";
 
 import { isEqual } from "lodash";
 

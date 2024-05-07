@@ -44,7 +44,11 @@ export class HighlightOverlay {
         svgLayer.style.width = "100%";
         svgLayer.style.height = "100%";
 
-        for (const item of this._highlightItems) {
+        const sortedHighlightItems = this._highlightItems.sort((a, b) => {
+            return a.paintOrder - b.paintOrder;
+        });
+
+        for (const item of sortedHighlightItems) {
             if (item.shape === HighlightItemShape.POINT) {
                 const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", xScale(item.point[0]).toString());

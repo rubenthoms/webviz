@@ -14,6 +14,7 @@ import { isEqual } from "lodash";
 
 export type ColorScaleSelectorProps = {
     workbenchSettings: WorkbenchSettings;
+    gradientType?: ColorScaleGradientType;
     colorScale?: ColorScale;
     onChange: (colorScale: ColorScale) => void;
 };
@@ -22,7 +23,9 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
     const { onChange } = props;
 
     const [colorScale, setColorScale] = React.useState<ColorScale>(
-        props.workbenchSettings.useContinuousColorScale({ gradientType: ColorScaleGradientType.Sequential })
+        props.workbenchSettings.useContinuousColorScale({
+            gradientType: props.gradientType ?? ColorScaleGradientType.Sequential,
+        })
     );
 
     const [prevColorScale, setPrevColorScale] = React.useState<ColorScale | undefined>(undefined);

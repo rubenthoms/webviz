@@ -37,6 +37,8 @@ export function View(
 
     const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
     const showSeismic = props.viewContext.useSettingsToViewInterfaceValue("showSeismic");
+    const showGrid = props.viewContext.useSettingsToViewInterfaceValue("showGrid");
+    const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
     const intersectionReferenceSystem = props.viewContext.useViewAtomValue("intersectionReferenceSystemAtom");
     const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
@@ -72,7 +74,6 @@ export function View(
 
     const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
     const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
-    const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
     const gridModelParameterName = props.viewContext.useSettingsToViewInterfaceValue("gridModelParameterName");
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
@@ -138,7 +139,7 @@ export function View(
                 props.viewContext.getInstanceIdString()
             );
         },
-        [props.workbenchServices, wellboreHeader, props.viewContext.getInstanceIdString(), props.viewContext]
+        [props.workbenchServices, wellboreHeader, props.viewContext]
     );
 
     const handleCameraPositionChange = React.useCallback(
@@ -170,7 +171,7 @@ export function View(
         <div className="w-full h-full">
             <Intersection
                 referenceSystem={intersectionReferenceSystem}
-                polylineIntersectionData={polylineIntersectionQuery.data ?? null}
+                polylineIntersectionData={showGrid ? polylineIntersectionQuery.data ?? null : null}
                 wellboreCasingData={wellboreCasingQuery.data ?? null}
                 seismicSliceImageData={showSeismic ? seismicSliceImageData : null}
                 gridBoundingBox3d={gridModelBoundingBox3d}
@@ -184,6 +185,7 @@ export function View(
                 intersectionType={intersectionType}
                 viewport={syncedCameraPosition ?? undefined}
                 verticalScale={syncedVerticalScale ?? undefined}
+                boundingBox3d={gridModelBoundingBox3d ?? undefined}
             />
         </div>
     );

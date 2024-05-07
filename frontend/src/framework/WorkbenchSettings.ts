@@ -161,7 +161,7 @@ export class WorkbenchSettings {
         this._selectedColorPalettes = {
             [ColorPaletteType.Categorical]: defaultColorPalettes[0].getId(),
             [ColorPaletteType.ContinuousSequential]: defaultContinuousSequentialColorPalettes[0].getId(),
-            [ColorPaletteType.ContinuousDiverging]: defaultContinuousDivergingColorPalettes[0].getId(),
+            [ColorPaletteType.ContinuousDiverging]: defaultContinuousDivergingColorPalettes[1].getId(),
         };
 
         this._steps = {

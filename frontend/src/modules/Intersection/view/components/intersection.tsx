@@ -48,6 +48,7 @@ export type IntersectionProps = {
     intersectionType: IntersectionType;
     verticalScale?: number;
     viewport?: Viewport;
+    boundingBox3d?: BoundingBox3d_api;
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
@@ -127,7 +128,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 order: 2,
             },
         });
-        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Intersection");
+        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Grid");
         colorScale.setRange(
             props.polylineIntersectionData.min_grid_prop_value,
             props.polylineIntersectionData.max_grid_prop_value
@@ -202,7 +203,21 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     }
 
     let newViewport: [number, number, number] = [0, 0, 2000];
-    if (props.viewport === undefined && props.referenceSystem) {
+    if (props.viewport !== undefined) {
+        newViewport = props.viewport;
+    } else if (props.referenceSystem && props.boundingBox3d) {
+        const firstPoint = props.referenceSystem.projectedPath[0];
+        const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
+        const xMax = Math.max(firstPoint[0], lastPoint[0]);
+        const xMin = Math.min(firstPoint[0], lastPoint[0]);
+
+        const yMax = props.boundingBox3d.zmax;
+        const yMin = props.boundingBox3d.zmin;
+
+        newViewport[0] = xMin + (xMax - xMin) / 2;
+        newViewport[1] = yMin + (yMax - yMin) / 2;
+        newViewport[2] = Math.max(xMax - xMin + 2 * props.intersectionExtensionLength, yMax - yMin) * 2;
+    } else if (props.referenceSystem) {
         const firstPoint = props.referenceSystem.projectedPath[0];
         const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
         const xMax = Math.max(firstPoint[0], lastPoint[0]);
@@ -212,9 +227,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
         newViewport[0] = xMin + (xMax - xMin) / 2;
         newViewport[1] = yMin + (yMax - yMin) / 2;
-        newViewport[2] = 2000; // Math.max(xMax - xMin, yMax - yMin) * 5;
-    } else {
-        newViewport = props.viewport ?? newViewport;
+        newViewport[2] = Math.max(xMax - xMin + 2 * props.intersectionExtensionLength, yMax - yMin) * 2;
     }
 
     const handleReadoutItemsChange = React.useCallback(
@@ -296,7 +309,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 onVerticalScaleIncrease={handleVerticalScaleIncrease}
                 onVerticalScaleDecrease={handleVerticalScaleDecrease}
             />
-            <ColorLegendsContainer colorScales={colorScales} height={divSize.height / 2} />
+            <ColorLegendsContainer colorScales={colorScales} height={divSize.height - 300} />
         </div>
     );
 }
@@ -330,7 +343,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
     const nameWidth = 10;
     const minHeight = 100 + 2 * offset;
 
-    const numRows = Math.floor(props.height / minHeight);
+    const numRows = Math.min(Math.floor(props.height / minHeight), props.colorScales.length);
     const numCols = Math.ceil(props.colorScales.length / numRows);
     const height = Math.max(minHeight, props.height / numRows - (numRows - 1) * legendGap);
 
@@ -359,7 +372,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 const markers: React.ReactNode[] = [];
                 markers.push(
                     <line
-                        key="div-mid-point"
+                        key="max"
                         x1={left + width + nameWidth + textGap}
                         y1={top + offset}
                         x2={left + width + lineWidth + nameWidth + textGap}
@@ -370,7 +383,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 );
                 markers.push(
                     <text
-                        key="max"
+                        key="max-text"
                         x={left + width + lineWidth + textGap + nameWidth + textGap}
                         y={top + offset + 3}
                         fontSize="10"
@@ -385,7 +398,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                         (colorScale.getMax() - colorScale.getMin());
                     markers.push(
                         <line
-                            key="div-mid-point"
+                            key="mid-line"
                             x1={left + width + nameWidth + textGap}
                             y1={top + y * height + offset}
                             x2={left + width + lineWidth + nameWidth + textGap}
@@ -396,7 +409,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                     );
                     markers.push(
                         <text
-                            key="min"
+                            key="mid"
                             x={left + width + lineWidth + textGap + nameWidth + textGap}
                             y={top + y * height + offset + 3}
                             fontSize="10"
@@ -410,7 +423,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                     const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * y;
                     markers.push(
                         <line
-                            key="div-mid-point"
+                            key="mid-line"
                             x1={left + width + nameWidth + textGap}
                             y1={top + y * height + offset}
                             x2={left + width + lineWidth + nameWidth + textGap}
@@ -434,7 +447,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
 
                 markers.push(
                     <line
-                        key="div-mid-point"
+                        key="min-line"
                         x1={left + width + nameWidth + textGap}
                         y1={top + height + offset}
                         x2={left + width + lineWidth + nameWidth + textGap}

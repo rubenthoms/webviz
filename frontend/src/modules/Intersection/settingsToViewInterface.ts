@@ -28,6 +28,7 @@ export type SettingsToViewInterface = {
         curveFittingEpsilon: number;
         seismicColorScale: ColorScale | null;
         showSeismic: boolean;
+        showGrid: boolean;
     };
     derivedStates: {
         ensembleIdent: EnsembleIdent | null;
@@ -53,6 +54,7 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         curveFittingEpsilon: 5,
         seismicColorScale: null,
         showSeismic: false,
+        showGrid: false,
     },
     derivedStates: {
         ensembleIdent: (get) => {

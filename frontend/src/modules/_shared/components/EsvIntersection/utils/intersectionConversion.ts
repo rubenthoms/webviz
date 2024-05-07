@@ -110,6 +110,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -117,6 +118,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -124,6 +126,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POINTS,
             points: intersectionResult.points,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -131,6 +134,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POLYGON,
             polygon: intersectionResult.polygon,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -139,6 +143,7 @@ export function makeHighlightItemFromIntersectionResult(
             return {
                 shape: HighlightItemShape.POLYGON,
                 polygon: intersectionResult.polygon,
+                paintOrder: layer.order,
                 color,
             };
         }
@@ -147,6 +152,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POLYGONS,
             polygons,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -154,6 +160,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -161,6 +168,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.LINE,
             line: intersectionResult.line,
+            paintOrder: layer.order,
             color,
         };
     }
@@ -168,6 +176,7 @@ export function makeHighlightItemFromIntersectionResult(
         return {
             shape: HighlightItemShape.POINT,
             point: intersectionResult.point,
+            paintOrder: layer.order,
             color,
         };
     }

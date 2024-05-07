@@ -80,6 +80,7 @@ export interface IntersectedItem {
 
 export type HighlightItem = {
     color: string;
+    paintOrder: number;
 } & (
     | {
           shape: HighlightItemShape.POINT;

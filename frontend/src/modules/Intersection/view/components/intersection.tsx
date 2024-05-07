@@ -255,13 +255,14 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             point: [point[0], point[1]],
             color: "red",
             shape: HighlightItemShape.POINT,
+            paintOrder: 6,
         });
     }
 
     const handleFitInViewClick = React.useCallback(
         function handleFitInViewClick(): void {
             if (props.referenceSystem) {
-                let newViewport: [number, number, number] = [0, 0, 2000];
+                const newViewport: [number, number, number] = [0, 0, 2000];
                 const firstPoint = props.referenceSystem.projectedPath[0];
                 const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
                 const xMax = Math.max(firstPoint[0], lastPoint[0]);

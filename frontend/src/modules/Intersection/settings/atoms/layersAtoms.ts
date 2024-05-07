@@ -44,14 +44,14 @@ function fixupGridLayer(layer: GridLayer, get: Getter): GridLayer {
         return layer;
     }
 
-    const gridModelInfo = gridModelInfos.data.find((info) => info.grid_name === layer.settings.modelName);
-
     if (
         layer.settings.modelName === null ||
         !gridModelInfos.data.map((gridModelInfo) => gridModelInfo.grid_name).includes(layer.settings.modelName)
     ) {
         adjustedSettings.modelName = gridModelInfos.data[0]?.grid_name || null;
     }
+
+    const gridModelInfo = gridModelInfos.data.find((info) => info.grid_name === adjustedSettings.modelName);
 
     if (adjustedSettings.modelName) {
         if (
@@ -163,19 +163,23 @@ function makeInitialLayerSettings(type: LayerType): Record<string, unknown> {
     }
 }
 
+function makeUniqueLayerName(name: string, layers: Layer[]): string {
+    let potentialName = name;
+    let i = 1;
+    while (layers.some((layer) => layer.name === potentialName)) {
+        potentialName = `${name} (${i})`;
+        i++;
+    }
+    return potentialName;
+}
+
 export const layersAtom = atomWithReducer<Layer[], LayerActions>([], (prev: Layer[], action: LayerActions) => {
     switch (action.type) {
         case LayerActionType.ADD_LAYER:
-            let potentialName = LAYER_TYPE_TO_STRING_MAPPING[action.payload.type];
-            let i = 1;
-            while (prev.some((layer) => layer.name === potentialName)) {
-                potentialName = `${LAYER_TYPE_TO_STRING_MAPPING[action.payload.type]} (${i})`;
-                i++;
-            }
             return [
                 ...prev,
                 {
-                    name: potentialName,
+                    name: makeUniqueLayerName(LAYER_TYPE_TO_STRING_MAPPING[action.payload.type], prev),
                     id: v4(),
                     visible: true,
                     type: action.payload.type,

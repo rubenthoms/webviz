@@ -222,7 +222,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
 
     return (
         <div className="flex flex-col gap-2 overflow-y-auto">
-            <CollapsibleGroup expanded={false} titleNode="Group by">
+            <CollapsibleGroup expanded={false} title="Group by">
                 <RadioGroup
                     value={groupBy}
                     options={Object.values(GroupBy).map((val: GroupBy) => {
@@ -231,7 +231,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleGroupByChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} titleNode="Resampling frequency">
+            <CollapsibleGroup expanded={false} title="Resampling frequency">
                 <Dropdown
                     options={[
                         { value: "RAW", label: "None (raw)" },
@@ -243,7 +243,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleFrequencySelectionChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} titleNode="Ensembles">
+            <CollapsibleGroup expanded={true} title="Ensembles">
                 <EnsembleSelect
                     ensembleSet={ensembleSet}
                     value={selectedEnsembleIdents}
@@ -251,7 +251,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     onChange={handleEnsembleSelectChange}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={true} titleNode="Vectors">
+            <CollapsibleGroup expanded={true} title="Vectors">
                 <Checkbox
                     label="Show historical"
                     checked={showHistorical}
@@ -281,7 +281,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     </QueryStateWrapper>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} titleNode="Color realization by parameter">
+            <CollapsibleGroup expanded={false} title="Color realization by parameter">
                 <Checkbox
                     label="Enable"
                     checked={colorRealizationsByParameter}
@@ -300,7 +300,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     <div className="mt-4 mb-4">
                         <CollapsibleGroup
                             expanded={false}
-                            titleNode="Parameter list filter"
+                            title="Parameter list filter"
                             icon={<FilterAlt fontSize="small" />}
                         >
                             <ParameterListFilter
@@ -323,7 +323,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                     />
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup expanded={false} titleNode="Visualization">
+            <CollapsibleGroup expanded={false} title="Visualization">
                 <RadioGroup
                     value={visualizationMode}
                     options={Object.values(VisualizationMode).map((val: VisualizationMode) => {

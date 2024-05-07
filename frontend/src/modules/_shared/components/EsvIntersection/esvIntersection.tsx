@@ -205,6 +205,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const [prevContainerSize, setPrevContainerSize] = React.useState<Size2D | null | undefined>(null);
     const [prevLayers, setPrevLayers] = React.useState<LayerItem[] | null | undefined>(null);
     const [prevBounds, setPrevBounds] = React.useState<Bounds | null | undefined>(null);
+    const [currentViewport, setCurrentViewport] = React.useState<Viewport | null>(null);
     const [prevViewport, setPrevViewport] = React.useState<Viewport | null | undefined>(null);
     const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | null | undefined>(null);
     const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | null | undefined>(null);
@@ -320,7 +321,15 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             !fuzzyCompare(prevViewport[2], props.viewport[2], 0.0001)
         ) {
             if (props.viewport) {
-                esvController.setViewport(...props.viewport);
+                if (
+                    !currentViewport ||
+                    !fuzzyCompare(currentViewport[0], props.viewport[0], 0.0001) ||
+                    !fuzzyCompare(currentViewport[1], props.viewport[1], 0.0001) ||
+                    !fuzzyCompare(currentViewport[2], props.viewport[2], 0.0001)
+                ) {
+                    esvController.setViewport(...props.viewport);
+                    setCurrentViewport(props.viewport);
+                }
             }
             setPrevViewport(props.viewport);
         }
@@ -404,6 +413,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                     const dy0 = event.yBounds[0] - event.transform.y * (unitsPerPixel / event.zFactor);
                     const cy = dy0 + displ / event.zFactor / event.viewportRatio / 2;
 
+                    setCurrentViewport([cx, cy, displ]);
                     onViewportChange([cx, cy, displ]);
                 }
                 automaticChanges.current = false;
@@ -465,7 +475,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onReadout, onViewportChange, props.intersectionThreshold]
+        [onReadout, onViewportChange, props.intersectionThreshold, setCurrentViewport]
     );
 
     return (

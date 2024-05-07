@@ -197,20 +197,20 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
 export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
     const { onReadout, onViewportChange: onViewportChange } = props;
 
-    const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | null | undefined>(null);
+    const [prevAxesOptions, setPrevAxesOptions] = React.useState<AxisOptions | undefined>(undefined);
     const [prevIntersectionReferenceSystem, setPrevIntersectionReferenceSystem] = React.useState<
         IntersectionReferenceSystem | null | undefined
     >(null);
-    const [prevShowGrid, setPrevShowGrid] = React.useState<boolean | null | undefined>(null);
-    const [prevContainerSize, setPrevContainerSize] = React.useState<Size2D | null | undefined>(null);
-    const [prevLayers, setPrevLayers] = React.useState<LayerItem[] | null | undefined>(null);
-    const [prevBounds, setPrevBounds] = React.useState<Bounds | null | undefined>(null);
+    const [prevShowGrid, setPrevShowGrid] = React.useState<boolean | undefined>(undefined);
+    const [prevContainerSize, setPrevContainerSize] = React.useState<Size2D | undefined>(undefined);
+    const [prevLayers, setPrevLayers] = React.useState<LayerItem[] | undefined>(undefined);
+    const [prevBounds, setPrevBounds] = React.useState<Bounds | undefined>(undefined);
     const [currentViewport, setCurrentViewport] = React.useState<Viewport | null>(null);
-    const [prevViewport, setPrevViewport] = React.useState<Viewport | null | undefined>(null);
-    const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | null | undefined>(null);
-    const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | null | undefined>(null);
-    const [prevZFactor, setPrevZFactor] = React.useState<number | null | undefined>(null);
-    const [prevHighlightItems, setPrevHighlightItems] = React.useState<HighlightItem[] | null | undefined>(null);
+    const [prevViewport, setPrevViewport] = React.useState<Viewport | undefined>(undefined);
+    const [prevShowAxesLabels, setPrevShowAxesLabels] = React.useState<boolean | undefined>(undefined);
+    const [prevShowAxes, setPrevShowAxes] = React.useState<boolean | undefined>(undefined);
+    const [prevZFactor, setPrevZFactor] = React.useState<number | undefined>(undefined);
+    const [prevHighlightItems, setPrevHighlightItems] = React.useState<HighlightItem[] | undefined>(undefined);
 
     const [layerIds, setLayerIds] = React.useState<string[]>([]);
 
@@ -313,12 +313,12 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
         }
 
         if (
-            !(prevViewport && props.viewport) ||
-            (!prevViewport && props.viewport) ||
-            (prevViewport && !props.viewport) ||
-            !fuzzyCompare(prevViewport[0], props.viewport[0], 0.0001) ||
-            !fuzzyCompare(prevViewport[1], props.viewport[1], 0.0001) ||
-            !fuzzyCompare(prevViewport[2], props.viewport[2], 0.0001)
+            !isEqual(prevViewport, props.viewport) ||
+            (prevViewport &&
+                props.viewport &&
+                (!fuzzyCompare(prevViewport[0], props.viewport[0], 0.0001) ||
+                    !fuzzyCompare(prevViewport[1], props.viewport[1], 0.0001) ||
+                    !fuzzyCompare(prevViewport[2], props.viewport[2], 0.0001)))
         ) {
             if (props.viewport) {
                 if (
@@ -461,14 +461,14 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 setInteractionHandler(null);
                 setLayerIds([]);
                 setPrevLayers([]);
-                setPrevAxesOptions(null);
+                setPrevAxesOptions(undefined);
                 setPrevIntersectionReferenceSystem(null);
-                setPrevShowGrid(null);
-                setPrevContainerSize(null);
-                setPrevBounds(null);
-                setPrevViewport(null);
-                setPrevShowAxesLabels(null);
-                setPrevShowAxes(null);
+                setPrevShowGrid(undefined);
+                setPrevContainerSize(undefined);
+                setPrevBounds(undefined);
+                setPrevViewport(undefined);
+                setPrevShowAxesLabels(undefined);
+                setPrevShowAxes(undefined);
                 newPixiRenderApplication.destroy();
                 newEsvController.removeAllLayers();
                 newEsvController.destroy();
@@ -483,7 +483,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             <div
                 ref={containerRef}
                 className={resolveClassNames({ "w-full h-full": props.size === undefined })}
-                style={props.size}
+                style={{ ...props.size }}
             ></div>
         </>
     );

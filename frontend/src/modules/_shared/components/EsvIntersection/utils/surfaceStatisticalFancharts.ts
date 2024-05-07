@@ -22,7 +22,7 @@ function mergeXAndYArrays(arrayX: number[], arrayY: number[]): number[][] {
     return arrayX.map((x, i) => [x, arrayY[i]]);
 }
 
-export function makeSurfaceStatisticalFanchartFromRealizationSurfaces(
+export function makeSurfaceStatisticalFanchartFromRealizationSurface(
     realizationSamplePoints: number[][],
     cumulatedLength: number[],
     surfaceName: string,

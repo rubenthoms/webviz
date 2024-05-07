@@ -102,7 +102,7 @@ export class SurfaceStatisticalFanchartsCanvasLayer<T extends SurfaceStatistical
 
         this.ctx.save();
         this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = Math.min(1, 2 / this._transform.k);
+        this.ctx.lineWidth = Math.min(0.5, 2 / this._transform.k);
         if (dashSegments !== undefined) {
             this.ctx.setLineDash(dashSegments);
         } else {

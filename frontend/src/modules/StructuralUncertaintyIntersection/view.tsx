@@ -1,6 +1,6 @@
 import React from "react";
 
-import { IntersectionReferenceSystem, Trajectory } from "@equinor/esv-intersection";
+import { IntersectionReferenceSystem, SurfaceLine, Trajectory } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { useElementSize } from "@lib/hooks/useElementSize";

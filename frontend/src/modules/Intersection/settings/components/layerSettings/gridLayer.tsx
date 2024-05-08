@@ -1,20 +1,22 @@
+import React from "react";
+
 import { Grid3dInfo_api, Grid3dPropertyInfo_api } from "@api";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { ColorScale } from "@lib/utils/ColorScale";
-import { GridLayer, LayerBoundingBox } from "@modules/Intersection/typesAndEnums";
+import { LayerBoundingBox } from "@modules/Intersection/typesAndEnums";
+import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 
 import { useAtomValue } from "jotai";
 
 import { gridModelInfosQueryAtom } from "../../atoms/queryAtoms";
 
-export type GridLayerSettingsProps = {
+export type GridLayerSettingsComponentProps = {
     layer: GridLayer;
-    updateBoundingBox: (bbox: LayerBoundingBox) => void;
-    updateSetting: <T extends keyof GridLayer["settings"]>(setting: T, value: GridLayer["settings"][T]) => void;
+    updateSetting: <T extends keyof GridLayerSettings>(setting: T, value: GridLayerSettings[T]) => void;
 };
 
-export const GridLayerSettings: React.FC<GridLayerSettingsProps> = (props) => {
+export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProps> = (props) => {
     const gridModelInfos = useAtomValue(gridModelInfosQueryAtom);
 
     let gridModelErrorMessage = "";

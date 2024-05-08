@@ -1,7 +1,6 @@
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import {
-    GridLayer,
     LAYER_TYPE_TO_STRING_MAPPING,
     Layer,
     LayerActionType,
@@ -11,8 +10,12 @@ import {
     SeismicLayer,
     SeismicSurveyType,
 } from "@modules/Intersection/typesAndEnums";
+import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { GridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { QueryClient } from "@tanstack/query-core";
 
-import { Getter, atom } from "jotai";
+import { Getter, WritableAtom, atom } from "jotai";
+import { queryClientAtom } from "jotai-tanstack-query";
 import { atomWithReducer } from "jotai/utils";
 import { cloneDeep } from "lodash";
 import { v4 } from "uuid";
@@ -20,6 +23,7 @@ import { v4 } from "uuid";
 import { availableSeismicAttributesAtom, availableSeismicDateOrIntervalStringsAtom } from "./derivedAtoms";
 import { gridModelInfosQueryAtom } from "./queryAtoms";
 
+/*
 export const layersAccessAtom = atom<Layer[]>((get) => {
     const layers = get(layersAtom);
     const adjustedLayers: Layer[] = [];
@@ -163,30 +167,35 @@ function makeInitialLayerSettings(type: LayerType): Record<string, unknown> {
     }
 }
 
-function makeUniqueLayerName(name: string, layers: Layer[]): string {
+*/
+
+function makeUniqueLayerName(name: string, layers: BaseLayer<any, any>[]): string {
     let potentialName = name;
     let i = 1;
-    while (layers.some((layer) => layer.name === potentialName)) {
+    while (layers.some((layer) => layer.getName() === potentialName)) {
         potentialName = `${name} (${i})`;
         i++;
     }
     return potentialName;
 }
 
-export const layersAtom = atomWithReducer<Layer[], LayerActions>([], (prev: Layer[], action: LayerActions) => {
+function makeLayer(type: LayerType, name: string, queryClient: QueryClient): BaseLayer<any, any> {
+    switch (type) {
+        case LayerType.GRID:
+            return new GridLayer(name, queryClient);
+        default:
+            throw new Error(`Layer type ${type} not supported`);
+    }
+}
+
+/*
+export const layersAtom = atomWithReducer<BaseLayer<any, any>[], LayerActions>([], (prev: BaseLayer<any, any>[], action: LayerActions) => {
+    const queryClient = get(queryClientAtom);
     switch (action.type) {
         case LayerActionType.ADD_LAYER:
             return [
                 ...prev,
-                {
-                    name: makeUniqueLayerName(LAYER_TYPE_TO_STRING_MAPPING[action.payload.type], prev),
-                    id: v4(),
-                    visible: true,
-                    type: action.payload.type,
-                    showSettings: false,
-                    settings: makeInitialLayerSettings(action.payload.type),
-                    boundingBox: { x: [0, 1], y: [0, 1] },
-                },
+                
             ];
         case LayerActionType.REMOVE_LAYER:
             return prev.filter((layer) => layer.id !== action.payload.id);
@@ -208,3 +217,60 @@ export const layersAtom = atomWithReducer<Layer[], LayerActions>([], (prev: Laye
             return prev;
     }
 });
+*/
+
+export function atomWithReducerAndGetter<Value, Action>(
+    initialValue: Value,
+    reducer: (value: Value, action: Action, get: Getter) => Value
+): WritableAtom<Value, [Action], void> {
+    const valueAtom = atom(initialValue);
+
+    return atom(
+        (get) => {
+            return get(valueAtom);
+        },
+        (get, set, action) => {
+            const newValue = reducer(get(valueAtom), action, get);
+            set(valueAtom, newValue);
+        }
+    );
+}
+
+export const layersAtom = atomWithReducerAndGetter<BaseLayer<any, any>[], LayerActions>(
+    [],
+    (prev: BaseLayer<any, any>[], action: LayerActions, get: Getter) => {
+        const queryClient = get(queryClientAtom);
+        if (action.type === LayerActionType.ADD_LAYER) {
+            return [
+                ...prev,
+                makeLayer(
+                    action.payload.type,
+                    makeUniqueLayerName(LAYER_TYPE_TO_STRING_MAPPING[action.payload.type], prev),
+                    queryClient
+                ),
+            ];
+        }
+        if (action.type === LayerActionType.REMOVE_LAYER) {
+            return prev.filter((layer) => layer.getId() !== action.payload.id);
+        }
+        if (action.type === LayerActionType.TOGGLE_LAYER_VISIBILITY) {
+            const layer = prev.find((layer) => layer.getId() === action.payload.id);
+            if (!layer) {
+                return prev;
+            }
+            layer.setIsVisible(!layer.getIsVisible());
+            return prev;
+        }
+
+        if (action.type === LayerActionType.UPDATE_SETTING) {
+            const layer = prev.find((layer) => layer.getId() === action.payload.id);
+            if (!layer) {
+                return prev;
+            }
+            layer.maybeUpdateSettings(action.payload.settings);
+            return prev;
+        }
+
+        return prev;
+    }
+);

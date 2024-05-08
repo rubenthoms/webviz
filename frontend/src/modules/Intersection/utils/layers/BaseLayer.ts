@@ -1,0 +1,168 @@
+import { ColorPalette } from "@lib/utils/ColorPalette";
+import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
+import { QueryClient } from "@tanstack/query-core";
+
+import { isEqual } from "lodash";
+import { v4 } from "uuid";
+
+export enum LayerStatus {
+    IDLE = "IDLE",
+    LOADING = "LOADING",
+    ERROR = "ERROR",
+    SUCCESS = "SUCCESS",
+}
+
+enum LayerTopic {
+    NAME = "NAME",
+    SETTINGS = "SETTINGS",
+    DATA = "DATA",
+    STATUS = "STATUS",
+    VISIBILITY = "VISIBILITY",
+    COLORSCALE = "COLORSCALE",
+}
+
+export type LayerSettings = {
+    [key: string]: any;
+};
+
+export class BaseLayer<TSettings extends LayerSettings, TData> {
+    private _subscribers: Map<LayerTopic, Set<() => void>> = new Map();
+    protected _queryClient: QueryClient;
+    protected _status: LayerStatus = LayerStatus.IDLE;
+    private _id: string;
+    private _name: string;
+    private _isVisible: boolean = true;
+    private _colorScale: ColorScale;
+    protected _data: TData | null = null;
+    protected _settings: TSettings = {} as TSettings;
+
+    constructor(name: string, settings: TSettings, queryClient: QueryClient) {
+        this._id = v4();
+        this._name = name;
+        this._settings = settings;
+        this._queryClient = queryClient;
+
+        this._colorScale = new ColorScale({
+            colorPalette: new ColorPalette({
+                name: "Blue to Yellow",
+                colors: [
+                    "#115f9a",
+                    "#1984c5",
+                    "#22a7f0",
+                    "#48b5c4",
+                    "#76c68f",
+                    "#a6d75b",
+                    "#c9e52f",
+                    "#d0ee11",
+                    "#f4f100",
+                ],
+                id: "blue-to-yellow",
+            }),
+            gradientType: ColorScaleGradientType.Sequential,
+            type: ColorScaleType.Continuous,
+            steps: 10,
+        });
+    }
+
+    getId(): string {
+        return this._id;
+    }
+
+    getSettings(): TSettings {
+        return this._settings;
+    }
+
+    getStatus(): LayerStatus {
+        return this._status;
+    }
+
+    getName(): string {
+        return this._name;
+    }
+
+    setName(name: string): void {
+        this._name = name;
+        this.notifySubscribers(LayerTopic.NAME);
+    }
+
+    getIsVisible(): boolean {
+        return this._isVisible;
+    }
+
+    setIsVisible(isVisible: boolean): void {
+        this._isVisible = isVisible;
+        this.notifySubscribers(LayerTopic.VISIBILITY);
+    }
+
+    getColorScale(): ColorScaleWithName {
+        return ColorScaleWithName.fromColorScale(this._colorScale, this._name);
+    }
+
+    getData(): TData | null {
+        return this._data;
+    }
+
+    maybeUpdateSettings(updatedSettings: Partial<TSettings>): void {
+        const patchesToApply: Partial<TSettings> = {};
+        for (const setting in updatedSettings) {
+            if (!(setting in this._settings)) {
+                throw new Error(`Setting "${setting}" is not valid for this layer`);
+            }
+
+            if (!isEqual(this._settings[setting], updatedSettings[setting])) {
+                patchesToApply[setting] = updatedSettings[setting];
+            }
+        }
+        if (Object.keys(patchesToApply).length > 0) {
+            this._settings = { ...this._settings, ...patchesToApply };
+            this.notifySubscribers(LayerTopic.SETTINGS);
+            this.maybeRefetchData();
+        }
+    }
+
+    subscribe(topic: LayerTopic, callback: () => void): () => void {
+        if (!this._subscribers.has(topic)) {
+            this._subscribers.set(topic, new Set());
+        }
+        this._subscribers.get(topic)?.add(callback);
+
+        return () => {
+            this.unsubscribe(topic, callback);
+        };
+    }
+
+    unsubscribe(topic: LayerTopic, callback: () => void): void {
+        this._subscribers.get(topic)?.delete(callback);
+    }
+
+    protected notifySubscribers(topic: LayerTopic): void {
+        for (const callback of this._subscribers.get(topic) ?? []) {
+            callback();
+        }
+    }
+
+    protected areSettingsValid(): boolean {
+        return true;
+    }
+
+    private async maybeRefetchData(): Promise<void> {
+        if (!this.areSettingsValid()) {
+            return;
+        }
+        this._status = LayerStatus.LOADING;
+        try {
+            this._data = await this.fetchData();
+            this.notifySubscribers(LayerTopic.DATA);
+            this._status = LayerStatus.SUCCESS;
+        } catch (error) {
+            console.error("Error fetching GridLayer data", error);
+            this._status = LayerStatus.ERROR;
+        }
+        this.notifySubscribers(LayerTopic.STATUS);
+    }
+
+    protected async fetchData(): Promise<TData> {
+        throw new Error("Not implemented");
+    }
+}

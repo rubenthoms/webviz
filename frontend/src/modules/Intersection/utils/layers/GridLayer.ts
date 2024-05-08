@@ -1,13 +1,14 @@
+import { FenceMeshSection_api, Grid3dGeometry_api, Grid3dMappedProperty_api, PolylineIntersection_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { ColorPalette } from "@lib/utils/ColorPalette";
-import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
-import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
-import { QueryClient } from "@tanstack/react-query";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
+import {
+    b64DecodeFloatArrayToFloat32,
+    b64DecodeUintArrayToUint32,
+    b64DecodeUintArrayToUint32OrLess,
+} from "@modules/_shared/base64";
+import { QueryClient } from "@tanstack/query-core";
 
-import { Grid3dGeometry_api, Grid3dMappedProperty_api } from "@api";
-import { FenceMeshSection_api, PolylineIntersection_api } from "@api";
-import { b64DecodeFloatArrayToFloat32 } from "@modules_shared/base64";
-import { b64DecodeUintArrayToUint32, b64DecodeUintArrayToUint32OrLess } from "@modules_shared/base64";
+import { BaseLayer } from "./BaseLayer";
 
 // Data structure for the transformed GridSurface data
 // Removes the base64 encoded data and replaces them with typed arrays
@@ -121,126 +122,63 @@ export function transformPolylineIntersection(apiData: PolylineIntersection_api)
     };
 }
 
-
-export enum LayerStatus {
-    IDLE = "IDLE",
-    LOADING = "LOADING",
-    ERROR = "ERROR",
-    SUCCESS = "SUCCESS",
-}
-
-export interface Layer<TData> {
-    getStatus(): LayerStatus;
-    getName(): string;
-    getIsVisible(): boolean;
-    getColorScale(): ColorScaleWithName;
-    getData(): TData | null;
-}
-
-type GridLayerSettings = {
-    caseUuid: string;
-    ensembleName: string;
-    gridName: string;
-    parameterName: string;
-    realizationNum: number;
-    polylineXyz: number[];
-};
-
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-const DefaultGridLayerSettings = {
-    caseUuid: "",
-    ensembleName: "",
-    gridName: "",
-    parameterName: "",
-    realizationNum: 0,
-    polylineXyz: [],
+export type GridLayerSettings = {
+    ensembleIdent: EnsembleIdent | null;
+    gridName: string | null;
+    parameterName: string | null;
+    realizationNum: number | null;
+    polylineXyz: number[];
 };
 
-export class GridLayer implements Layer<PolylineIntersection_trans> {
-    private _status: LayerStatus = LayerStatus.IDLE;
-    private _name: string = "";
-    private _isVisible: boolean = true;
-    private _colorScale: ColorScale;
-    private _queryClient: QueryClient;
-    private _settings: GridLayerSettings = DefaultGridLayerSettings;
-    private _data: PolylineIntersection_trans | null = null;
+export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection_trans> {
+    constructor(name: string, queryClient: QueryClient) {
+        const defaultSettings = {
+            ensembleIdent: null,
+            gridName: null,
+            parameterName: null,
+            realizationNum: null,
+            polylineXyz: [],
+        };
+        super(name, defaultSettings, queryClient);
+    }
 
-    constructor(queryClient: QueryClient) {
-        this._queryClient = queryClient;
+    protected areSettingsValid(): boolean {
+        return (
+            this._settings.ensembleIdent !== null &&
+            this._settings.gridName !== null &&
+            this._settings.parameterName !== null &&
+            this._settings.realizationNum !== null &&
+            this._settings.polylineXyz.length > 0
+        );
+    }
 
-        this._colorScale = new ColorScale({
-            colorPalette: new ColorPalette({
-                name: "Blue to Yellow",
-                colors: [
-                    "#115f9a",
-                    "#1984c5",
-                    "#22a7f0",
-                    "#48b5c4",
-                    "#76c68f",
-                    "#a6d75b",
-                    "#c9e52f",
-                    "#d0ee11",
-                    "#f4f100",
+    protected async fetchData(): Promise<PolylineIntersection_trans> {
+        return this._queryClient
+            .fetchQuery({
+                queryKey: [
+                    "getGridPolylineIntersection",
+                    this._settings.ensembleIdent?.getCaseUuid(),
+                    this._settings.ensembleIdent?.getEnsembleName(),
+                    this._settings.gridName,
+                    this._settings.parameterName,
+                    this._settings.realizationNum,
+                    this._settings.polylineXyz,
                 ],
-                id: "blue-to-yellow",
-            }),
-            gradientType: ColorScaleGradientType.Sequential,
-            type: ColorScaleType.Continuous,
-            steps: 10,
-        });
-    }
-
-    getStatus(): LayerStatus {
-        return this._status;
-    }
-
-    getName(): string {
-        return this._name;
-    }
-
-    getIsVisible(): boolean {
-        return this._isVisible;
-    }
-
-    getColorScale(): ColorScaleWithName {
-        return ColorScaleWithName.fromColorScale(this._colorScale, this._name);
-    }
-
-    updateSettings(updatedSettings: Partial<GridLayerSettings>): void {
-        this._settings = { ...this._settings, ...updatedSettings };
-    }
-
-    async fetchData() {
-        this._status = LayerStatus.LOADING;
-
-        this._queryClient.fetchQuery({
-            queryKey: ["getGridPolylineIntersection",
-            this._settings.caseUuid,
-            this._settings.ensembleName,
-            this._settings.gridName,
-            this._settings.parameterName,
-            this._settings.realizationNum,
-            this._settings.polylineXyz],
-            queryFn: () => apiService.grid3D.postGetPolylineIntersection(
-                this._settings.caseUuid ?? "",
-                this._settings.ensembleName ?? "",
-                this._settings.gridName ?? "",
-                this._settings.parameterName ?? "",
-                this._settings.realizationNum ?? 0,
-                { polyline_utm_xy: this._settings.polylineXyz }
-            ),
-            staleTime: STALE_TIME,
-            gcTime: CACHE_TIME,
-        }).then((data) => {
-            return transformPolylineIntersection(data);
-        }
-
-        this._status = LayerStatus.SUCCESS;
-    }
-
-    getData(): PolylineIntersection_trans | null {
-        return null;
+                queryFn: () =>
+                    apiService.grid3D.postGetPolylineIntersection(
+                        this._settings.ensembleIdent?.getCaseUuid() ?? "",
+                        this._settings.ensembleIdent?.getEnsembleName() ?? "",
+                        this._settings.gridName ?? "",
+                        this._settings.parameterName ?? "",
+                        this._settings.realizationNum ?? 0,
+                        { polyline_utm_xy: this._settings.polylineXyz }
+                    ),
+                staleTime: STALE_TIME,
+                gcTime: CACHE_TIME,
+            })
+            .then((data) => transformPolylineIntersection(data));
     }
 }

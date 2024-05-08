@@ -9,7 +9,6 @@ import {
     GridLayer,
     IntersectionType,
     Layer,
-    SeismicSliceImageData,
     LayerType as UserLayerType,
 } from "@modules/Intersection/typesAndEnums";
 import {
@@ -19,25 +18,12 @@ import {
     LayerType,
 } from "@modules/_shared/components/EsvIntersection";
 import { Viewport } from "@modules/_shared/components/EsvIntersection/esvIntersection";
-import {
-    AdditionalInformationKey,
-    HighlightItem,
-    HighlightItemShape,
-    ReadoutItem,
-} from "@modules/_shared/components/EsvIntersection/types";
-import { getColorFromLayerData } from "@modules/_shared/components/EsvIntersection/utils/intersectionConversion";
-import {
-    getAdditionalInformationFromReadoutItem,
-    getLabelFromLayerData,
-} from "@modules/_shared/components/EsvIntersection/utils/readoutItemUtils";
-import { Add, FilterCenterFocus, GridOn, Remove } from "@mui/icons-material";
 import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
 import { ReadoutBox } from "@modules/_shared/components/EsvIntersection/utilityComponents/ReadoutBox";
 import { Toolbar } from "@modules/_shared/components/EsvIntersection/utilityComponents/Toolbar";
 
 import { isEqual } from "lodash";
 
-import { PolylineIntersection_trans } from "../queries/queryDataTransforms";
 import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type IntersectionProps = {
@@ -667,139 +653,4 @@ function GradientDef(props: GradientDefProps): React.ReactNode {
             ))}
         </linearGradient>
     );
-}
-
-export type ReadoutBoxProps = {
-    readoutItems: ReadoutItem[];
-};
-
-function additionalInformationItemToReadableString(key: string, value: unknown): string {
-    switch (key) {
-        case AdditionalInformationKey.CELL_INDEX:
-            return `Cell index: ${(value as number).toFixed(0)}`;
-        case AdditionalInformationKey.PROP_VALUE:
-            return `Property value: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.MD:
-            return `MD: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.MAX:
-            return `Max: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.MIN:
-            return `Min: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.P10:
-            return `P10: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.P90:
-            return `P90: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.P50:
-            return `P50: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.MEAN:
-            return `Mean: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.SCHEMATIC_INFO:
-            return (value as string[]).join(", ");
-        case AdditionalInformationKey.X:
-            return `X: ${(value as number).toFixed(2)}`;
-        case AdditionalInformationKey.Y:
-            return `Y: ${(value as number).toFixed(2)}`;
-        default:
-            return "";
-    }
-}
-
-function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
-    const additionalInformation = getAdditionalInformationFromReadoutItem(item);
-    return Object.entries(additionalInformation).map(([key, value], index) => {
-        return (
-            <span key={index} className="block">
-                {additionalInformationItemToReadableString(key, value)}
-            </span>
-        );
-    });
-}
-
-function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
-    if (props.readoutItems.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
-            {props.readoutItems.map((item, index) => (
-                <div key={index} className="flex items-center gap-2">
-                    <div
-                        className="rounded-full w-3 h-3"
-                        style={{ backgroundColor: getColorFromLayerData(item.layer, item.index) }}
-                    />
-                    <div>
-                        <strong>{getLabelFromLayerData(item)}</strong>
-                        <br />
-                        {makeAdditionalInformation(item)}
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-type ToolbarProps = {
-    visible: boolean;
-    zFactor: number;
-    gridVisible: boolean;
-    onFitInView: () => void;
-    onGridLinesToggle: (active: boolean) => void;
-    onVerticalScaleIncrease: () => void;
-    onVerticalScaleDecrease: () => void;
-};
-
-function Toolbar(props: ToolbarProps): React.ReactNode {
-    function handleFitInViewClick() {
-        props.onFitInView();
-    }
-
-    function handleGridVisibilityToggle(active: boolean) {
-        props.onGridLinesToggle(active);
-    }
-
-    function handleVerticalScaleIncrease() {
-        props.onVerticalScaleIncrease();
-    }
-
-    function handleVerticalScaleDecrease() {
-        props.onVerticalScaleDecrease();
-    }
-
-    if (!props.visible) {
-        return null;
-    }
-
-    return (
-        <div className="absolute left-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
-            <Button onClick={handleFitInViewClick} title="Focus top view">
-                <FilterCenterFocus fontSize="inherit" />
-            </Button>
-            <ToggleButton
-                onToggle={handleGridVisibilityToggle}
-                title="Toggle grid visibility"
-                active={props.gridVisible}
-            >
-                <GridOn fontSize="inherit" />
-            </ToggleButton>
-            <ToolBarDivider />
-            <HoldPressedIntervalCallbackButton
-                onHoldPressedIntervalCallback={handleVerticalScaleIncrease}
-                title="Increase vertical scale"
-            >
-                <Add fontSize="inherit" />
-            </HoldPressedIntervalCallbackButton>
-            <span title="Vertical scale">{props.zFactor.toFixed(2)}</span>
-            <HoldPressedIntervalCallbackButton
-                onHoldPressedIntervalCallback={handleVerticalScaleDecrease}
-                title="Decrease vertical scale"
-            >
-                <Remove fontSize="inherit" />
-            </HoldPressedIntervalCallbackButton>
-        </div>
-    );
-}
-
-function ToolBarDivider(): React.ReactNode {
-    return <div className="w-full h-[1px] bg-gray-300" />;
 }

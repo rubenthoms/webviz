@@ -4,7 +4,6 @@ import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import {
-    GridLayer,
     LAYER_TYPE_TO_STRING_MAPPING,
     Layer,
     LayerActionType,
@@ -13,6 +12,8 @@ import {
     LayerType,
     SeismicLayer,
 } from "@modules/Intersection/typesAndEnums";
+import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
     Add,
@@ -27,16 +28,16 @@ import {
 
 import { useAtomValue, useSetAtom } from "jotai";
 
-import { GridLayerSettings } from "./layerSettings/gridLayer";
+import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
 import { SeismicLayerSettings } from "./layerSettings/seismicLayer";
 
-import { layersAccessAtom, layersAtom } from "../atoms/layersAtoms";
+import { layersAtom } from "../atoms/layersAtoms";
 
 export type LayersProps = {};
 
 export function Layers(props: LayersProps): React.ReactNode {
     const dispatch = useSetAtom(layersAtom);
-    const layers = useAtomValue(layersAccessAtom);
+    const layers = useAtomValue(layersAtom);
 
     function handleAddLayer(type: LayerType) {
         dispatch({ type: LayerActionType.ADD_LAYER, payload: { type } });
@@ -60,7 +61,7 @@ export function Layers(props: LayersProps): React.ReactNode {
                 {layers.map((layer) => {
                     return (
                         <LayerItem
-                            key={layer.id}
+                            key={layer.getId()}
                             layer={layer}
                             onRemoveLayer={handleRemoveLayer}
                             onToggleLayerVisibility={handleToggleLayerVisibility}
@@ -98,7 +99,7 @@ export function Layers(props: LayersProps): React.ReactNode {
 }
 
 type LayerItemProps = {
-    layer: Layer;
+    layer: BaseLayer<any, any>;
     onRemoveLayer: (id: string) => void;
     onToggleLayerVisibility: (id: string) => void;
     onToggleSettingsVisible: (id: string) => void;
@@ -118,39 +119,15 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         props.onToggleSettingsVisible(id);
     }
 
-    function makeSettingsContainer(layer: Layer): React.ReactNode {
-        function updateBoundingBox(bbox: LayerBoundingBox) {
-            props.dispatch({
-                type: LayerActionType.UPDATE_BOUNDING_BOX,
-                payload: { id: layer.id, boundingBox: bbox },
-            });
-        }
-        if (layer.type === LayerType.GRID) {
-            function updateSetting<T extends keyof GridLayer["settings"]>(setting: T, value: GridLayer["settings"][T]) {
+    function makeSettingsContainer(layer: BaseLayer<any, any>): React.ReactNode {
+        if (props.layer instanceof GridLayer) {
+            function updateSetting<T extends keyof GridLayerSettings>(setting: T, value: GridLayerSettings[T]) {
                 props.dispatch({
                     type: LayerActionType.UPDATE_SETTING,
                     payload: { id: layer.id, settings: { [setting]: value } },
                 });
             }
-            return (
-                <GridLayerSettings
-                    layer={layer as GridLayer}
-                    updateBoundingBox={updateBoundingBox}
-                    updateSetting={updateSetting}
-                />
-            );
-        }
-        if (layer.type === LayerType.SEISMIC) {
-            function updateSetting<T extends keyof SeismicLayer["settings"]>(
-                setting: T,
-                value: SeismicLayer["settings"][T]
-            ) {
-                props.dispatch({
-                    type: LayerActionType.UPDATE_SETTING,
-                    payload: { id: layer.id, settings: { [setting]: value } },
-                });
-            }
-            return <SeismicLayerSettings layer={layer as SeismicLayer} updateSetting={updateSetting} />;
+            return <GridLayerSettingsComponent layer={layer as GridLayer} updateSetting={updateSetting} />;
         }
         return null;
     }

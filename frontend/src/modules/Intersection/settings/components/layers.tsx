@@ -1,5 +1,6 @@
 import React from "react";
 
+import { EnsembleSet } from "@framework/EnsembleSet";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
@@ -12,7 +13,7 @@ import {
     LayerType,
     SeismicLayer,
 } from "@modules/Intersection/typesAndEnums";
-import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { BaseLayer, useIsLayerVisible } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
@@ -33,7 +34,9 @@ import { SeismicLayerSettings } from "./layerSettings/seismicLayer";
 
 import { layersAtom } from "../atoms/layersAtoms";
 
-export type LayersProps = {};
+export type LayersProps = {
+    ensembleSet: EnsembleSet;
+};
 
 export function Layers(props: LayersProps): React.ReactNode {
     const dispatch = useSetAtom(layersAtom);
@@ -47,14 +50,6 @@ export function Layers(props: LayersProps): React.ReactNode {
         dispatch({ type: LayerActionType.REMOVE_LAYER, payload: { id } });
     }
 
-    function handleToggleLayerVisibility(id: string) {
-        dispatch({ type: LayerActionType.TOGGLE_LAYER_VISIBILITY, payload: { id } });
-    }
-
-    function handleToggleSettingsVisibility(id: string) {
-        dispatch({ type: LayerActionType.TOGGLE_LAYER_SETTINGS_VISIBILITY, payload: { id } });
-    }
-
     return (
         <div className="w-full h-full">
             <div className="flex flex-col border border-slate-100">
@@ -63,9 +58,8 @@ export function Layers(props: LayersProps): React.ReactNode {
                         <LayerItem
                             key={layer.getId()}
                             layer={layer}
+                            ensembleSet={props.ensembleSet}
                             onRemoveLayer={handleRemoveLayer}
-                            onToggleLayerVisibility={handleToggleLayerVisibility}
-                            onToggleSettingsVisible={handleToggleSettingsVisibility}
                             dispatch={dispatch}
                         />
                     );
@@ -100,34 +94,40 @@ export function Layers(props: LayersProps): React.ReactNode {
 
 type LayerItemProps = {
     layer: BaseLayer<any, any>;
+    ensembleSet: EnsembleSet;
     onRemoveLayer: (id: string) => void;
-    onToggleLayerVisibility: (id: string) => void;
-    onToggleSettingsVisible: (id: string) => void;
     dispatch: (action: LayerActions) => void;
 };
 
 function LayerItem(props: LayerItemProps): React.ReactNode {
+    const [showSettings, setShowSettings] = React.useState<boolean>(false);
+
+    const isVisible = useIsLayerVisible(props.layer);
+
     function handleRemoveLayer(id: string) {
         props.onRemoveLayer(id);
     }
 
-    function handleToggleLayerVisibility(id: string) {
-        props.onToggleLayerVisibility(id);
+    function handleToggleLayerVisibility() {
+        props.layer.setIsVisible(!isVisible);
     }
 
     function handleToggleSettingsVisibility(id: string) {
-        props.onToggleSettingsVisible(id);
+        setShowSettings(!showSettings);
     }
 
     function makeSettingsContainer(layer: BaseLayer<any, any>): React.ReactNode {
         if (props.layer instanceof GridLayer) {
             function updateSetting<T extends keyof GridLayerSettings>(setting: T, value: GridLayerSettings[T]) {
-                props.dispatch({
-                    type: LayerActionType.UPDATE_SETTING,
-                    payload: { id: layer.id, settings: { [setting]: value } },
-                });
+                props.layer.maybeUpdateSettings({ [setting]: value });
             }
-            return <GridLayerSettingsComponent layer={layer as GridLayer} updateSetting={updateSetting} />;
+            return (
+                <GridLayerSettingsComponent
+                    ensembleSet={props.ensembleSet}
+                    layer={layer as GridLayer}
+                    updateSetting={updateSetting}
+                />
+            );
         }
         return null;
     }
@@ -135,28 +135,28 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     return (
         <>
             <div
-                key={props.layer.id}
+                key={props.layer.getId()}
                 className="flex p-0.5 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
             >
                 <div
-                    className="p-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
-                    onClick={() => handleToggleLayerVisibility(props.layer.id)}
+                    className="px-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
+                    onClick={handleToggleLayerVisibility}
                     title="Toggle visibility"
                 >
-                    {props.layer.visible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
+                    {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
                 </div>
-                <div className="flex-grow font-bold">{props.layer.name}</div>
+                <div className="flex-grow font-bold">{props.layer.getName()}</div>
                 <div
                     className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
-                    onClick={() => handleToggleSettingsVisibility(props.layer.id)}
-                    title={props.layer.showSettings ? "Hide settings" : "Show settings"}
+                    onClick={() => handleToggleSettingsVisibility(props.layer.getId())}
+                    title={showSettings ? "Hide settings" : "Show settings"}
                 >
                     <Settings fontSize="inherit" />
-                    {props.layer.showSettings ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
+                    {showSettings ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
                 </div>
                 <div
                     className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
-                    onClick={() => handleRemoveLayer(props.layer.id)}
+                    onClick={() => handleRemoveLayer(props.layer.getId())}
                     title="Remove layer"
                 >
                     <Delete fontSize="inherit" />
@@ -164,7 +164,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
             </div>
             <div
                 className={resolveClassNames("border-b border-b-gray-300 p-1 bg-gray-50 shadow-inner", {
-                    hidden: !props.layer.showSettings,
+                    hidden: !showSettings,
                 })}
             >
                 {makeSettingsContainer(props.layer)}

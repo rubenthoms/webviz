@@ -6,11 +6,12 @@ import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
 import {
     CombinedPolylineIntersectionResults,
-    GridLayer,
     IntersectionType,
     Layer,
     LayerType as UserLayerType,
 } from "@modules/Intersection/typesAndEnums";
+import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -28,8 +29,8 @@ import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
-    layers: Layer[];
-    combinedPolylineIntersectionResults: CombinedPolylineIntersectionResults;
+    layers: BaseLayer<any, any>[];
+    // combinedPolylineIntersectionResults: CombinedPolylineIntersectionResults;
     // polylineIntersectionData: PolylineIntersection_trans | null;
     // seismicSliceImageData: SeismicSliceImageData | null;
     wellboreCasingData: WellboreCasing_api[] | null;
@@ -317,30 +318,23 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             y: [0, 1],
         };
         for (const layer of props.layers) {
-            if (layer.boundingBox) {
-                bounds.x = [
-                    Math.min(bounds.x[0], layer.boundingBox.x[0]),
-                    Math.max(bounds.x[1], layer.boundingBox.x[1]),
-                ];
-                bounds.y = [
-                    Math.min(bounds.y[0], layer.boundingBox.y[0]),
-                    Math.max(bounds.y[1], layer.boundingBox.y[1]),
-                ];
+            const boundingBox = layer.getBoundingBox();
+            if (boundingBox) {
+                bounds.x = [Math.min(bounds.x[0], boundingBox.x[0]), Math.max(bounds.x[1], boundingBox.x[1])];
+                bounds.y = [Math.min(bounds.y[0], boundingBox.y[0]), Math.max(bounds.y[1], boundingBox.y[1])];
             }
         }
         return bounds;
     }
 
     for (const layer of props.layers) {
-        if (!layer.visible) {
+        if (!layer.getIsVisible()) {
             continue;
         }
 
-        if (layer.type === UserLayerType.GRID) {
+        if (isGridLayer(layer)) {
             const gridLayer = layer as GridLayer;
-            const data = props.combinedPolylineIntersectionResults.combinedPolylineIntersectionResults.find(
-                (el) => el.id === gridLayer.id
-            )?.polylineIntersection;
+            const data = gridLayer.getData();
 
             if (!data) {
                 continue;
@@ -382,7 +376,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         }),
                         minGridPropValue: data.min_grid_prop_value,
                         maxGridPropValue: data.max_grid_prop_value,
-                        colorScale: gridLayer.settings.colorScale,
+                        colorScale: gridLayer.getColorScale(),
                         hideGridlines: !props.showGridLines,
                         extensionLengthStart: props.intersectionExtensionLength,
                     },
@@ -390,7 +384,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 },
             });
 
-            const colorScale = ColorScaleWithName.fromColorScale(gridLayer.settings.colorScale, gridLayer.name);
+            const colorScale = ColorScaleWithName.fromColorScale(gridLayer.getColorScale(), gridLayer.getName());
             colorScales.push(colorScale);
         }
     }

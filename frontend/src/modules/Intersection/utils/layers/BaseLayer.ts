@@ -1,3 +1,5 @@
+import React from "react";
+
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
@@ -22,6 +24,12 @@ enum LayerTopic {
     COLORSCALE = "COLORSCALE",
 }
 
+export type BoundingBox = {
+    x: [number, number];
+    y: [number, number];
+    z: [number, number];
+};
+
 export type LayerSettings = {
     [key: string]: any;
 };
@@ -34,6 +42,7 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     private _name: string;
     private _isVisible: boolean = true;
     private _colorScale: ColorScale;
+    private _boundingBox: BoundingBox | null = null;
     protected _data: TData | null = null;
     protected _settings: TSettings = {} as TSettings;
 
@@ -84,6 +93,14 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     setName(name: string): void {
         this._name = name;
         this.notifySubscribers(LayerTopic.NAME);
+    }
+
+    getBoundingBox(): BoundingBox | null {
+        return this._boundingBox;
+    }
+
+    setBoundingBox(boundingBox: BoundingBox): void {
+        this._boundingBox = boundingBox;
     }
 
     getIsVisible(): boolean {
@@ -165,4 +182,42 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     protected async fetchData(): Promise<TData> {
         throw new Error("Not implemented");
     }
+}
+
+export function useIsLayerVisible(layer: BaseLayer<any, any>): boolean {
+    const [isVisible, setIsVisible] = React.useState<boolean>(layer.getIsVisible());
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleVisibilityChange() {
+                setIsVisible(layer.getIsVisible());
+            }
+
+            const unsubscribe = layer.subscribe(LayerTopic.VISIBILITY, handleVisibilityChange);
+
+            return unsubscribe;
+        },
+        [layer]
+    );
+
+    return isVisible;
+}
+
+export function useLayerSettings<T extends LayerSettings>(layer: BaseLayer<T, any>): T {
+    const [settings, setSettings] = React.useState<T>(layer.getSettings());
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleSettingsChange() {
+                setSettings(layer.getSettings());
+            }
+
+            const unsubscribe = layer.subscribe(LayerTopic.SETTINGS, handleSettingsChange);
+
+            return unsubscribe;
+        },
+        [layer]
+    );
+
+    return settings;
 }

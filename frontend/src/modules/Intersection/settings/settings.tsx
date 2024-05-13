@@ -343,7 +343,7 @@ export function Settings(
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Layers" expanded>
-                <Layers />
+                <Layers ensembleSet={ensembleSet} />
             </CollapsibleGroup>
             <CollapsibleGroup title="Seismic" expanded>
                 <div className="flex flex-col gap-2">

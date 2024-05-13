@@ -127,8 +127,9 @@ const CACHE_TIME = 60 * 1000;
 
 export type GridLayerSettings = {
     ensembleIdent: EnsembleIdent | null;
-    gridName: string | null;
+    gridModelName: string | null;
     parameterName: string | null;
+    parameterDateOrInterval: string | null;
     realizationNum: number | null;
     polylineXyz: number[];
 };
@@ -137,8 +138,9 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
     constructor(name: string, queryClient: QueryClient) {
         const defaultSettings = {
             ensembleIdent: null,
-            gridName: null,
+            gridModelName: null,
             parameterName: null,
+            parameterDateOrInterval: null,
             realizationNum: null,
             polylineXyz: [],
         };
@@ -148,7 +150,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
     protected areSettingsValid(): boolean {
         return (
             this._settings.ensembleIdent !== null &&
-            this._settings.gridName !== null &&
+            this._settings.gridModelName !== null &&
             this._settings.parameterName !== null &&
             this._settings.realizationNum !== null &&
             this._settings.polylineXyz.length > 0
@@ -158,27 +160,24 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
     protected async fetchData(): Promise<PolylineIntersection_trans> {
         return this._queryClient
             .fetchQuery({
-                queryKey: [
-                    "getGridPolylineIntersection",
-                    this._settings.ensembleIdent?.getCaseUuid(),
-                    this._settings.ensembleIdent?.getEnsembleName(),
-                    this._settings.gridName,
-                    this._settings.parameterName,
-                    this._settings.realizationNum,
-                    this._settings.polylineXyz,
-                ],
+                queryKey: ["getGridPolylineIntersection", ...Object.entries(this._settings)],
                 queryFn: () =>
                     apiService.grid3D.postGetPolylineIntersection(
                         this._settings.ensembleIdent?.getCaseUuid() ?? "",
                         this._settings.ensembleIdent?.getEnsembleName() ?? "",
-                        this._settings.gridName ?? "",
+                        this._settings.gridModelName ?? "",
                         this._settings.parameterName ?? "",
                         this._settings.realizationNum ?? 0,
-                        { polyline_utm_xy: this._settings.polylineXyz }
+                        { polyline_utm_xy: this._settings.polylineXyz },
+                        this._settings.parameterDateOrInterval ?? ""
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
             })
             .then((data) => transformPolylineIntersection(data));
     }
+}
+
+export function isGridLayer(layer: BaseLayer<any, any>): layer is GridLayer {
+    return layer instanceof GridLayer;
 }

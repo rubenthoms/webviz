@@ -30,11 +30,11 @@ import {
 } from "../utils/seismicDataConversion";
 
 export type ViewAtoms = {
-    seismicFenceDataQueryAtom: QueryObserverResult<SeismicFenceData_trans>;
+    //seismicFenceDataQueryAtom: QueryObserverResult<SeismicFenceData_trans>;
     intersectionReferenceSystemAtom: IntersectionReferenceSystem | null;
-    seismicSliceImageOptionsAtom: SeismicSliceImageOptions | null;
+    //seismicSliceImageOptionsAtom: SeismicSliceImageOptions | null;
     polylineAtom: number[];
-    polylineIntersectionQueriesAtom: CombinedPolylineIntersectionResults;
+    //polylineIntersectionQueriesAtom: CombinedPolylineIntersectionResults;
 };
 
 const STALE_TIME = 60 * 1000;
@@ -123,6 +123,7 @@ export function viewAtomsInitialization(
         return polylineUtmXy;
     });
 
+    /*
     const polylineIntersectionQueriesAtom = atomWithQueries((get) => {
         const layers = get(settingsToViewInterface.getAtom("layers"));
         const polyline = get(polylineAtom);
@@ -278,12 +279,13 @@ export function viewAtomsInitialization(
 
         return sliceImageOptions;
     });
+    */
 
     return {
-        seismicFenceDataQueryAtom,
+        //seismicFenceDataQueryAtom,
         intersectionReferenceSystemAtom,
-        seismicSliceImageOptionsAtom,
+        //seismicSliceImageOptionsAtom,
         polylineAtom,
-        polylineIntersectionQueriesAtom,
+        //polylineIntersectionQueriesAtom,
     };
 }

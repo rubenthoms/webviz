@@ -15,9 +15,10 @@ import {
     selectedSeismicAttributeAtom,
     selectedSeismicDateOrIntervalStringAtom,
 } from "./settings/atoms/derivedAtoms";
-import { layersAccessAtom } from "./settings/atoms/layersAtoms";
+import { layersAtom } from "./settings/atoms/layersAtoms";
 import { selectedEnsembleIdentAtom } from "./sharedAtoms/sharedAtoms";
-import { Layer, SeismicDataType } from "./typesAndEnums";
+import { SeismicDataType } from "./typesAndEnums";
+import { BaseLayer } from "./utils/layers/BaseLayer";
 
 export type SettingsToViewInterface = {
     baseStates: {
@@ -41,7 +42,7 @@ export type SettingsToViewInterface = {
         seismicDateOrIntervalString: string | null;
         seismicDataType: SeismicDataType;
         selectedCustomIntersectionPolylineId: string | null;
-        layers: Layer[];
+        layers: BaseLayer<any, any>[];
     };
 };
 
@@ -88,7 +89,7 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
             return get(selectedCustomIntersectionPolylineIdAtom);
         },
         layers: (get) => {
-            return get(layersAccessAtom);
+            return get(layersAtom);
         },
     },
 };

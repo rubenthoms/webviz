@@ -38,15 +38,15 @@ export function View(
     const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
     const showSeismic = props.viewContext.useSettingsToViewInterfaceValue("showSeismic");
     const intersectionReferenceSystem = props.viewContext.useViewAtomValue("intersectionReferenceSystemAtom");
-    const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
+    // const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
     const layers = props.viewContext.useSettingsToViewInterfaceValue("layers");
 
-    const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
+    // const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
 
-    const { imageData: seismicSliceImageData, status: seismicImageStatus } =
-        useGenerateSeismicSliceImageData(seismicSliceImageOptions);
+    //const { imageData: seismicSliceImageData, status: seismicImageStatus } =
+    //    useGenerateSeismicSliceImageData(seismicSliceImageOptions);
 
     const [hoveredMd, setHoveredMd] = React.useState<number | null>(null);
     const [prevHoveredMd, setPrevHoveredMd] = React.useState<GlobalTopicDefinitions["global.hoverMd"] | null>(null);
@@ -84,7 +84,7 @@ export function View(
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const intersectionType = props.viewContext.useSettingsToViewInterfaceValue("intersectionType");
 
-    const combinedPolylineIntersectionResults = props.viewContext.useViewAtomValue("polylineIntersectionQueriesAtom");
+    //const combinedPolylineIntersectionResults = props.viewContext.useViewAtomValue("polylineIntersectionQueriesAtom");
 
     let ensembleName = "";
     if (ensembleIdent) {
@@ -123,10 +123,10 @@ export function View(
 
     // Set loading status
     statusWriter.setLoading(
-        combinedPolylineIntersectionResults.isFetching ||
-            wellboreCasingQuery.isFetching ||
-            seismicFenceDataQuery.isFetching ||
-            seismicImageStatus === SeismicSliceImageStatus.LOADING
+        //combinedPolylineIntersectionResults.isFetching ||
+        wellboreCasingQuery.isFetching // ||
+        //  seismicFenceDataQuery.isFetching ||
+        // seismicImageStatus === SeismicSliceImageStatus.LOADING
     );
 
     const handleReadout = React.useCallback(
@@ -177,7 +177,7 @@ export function View(
             <Intersection
                 referenceSystem={intersectionReferenceSystem}
                 layers={layers}
-                combinedPolylineIntersectionResults={combinedPolylineIntersectionResults}
+                // combinedPolylineIntersectionResults={combinedPolylineIntersectionResults}
                 //polylineIntersectionData={polylineIntersectionQuery.data ?? null}
                 wellboreCasingData={wellboreCasingQuery.data ?? null}
                 //seismicSliceImageData={showSeismic ? seismicSliceImageData : null}

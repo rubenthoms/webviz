@@ -8,7 +8,7 @@ import {
 } from "@modules/_shared/base64";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer } from "./BaseLayer";
+import { BaseLayer, BoundingBox } from "./BaseLayer";
 
 // Data structure for the transformed GridSurface data
 // Removes the base64 encoded data and replaces them with typed arrays
@@ -169,7 +169,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
                         this._settings.parameterName ?? "",
                         this._settings.realizationNum ?? 0,
                         { polyline_utm_xy: this._settings.polylineXyz },
-                        this._settings.parameterDateOrInterval ?? ""
+                        this._settings.parameterDateOrInterval
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,

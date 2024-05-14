@@ -1,6 +1,8 @@
 import React from "react";
 
 import { EnsembleSet } from "@framework/EnsembleSet";
+import { WorkbenchSession } from "@framework/WorkbenchSession";
+import { CircularProgress } from "@lib/components/CircularProgress";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
@@ -11,15 +13,22 @@ import {
     LayerActions,
     LayerBoundingBox,
     LayerType,
-    SeismicLayer,
 } from "@modules/Intersection/typesAndEnums";
-import { BaseLayer, useIsLayerVisible } from "@modules/Intersection/utils/layers/BaseLayer";
-import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
+import {
+    BaseLayer,
+    LayerStatus,
+    useIsLayerVisible,
+    useLayerStatus,
+} from "@modules/Intersection/utils/layers/BaseLayer";
+import { GridLayer, GridLayerSettings, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { SeismicLayer, SeismicLayerSettings, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
     Add,
     ArrowDropDown,
+    Check,
     Delete,
+    Error,
     ExpandLess,
     ExpandMore,
     Settings,
@@ -27,15 +36,16 @@ import {
     VisibilityOff,
 } from "@mui/icons-material";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { Provider, useAtomValue, useSetAtom } from "jotai";
 
-import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
-import { SeismicLayerSettings } from "./layerSettings/seismicLayer";
+import { GridLayerSettingsComponent } from "./layerSettings/GridLayer/layer";
+import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
 
 import { layersAtom } from "../atoms/layersAtoms";
 
 export type LayersProps = {
     ensembleSet: EnsembleSet;
+    workbenchSession: WorkbenchSession;
 };
 
 export function Layers(props: LayersProps): React.ReactNode {
@@ -59,6 +69,7 @@ export function Layers(props: LayersProps): React.ReactNode {
                             key={layer.getId()}
                             layer={layer}
                             ensembleSet={props.ensembleSet}
+                            workbenchSession={props.workbenchSession}
                             onRemoveLayer={handleRemoveLayer}
                             dispatch={dispatch}
                         />
@@ -95,6 +106,7 @@ export function Layers(props: LayersProps): React.ReactNode {
 type LayerItemProps = {
     layer: BaseLayer<any, any>;
     ensembleSet: EnsembleSet;
+    workbenchSession: WorkbenchSession;
     onRemoveLayer: (id: string) => void;
     dispatch: (action: LayerActions) => void;
 };
@@ -103,6 +115,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     const [showSettings, setShowSettings] = React.useState<boolean>(false);
 
     const isVisible = useIsLayerVisible(props.layer);
+    const status = useLayerStatus(props.layer);
 
     function handleRemoveLayer(id: string) {
         props.onRemoveLayer(id);
@@ -117,17 +130,36 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     }
 
     function makeSettingsContainer(layer: BaseLayer<any, any>): React.ReactNode {
-        if (props.layer instanceof GridLayer) {
-            function updateSetting<T extends keyof GridLayerSettings>(setting: T, value: GridLayerSettings[T]) {
-                props.layer.maybeUpdateSettings({ [setting]: value });
-            }
+        if (isGridLayer(layer)) {
             return (
                 <GridLayerSettingsComponent
                     ensembleSet={props.ensembleSet}
+                    workbenchSession={props.workbenchSession}
                     layer={layer as GridLayer}
-                    updateSetting={updateSetting}
                 />
             );
+        }
+        if (isSeismicLayer(layer)) {
+            return (
+                <SeismicLayerSettingsComponent
+                    ensembleSet={props.ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    layer={layer as SeismicLayer}
+                />
+            );
+        }
+        return null;
+    }
+
+    function makeStatus(): React.ReactNode {
+        if (status === LayerStatus.LOADING) {
+            return <CircularProgress size="extra-small" />;
+        }
+        if (status === LayerStatus.ERROR) {
+            return <Error fontSize="inherit" className="text-red-700" />;
+        }
+        if (status === LayerStatus.SUCCESS) {
+            return <Check fontSize="inherit" className="text-green-700" />;
         }
         return null;
     }
@@ -136,7 +168,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         <>
             <div
                 key={props.layer.getId()}
-                className="flex p-0.5 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
+                className="flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
             >
                 <div
                     className="px-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
@@ -145,7 +177,8 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 >
                     {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
                 </div>
-                <div className="flex-grow font-bold">{props.layer.getName()}</div>
+                <div className="flex-grow font-bold flex items-center gap-1">{props.layer.getName()}</div>
+                {makeStatus()}
                 <div
                     className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
                     onClick={() => handleToggleSettingsVisibility(props.layer.getId())}
@@ -163,8 +196,8 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 </div>
             </div>
             <div
-                className={resolveClassNames("border-b border-b-gray-300 p-1 bg-gray-50 shadow-inner", {
-                    hidden: !showSettings,
+                className={resolveClassNames("border-b border-b-gray-300 bg-gray-50 shadow-inner", {
+                    "overflow-hidden h-[1px]": !showSettings,
                 })}
             >
                 {makeSettingsContainer(props.layer)}

@@ -72,6 +72,7 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                 ref={ref}
                 className={resolveClassNames(
                     "flex",
+                    "justify-center",
                     "gap-2",
                     "bg-white",
                     "border",
@@ -81,7 +82,8 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                     "focus:border-indigo-500",
                     "w-full",
                     "sm:text-sm",
-                    "p-2",
+                    "px-2",
+                    "py-1",
                     "outline-none",
                     "cursor-text",
                     {
@@ -92,7 +94,7 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                 style={wrapperStyle}
             >
                 {startAdornment && (
-                    <div className="flex items-center" onClick={handleAdornmentClick}>
+                    <div className="flex items-center h-full" onClick={handleAdornmentClick}>
                         {startAdornment}
                     </div>
                 )}
@@ -113,7 +115,7 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                     }}
                 />
                 {endAdornment && (
-                    <div className="flex items-center" onClick={handleAdornmentClick}>
+                    <div className="flex items-center h-full" onClick={handleAdornmentClick}>
                         {endAdornment}
                     </div>
                 )}

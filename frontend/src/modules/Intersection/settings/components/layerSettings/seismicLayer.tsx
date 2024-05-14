@@ -1,4 +1,10 @@
 import { Grid3dInfo_api, Grid3dPropertyInfo_api } from "@api";
+import { apiService } from "@framework/ApiService";
+import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { EnsembleSet } from "@framework/EnsembleSet";
+import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
+import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
+import { isIsoStringInterval } from "@framework/utils/timestampUtils";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
@@ -8,49 +14,165 @@ import {
     GridLayer,
     SeismicDataType,
     SeismicDataTypeToStringMapping,
-    SeismicLayer,
     SeismicSurveyType,
     SeismicSurveyTypeToStringMapping,
 } from "@modules/Intersection/typesAndEnums";
+import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
+import { GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
+import { SeismicLayer, SeismicLayerSettings } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAtomValue } from "jotai";
+import { isEqual } from "lodash";
 
 import { availableSeismicAttributesAtom, availableSeismicDateOrIntervalStringsAtom } from "../../atoms/derivedAtoms";
 import { seismicCubeMetaListQueryAtom } from "../../atoms/queryAtoms";
 
 export type SeismicLayerSettingsProps = {
     layer: SeismicLayer;
-    updateSetting: <T extends keyof SeismicLayer["settings"]>(setting: T, value: SeismicLayer["settings"][T]) => void;
+    ensembleSet: EnsembleSet;
+    workbenchSession: WorkbenchSession;
 };
 
-export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props) => {
-    const availableSeismicAttributes = useAtomValue(availableSeismicAttributesAtom);
-    const availableSeismicDateOrIntervalStrings = useAtomValue(availableSeismicDateOrIntervalStringsAtom);
-    const seismicCubeMetaList = useAtomValue(seismicCubeMetaListQueryAtom);
+export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> = (props) => {
+    const settings = useLayerSettings(props.layer);
+
+    const ensembleFilterFunc = useEnsembleRealizationFilterFunc(props.workbenchSession);
+
+    const seismicCubeMetaListQuery = useSeismicCubeMetaListQuery(settings.ensembleIdent);
+
+    const fixupEnsembleIdent = fixupSetting(
+        "ensembleIdent",
+        props.ensembleSet.getEnsembleArr().map((el) => el.getIdent()),
+        settings
+    );
+    if (!isEqual(fixupEnsembleIdent, settings.ensembleIdent)) {
+        props.layer.maybeUpdateSettings({ ensembleIdent: fixupEnsembleIdent });
+    }
+
+    if (settings.ensembleIdent) {
+        const fixupRealizationNum = fixupSetting(
+            "realizationNum",
+            ensembleFilterFunc(settings.ensembleIdent),
+            settings
+        );
+        if (!isEqual(fixupRealizationNum, settings.realizationNum)) {
+            props.layer.maybeUpdateSettings({ realizationNum: fixupRealizationNum });
+        }
+    }
+
+    const availableRealizations: number[] = [];
+    if (settings.ensembleIdent) {
+        availableRealizations.push(...ensembleFilterFunc(settings.ensembleIdent));
+    }
+
+    const availableSeismicAttributes: string[] = [];
+
+    const availableSeismicDateOrIntervalStrings: string[] = [];
+    if (seismicCubeMetaListQuery.data) {
+        availableSeismicAttributes.push(
+            ...Array.from(
+                new Set(
+                    seismicCubeMetaListQuery.data
+                        .filter((el) => {
+                            return (
+                                el.is_depth &&
+                                el.is_observation === (settings.dataType === SeismicDataType.OBSERVED) &&
+                                ((settings.surveyType === SeismicSurveyType.THREE_D &&
+                                    !isIsoStringInterval(el.iso_date_or_interval)) ||
+                                    (settings.surveyType === SeismicSurveyType.FOUR_D &&
+                                        isIsoStringInterval(el.iso_date_or_interval)))
+                            );
+                        })
+                        .map((el) => el.seismic_attribute)
+                )
+            )
+        );
+
+        availableSeismicDateOrIntervalStrings.push(
+            ...Array.from(
+                new Set(
+                    seismicCubeMetaListQuery.data
+                        .filter((el) => {
+                            return (
+                                el.is_depth &&
+                                el.seismic_attribute === settings.attribute &&
+                                el.is_observation === (settings.dataType === SeismicDataType.OBSERVED) &&
+                                ((settings.surveyType === SeismicSurveyType.THREE_D &&
+                                    !isIsoStringInterval(el.iso_date_or_interval)) ||
+                                    (settings.surveyType === SeismicSurveyType.FOUR_D &&
+                                        isIsoStringInterval(el.iso_date_or_interval)))
+                            );
+                        })
+                        .map((el) => el.iso_date_or_interval)
+                )
+            )
+        );
+    }
+
+    if (seismicCubeMetaListQuery.data) {
+        const fixupAttribute = fixupSetting("attribute", availableSeismicAttributes, settings);
+        if (!isEqual(fixupAttribute, settings.attribute)) {
+            props.layer.maybeUpdateSettings({ attribute: fixupAttribute });
+        }
+
+        const fixupDateOrInterval = fixupSetting("dateOrInterval", availableSeismicDateOrIntervalStrings, settings);
+        if (!isEqual(fixupDateOrInterval, settings.dateOrInterval)) {
+            props.layer.maybeUpdateSettings({ dateOrInterval: fixupDateOrInterval });
+        }
+    }
 
     let seismicCubeMetaListErrorMessage = "";
-    if (seismicCubeMetaList.isError) {
+    if (seismicCubeMetaListQuery.isError) {
         seismicCubeMetaListErrorMessage = "Failed to load seismic cube meta list";
     }
 
+    function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {
+        props.layer.maybeUpdateSettings({ ensembleIdent });
+    }
+
+    function handleRealizationChange(realizationNum: string) {
+        props.layer.maybeUpdateSettings({ realizationNum: parseInt(realizationNum) });
+    }
+
     function handleDataTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
-        props.updateSetting("dataType", event.target.value as SeismicDataType);
+        props.layer.maybeUpdateSettings({ dataType: event.target.value as SeismicDataType });
     }
 
     function handleSurveyTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
-        props.updateSetting("surveyType", event.target.value as SeismicSurveyType);
+        props.layer.maybeUpdateSettings({ surveyType: event.target.value as SeismicSurveyType });
     }
 
     function handleAttributeChange(selected: string) {
-        props.updateSetting("attribute", selected);
+        props.layer.maybeUpdateSettings({ attribute: selected });
     }
 
     function handleDateOrIntervalChange(selected: string) {
-        props.updateSetting("dateOrInterval", selected);
+        props.layer.maybeUpdateSettings({ dateOrInterval: selected });
     }
 
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
+            <div className="table-row">
+                <div className="table-cell">Ensemble</div>
+                <div className="table-cell">
+                    <EnsembleDropdown
+                        value={props.layer.getSettings().ensembleIdent}
+                        ensembleSet={props.ensembleSet}
+                        onChange={handleEnsembleChange}
+                    />
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell">Realization</div>
+                <div className="table-cell">
+                    <Dropdown
+                        options={makeRealizationOptions(availableRealizations)}
+                        value={settings.realizationNum?.toString() ?? undefined}
+                        onChange={handleRealizationChange}
+                    />
+                </div>
+            </div>
             <div className="table-row">
                 <div className="table-cell">Data type</div>
                 <div className="table-cell">
@@ -65,7 +187,7 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
                                 value: SeismicDataType.OBSERVED,
                             },
                         ]}
-                        value={props.layer.settings.dataType}
+                        value={props.layer.getSettings().dataType}
                         onChange={handleDataTypeChange}
                         direction="horizontal"
                     />
@@ -85,7 +207,7 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
                                 value: SeismicSurveyType.FOUR_D,
                             },
                         ]}
-                        value={props.layer.settings.surveyType}
+                        value={props.layer.getSettings().surveyType}
                         onChange={handleSurveyTypeChange}
                         direction="horizontal"
                     />
@@ -95,12 +217,12 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
                 <div className="table-cell">Attribute</div>
                 <div className="table-cell">
                     <PendingWrapper
-                        isPending={seismicCubeMetaList.isFetching}
+                        isPending={seismicCubeMetaListQuery.isFetching}
                         errorMessage={seismicCubeMetaListErrorMessage}
                     >
                         <Dropdown
                             options={makeAttributeOptions(availableSeismicAttributes)}
-                            value={props.layer.settings.attribute ?? undefined}
+                            value={props.layer.getSettings().attribute ?? undefined}
                             onChange={handleAttributeChange}
                         />
                     </PendingWrapper>
@@ -110,12 +232,12 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
                 <div className="table-cell">Date or interval</div>
                 <div className="table-cell">
                     <PendingWrapper
-                        isPending={seismicCubeMetaList.isFetching}
+                        isPending={seismicCubeMetaListQuery.isFetching}
                         errorMessage={seismicCubeMetaListErrorMessage}
                     >
                         <Dropdown
                             options={makeDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings)}
-                            value={props.layer.settings.dateOrInterval ?? undefined}
+                            value={props.layer.getSettings().dateOrInterval ?? undefined}
                             onChange={handleDateOrIntervalChange}
                         />
                     </PendingWrapper>
@@ -124,6 +246,10 @@ export const SeismicLayerSettings: React.FC<SeismicLayerSettingsProps> = (props)
         </div>
     );
 };
+
+function makeRealizationOptions(realizations: readonly number[]): DropdownOption[] {
+    return realizations.map((realization) => ({ label: realization.toString(), value: realization.toString() }));
+}
 
 function makeAttributeOptions(availableSeismicAttributes: string[]): SelectOption[] {
     return availableSeismicAttributes.map((attribute) => ({
@@ -137,4 +263,37 @@ function makeDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings: 
         label: dateOrInterval,
         value: dateOrInterval,
     }));
+}
+
+const STALE_TIME = 60 * 1000;
+const CACHE_TIME = 60 * 1000;
+
+function useSeismicCubeMetaListQuery(ensembleIdent: EnsembleIdent | null) {
+    return useQuery({
+        queryKey: ["getSeismicCubeMetaList", ensembleIdent?.getCaseUuid(), ensembleIdent?.getEnsembleName()],
+        queryFn: () =>
+            apiService.seismic.getSeismicCubeMetaList(
+                ensembleIdent?.getCaseUuid() ?? "",
+                ensembleIdent?.getEnsembleName() ?? ""
+            ),
+        staleTime: STALE_TIME,
+        gcTime: CACHE_TIME,
+        enabled: Boolean(ensembleIdent),
+    });
+}
+
+function fixupSetting<TSettings extends SeismicLayerSettings, TKey extends keyof SeismicLayerSettings>(
+    setting: TKey,
+    validOptions: readonly TSettings[TKey][],
+    settings: TSettings
+): TSettings[TKey] {
+    if (validOptions.length === 0) {
+        return settings[setting];
+    }
+
+    if (!validOptions.includes(settings[setting]) || settings[setting] === null) {
+        return validOptions[0];
+    }
+
+    return settings[setting];
 }

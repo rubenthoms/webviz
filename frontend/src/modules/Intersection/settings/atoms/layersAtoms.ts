@@ -7,11 +7,11 @@ import {
     LayerActions,
     LayerType,
     SeismicDataType,
-    SeismicLayer,
     SeismicSurveyType,
 } from "@modules/Intersection/typesAndEnums";
 import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { SeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { Getter, WritableAtom, atom } from "jotai";
@@ -183,6 +183,8 @@ function makeLayer(type: LayerType, name: string, queryClient: QueryClient): Bas
     switch (type) {
         case LayerType.GRID:
             return new GridLayer(name, queryClient);
+        case LayerType.SEISMIC:
+            return new SeismicLayer(name, queryClient);
         default:
             throw new Error(`Layer type ${type} not supported`);
     }

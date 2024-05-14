@@ -49,6 +49,7 @@ import {
     selectedSeismicAttributeAtom,
     selectedSeismicDateOrIntervalStringAtom,
 } from "./atoms/derivedAtoms";
+import { layersAtom } from "./atoms/layersAtoms";
 import {
     drilledWellboreHeadersQueryAtom,
     gridModelInfosQueryAtom,
@@ -84,6 +85,8 @@ export function Settings(
     const [seismicColorScale, setSeismicColorScale] =
         props.settingsContext.useSettingsToViewInterfaceState("seismicColorScale");
     const [showSeismic, setShowSeismic] = props.settingsContext.useSettingsToViewInterfaceState("showSeismic");
+
+    const layers = useAtomValue(layersAtom);
 
     const [prevSyncedIntersection, setPrevSyncedIntersection] = React.useState<Intersection | null>(null);
     const [prevSyncedEnsembles, setPrevSyncedEnsembles] = React.useState<EnsembleIdent[] | null>(null);
@@ -343,7 +346,7 @@ export function Settings(
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Layers" expanded>
-                <Layers ensembleSet={ensembleSet} />
+                <Layers ensembleSet={ensembleSet} workbenchSession={props.workbenchSession} />
             </CollapsibleGroup>
             <CollapsibleGroup title="Seismic" expanded>
                 <div className="flex flex-col gap-2">

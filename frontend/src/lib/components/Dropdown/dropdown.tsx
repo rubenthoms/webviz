@@ -292,7 +292,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
                     onClick={() => handleInputClick()}
                     endAdornment={
                         <IconButton size="small" onClick={() => setDropdownVisible((prev) => !prev)}>
-                            {dropdownVisible ? <ExpandLess /> : <ExpandMore />}
+                            {dropdownVisible ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
                         </IconButton>
                     }
                     onChange={handleInputChange}

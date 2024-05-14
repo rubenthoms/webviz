@@ -1,4 +1,4 @@
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { IntersectionReferenceSystem, Layer } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { ModuleAtoms } from "@framework/Module";
 import { UniDirectionalSettingsToViewInterface } from "@framework/UniDirectionalSettingsToViewInterface";
@@ -14,6 +14,9 @@ import {
     SeismicDataType,
     SeismicSliceImageOptions,
 } from "@modules/Intersection/typesAndEnums";
+import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { SeismicFenceData_trans } from "@modules/SeismicIntersection/utils/queryDataTransforms";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 import { QueryObserverResult, UseQueryResult } from "@tanstack/react-query";
@@ -30,6 +33,7 @@ import {
 } from "../utils/seismicDataConversion";
 
 export type ViewAtoms = {
+    layers: BaseLayer<any, any>[];
     //seismicFenceDataQueryAtom: QueryObserverResult<SeismicFenceData_trans>;
     intersectionReferenceSystemAtom: IntersectionReferenceSystem | null;
     //seismicSliceImageOptionsAtom: SeismicSliceImageOptions | null;
@@ -121,6 +125,24 @@ export function viewAtomsInitialization(
         }
 
         return polylineUtmXy;
+    });
+
+    const layers = atom((get) => {
+        const layers = get(settingsToViewInterface.getAtom("layers"));
+        const polyline = get(polylineAtom);
+        const intersectionReferenceSystem = get(intersectionReferenceSystemAtom);
+        const extensionLength = get(settingsToViewInterface.getAtom("intersectionExtensionLength"));
+
+        for (const layer of layers) {
+            if (isGridLayer(layer)) {
+                layer.maybeUpdateSettings({ polylineXyz: polyline });
+            }
+            if (isSeismicLayer(layer)) {
+                layer.maybeUpdateSettings({ intersectionReferenceSystem, extensionLength });
+            }
+        }
+
+        return layers;
     });
 
     /*
@@ -282,6 +304,7 @@ export function viewAtomsInitialization(
     */
 
     return {
+        layers,
         //seismicFenceDataQueryAtom,
         intersectionReferenceSystemAtom,
         //seismicSliceImageOptionsAtom,

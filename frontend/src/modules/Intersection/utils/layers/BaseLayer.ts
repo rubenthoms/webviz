@@ -1,11 +1,13 @@
 import React from "react";
 
+import { AtomStore } from "@framework/AtomStoreMaster";
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 
-import { isEqual } from "lodash";
+import { PrimitiveAtom, WritableAtom, atom, createStore } from "jotai";
+import { cloneDeep, isEqual } from "lodash";
 import { v4 } from "uuid";
 
 export enum LayerStatus {
@@ -15,7 +17,7 @@ export enum LayerStatus {
     SUCCESS = "SUCCESS",
 }
 
-enum LayerTopic {
+export enum LayerTopic {
     NAME = "NAME",
     SETTINGS = "SETTINGS",
     DATA = "DATA",
@@ -133,9 +135,9 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
         }
         if (Object.keys(patchesToApply).length > 0) {
             this._settings = { ...this._settings, ...patchesToApply };
-            this.notifySubscribers(LayerTopic.SETTINGS);
             this.maybeRefetchData();
         }
+        this.notifySubscribers(LayerTopic.SETTINGS);
     }
 
     subscribe(topic: LayerTopic, callback: () => void): () => void {
@@ -168,6 +170,7 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
             return;
         }
         this._status = LayerStatus.LOADING;
+        this.notifySubscribers(LayerTopic.STATUS);
         try {
             this._data = await this.fetchData();
             this.notifySubscribers(LayerTopic.DATA);
@@ -182,6 +185,25 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     protected async fetchData(): Promise<TData> {
         throw new Error("Not implemented");
     }
+}
+
+export function useLayerStatus(layer: BaseLayer<any, any>): LayerStatus {
+    const [status, setStatus] = React.useState<LayerStatus>(layer.getStatus());
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleStatusChange() {
+                setStatus(layer.getStatus());
+            }
+
+            const unsubscribe = layer.subscribe(LayerTopic.STATUS, handleStatusChange);
+
+            return unsubscribe;
+        },
+        [layer]
+    );
+
+    return status;
 }
 
 export function useIsLayerVisible(layer: BaseLayer<any, any>): boolean {
@@ -209,7 +231,7 @@ export function useLayerSettings<T extends LayerSettings>(layer: BaseLayer<T, an
     React.useEffect(
         function handleHookMount() {
             function handleSettingsChange() {
-                setSettings(layer.getSettings());
+                setSettings(cloneDeep(layer.getSettings()));
             }
 
             const unsubscribe = layer.subscribe(LayerTopic.SETTINGS, handleSettingsChange);
@@ -220,4 +242,33 @@ export function useLayerSettings<T extends LayerSettings>(layer: BaseLayer<T, an
     );
 
     return settings;
+}
+
+export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] {
+    const [adjustedLayers, setAdjustedLayers] = React.useState<BaseLayer<any, any>[]>(layers);
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleLayerChange() {
+                setAdjustedLayers([...layers]);
+            }
+
+            const unsubscribeFuncs: (() => void)[] = [];
+
+            for (const layer of layers) {
+                const unsubscribeData = layer.subscribe(LayerTopic.DATA, handleLayerChange);
+                const unsubscribeVisibility = layer.subscribe(LayerTopic.VISIBILITY, handleLayerChange);
+                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility);
+            }
+
+            return () => {
+                for (const unsubscribe of unsubscribeFuncs) {
+                    unsubscribe();
+                }
+            };
+        },
+        [layers]
+    );
+
+    return adjustedLayers;
 }

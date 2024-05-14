@@ -41,7 +41,7 @@ export function View(
     // const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
-    const layers = props.viewContext.useSettingsToViewInterfaceValue("layers");
+    const layers = props.viewContext.useViewAtomValue("layers");
 
     // const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
 

@@ -10,8 +10,9 @@ import {
     Layer,
     LayerType as UserLayerType,
 } from "@modules/Intersection/typesAndEnums";
-import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
+import { BaseLayer, useLayers } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -50,6 +51,8 @@ export type IntersectionProps = {
 export function Intersection(props: IntersectionProps): React.ReactNode {
     const { onReadout, onViewportChange, onVerticalScaleChange } = props;
 
+    const layers = useLayers(props.layers);
+
     const divRef = React.useRef<HTMLDivElement>(null);
     const divSize = useElementBoundingRect(divRef);
 
@@ -58,6 +61,8 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
     const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
+
+    const [prevReferenceSystem, setPrevReferenceSystem] = React.useState<IntersectionReferenceSystem | null>(null);
 
     if (!isEqual(prevVerticalScale, props.verticalScale)) {
         setPrevVerticalScale(props.verticalScale);
@@ -76,7 +81,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         }
     }
 
-    if (!viewport && props.referenceSystem) {
+    if (props.referenceSystem && !isEqual(prevReferenceSystem, props.referenceSystem)) {
         const newViewport: Viewport = [0, 0, 2000];
         const firstPoint = props.referenceSystem.projectedPath[0];
         const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
@@ -89,13 +94,14 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         newViewport[1] = yMin + (yMax - yMin) / 2;
         newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
         setViewport(newViewport);
+        setPrevReferenceSystem(props.referenceSystem);
     }
 
-    const layers: LayerItem[] = [];
+    const esvLayers: LayerItem[] = [];
     const colorScales: ColorScaleWithName[] = [];
 
     if (props.intersectionType === IntersectionType.WELLBORE) {
-        layers.push({
+        esvLayers.push({
             id: "wellbore-path",
             type: LayerType.WELLBORE_PATH,
             hoverable: true,
@@ -207,7 +213,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         }));
 
         if (props.intersectionType === IntersectionType.WELLBORE) {
-            layers.push({
+            esvLayers.push({
                 id: "schematic",
                 type: LayerType.SCHEMATIC,
                 hoverable: true,
@@ -314,8 +320,8 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     function makeBounds() {
         const bounds: { x: [number, number]; y: [number, number] } = {
-            x: [0, 1],
-            y: [0, 1],
+            x: [Number.MAX_VALUE, Number.MIN_VALUE],
+            y: [Number.MAX_VALUE, Number.MIN_VALUE],
         };
         for (const layer of props.layers) {
             const boundingBox = layer.getBoundingBox();
@@ -324,10 +330,18 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 bounds.y = [Math.min(bounds.y[0], boundingBox.y[0]), Math.max(bounds.y[1], boundingBox.y[1])];
             }
         }
+        if (layers.length === 0 && props.referenceSystem) {
+            bounds.x = [props.referenceSystem.startVector[0], props.referenceSystem.endVector[0]];
+            bounds.y = [props.referenceSystem.startVector[1], props.referenceSystem.endVector[1]];
+        }
+        if (layers.length === 0) {
+            bounds.x = [-1000, 1000];
+            bounds.y = [0, 1000];
+        }
         return bounds;
     }
 
-    for (const layer of props.layers) {
+    for (const layer of layers) {
         if (!layer.getIsVisible()) {
             continue;
         }
@@ -340,7 +354,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 continue;
             }
 
-            layers.push({
+            esvLayers.push({
                 id: "intersection",
                 type: LayerType.POLYLINE_INTERSECTION,
                 hoverable: true,
@@ -384,8 +398,47 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 },
             });
 
-            const colorScale = ColorScaleWithName.fromColorScale(gridLayer.getColorScale(), gridLayer.getName());
+            const colorScale = ColorScaleWithName.fromColorScale(
+                gridLayer.getColorScale(),
+                gridLayer.getSettings().parameterName ?? gridLayer.getName()
+            );
             colorScales.push(colorScale);
+        }
+
+        if (isSeismicLayer(layer)) {
+            const seismicLayer = layer as SeismicLayer;
+            const data = seismicLayer.getData();
+
+            if (!data || !data.image || !data.options) {
+                continue;
+            }
+
+            const seismicInfo = getSeismicInfo(data.options, data.options.trajectory);
+
+            if (seismicInfo) {
+                seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
+                seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
+
+                const colorScale = ColorScaleWithName.fromColorScale(
+                    data.options.colorScale,
+                    seismicLayer.getSettings().attribute ?? seismicLayer.getName()
+                );
+                colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
+                colorScales.push(colorScale);
+            }
+
+            esvLayers.push({
+                id: "seismic",
+                type: LayerType.SEISMIC_CANVAS,
+                options: {
+                    data: {
+                        image: data.image,
+                        options: getSeismicOptions(seismicInfo),
+                    },
+                    order: 1,
+                    layerOpacity: 1,
+                },
+            });
         }
     }
 
@@ -396,7 +449,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 zFactor={verticalScale}
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
-                layers={layers}
+                layers={esvLayers}
                 bounds={makeBounds()}
                 viewport={viewport ?? undefined}
                 intersectionThreshold={50}
@@ -441,7 +494,7 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
     const width = Math.max(5, Math.min(10, 100 / props.colorScales.length));
     const lineWidth = 6;
     const lineColor = "#555";
-    const textGap = 4;
+    const textGap = 6;
     const offset = 10;
     const legendGap = 4;
     const textWidth = 50;

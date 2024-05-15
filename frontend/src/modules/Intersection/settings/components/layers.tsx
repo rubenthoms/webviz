@@ -5,6 +5,7 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
+import { MANHATTAN_LENGTH, Point2D, pointDistance } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import {
     LAYER_TYPE_TO_STRING_MAPPING,
@@ -28,6 +29,8 @@ import {
     ArrowDropDown,
     Check,
     Delete,
+    DragHandle,
+    DragIndicator,
     Error,
     ExpandLess,
     ExpandMore,
@@ -62,7 +65,7 @@ export function Layers(props: LayersProps): React.ReactNode {
 
     return (
         <div className="w-full h-full">
-            <div className="flex flex-col border border-slate-100">
+            <div className="flex flex-col border border-slate-100 relative">
                 {layers.map((layer) => {
                     return (
                         <LayerItem
@@ -113,6 +116,69 @@ type LayerItemProps = {
 
 function LayerItem(props: LayerItemProps): React.ReactNode {
     const [showSettings, setShowSettings] = React.useState<boolean>(false);
+    const [isDragging, setIsDragging] = React.useState<boolean>(false);
+    const [dragPosition, setDragPosition] = React.useState<Point2D>({ x: 0, y: 0 });
+
+    const dragIndicatorRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(function handleMount() {
+        let pointerDownPosition: Point2D | null = null;
+        let draggingActive: boolean = false;
+
+        if (dragIndicatorRef.current === null) {
+            return;
+        }
+
+        const currentDragIndicatorRef = dragIndicatorRef.current;
+
+        function handlePointerDown(e: PointerEvent) {
+            pointerDownPosition = { x: e.clientX, y: e.clientY };
+            document.addEventListener("pointermove", handlePointerMove);
+            document.addEventListener("pointerup", handlePointerUp);
+        }
+
+        function handlePointerMove(e: PointerEvent) {
+            if (!pointerDownPosition) {
+                return;
+            }
+
+            if (
+                !draggingActive &&
+                pointDistance(pointerDownPosition, { x: e.clientX, y: e.clientY }) > MANHATTAN_LENGTH
+            ) {
+                setIsDragging(true);
+                draggingActive = true;
+            }
+
+            if (!draggingActive) {
+                return;
+            }
+
+            setDragPosition({ x: e.clientX, y: e.clientY });
+        }
+
+        function handlePointerUp(e: PointerEvent) {
+            if (pointerDownPosition) {
+                const dx = e.clientX - pointerDownPosition.x;
+                const dy = e.clientY - pointerDownPosition.y;
+                if (Math.sqrt(dx * dx + dy * dy) > 10) {
+                    console.log("Dragged");
+                }
+                setIsDragging(false);
+            }
+            pointerDownPosition = null;
+            document.removeEventListener("pointermove", handlePointerMove);
+            document.removeEventListener("pointerup", handlePointerUp);
+        }
+
+        dragIndicatorRef.current.addEventListener("pointerdown", handlePointerDown);
+
+        return function handleUnmount() {
+            currentDragIndicatorRef.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("pointermove", handlePointerMove);
+            document.removeEventListener("pointerup", handlePointerUp);
+        };
+    }, []);
 
     const isVisible = useIsLayerVisible(props.layer);
     const status = useLayerStatus(props.layer);
@@ -170,6 +236,15 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 key={props.layer.getId()}
                 className="flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
             >
+                <div
+                    className={resolveClassNames("px-0.5", {
+                        "hover:cursor-grab": !isDragging,
+                        "cursor-grabbing": isDragging,
+                    })}
+                    ref={dragIndicatorRef}
+                >
+                    <DragIndicator fontSize="inherit" />
+                </div>
                 <div
                     className="px-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
                     onClick={handleToggleLayerVisibility}

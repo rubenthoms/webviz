@@ -323,7 +323,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             x: [Number.MAX_VALUE, Number.MIN_VALUE],
             y: [Number.MAX_VALUE, Number.MIN_VALUE],
         };
-        for (const layer of props.layers) {
+        for (const layer of layers) {
             const boundingBox = layer.getBoundingBox();
             if (boundingBox) {
                 bounds.x = [Math.min(bounds.x[0], boundingBox.x[0]), Math.max(bounds.x[1], boundingBox.x[1])];
@@ -331,8 +331,15 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             }
         }
         if (layers.length === 0 && props.referenceSystem) {
-            bounds.x = [props.referenceSystem.startVector[0], props.referenceSystem.endVector[0]];
-            bounds.y = [props.referenceSystem.startVector[1], props.referenceSystem.endVector[1]];
+            const firstPoint = props.referenceSystem.projectedPath[0];
+            const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
+            const xMax = Math.max(firstPoint[0], lastPoint[0]);
+            const xMin = Math.min(firstPoint[0], lastPoint[0]);
+            const yMax = Math.max(firstPoint[1], lastPoint[1]);
+            const yMin = Math.min(firstPoint[1], lastPoint[1]);
+
+            bounds.x = [xMin, xMax];
+            bounds.y = [yMin, yMax];
         }
         if (layers.length === 0) {
             bounds.x = [-1000, 1000];
@@ -441,6 +448,8 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             });
         }
     }
+
+    console.debug(viewport);
 
     return (
         <div className="relative h-full" ref={divRef}>

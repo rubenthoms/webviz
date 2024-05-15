@@ -1,5 +1,7 @@
 import { Controller, OverlayMouseMoveEvent } from "@equinor/esv-intersection";
 
+import { isEqual } from "lodash";
+
 import { IntersectedItem, IntersectionCalculator, IntersectionItem } from "../types/types";
 import { makeIntersectionCalculatorFromIntersectionItem } from "../utils/intersectionConversion";
 
@@ -27,6 +29,7 @@ export class IntersectionHandler {
     private _options: IntersectionHandlerOptions;
     private _intersectionCalculators: Map<string, IntersectionCalculator> = new Map();
     private _subscribers: Map<IntersectionHandlerTopic, Set<(payload: any) => void>> = new Map();
+    private _previousIntersections: Intersection[] = [];
 
     constructor(controller: Controller, options?: IntersectionHandlerOptions) {
         this._controller = controller;
@@ -127,12 +130,20 @@ export class IntersectionHandler {
             }
         }
 
+        if (isEqual(intersections, this._previousIntersections)) {
+            return;
+        }
+
         this.publish(IntersectionHandlerTopic.INTERSECTION, {
             intersections,
         });
     }
 
     private handleMouseExit() {
+        if (this._previousIntersections.length === 0) {
+            return;
+        }
+
         this.publish(IntersectionHandlerTopic.INTERSECTION, {
             intersections: [],
         });

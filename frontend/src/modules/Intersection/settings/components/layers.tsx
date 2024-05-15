@@ -117,15 +117,15 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     const isVisible = useIsLayerVisible(props.layer);
     const status = useLayerStatus(props.layer);
 
-    function handleRemoveLayer(id: string) {
-        props.onRemoveLayer(id);
+    function handleRemoveLayer() {
+        props.onRemoveLayer(props.layer.getId());
     }
 
     function handleToggleLayerVisibility() {
         props.layer.setIsVisible(!isVisible);
     }
 
-    function handleToggleSettingsVisibility(id: string) {
+    function handleToggleSettingsVisibility() {
         setShowSettings(!showSettings);
     }
 
@@ -181,7 +181,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 {makeStatus()}
                 <div
                     className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
-                    onClick={() => handleToggleSettingsVisibility(props.layer.getId())}
+                    onClick={handleToggleSettingsVisibility}
                     title={showSettings ? "Hide settings" : "Show settings"}
                 >
                     <Settings fontSize="inherit" />
@@ -189,7 +189,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 </div>
                 <div
                     className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
-                    onClick={() => handleRemoveLayer(props.layer.getId())}
+                    onClick={handleRemoveLayer}
                     title="Remove layer"
                 >
                     <Delete fontSize="inherit" />

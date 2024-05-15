@@ -14,7 +14,6 @@ import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 import { useQuery } from "@tanstack/react-query";
 
-import { useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 
 export type GridLayerSettingsComponentProps = {
@@ -86,11 +85,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 props.layer.maybeUpdateSettings({ parameterDateOrInterval: fixupParameterDateOrInterval });
             }
         }
-    }
-
-    let gridModelErrorMessage = "";
-    if (gridModelInfosQuery.isError) {
-        gridModelErrorMessage = "Failed to load grid model infos";
     }
 
     function updateBoundingBox(gridModelName: string) {

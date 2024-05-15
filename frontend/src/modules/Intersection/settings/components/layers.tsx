@@ -234,12 +234,18 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         <>
             <div
                 key={props.layer.getId()}
-                className="flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300"
+                className={resolveClassNames(
+                    "flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300",
+                    {
+                        absolute: isDragging,
+                    }
+                )}
+                style={{ left: dragPosition.x, top: dragPosition.y }}
             >
                 <div
                     className={resolveClassNames("px-0.5", {
                         "hover:cursor-grab": !isDragging,
-                        "cursor-grabbing": isDragging,
+                        "hover:cursor-grabbing": isDragging,
                     })}
                     ref={dragIndicatorRef}
                 >

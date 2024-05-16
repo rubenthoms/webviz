@@ -5,6 +5,8 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
+import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
+import { createPortal } from "@lib/utils/createPortal";
 import { MANHATTAN_LENGTH, Point2D, pointDistance } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import {
@@ -39,7 +41,7 @@ import {
     VisibilityOff,
 } from "@mui/icons-material";
 
-import { Provider, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 
 import { GridLayerSettingsComponent } from "./layerSettings/GridLayer/layer";
 import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
@@ -55,6 +57,8 @@ export function Layers(props: LayersProps): React.ReactNode {
     const dispatch = useSetAtom(layersAtom);
     const layers = useAtomValue(layersAtom);
 
+    const parentDivRef = React.useRef<HTMLDivElement>(null);
+
     function handleAddLayer(type: LayerType) {
         dispatch({ type: LayerActionType.ADD_LAYER, payload: { type } });
     }
@@ -65,7 +69,7 @@ export function Layers(props: LayersProps): React.ReactNode {
 
     return (
         <div className="w-full h-full">
-            <div className="flex flex-col border border-slate-100 relative">
+            <div className="flex flex-col border border-slate-100 relative" ref={parentDivRef}>
                 {layers.map((layer) => {
                     return (
                         <LayerItem
@@ -120,9 +124,13 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     const [dragPosition, setDragPosition] = React.useState<Point2D>({ x: 0, y: 0 });
 
     const dragIndicatorRef = React.useRef<HTMLDivElement>(null);
+    const divRef = React.useRef<HTMLDivElement>(null);
+
+    const boundingClientRect = useElementBoundingRect(divRef);
 
     React.useEffect(function handleMount() {
         let pointerDownPosition: Point2D | null = null;
+        let pointerDownPositionRelativeToElement: Point2D = { x: 0, y: 0 };
         let draggingActive: boolean = false;
 
         if (dragIndicatorRef.current === null) {
@@ -132,7 +140,12 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         const currentDragIndicatorRef = dragIndicatorRef.current;
 
         function handlePointerDown(e: PointerEvent) {
+            draggingActive = false;
             pointerDownPosition = { x: e.clientX, y: e.clientY };
+            pointerDownPositionRelativeToElement = {
+                x: e.clientX - currentDragIndicatorRef.getBoundingClientRect().left,
+                y: e.clientY - currentDragIndicatorRef.getBoundingClientRect().top,
+            };
             document.addEventListener("pointermove", handlePointerMove);
             document.addEventListener("pointerup", handlePointerUp);
         }
@@ -154,18 +167,14 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 return;
             }
 
-            setDragPosition({ x: e.clientX, y: e.clientY });
+            const dx = e.clientX - pointerDownPositionRelativeToElement.x;
+            const dy = e.clientY - pointerDownPositionRelativeToElement.y;
+            setDragPosition({ x: dx, y: dy });
         }
 
-        function handlePointerUp(e: PointerEvent) {
-            if (pointerDownPosition) {
-                const dx = e.clientX - pointerDownPosition.x;
-                const dy = e.clientY - pointerDownPosition.y;
-                if (Math.sqrt(dx * dx + dy * dy) > 10) {
-                    console.log("Dragged");
-                }
-                setIsDragging(false);
-            }
+        function handlePointerUp() {
+            setIsDragging(false);
+            draggingActive = false;
             pointerDownPosition = null;
             document.removeEventListener("pointermove", handlePointerMove);
             document.removeEventListener("pointerup", handlePointerUp);
@@ -230,17 +239,22 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         return null;
     }
 
-    return (
-        <>
+    function makeLayerElement(): React.ReactNode {
+        return (
             <div
                 key={props.layer.getId()}
+                ref={divRef}
                 className={resolveClassNames(
                     "flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300",
                     {
                         absolute: isDragging,
                     }
                 )}
-                style={{ left: dragPosition.x, top: dragPosition.y }}
+                style={{
+                    left: dragPosition.x,
+                    top: dragPosition.y,
+                    width: isDragging ? boundingClientRect.width : undefined,
+                }}
             >
                 <div
                     className={resolveClassNames("px-0.5", {
@@ -276,6 +290,19 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                     <Delete fontSize="inherit" />
                 </div>
             </div>
+        );
+    }
+
+    return (
+        <>
+            {isDragging ? createPortal(makeLayerElement()) : makeLayerElement()}
+            {isDragging && (
+                <div
+                    key={props.layer.getId()}
+                    className="bg-red-300 h-10"
+                    style={{ left: dragPosition.x, top: dragPosition.y }}
+                ></div>
+            )}
             <div
                 className={resolveClassNames("border-b border-b-gray-300 bg-gray-50 shadow-inner", {
                     "overflow-hidden h-[1px]": !showSettings,

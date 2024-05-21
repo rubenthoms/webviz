@@ -108,7 +108,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             options: {
                 stroke: "red",
                 strokeWidth: "2",
-                order: 6,
+                order: 6 + layers.length,
             },
         });
     }
@@ -227,7 +227,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         symbols: {},
                         perforations: [],
                     },
-                    order: 5,
+                    order: 5 + layers.length,
                 },
             });
         }
@@ -348,7 +348,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
         return bounds;
     }
 
-    for (const layer of layers) {
+    for (const [index, layer] of layers.toReversed().entries()) {
         if (!layer.getIsVisible()) {
             continue;
         }
@@ -401,7 +401,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         hideGridlines: !props.showGridLines,
                         extensionLengthStart: props.intersectionExtensionLength,
                     },
-                    order: 2,
+                    order: index,
                 },
             });
 
@@ -442,14 +442,12 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         image: data.image,
                         options: getSeismicOptions(seismicInfo),
                     },
-                    order: 1,
+                    order: index,
                     layerOpacity: 1,
                 },
             });
         }
     }
-
-    console.debug(viewport);
 
     return (
         <div className="relative h-full" ref={divRef}>

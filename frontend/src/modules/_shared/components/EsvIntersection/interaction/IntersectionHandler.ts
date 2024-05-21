@@ -134,16 +134,14 @@ export class IntersectionHandler {
             return;
         }
 
+        this._previousIntersections = intersections;
+
         this.publish(IntersectionHandlerTopic.INTERSECTION, {
             intersections,
         });
     }
 
     private handleMouseExit() {
-        if (this._previousIntersections.length === 0) {
-            return;
-        }
-
         this.publish(IntersectionHandlerTopic.INTERSECTION, {
             intersections: [],
         });

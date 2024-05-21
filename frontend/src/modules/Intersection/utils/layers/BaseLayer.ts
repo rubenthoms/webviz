@@ -253,6 +253,7 @@ export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] 
                 setAdjustedLayers([...layers]);
             }
 
+            handleLayerChange();
             const unsubscribeFuncs: (() => void)[] = [];
 
             for (const layer of layers) {

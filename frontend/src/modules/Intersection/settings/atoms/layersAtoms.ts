@@ -273,6 +273,34 @@ export const layersAtom = atomWithReducerAndGetter<BaseLayer<any, any>[], LayerA
             return prev;
         }
 
+        if (action.type === LayerActionType.MOVE_LAYER) {
+            const layer = prev.find((layer) => layer.getId() === action.payload.id);
+            if (!layer) {
+                return prev;
+            }
+            const index = prev.indexOf(layer);
+            const moveToIndex = action.payload.moveToIndex;
+            if (index === moveToIndex) {
+                return prev;
+            }
+
+            console.debug("Moving layer", layer.getName(), "from", index, "to", moveToIndex);
+
+            if (moveToIndex <= 0) {
+                return [layer, ...prev.filter((el) => el.getId() !== action.payload.id)];
+            }
+
+            if (moveToIndex >= prev.length - 1) {
+                return [...prev.filter((el) => el.getId() !== action.payload.id), layer];
+            }
+
+            const newLayers = [...prev];
+            newLayers.splice(index, 1);
+            newLayers.splice(moveToIndex, 0, layer);
+
+            return newLayers;
+        }
+
         return prev;
     }
 );

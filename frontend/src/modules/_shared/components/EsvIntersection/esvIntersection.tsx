@@ -369,6 +369,9 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                         const existingLayer = esvController.getLayer(layer.id);
                         if (existingLayer) {
                             existingLayer.onUpdate({ data: cloneDeep(layer.options.data) });
+                            if (layer.options.order !== undefined) {
+                                existingLayer.order = layer.options.order;
+                            }
                             interactionHandler.removeLayer(layer.id);
                             if (layer.hoverable) {
                                 interactionHandler.addLayer(existingLayer);

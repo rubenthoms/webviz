@@ -80,6 +80,7 @@ export enum LayerActionType {
     TOGGLE_LAYER_SETTINGS_VISIBILITY = "toggle-layer-settings-visibility",
     UPDATE_SETTING = "update-settings",
     UPDATE_BOUNDING_BOX = "update-bounding-box",
+    MOVE_LAYER = "move-layer",
 }
 
 export enum LayerStatus {
@@ -96,6 +97,7 @@ export type LayerActionPayloads = {
     [LayerActionType.TOGGLE_LAYER_SETTINGS_VISIBILITY]: { id: string };
     [LayerActionType.UPDATE_SETTING]: { id: string; settings: Record<string, unknown> };
     [LayerActionType.UPDATE_BOUNDING_BOX]: { id: string; boundingBox: LayerBoundingBox };
+    [LayerActionType.MOVE_LAYER]: { id: string; moveToIndex: number };
 };
 
 export type LayerAction<T extends LayerActionType> = {

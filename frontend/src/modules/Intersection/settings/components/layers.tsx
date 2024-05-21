@@ -7,14 +7,12 @@ import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { createPortal } from "@lib/utils/createPortal";
-import { MANHATTAN_LENGTH, Point2D, pointDistance } from "@lib/utils/geometry";
+import { MANHATTAN_LENGTH, Point2D, pointDistance, rectContainsPoint } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import {
     LAYER_TYPE_TO_STRING_MAPPING,
-    Layer,
     LayerActionType,
     LayerActions,
-    LayerBoundingBox,
     LayerType,
 } from "@modules/Intersection/typesAndEnums";
 import {
@@ -31,7 +29,6 @@ import {
     ArrowDropDown,
     Check,
     Delete,
-    DragHandle,
     DragIndicator,
     Error,
     ExpandLess,
@@ -57,6 +54,10 @@ export function Layers(props: LayersProps): React.ReactNode {
     const dispatch = useSetAtom(layersAtom);
     const layers = useAtomValue(layersAtom);
 
+    const [draggingLayerId, setDraggingLayerId] = React.useState<string | null>(null);
+    const [isDragging, setIsDragging] = React.useState<boolean>(false);
+    const [dragPosition, setDragPosition] = React.useState<Point2D>({ x: 0, y: 0 });
+
     const parentDivRef = React.useRef<HTMLDivElement>(null);
 
     function handleAddLayer(type: LayerType) {
@@ -67,8 +68,133 @@ export function Layers(props: LayersProps): React.ReactNode {
         dispatch({ type: LayerActionType.REMOVE_LAYER, payload: { id } });
     }
 
+    React.useEffect(
+        function handleMount() {
+            if (parentDivRef.current === null) {
+                return;
+            }
+
+            const currentParentDivRef = parentDivRef.current;
+
+            let pointerDownPosition: Point2D | null = null;
+            let pointerDownPositionRelativeToElement: Point2D = { x: 0, y: 0 };
+            let draggingActive: boolean = false;
+            let layerId: string | null = null;
+
+            function findLayerElement(element: HTMLElement): [HTMLElement | null, string | null] {
+                if (element?.parentElement && element.dataset.layerId) {
+                    return [element.parentElement, element.dataset.layerId];
+                }
+                return [null, null];
+            }
+
+            function handlePointerDown(e: PointerEvent) {
+                const [element, id] = findLayerElement(e.target as HTMLElement);
+
+                if (!element || !id) {
+                    return;
+                }
+
+                draggingActive = false;
+                setIsDragging(true);
+                layerId = id;
+                pointerDownPosition = { x: e.clientX, y: e.clientY };
+                pointerDownPositionRelativeToElement = {
+                    x: e.clientX - element.getBoundingClientRect().left,
+                    y: e.clientY - element.getBoundingClientRect().top,
+                };
+                document.addEventListener("pointermove", handlePointerMove);
+                document.addEventListener("pointerup", handlePointerUp);
+            }
+
+            function handleElementDrag(id: string, position: Point2D) {
+                if (parentDivRef.current === null) {
+                    return;
+                }
+
+                const boundingClientRect = parentDivRef.current.getBoundingClientRect();
+                if (!rectContainsPoint(boundingClientRect, position)) {
+                    return;
+                }
+
+                let index = 0;
+                for (const child of parentDivRef.current.childNodes) {
+                    if (child instanceof HTMLElement) {
+                        const childBoundingRect = child.getBoundingClientRect();
+
+                        if (!child.dataset.layerId) {
+                            continue;
+                        }
+
+                        if (child.dataset.layerId === id) {
+                            continue;
+                        }
+
+                        if (!rectContainsPoint(childBoundingRect, position)) {
+                            index++;
+                            continue;
+                        }
+
+                        if (position.y <= childBoundingRect.y + childBoundingRect.height / 2) {
+                            dispatch({ type: LayerActionType.MOVE_LAYER, payload: { id, moveToIndex: index } });
+                        } else {
+                            dispatch({ type: LayerActionType.MOVE_LAYER, payload: { id, moveToIndex: index + 1 } });
+                        }
+                        index++;
+                    }
+                }
+            }
+
+            function handlePointerMove(e: PointerEvent) {
+                if (!pointerDownPosition || !layerId) {
+                    return;
+                }
+
+                if (
+                    !draggingActive &&
+                    pointDistance(pointerDownPosition, { x: e.clientX, y: e.clientY }) > MANHATTAN_LENGTH
+                ) {
+                    draggingActive = true;
+                    setDraggingLayerId(layerId);
+                }
+
+                if (!draggingActive) {
+                    return;
+                }
+
+                const dx = e.clientX - pointerDownPositionRelativeToElement.x;
+                const dy = e.clientY - pointerDownPositionRelativeToElement.y;
+                setDragPosition({ x: dx, y: dy });
+
+                handleElementDrag(layerId, { x: e.clientX, y: e.clientY });
+            }
+
+            function handlePointerUp() {
+                draggingActive = false;
+                pointerDownPosition = null;
+                layerId = null;
+                setIsDragging(false);
+                setDraggingLayerId(null);
+                document.removeEventListener("pointermove", handlePointerMove);
+                document.removeEventListener("pointerup", handlePointerUp);
+            }
+
+            currentParentDivRef.addEventListener("pointerdown", handlePointerDown);
+
+            return function handleUnmount() {
+                currentParentDivRef.removeEventListener("pointerdown", handlePointerDown);
+                document.removeEventListener("pointermove", handlePointerMove);
+                document.removeEventListener("pointerup", handlePointerUp);
+                setIsDragging(false);
+                setDraggingLayerId(null);
+            };
+        },
+        [dispatch]
+    );
+
     return (
         <div className="w-full h-full">
+            {isDragging && createPortal(<div className="absolute z-40 transparent w-full h-full inset-0"></div>)}
             <div className="flex flex-col border border-slate-100 relative" ref={parentDivRef}>
                 {layers.map((layer) => {
                     return (
@@ -79,6 +205,8 @@ export function Layers(props: LayersProps): React.ReactNode {
                             workbenchSession={props.workbenchSession}
                             onRemoveLayer={handleRemoveLayer}
                             dispatch={dispatch}
+                            isDragging={draggingLayerId === layer.getId()}
+                            dragPosition={dragPosition}
                         />
                     );
                 })}
@@ -114,80 +242,19 @@ type LayerItemProps = {
     layer: BaseLayer<any, any>;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
+    isDragging: boolean;
+    dragPosition: Point2D;
     onRemoveLayer: (id: string) => void;
     dispatch: (action: LayerActions) => void;
 };
 
 function LayerItem(props: LayerItemProps): React.ReactNode {
     const [showSettings, setShowSettings] = React.useState<boolean>(false);
-    const [isDragging, setIsDragging] = React.useState<boolean>(false);
-    const [dragPosition, setDragPosition] = React.useState<Point2D>({ x: 0, y: 0 });
 
     const dragIndicatorRef = React.useRef<HTMLDivElement>(null);
     const divRef = React.useRef<HTMLDivElement>(null);
 
     const boundingClientRect = useElementBoundingRect(divRef);
-
-    React.useEffect(function handleMount() {
-        let pointerDownPosition: Point2D | null = null;
-        let pointerDownPositionRelativeToElement: Point2D = { x: 0, y: 0 };
-        let draggingActive: boolean = false;
-
-        if (dragIndicatorRef.current === null) {
-            return;
-        }
-
-        const currentDragIndicatorRef = dragIndicatorRef.current;
-
-        function handlePointerDown(e: PointerEvent) {
-            draggingActive = false;
-            pointerDownPosition = { x: e.clientX, y: e.clientY };
-            pointerDownPositionRelativeToElement = {
-                x: e.clientX - currentDragIndicatorRef.getBoundingClientRect().left,
-                y: e.clientY - currentDragIndicatorRef.getBoundingClientRect().top,
-            };
-            document.addEventListener("pointermove", handlePointerMove);
-            document.addEventListener("pointerup", handlePointerUp);
-        }
-
-        function handlePointerMove(e: PointerEvent) {
-            if (!pointerDownPosition) {
-                return;
-            }
-
-            if (
-                !draggingActive &&
-                pointDistance(pointerDownPosition, { x: e.clientX, y: e.clientY }) > MANHATTAN_LENGTH
-            ) {
-                setIsDragging(true);
-                draggingActive = true;
-            }
-
-            if (!draggingActive) {
-                return;
-            }
-
-            const dx = e.clientX - pointerDownPositionRelativeToElement.x;
-            const dy = e.clientY - pointerDownPositionRelativeToElement.y;
-            setDragPosition({ x: dx, y: dy });
-        }
-
-        function handlePointerUp() {
-            setIsDragging(false);
-            draggingActive = false;
-            pointerDownPosition = null;
-            document.removeEventListener("pointermove", handlePointerMove);
-            document.removeEventListener("pointerup", handlePointerUp);
-        }
-
-        dragIndicatorRef.current.addEventListener("pointerdown", handlePointerDown);
-
-        return function handleUnmount() {
-            currentDragIndicatorRef.removeEventListener("pointerdown", handlePointerDown);
-            document.removeEventListener("pointermove", handlePointerMove);
-            document.removeEventListener("pointerup", handlePointerUp);
-        };
-    }, []);
 
     const isVisible = useIsLayerVisible(props.layer);
     const status = useLayerStatus(props.layer);
@@ -228,45 +295,46 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
 
     function makeStatus(): React.ReactNode {
         if (status === LayerStatus.LOADING) {
-            return <CircularProgress size="extra-small" />;
+            return (
+                <div title="Loading">
+                    <CircularProgress size="extra-small" />
+                </div>
+            );
         }
         if (status === LayerStatus.ERROR) {
-            return <Error fontSize="inherit" className="text-red-700" />;
+            return (
+                <div title="Error while loading">
+                    <Error fontSize="inherit" className="text-red-700" />
+                </div>
+            );
         }
         if (status === LayerStatus.SUCCESS) {
-            return <Check fontSize="inherit" className="text-green-700" />;
+            return (
+                <div title="Successfully loaded">
+                    <Check fontSize="inherit" className="text-green-700" />
+                </div>
+            );
         }
         return null;
     }
 
-    function makeLayerElement(): React.ReactNode {
+    function makeLayerElement(indicatorRef?: React.LegacyRef<HTMLDivElement>): React.ReactNode {
         return (
-            <div
-                key={props.layer.getId()}
-                ref={divRef}
-                className={resolveClassNames(
-                    "flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300",
-                    {
-                        absolute: isDragging,
-                    }
-                )}
-                style={{
-                    left: dragPosition.x,
-                    top: dragPosition.y,
-                    width: isDragging ? boundingClientRect.width : undefined,
-                }}
-            >
+            <>
                 <div
                     className={resolveClassNames("px-0.5", {
-                        "hover:cursor-grab": !isDragging,
-                        "hover:cursor-grabbing": isDragging,
+                        "hover:cursor-grab": !props.isDragging,
+                        "hover:cursor-grabbing": props.isDragging,
                     })}
-                    ref={dragIndicatorRef}
+                    data-layer-id={props.layer.getId()}
+                    ref={indicatorRef}
                 >
-                    <DragIndicator fontSize="inherit" />
+                    <DragIndicator fontSize="inherit" className="pointer-events-none" />
                 </div>
                 <div
-                    className="px-0.5 hover:cursor-pointer hover:bg-blue-100 rounded"
+                    className={resolveClassNames("px-0.5 hover:cursor-pointer rounded", {
+                        "hover:bg-blue-100": !props.isDragging,
+                    })}
                     onClick={handleToggleLayerVisibility}
                     title="Toggle visibility"
                 >
@@ -289,20 +357,41 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 >
                     <Delete fontSize="inherit" />
                 </div>
-            </div>
+            </>
         );
     }
 
     return (
         <>
-            {isDragging ? createPortal(makeLayerElement()) : makeLayerElement()}
-            {isDragging && (
+            <div
+                ref={divRef}
+                className={resolveClassNames(
+                    "flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300 relative"
+                )}
+                data-layer-id={props.layer.getId()}
+            >
                 <div
-                    key={props.layer.getId()}
-                    className="bg-red-300 h-10"
-                    style={{ left: dragPosition.x, top: dragPosition.y }}
+                    className={resolveClassNames("bg-red-300 z-10 w-full h-full absolute left-0 top-0", {
+                        hidden: !props.isDragging,
+                    })}
                 ></div>
-            )}
+                {makeLayerElement(dragIndicatorRef)}
+            </div>
+            {props.isDragging &&
+                createPortal(
+                    <div
+                        className={resolveClassNames(
+                            "flex h-10 px-1 hover:bg-blue-50 text-sm items-center gap-1 border-b border-b-gray-300 absolute z-50"
+                        )}
+                        style={{
+                            left: props.dragPosition.x,
+                            top: props.dragPosition.y,
+                            width: props.isDragging ? boundingClientRect.width : undefined,
+                        }}
+                    >
+                        {makeLayerElement()}
+                    </div>
+                )}
             <div
                 className={resolveClassNames("border-b border-b-gray-300 bg-gray-50 shadow-inner", {
                     "overflow-hidden h-[1px]": !showSettings,

@@ -1,12 +1,10 @@
 import React from "react";
 
-import { AtomStore } from "@framework/AtomStoreMaster";
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 
-import { PrimitiveAtom, WritableAtom, atom, createStore } from "jotai";
 import { cloneDeep, isEqual } from "lodash";
 import { v4 } from "uuid";
 
@@ -43,10 +41,11 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     private _id: string;
     private _name: string;
     private _isVisible: boolean = true;
-    private _colorScale: ColorScale;
+    protected _colorScale: ColorScale;
     private _boundingBox: BoundingBox | null = null;
     protected _data: TData | null = null;
     protected _settings: TSettings = {} as TSettings;
+    private _useCustomColorScaleBoundaries: boolean = false;
 
     constructor(name: string, settings: TSettings, queryClient: QueryClient) {
         this._id = v4();
@@ -116,6 +115,19 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
 
     getColorScale(): ColorScaleWithName {
         return ColorScaleWithName.fromColorScale(this._colorScale, this._name);
+    }
+
+    getUseCustomColorScaleBoundaries(): boolean {
+        return this._useCustomColorScaleBoundaries;
+    }
+
+    setUseCustomColorScaleBoundaries(useCustomColorScaleBoundaries: boolean): void {
+        this._useCustomColorScaleBoundaries = useCustomColorScaleBoundaries;
+    }
+
+    setColorScale(colorScale: ColorScale) {
+        this._colorScale = colorScale;
+        this.notifySubscribers(LayerTopic.COLORSCALE);
     }
 
     getData(): TData | null {
@@ -254,12 +266,13 @@ export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] 
             }
 
             handleLayerChange();
-            const unsubscribeFuncs: (() => void)[] = [];
 
+            const unsubscribeFuncs: (() => void)[] = [];
             for (const layer of layers) {
                 const unsubscribeData = layer.subscribe(LayerTopic.DATA, handleLayerChange);
                 const unsubscribeVisibility = layer.subscribe(LayerTopic.VISIBILITY, handleLayerChange);
-                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility);
+                const unsubscribeColorScale = layer.subscribe(LayerTopic.COLORSCALE, handleLayerChange);
+                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility, unsubscribeColorScale);
             }
 
             return () => {
@@ -272,4 +285,37 @@ export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] 
     );
 
     return adjustedLayers;
+}
+
+export type LayerStatuses = { id: string; status: LayerStatus }[];
+
+export function useLayersStatuses(layers: BaseLayer<any, any>[]): { id: string; status: LayerStatus }[] {
+    const [layersStatuses, setLayersStatuses] = React.useState<{ id: string; status: LayerStatus }[]>(
+        layers.map((layer) => ({ id: layer.getId(), status: layer.getStatus() }))
+    );
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleLayersStatusChange() {
+                setLayersStatuses(layers.map((layer) => ({ id: layer.getId(), status: layer.getStatus() })));
+            }
+
+            handleLayersStatusChange();
+
+            const unsubscribeFuncs: (() => void)[] = [];
+            for (const layer of layers) {
+                const unsubscribeFunc = layer.subscribe(LayerTopic.STATUS, handleLayersStatusChange);
+                unsubscribeFuncs.push(unsubscribeFunc);
+            }
+
+            return () => {
+                for (const unsubscribe of unsubscribeFuncs) {
+                    unsubscribe();
+                }
+            };
+        },
+        [layers]
+    );
+
+    return layersStatuses;
 }

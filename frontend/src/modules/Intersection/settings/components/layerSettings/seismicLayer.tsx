@@ -1,37 +1,35 @@
-import { Grid3dInfo_api, Grid3dPropertyInfo_api } from "@api";
+import React from "react";
+
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { isIsoStringInterval } from "@framework/utils/timestampUtils";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
-import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { RadioGroup } from "@lib/components/RadioGroup";
-import { Select, SelectOption } from "@lib/components/Select";
+import { SelectOption } from "@lib/components/Select";
+import { ColorScale } from "@lib/utils/ColorScale";
 import {
-    GridLayer,
     SeismicDataType,
     SeismicDataTypeToStringMapping,
     SeismicSurveyType,
     SeismicSurveyTypeToStringMapping,
 } from "@modules/Intersection/typesAndEnums";
 import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
-import { GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, SeismicLayerSettings } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 import { useQuery } from "@tanstack/react-query";
 
-import { useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-
-import { availableSeismicAttributesAtom, availableSeismicDateOrIntervalStringsAtom } from "../../atoms/derivedAtoms";
-import { seismicCubeMetaListQueryAtom } from "../../atoms/queryAtoms";
 
 export type SeismicLayerSettingsProps = {
     layer: SeismicLayer;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
 };
 
 export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> = (props) => {
@@ -151,6 +149,11 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
         props.layer.maybeUpdateSettings({ dateOrInterval: selected });
     }
 
+    function handleColorScaleChange(newColorScale: ColorScale, areBoundariesUserDefined: boolean) {
+        props.layer.setColorScale(newColorScale);
+        props.layer.setUseCustomColorScaleBoundaries(areBoundariesUserDefined);
+    }
+
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
             <div className="table-row">
@@ -170,6 +173,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                         options={makeRealizationOptions(availableRealizations)}
                         value={settings.realizationNum?.toString() ?? undefined}
                         onChange={handleRealizationChange}
+                        showArrows
                     />
                 </div>
             </div>
@@ -224,6 +228,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                             options={makeAttributeOptions(availableSeismicAttributes)}
                             value={props.layer.getSettings().attribute ?? undefined}
                             onChange={handleAttributeChange}
+                            showArrows
                         />
                     </PendingWrapper>
                 </div>
@@ -239,8 +244,20 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                             options={makeDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings)}
                             value={props.layer.getSettings().dateOrInterval ?? undefined}
                             onChange={handleDateOrIntervalChange}
+                            showArrows
                         />
                     </PendingWrapper>
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell">Color scale</div>
+                <div className="table-cell">
+                    <ColorScaleSelector
+                        colorScale={props.layer.getColorScale()}
+                        areBoundariesUserDefined={props.layer.getUseCustomColorScaleBoundaries()}
+                        workbenchSettings={props.workbenchSettings}
+                        onChange={handleColorScaleChange}
+                    />
                 </div>
             </div>
         </div>

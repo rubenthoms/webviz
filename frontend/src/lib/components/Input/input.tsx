@@ -9,6 +9,7 @@ export type InputProps = InputUnstyledProps & {
     wrapperStyle?: React.CSSProperties;
     min?: number;
     max?: number;
+    rounded?: "all" | "left" | "right" | "none";
 };
 
 export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRef<HTMLInputElement>) => {
@@ -77,18 +78,21 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                     "bg-white",
                     "border",
                     "border-gray-300",
-                    "rounded",
                     "shadow-sm",
                     "focus:border-indigo-500",
                     "w-full",
+                    "h-full",
                     "sm:text-sm",
                     "px-2",
-                    "py-1",
+                    "py-1.5",
                     "outline-none",
                     "cursor-text",
                     {
                         "border-red-300": props.error,
                         "border-2": props.error,
+                        "rounded-l": props.rounded === "left",
+                        "rounded-r": props.rounded === "right",
+                        rounded: props.rounded === "all" || !props.rounded,
                     }
                 )}
                 style={wrapperStyle}

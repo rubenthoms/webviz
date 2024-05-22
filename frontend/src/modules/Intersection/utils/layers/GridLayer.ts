@@ -1,6 +1,8 @@
 import { FenceMeshSection_api, Grid3dGeometry_api, Grid3dMappedProperty_api, PolylineIntersection_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { ColorScale } from "@lib/utils/ColorScale";
+import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import {
     b64DecodeFloatArrayToFloat32,
     b64DecodeUintArrayToUint32,
@@ -8,7 +10,7 @@ import {
 } from "@modules/_shared/base64";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer, BoundingBox } from "./BaseLayer";
+import { BaseLayer, LayerTopic } from "./BaseLayer";
 
 // Data structure for the transformed GridSurface data
 // Removes the base64 encoded data and replaces them with typed arrays
@@ -135,6 +137,9 @@ export type GridLayerSettings = {
 };
 
 export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection_trans> {
+    private _colorScalesParameterMap: Map<string, ColorScale> = new Map();
+    private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
+
     constructor(name: string, queryClient: QueryClient) {
         const defaultSettings = {
             ensembleIdent: null,
@@ -145,6 +150,28 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             polylineXyz: [],
         };
         super(name, defaultSettings, queryClient);
+    }
+
+    getColorScale(): ColorScaleWithName {
+        const colorScale = this._colorScalesParameterMap.get(this._settings.parameterName ?? "") ?? this._colorScale;
+        return ColorScaleWithName.fromColorScale(colorScale, this._settings.parameterName ?? "");
+    }
+
+    setColorScale(colorScale: ColorScale): void {
+        this.notifySubscribers(LayerTopic.COLORSCALE);
+        this._colorScalesParameterMap.set(this._settings.parameterName ?? "", colorScale);
+    }
+
+    getUseCustomColorScaleBoundaries(): boolean {
+        return this._useCustomColorScaleBoundariesParameterMap.get(this._settings.parameterName ?? "") ?? false;
+    }
+
+    setUseCustomColorScaleBoundaries(useCustomColorScaleBoundaries: boolean): void {
+        this._useCustomColorScaleBoundariesParameterMap.set(
+            this._settings.parameterName ?? "",
+            useCustomColorScaleBoundaries
+        );
+        this.notifySubscribers(LayerTopic.COLORSCALE);
     }
 
     protected areSettingsValid(): boolean {

@@ -1,17 +1,14 @@
-import { FenceMeshSection_api, Grid3dGeometry_api, Grid3dMappedProperty_api, PolylineIntersection_api } from "@api";
 import { SeismicFenceData_api } from "@api";
 import { IntersectionReferenceSystem, generateSeismicSliceImage } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { SeismicDataType, SeismicSliceImageOptions, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
-import {
-    b64DecodeFloatArrayToFloat32,
-    b64DecodeUintArrayToUint32,
-    b64DecodeUintArrayToUint32OrLess,
-} from "@modules/_shared/base64";
+import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
+import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer } from "./BaseLayer";
+import { BaseLayer, LayerStatus, LayerTopic } from "./BaseLayer";
 
 // Data structure for transformed data
 // Remove the base64 encoded data and replace with a Float32Array
@@ -53,6 +50,9 @@ export type SeismicLayerData = {
 };
 
 export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerData> {
+    private _colorScalesParameterMap: Map<string, ColorScale> = new Map();
+    private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
+
     constructor(name: string, queryClient: QueryClient) {
         const defaultSettings = {
             ensembleIdent: null,
@@ -65,6 +65,40 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             dateOrInterval: null,
         };
         super(name, defaultSettings, queryClient);
+    }
+
+    getColorScale(): ColorScaleWithName {
+        const colorScale = this._colorScalesParameterMap.get(this._settings.attribute ?? "") ?? this._colorScale;
+        return ColorScaleWithName.fromColorScale(colorScale, this._settings.attribute ?? "");
+    }
+
+    setColorScale(colorScale: ColorScale): void {
+        this.notifySubscribers(LayerTopic.COLORSCALE);
+        this._colorScalesParameterMap.set(this._settings.attribute ?? "", colorScale);
+        this._status = LayerStatus.LOADING;
+        this.notifySubscribers(LayerTopic.STATUS);
+        this.fetchData()
+            .then(() => {
+                this.notifySubscribers(LayerTopic.DATA);
+                this._status = LayerStatus.SUCCESS;
+                this.notifySubscribers(LayerTopic.STATUS);
+            })
+            .catch(() => {
+                this._status = LayerStatus.ERROR;
+                this.notifySubscribers(LayerTopic.STATUS);
+            });
+    }
+
+    getUseCustomColorScaleBoundaries(): boolean {
+        return this._useCustomColorScaleBoundariesParameterMap.get(this._settings.attribute ?? "") ?? false;
+    }
+
+    setUseCustomColorScaleBoundaries(useCustomColorScaleBoundaries: boolean): void {
+        this._useCustomColorScaleBoundariesParameterMap.set(
+            this._settings.attribute ?? "",
+            useCustomColorScaleBoundaries
+        );
+        this.notifySubscribers(LayerTopic.COLORSCALE);
     }
 
     protected areSettingsValid(): boolean {
@@ -135,8 +169,6 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
                     trajectory.points,
                     trajectory.offset
                 );
-
-                console.debug(trajectoryXyProjection[0], trajectoryXyProjection[trajectoryXyProjection.length - 1]);
 
                 const options: SeismicSliceImageOptions = {
                     datapoints,

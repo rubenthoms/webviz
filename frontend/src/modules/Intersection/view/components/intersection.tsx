@@ -1,15 +1,10 @@
 import React from "react";
 
-import { BoundingBox3d_api, WellboreCasing_api } from "@api";
+import { WellboreCasing_api } from "@api";
 import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
+import { IntersectionType } from "@framework/types/intersection";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
-import {
-    CombinedPolylineIntersectionResults,
-    IntersectionType,
-    Layer,
-    LayerType as UserLayerType,
-} from "@modules/Intersection/typesAndEnums";
 import { BaseLayer, useLayers } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
@@ -361,6 +356,12 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 continue;
             }
 
+            const colorScale = gridLayer.getColorScale().clone();
+
+            if (!gridLayer.getUseCustomColorScaleBoundaries()) {
+                colorScale.setRange(data.min_grid_prop_value, data.max_grid_prop_value);
+            }
+
             esvLayers.push({
                 id: "intersection",
                 type: LayerType.POLYLINE_INTERSECTION,
@@ -397,7 +398,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         }),
                         minGridPropValue: data.min_grid_prop_value,
                         maxGridPropValue: data.max_grid_prop_value,
-                        colorScale: gridLayer.getColorScale(),
+                        colorScale: colorScale,
                         hideGridlines: !props.showGridLines,
                         extensionLengthStart: props.intersectionExtensionLength,
                     },
@@ -405,10 +406,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 },
             });
 
-            const colorScale = ColorScaleWithName.fromColorScale(
-                gridLayer.getColorScale(),
-                gridLayer.getSettings().parameterName ?? gridLayer.getName()
-            );
             colorScales.push(colorScale);
         }
 
@@ -422,15 +419,15 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
             const seismicInfo = getSeismicInfo(data.options, data.options.trajectory);
 
+            const colorScale = seismicLayer.getColorScale();
+
             if (seismicInfo) {
                 seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
                 seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
 
-                const colorScale = ColorScaleWithName.fromColorScale(
-                    data.options.colorScale,
-                    seismicLayer.getSettings().attribute ?? seismicLayer.getName()
-                );
-                colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
+                if (!seismicLayer.getUseCustomColorScaleBoundaries()) {
+                    colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
+                }
                 colorScales.push(colorScale);
             }
 
@@ -441,6 +438,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                     data: {
                         image: data.image,
                         options: getSeismicOptions(seismicInfo),
+                        colorScale,
                     },
                     order: index,
                     layerOpacity: 1,
@@ -559,8 +557,9 @@ function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNo
                 );
                 if (colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
                     const y =
+                        1 -
                         (colorScale.getDivMidPoint() - colorScale.getMin()) /
-                        (colorScale.getMax() - colorScale.getMin());
+                            (colorScale.getMax() - colorScale.getMin());
                     markers.push(
                         <line
                             key="mid-marker"

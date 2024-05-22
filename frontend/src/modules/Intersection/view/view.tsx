@@ -22,6 +22,7 @@ import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
+import { LayerStatus, useLayersStatuses } from "../utils/layers/BaseLayer";
 
 export function View(
     props: ModuleViewProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
@@ -36,12 +37,12 @@ export function View(
     });
 
     const ensembleIdent = props.viewContext.useSettingsToViewInterfaceValue("ensembleIdent");
-    const showSeismic = props.viewContext.useSettingsToViewInterfaceValue("showSeismic");
     const intersectionReferenceSystem = props.viewContext.useViewAtomValue("intersectionReferenceSystemAtom");
     // const seismicFenceDataQuery = props.viewContext.useViewAtomValue("seismicFenceDataQueryAtom");
     const wellboreHeader = useAtomValue(selectedWellboreAtom);
 
     const layers = props.viewContext.useViewAtomValue("layers");
+    const layersStatuses = useLayersStatuses(layers);
 
     // const seismicSliceImageOptions = props.viewContext.useViewAtomValue("seismicSliceImageOptionsAtom");
 
@@ -115,6 +116,17 @@ export function View(
     }
     */
 
+    // Status messages
+    for (const status of layersStatuses) {
+        if (status.status === LayerStatus.ERROR) {
+            statusWriter.addError(
+                `Layer "${layers
+                    .find((el) => el.getId() === status.id)
+                    ?.getName()}" encountered an error while loading its data.`
+            );
+        }
+    }
+
     // Wellbore casing query
     const wellboreCasingQuery = useWellboreCasingQuery(wellboreHeader?.uuid ?? undefined);
     if (wellboreCasingQuery.isError) {
@@ -124,10 +136,13 @@ export function View(
     // Set loading status
     statusWriter.setLoading(
         //combinedPolylineIntersectionResults.isFetching ||
-        wellboreCasingQuery.isFetching // ||
+        wellboreCasingQuery.isFetching || layersStatuses.some((status) => status.status === LayerStatus.LOADING)
+        // ||
         //  seismicFenceDataQuery.isFetching ||
         // seismicImageStatus === SeismicSliceImageStatus.LOADING
     );
+
+    const moduleInstanceId = props.viewContext.getInstanceIdString();
 
     const handleReadout = React.useCallback(
         function handleReadout(event: EsvIntersectionReadoutEvent) {
@@ -141,10 +156,10 @@ export function View(
             props.workbenchServices.publishGlobalData(
                 "global.hoverMd",
                 { wellboreUuid: wellboreHeader.uuid, md: md },
-                props.viewContext.getInstanceIdString()
+                moduleInstanceId
             );
         },
-        [props.workbenchServices, wellboreHeader, props.viewContext.getInstanceIdString(), props.viewContext]
+        [props.workbenchServices, wellboreHeader, moduleInstanceId]
     );
 
     const handleCameraPositionChange = React.useCallback(

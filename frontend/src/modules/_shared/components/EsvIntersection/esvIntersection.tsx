@@ -29,6 +29,7 @@ import {
     WellborepathLayerOptions,
 } from "@equinor/esv-intersection";
 import { useElementSize } from "@lib/hooks/useElementSize";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
@@ -87,7 +88,7 @@ type LayerOptionsMap = {
     [LayerType.POLYLINE_INTERSECTION]: PolylineIntersectionLayerOptions;
     [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
     [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
-    [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData>;
+    [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData & { colorScale?: ColorScale }>;
     [LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS]: LayerOptions<SurfaceStatisticalFanchartsData>;
     [LayerType.WELLBORE_PATH]: WellborepathLayerOptions<[number, number][]>;
 };

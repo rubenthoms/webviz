@@ -177,7 +177,11 @@ export function Settings(
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Layers" expanded>
-                <Layers ensembleSet={ensembleSet} workbenchSession={props.workbenchSession} />
+                <Layers
+                    ensembleSet={ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
+                />
             </CollapsibleGroup>
             <CollapsibleGroup title="Visualization options" expanded>
                 <Label text="Show grid lines" position="left">

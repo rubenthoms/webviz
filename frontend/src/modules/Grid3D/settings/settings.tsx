@@ -236,8 +236,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setSelectedGridCellIndexRanges(newGridCellIndexRanges);
     }
 
-    function handleColorScaleChange(colorScale: ColorScale) {}
-
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
@@ -301,9 +299,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                         </PendingWrapper>
                     </Label>
                 </div>
-            </CollapsibleGroup>
-            <CollapsibleGroup title="Parameter color scale">
-                <ColorScaleSelector workbenchSettings={props.workbenchSettings} onChange={handleColorScaleChange} />
             </CollapsibleGroup>
             <CollapsibleGroup title="Grid cell filter" expanded>
                 <div className="flex flex-col gap-4">

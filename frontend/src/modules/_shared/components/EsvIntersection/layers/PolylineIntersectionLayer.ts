@@ -1,8 +1,6 @@
 import {
     LayerOptions,
-    OnMountEvent,
     OnRescaleEvent,
-    OnUnmountEvent,
     OnUpdateEvent,
     PixiLayer,
     PixiRenderApplication,
@@ -76,7 +74,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
             return;
         }
 
-        this.data?.colorScale.setRange(this.data.minGridPropValue, this.data.maxGridPropValue);
+        // this.data?.colorScale.setRange(this.data.minGridPropValue, this.data.maxGridPropValue);
 
         const showGridlines = !(this.data?.hideGridlines ?? false);
         let startU = -(this.data?.extensionLengthStart ?? 0);
@@ -151,7 +149,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
         this._cellIndexPolygonsLookupMap.clear();
 
         let startOffset = 0;
-        for (const [sectionIndex, section] of this.data?.fenceMeshSections.entries()) {
+        for (const [sectionIndex, section] of this.data.fenceMeshSections.entries()) {
             for (let polygonIndex = 0; polygonIndex < section.polySourceCellIndicesArr.length; polygonIndex++) {
                 const cellIndex = section.polySourceCellIndicesArr[polygonIndex];
                 if (!this._cellIndexPolygonsLookupMap.has(cellIndex)) {

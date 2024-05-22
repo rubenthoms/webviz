@@ -5,10 +5,11 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { ColorScale } from "@lib/utils/ColorScale";
-import { LayerBoundingBox } from "@modules/Intersection/typesAndEnums";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { BoundingBox, useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
@@ -20,6 +21,7 @@ export type GridLayerSettingsComponentProps = {
     layer: GridLayer;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
 };
 
 export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProps> = (props) => {
@@ -120,6 +122,11 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         props.layer.maybeUpdateSettings({ parameterDateOrInterval: selected });
     }
 
+    function handleColorScaleChange(newColorScale: ColorScale, areBoundariesUserDefined: boolean) {
+        props.layer.setColorScale(newColorScale);
+        props.layer.setUseCustomColorScaleBoundaries(areBoundariesUserDefined);
+    }
+
     const gridModelInfo = gridModelInfosQuery.data?.find((info) => info.grid_name === settings.gridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
         gridModelInfo?.property_info_arr.filter((el) => el.property_name === settings.parameterName) ?? [];
@@ -128,6 +135,10 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
     if (settings.ensembleIdent) {
         availableRealizations.push(...ensembleFilterFunc(settings.ensembleIdent));
     }
+
+    const gridModelParameterDateOrIntervalOptions = makeGridParameterDateOrIntervalOptions(
+        datesOrIntervalsForSelectedParameter
+    );
 
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
@@ -148,6 +159,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                         options={makeRealizationOptions(availableRealizations)}
                         value={settings.realizationNum?.toString() ?? undefined}
                         onChange={handleRealizationChange}
+                        showArrows
                     />
                 </div>
             </div>
@@ -158,6 +170,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                         options={makeGridModelOptions(gridModelInfosQuery.data ?? [])}
                         value={settings.gridModelName ?? undefined}
                         onChange={handleGridModelSelectionChange}
+                        showArrows
                     />
                 </div>
             </div>
@@ -168,16 +181,36 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                         options={makeGridParameterNameOptions(gridModelInfo)}
                         value={settings.parameterName ?? undefined}
                         onChange={handleGridParameterSelectionChange}
+                        showArrows
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Date or interval</div>
+                <div
+                    className={resolveClassNames("table-cell", {
+                        "text-gray-300": gridModelParameterDateOrIntervalOptions.length === 0,
+                    })}
+                >
+                    Date or interval
+                </div>
                 <div className="table-cell">
                     <Dropdown
-                        options={makeGridParameterDateOrIntervalOptions(datesOrIntervalsForSelectedParameter)}
+                        options={gridModelParameterDateOrIntervalOptions}
                         value={settings.parameterDateOrInterval ?? undefined}
                         onChange={handleGridParameterDateOrIntervalSelectionChange}
+                        showArrows
+                        disabled={gridModelParameterDateOrIntervalOptions.length === 0}
+                    />
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell">Color scale</div>
+                <div className="table-cell">
+                    <ColorScaleSelector
+                        colorScale={props.layer.getColorScale()}
+                        areBoundariesUserDefined={props.layer.getUseCustomColorScaleBoundaries()}
+                        workbenchSettings={props.workbenchSettings}
+                        onChange={handleColorScaleChange}
                     />
                 </div>
             </div>

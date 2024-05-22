@@ -4,7 +4,7 @@ import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { createPortal } from "@lib/utils/createPortal";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { getTextWidthWithFont } from "@lib/utils/textSize";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { ArrowDropDown, ArrowDropUp, ExpandLess, ExpandMore } from "@mui/icons-material";
 
 import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 import { IconButton } from "../IconButton";
@@ -27,6 +27,7 @@ export type DropdownProps = {
     onChange?: (value: string) => void;
     filter?: boolean;
     width?: string | number;
+    showArrows?: boolean;
 } & BaseComponentProps;
 
 const defaultProps = {
@@ -60,6 +61,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
     });
     const [filter, setFilter] = React.useState<string | null>(null);
     const [selection, setSelection] = React.useState<string | number>(props.value);
+    const [prevValue, setPrevValue] = React.useState<string | number>(props.value);
     const [selectionIndex, setSelectionIndex] = React.useState<number>(-1);
     const [filteredOptions, setFilteredOptions] = React.useState<DropdownOption[]>(props.options);
     const [optionIndexWithFocus, setOptionIndexWithFocus] = React.useState<number>(-1);
@@ -80,12 +82,11 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         [filteredOptions, selection]
     );
 
-    React.useEffect(
-        function handleValueChange() {
-            setSelection(props.value);
-        },
-        [props.value]
-    );
+    if (prevValue !== props.value) {
+        setSelection(props.value);
+        setSelectionIndex(props.options.findIndex((option) => option.value === props.value));
+        setPrevValue(props.value);
+    }
 
     React.useEffect(
         function handleOptionsChange() {
@@ -310,23 +311,84 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         return selectedOption?.adornment || null;
     }
 
+    function handleSelectPreviousOption() {
+        const newIndex = Math.max(0, selectionIndex - 1);
+        const newValue = filteredOptions[newIndex].value;
+        setSelectionIndex(newIndex);
+        setSelection(newValue);
+        if (onChange) {
+            onChange(newValue);
+        }
+        setOptionIndexWithFocus(-1);
+    }
+
+    function handleSelectNextOption() {
+        const newIndex = Math.min(filteredOptions.length - 1, selectionIndex + 1);
+        const newValue = filteredOptions[newIndex].value;
+        setSelectionIndex(newIndex);
+        setSelection(newValue);
+        if (onChange) {
+            onChange(newValue);
+        }
+        setOptionIndexWithFocus(-1);
+    }
+
     return (
         <BaseComponent disabled={props.disabled}>
-            <div style={{ width: props.width }} id={props.wrapperId}>
-                <Input
-                    ref={inputRef}
-                    id={props.id}
-                    error={selection !== "" && props.options.find((option) => option.value === selection) === undefined}
-                    onClick={() => handleInputClick()}
-                    startAdornment={makeInputAdornment()}
-                    endAdornment={
-                        <IconButton size="small" onClick={() => setDropdownVisible((prev) => !prev)}>
-                            {dropdownVisible ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
-                        </IconButton>
-                    }
-                    onChange={handleInputChange}
-                    value={makeInputValue()}
-                />
+            <div style={{ width: props.width }} id={props.wrapperId} className="flex">
+                <div className="flex-grow">
+                    <Input
+                        ref={inputRef}
+                        id={props.id}
+                        error={
+                            selection !== "" &&
+                            props.options.find((option) => option.value === selection) === undefined &&
+                            props.options.length > 0
+                        }
+                        onClick={() => handleInputClick()}
+                        startAdornment={makeInputAdornment()}
+                        endAdornment={
+                            <IconButton size="small" onClick={() => setDropdownVisible((prev) => !prev)}>
+                                {dropdownVisible ? (
+                                    <ExpandLess fontSize="inherit" />
+                                ) : (
+                                    <ExpandMore fontSize="inherit" />
+                                )}
+                            </IconButton>
+                        }
+                        onChange={handleInputChange}
+                        value={makeInputValue()}
+                        rounded={props.showArrows ? "left" : "all"}
+                    />
+                </div>
+                {props.showArrows && (
+                    <div className="flex flex-col h-full text-xs rounded-r">
+                        <div
+                            className={resolveClassNames(
+                                "border border-gray-300 hover:bg-blue-100 rounded-tr cursor-pointer",
+                                {
+                                    "pointer-events-none": selectionIndex <= 0,
+                                    "text-gray-400": selectionIndex <= 0,
+                                }
+                            )}
+                            onClick={handleSelectPreviousOption}
+                        >
+                            <ArrowDropUp fontSize="inherit" />
+                        </div>
+                        <div
+                            className={resolveClassNames(
+                                "border border-gray-300 hover:bg-blue-100 rounded-tr cursor-pointer",
+                                {
+                                    "pointer-events-none": selectionIndex >= filteredOptions.length - 1,
+                                    "text-gray-400": selectionIndex >= filteredOptions.length - 1,
+                                }
+                            )}
+                            onClick={handleSelectNextOption}
+                        >
+                            <ArrowDropDown fontSize="inherit" />
+                        </div>
+                    </div>
+                )}
                 {dropdownVisible &&
                     createPortal(
                         <div

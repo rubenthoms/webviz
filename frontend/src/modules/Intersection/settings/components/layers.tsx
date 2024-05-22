@@ -2,6 +2,7 @@ import React from "react";
 
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
@@ -21,8 +22,8 @@ import {
     useIsLayerVisible,
     useLayerStatus,
 } from "@modules/Intersection/utils/layers/BaseLayer";
-import { GridLayer, GridLayerSettings, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
-import { SeismicLayer, SeismicLayerSettings, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
+import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
     Add,
@@ -40,7 +41,7 @@ import {
 
 import { useAtomValue, useSetAtom } from "jotai";
 
-import { GridLayerSettingsComponent } from "./layerSettings/GridLayer/layer";
+import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
 import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
 
 import { layersAtom } from "../atoms/layersAtoms";
@@ -48,6 +49,7 @@ import { layersAtom } from "../atoms/layersAtoms";
 export type LayersProps = {
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
 };
 
 export function Layers(props: LayersProps): React.ReactNode {
@@ -194,7 +196,8 @@ export function Layers(props: LayersProps): React.ReactNode {
 
     return (
         <div className="w-full h-full">
-            {isDragging && createPortal(<div className="absolute z-40 transparent w-full h-full inset-0"></div>)}
+            {isDragging &&
+                createPortal(<div className="absolute z-40 transparent w-full h-full inset-0 cursor-grabbing"></div>)}
             <div className="flex flex-col border border-slate-100 relative" ref={parentDivRef}>
                 {layers.map((layer) => {
                     return (
@@ -203,6 +206,7 @@ export function Layers(props: LayersProps): React.ReactNode {
                             layer={layer}
                             ensembleSet={props.ensembleSet}
                             workbenchSession={props.workbenchSession}
+                            workbenchSettings={props.workbenchSettings}
                             onRemoveLayer={handleRemoveLayer}
                             dispatch={dispatch}
                             isDragging={draggingLayerId === layer.getId()}
@@ -242,6 +246,7 @@ type LayerItemProps = {
     layer: BaseLayer<any, any>;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
     isDragging: boolean;
     dragPosition: Point2D;
     onRemoveLayer: (id: string) => void;
@@ -277,6 +282,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 <GridLayerSettingsComponent
                     ensembleSet={props.ensembleSet}
                     workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
                     layer={layer as GridLayer}
                 />
             );
@@ -286,6 +292,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 <SeismicLayerSettingsComponent
                     ensembleSet={props.ensembleSet}
                     workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
                     layer={layer as SeismicLayer}
                 />
             );

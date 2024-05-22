@@ -78,7 +78,8 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
         this._status = LayerStatus.LOADING;
         this.notifySubscribers(LayerTopic.STATUS);
         this.fetchData()
-            .then(() => {
+            .then((data) => {
+                this._data = data;
                 this.notifySubscribers(LayerTopic.DATA);
                 this._status = LayerStatus.SUCCESS;
                 this.notifySubscribers(LayerTopic.STATUS);

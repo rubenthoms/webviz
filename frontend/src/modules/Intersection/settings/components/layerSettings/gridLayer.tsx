@@ -149,7 +149,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell">Ensemble</div>
+                <div className="table-cell align-center">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}
@@ -159,7 +159,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Realization</div>
+                <div className="table-cell align-center">Realization</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeRealizationOptions(availableRealizations)}
@@ -170,7 +170,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Model</div>
+                <div className="table-cell align-center">Model</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeGridModelOptions(gridModelInfosQuery.data ?? [])}
@@ -181,7 +181,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Parameter</div>
+                <div className="table-cell align-center">Parameter</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeGridParameterNameOptions(gridModelInfo)}
@@ -193,13 +193,13 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
             </div>
             <div className="table-row">
                 <div
-                    className={resolveClassNames("table-cell", {
+                    className={resolveClassNames("table-cell align-center", {
                         "text-gray-300": gridModelParameterDateOrIntervalOptions.length === 0,
                     })}
                 >
                     Date or interval
                 </div>
-                <div className="table-cell">
+                <div className="table-cell align-top">
                     <Dropdown
                         options={gridModelParameterDateOrIntervalOptions}
                         value={settings.parameterDateOrInterval ?? undefined}
@@ -210,8 +210,8 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Show mesh</div>
-                <div className="table-cell">
+                <div className="table-cell align-center">Show mesh</div>
+                <div className="table-cell align-top">
                     <Switch checked={settings.showMesh} onChange={handleShowMeshChange} />
                 </div>
             </div>

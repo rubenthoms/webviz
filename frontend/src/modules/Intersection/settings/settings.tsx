@@ -12,7 +12,7 @@ import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Radio } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
-import { Switch } from "@lib/components/Switch";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
@@ -21,12 +21,12 @@ import { userSelectedCustomIntersectionPolylineIdAtom, userSelectedWellboreUuidA
 import {
     availableUserCreatedIntersectionPolylinesAtom,
     selectedCustomIntersectionPolylineIdAtom,
+    selectedWellboreAtom,
 } from "./atoms/derivedAtoms";
 import { drilledWellboreHeadersQueryAtom } from "./atoms/queryAtoms";
 import { Layers } from "./components/layers";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
-import { addCustomIntersectionPolylineEditModeActiveAtom, selectedWellboreAtom } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
@@ -36,7 +36,6 @@ export function Settings(
     const ensembleSet = props.workbenchSession.getEnsembleSet();
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
-    const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
     const [epsilon, setEpsilon] = props.settingsContext.useSettingsToViewInterfaceState("curveFittingEpsilon");
@@ -47,8 +46,6 @@ export function Settings(
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
     const syncedIntersection = syncHelper.useValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection");
-
-    const polylineAddModeActive = useAtomValue(addCustomIntersectionPolylineEditModeActiveAtom);
 
     const [intersectionType, setIntersectionType] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionType");
@@ -91,10 +88,6 @@ export function Settings(
         syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
-    function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setShowGridLines(event.target.checked);
-    }
-
     function handleIntersectionExtensionLengthChange(event: React.ChangeEvent<HTMLInputElement>) {
         setIntersectionExtensionLength(parseFloat(event.target.value));
     }
@@ -135,17 +128,26 @@ export function Settings(
                         onChange={() => handleIntersectionTypeChange(IntersectionType.WELLBORE)}
                         label={<strong>Use wellbore</strong>}
                     />
-                    <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
-                        <Select
-                            options={makeWellHeaderOptions(wellHeaders.data ?? [])}
-                            value={selectedWellboreHeader ? [selectedWellboreHeader.uuid] : []}
-                            onChange={handleWellHeaderSelectionChange}
-                            size={5}
-                            filter
-                            debounceTimeMs={600}
-                            disabled={intersectionType !== IntersectionType.WELLBORE}
-                        />
-                    </PendingWrapper>
+                    <div
+                        className={resolveClassNames("flex flex-col gap-2", {
+                            "opacity-30 pointer-events-none": intersectionType !== IntersectionType.WELLBORE,
+                        })}
+                    >
+                        <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
+                            <Select
+                                options={makeWellHeaderOptions(wellHeaders.data ?? [])}
+                                value={selectedWellboreHeader ? [selectedWellboreHeader.uuid] : []}
+                                onChange={handleWellHeaderSelectionChange}
+                                size={5}
+                                filter
+                                debounceTimeMs={600}
+                                disabled={intersectionType !== IntersectionType.WELLBORE}
+                            />
+                        </PendingWrapper>
+                        <Label text="Epsilon">
+                            <Input type="number" value={epsilon} min={0} onChange={handleEpsilonChange} />
+                        </Label>
+                    </div>
                     <div className="flex flex-col gap-2">
                         <Radio
                             name="intersectionType"
@@ -159,7 +161,7 @@ export function Settings(
                             value={selectedCustomIntersectionPolylineId ? [selectedCustomIntersectionPolylineId] : []}
                             onChange={handleCustomPolylineSelectionChange}
                             size={5}
-                            disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
+                            disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE}
                             placeholder="No custom polylines"
                         />
                     </div>
@@ -171,18 +173,13 @@ export function Settings(
                             onChange={handleIntersectionExtensionLengthChange}
                         />
                     </Label>
-                    <Label text="Epsilon">
-                        <Input type="number" value={epsilon} min={0} onChange={handleEpsilonChange} />
-                    </Label>
                 </div>
             </CollapsibleGroup>
-            <CollapsibleGroup title="Layers" expanded>
-                <Layers
-                    ensembleSet={ensembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                />
-            </CollapsibleGroup>
+            <Layers
+                ensembleSet={ensembleSet}
+                workbenchSession={props.workbenchSession}
+                workbenchSettings={props.workbenchSettings}
+            />
         </div>
     );
 }

@@ -276,8 +276,6 @@ export const layersAtom = atomWithReducerAndGetter<BaseLayer<any, any>[], LayerA
                 return prev;
             }
 
-            console.debug("Moving layer", layer.getName(), "from", index, "to", moveToIndex);
-
             if (moveToIndex <= 0) {
                 return [layer, ...prev.filter((el) => el.getId() !== action.payload.id)];
             }

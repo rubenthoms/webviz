@@ -14,6 +14,7 @@ import {
     selectedRealizationAtom,
     selectedSeismicAttributeAtom,
     selectedSeismicDateOrIntervalStringAtom,
+    selectedWellboreAtom,
 } from "./settings/atoms/derivedAtoms";
 import { layersAtom } from "./settings/atoms/layersAtoms";
 import { selectedEnsembleIdentAtom } from "./sharedAtoms/sharedAtoms";
@@ -43,6 +44,7 @@ export type SettingsToViewInterface = {
         seismicDataType: SeismicDataType;
         selectedCustomIntersectionPolylineId: string | null;
         layers: BaseLayer<any, any>[];
+        wellboreHeader: { uuid: string; identifier: string } | null;
     };
 };
 
@@ -90,6 +92,9 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         },
         layers: (get) => {
             return get(layersAtom);
+        },
+        wellboreHeader: (get) => {
+            return get(selectedWellboreAtom);
         },
     },
 };

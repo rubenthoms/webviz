@@ -8,26 +8,25 @@ import {
     getSeismicInfo,
     getSeismicOptions,
 } from "@equinor/esv-intersection";
+import { ViewContext } from "@framework/ModuleContext";
+import { WorkbenchServices } from "@framework/WorkbenchServices";
 import { IntersectionType } from "@framework/types/intersection";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
+import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
+import { State } from "@modules/Intersection/state";
 import { BaseLayer, useLayers } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
-import {
-    EsvIntersection,
-    EsvIntersectionReadoutEvent,
-    LayerItem,
-    LayerType,
-} from "@modules/_shared/components/EsvIntersection";
+import { EsvIntersectionReadoutEvent, LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection";
 import { Viewport } from "@modules/_shared/components/EsvIntersection/esvIntersection";
-import { HighlightItem, HighlightItemShape, ReadoutItem } from "@modules/_shared/components/EsvIntersection/types";
-import { ReadoutBox } from "@modules/_shared/components/EsvIntersection/utilityComponents/ReadoutBox";
-import { Toolbar } from "@modules/_shared/components/EsvIntersection/utilityComponents/Toolbar";
 
 import { isEqual } from "lodash";
 
+import { ViewportWrapper } from "./viewportWrapper";
+
+import { ViewAtoms } from "../atoms/atomDefinitions";
 import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type IntersectionProps = {
@@ -41,41 +40,19 @@ export type IntersectionProps = {
     onVerticalScaleChange?: (verticalScale: number) => void;
     intersectionType: IntersectionType;
     verticalScale?: number;
-    viewport?: Viewport;
+    workbenchServices: WorkbenchServices;
+    viewContext: ViewContext<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>;
+    wellboreHeaderUuid: string | null;
 };
 
 export function Intersection(props: IntersectionProps): React.ReactNode {
-    const { onReadout, onViewportChange, onVerticalScaleChange } = props;
-
     const layers = useLayers(props.layers);
 
     const divRef = React.useRef<HTMLDivElement>(null);
     const divSize = useElementBoundingRect(divRef);
 
-    const [readoutItems, setReadoutItems] = React.useState<ReadoutItem[]>([]);
-    const [showGrid, setShowGrid] = React.useState<boolean>(true);
-
-    const [verticalScale, setVerticalScale] = React.useState<number>(props.verticalScale ?? 1);
-    const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
-
     const [prevReferenceSystem, setPrevReferenceSystem] = React.useState<IntersectionReferenceSystem | null>(null);
-
-    if (!isEqual(prevVerticalScale, props.verticalScale)) {
-        setPrevVerticalScale(props.verticalScale);
-        if (props.verticalScale) {
-            setVerticalScale(props.verticalScale);
-        }
-    }
-
     const [viewport, setViewport] = React.useState<Viewport | null>(null);
-    const [prevViewport, setPrevViewport] = React.useState<Viewport | undefined>(props.viewport);
-
-    if (!isEqual(prevViewport, props.viewport)) {
-        setPrevViewport(props.viewport);
-        if (props.viewport && !isEqual(viewport, props.viewport)) {
-            setViewport(props.viewport);
-        }
-    }
 
     if (props.referenceSystem && !isEqual(prevReferenceSystem, props.referenceSystem)) {
         const newViewport: Viewport = [0, 0, 2000];
@@ -108,91 +85,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             },
         });
     }
-
-    /*
-    if (props.polylineIntersectionData) {
-        layers.push({
-            id: "intersection",
-            type: LayerType.POLYLINE_INTERSECTION,
-            hoverable: true,
-            options: {
-                data: {
-                    fenceMeshSections: props.polylineIntersectionData.fenceMeshSections.map((section) => {
-                        let zMin = Number.MAX_VALUE;
-                        let zMax = Number.MIN_VALUE;
-
-                        const verticesUzArray: Float32Array = new Float32Array(section.verticesUzFloat32Arr.length);
-
-                        for (let i = 0; i < section.verticesUzFloat32Arr.length; i += 2) {
-                            const z = -section.verticesUzFloat32Arr[i + 1];
-                            zMin = Math.min(zMin, z);
-                            zMax = Math.max(zMax, z);
-                            verticesUzArray[i] = section.verticesUzFloat32Arr[i];
-                            verticesUzArray[i + 1] = z;
-                        }
-
-                        return {
-                            polyIndicesArr: section.polyIndicesUintArr,
-                            verticesUzArr: verticesUzArray,
-                            verticesPerPolyArr: section.verticesPerPolyUintArr,
-                            polySourceCellIndicesArr: section.polySourceCellIndicesUint32Arr,
-                            polyPropsArr: section.polyPropsFloat32Arr,
-                            minZ: zMin,
-                            maxZ: zMax,
-                            startUtmX: section.start_utm_x,
-                            startUtmY: section.start_utm_y,
-                            endUtmX: section.end_utm_x,
-                            endUtmY: section.end_utm_y,
-                        };
-                    }),
-                    minGridPropValue: props.polylineIntersectionData.min_grid_prop_value,
-                    maxGridPropValue: props.polylineIntersectionData.max_grid_prop_value,
-                    colorScale: props.colorScale,
-                    hideGridlines: !props.showGridLines,
-                    extensionLengthStart: props.intersectionExtensionLength,
-                },
-                order: 2,
-            },
-        });
-        const colorScale = ColorScaleWithName.fromColorScale(props.colorScale, "Grid");
-        colorScale.setRange(
-            props.polylineIntersectionData.min_grid_prop_value,
-            props.polylineIntersectionData.max_grid_prop_value
-        );
-        colorScales.push(colorScale);
-    }
-
-    if (props.seismicSliceImageData && props.seismicSliceImageData.image) {
-        const seismicInfo = getSeismicInfo(
-            {
-                ...props.seismicSliceImageData,
-            },
-            props.seismicSliceImageData.trajectory
-        );
-
-        if (seismicInfo) {
-            seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
-            seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
-
-            const colorScale = ColorScaleWithName.fromColorScale(props.seismicSliceImageData.colorScale, "Seismic");
-            colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
-            colorScales.push(colorScale);
-        }
-
-        layers.push({
-            id: "seismic",
-            type: LayerType.SEISMIC_CANVAS,
-            options: {
-                data: {
-                    image: props.seismicSliceImageData.image,
-                    options: getSeismicOptions(seismicInfo),
-                },
-                order: 1,
-                layerOpacity: 1,
-            },
-        });
-    }
-    */
 
     if (props.wellboreCasingData) {
         const casingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Casing");
@@ -228,91 +120,6 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             });
         }
     }
-
-    const handleReadoutItemsChange = React.useCallback(
-        function handleReadoutItemsChange(event: EsvIntersectionReadoutEvent): void {
-            setReadoutItems(event.readoutItems);
-            onReadout(event);
-        },
-        [onReadout]
-    );
-
-    const highlightItems: HighlightItem[] = [];
-    if (props.referenceSystem && props.hoveredMd) {
-        const point = props.referenceSystem.project(props.hoveredMd);
-        highlightItems.push({
-            point: [point[0], point[1]],
-            color: "red",
-            shape: HighlightItemShape.POINT,
-            paintOrder: 6,
-        });
-    }
-
-    const handleFitInViewClick = React.useCallback(
-        function handleFitInViewClick(): void {
-            if (props.referenceSystem) {
-                const newViewport: [number, number, number] = [0, 0, 2000];
-                const firstPoint = props.referenceSystem.projectedPath[0];
-                const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
-                const xMax = Math.max(firstPoint[0], lastPoint[0]);
-                const xMin = Math.min(firstPoint[0], lastPoint[0]);
-                const yMax = Math.max(firstPoint[1], lastPoint[1]);
-                const yMin = Math.min(firstPoint[1], lastPoint[1]);
-
-                newViewport[0] = xMin + (xMax - xMin) / 2;
-                newViewport[1] = yMin + (yMax - yMin) / 2;
-                newViewport[2] = Math.max(xMax - xMin, yMax - yMin) * 5;
-                setViewport(newViewport);
-                if (onViewportChange) {
-                    onViewportChange(newViewport);
-                }
-            }
-        },
-        [onViewportChange, props.referenceSystem, setViewport]
-    );
-
-    const handleShowGridToggle = React.useCallback(
-        function handleGridLinesToggle(active: boolean): void {
-            setShowGrid(active);
-        },
-        [setShowGrid]
-    );
-
-    const handleVerticalScaleIncrease = React.useCallback(
-        function handleVerticalScaleIncrease(): void {
-            setVerticalScale((prev) => {
-                const newVerticalScale = prev + 0.1;
-                if (onVerticalScaleChange) {
-                    onVerticalScaleChange(newVerticalScale);
-                }
-                return newVerticalScale;
-            });
-        },
-        [onVerticalScaleChange]
-    );
-
-    const handleVerticalScaleDecrease = React.useCallback(
-        function handleVerticalScaleIncrease(): void {
-            setVerticalScale((prev) => {
-                const newVerticalScale = Math.max(0.1, prev - 0.1);
-                if (onVerticalScaleChange) {
-                    onVerticalScaleChange(newVerticalScale);
-                }
-                return newVerticalScale;
-            });
-        },
-        [onVerticalScaleChange]
-    );
-
-    const handleViewportChange = React.useCallback(
-        function handleViewportChange(viewport: Viewport) {
-            setViewport(viewport);
-            if (onViewportChange) {
-                onViewportChange(viewport);
-            }
-        },
-        [onViewportChange]
-    );
 
     function makeBounds() {
         let boundsSet: boolean = false;
@@ -503,33 +310,14 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
     return (
         <div className="relative h-full" ref={divRef}>
-            <EsvIntersection
-                showGrid={showGrid}
-                zFactor={verticalScale}
-                intersectionReferenceSystem={props.referenceSystem ?? undefined}
-                showAxes
-                axesOptions={{
-                    xLabel: "U",
-                    yLabel: "TVD",
-                    unitOfMeasure: "m",
-                }}
+            <ViewportWrapper
+                referenceSystem={props.referenceSystem ?? undefined}
                 layers={esvLayers}
                 bounds={makeBounds()}
-                viewport={viewport ?? undefined}
-                intersectionThreshold={50}
-                highlightItems={highlightItems}
-                onReadout={handleReadoutItemsChange}
-                onViewportChange={handleViewportChange}
-            />
-            <ReadoutBox readoutItems={readoutItems} />
-            <Toolbar
-                visible
-                zFactor={verticalScale}
-                gridVisible={showGrid}
-                onFitInView={handleFitInViewClick}
-                onGridLinesToggle={handleShowGridToggle}
-                onVerticalScaleIncrease={handleVerticalScaleIncrease}
-                onVerticalScaleDecrease={handleVerticalScaleDecrease}
+                viewport={viewport}
+                workbenchServices={props.workbenchServices}
+                viewContext={props.viewContext}
+                wellboreHeaderUuid={props.wellboreHeaderUuid}
             />
             <ColorLegendsContainer colorScales={colorScales} height={divSize.height / 2 - 50} />
         </div>

@@ -17,8 +17,9 @@ import {
     userSelectedSeismicDataTypeAtom,
     userSelectedSeismicDateOrIntervalStringAtom,
     userSelectedSeismicSurveyTypeAtom,
+    userSelectedWellboreUuidAtom,
 } from "./baseAtoms";
-import { gridModelInfosQueryAtom, seismicCubeMetaListQueryAtom } from "./queryAtoms";
+import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom, seismicCubeMetaListQueryAtom } from "./queryAtoms";
 
 export const availableRealizationsAtom = atom((get) => {
     const ensembleSet = get(EnsembleSetAtom);
@@ -272,4 +273,30 @@ export const selectedCustomIntersectionPolylineIdAtom = atom((get) => {
     }
 
     return userSelectedCustomIntersectionPolylineId;
+});
+
+export const selectedWellboreAtom = atom((get) => {
+    const userSelectedWellboreUuid = get(userSelectedWellboreUuidAtom);
+    const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
+
+    if (!wellboreHeaders.data) {
+        return null;
+    }
+
+    const userSelectedWellboreHeader = wellboreHeaders.data.find((el) => el.wellbore_uuid === userSelectedWellboreUuid);
+
+    if (!userSelectedWellboreUuid || !userSelectedWellboreHeader) {
+        if (wellboreHeaders.data.length === 0) {
+            return null;
+        }
+        return {
+            uuid: wellboreHeaders.data[0].wellbore_uuid,
+            identifier: wellboreHeaders.data[0].unique_wellbore_identifier,
+        };
+    }
+
+    return {
+        uuid: userSelectedWellboreUuid,
+        identifier: userSelectedWellboreHeader.unique_wellbore_identifier,
+    };
 });

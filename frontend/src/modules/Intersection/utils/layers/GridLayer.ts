@@ -1,7 +1,8 @@
 import { FenceMeshSection_api, Grid3dGeometry_api, Grid3dMappedProperty_api, PolylineIntersection_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { ColorScale } from "@lib/utils/ColorScale";
+import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
+import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import {
     b64DecodeFloatArrayToFloat32,
@@ -134,11 +135,13 @@ export type GridLayerSettings = {
     parameterDateOrInterval: string | null;
     realizationNum: number | null;
     polylineXyz: number[];
+    showMesh: boolean;
 };
 
 export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection_trans> {
     private _colorScalesParameterMap: Map<string, ColorScale> = new Map();
     private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
+    private _defaultColorScale: ColorScale;
 
     constructor(name: string, queryClient: QueryClient) {
         const defaultSettings = {
@@ -148,17 +151,32 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             parameterDateOrInterval: null,
             realizationNum: null,
             polylineXyz: [],
+            showMesh: false,
         };
         super(name, defaultSettings, queryClient);
+
+        this._defaultColorScale = new ColorScale({
+            colorPalette: defaultContinuousSequentialColorPalettes[0],
+            gradientType: ColorScaleGradientType.Sequential,
+            type: ColorScaleType.Continuous,
+            steps: 10,
+        });
     }
 
     getColorScale(): ColorScaleWithName {
-        const colorScale = this._colorScalesParameterMap.get(this._settings.parameterName ?? "") ?? this._colorScale;
-        return ColorScaleWithName.fromColorScale(colorScale, this._settings.parameterName ?? "");
+        let colorScale = this._defaultColorScale;
+        if (this._settings.parameterName !== null) {
+            colorScale = this._colorScalesParameterMap.get(this._settings.parameterName) ?? this._defaultColorScale;
+        }
+        return ColorScaleWithName.fromColorScale(colorScale, this._settings.parameterName ?? super.getName());
     }
 
     setColorScale(colorScale: ColorScale): void {
-        this.notifySubscribers(LayerTopic.COLORSCALE);
+        if (this._settings.parameterName === null) {
+            return;
+        }
+
+        this.notifySubscribers(LayerTopic.DATA);
         this._colorScalesParameterMap.set(this._settings.parameterName ?? "", colorScale);
     }
 
@@ -171,7 +189,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             this._settings.parameterName ?? "",
             useCustomColorScaleBoundaries
         );
-        this.notifySubscribers(LayerTopic.COLORSCALE);
+        this.notifySubscribers(LayerTopic.DATA);
     }
 
     protected areSettingsValid(): boolean {

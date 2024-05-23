@@ -183,11 +183,6 @@ export function Settings(
                     workbenchSettings={props.workbenchSettings}
                 />
             </CollapsibleGroup>
-            <CollapsibleGroup title="Visualization options" expanded>
-                <Label text="Show grid lines" position="left">
-                    <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
-                </Label>
-            </CollapsibleGroup>
         </div>
     );
 }

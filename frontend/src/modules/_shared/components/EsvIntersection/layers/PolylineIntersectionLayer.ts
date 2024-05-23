@@ -30,6 +30,11 @@ export type PolylineIntersectionData = {
     fenceMeshSections: FenceMeshSection[];
     minGridPropValue: number;
     maxGridPropValue: number;
+    gridDimensions: {
+        cellCountI: number;
+        cellCountJ: number;
+        cellCountK: number;
+    };
     extensionLengthStart?: number;
     hideGridlines?: boolean;
     colorScale: ColorScale;

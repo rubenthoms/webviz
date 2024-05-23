@@ -9,8 +9,10 @@ export type ReadoutBoxProps = {
 
 function additionalInformationItemToReadableString(key: string, value: unknown): string {
     switch (key) {
-        case AdditionalInformationKey.CELL_INDEX:
-            return `Cell index: ${(value as number).toFixed(0)}`;
+        case AdditionalInformationKey.IJK:
+            return `IJK: ${(value as [number, number, number])[0].toFixed(0)}, ${(
+                value as [number, number, number]
+            )[1].toFixed(0)}, ${(value as [number, number, number])[2].toFixed(0)}`;
         case AdditionalInformationKey.PROP_VALUE:
             return `Property value: ${(value as number).toFixed(2)}`;
         case AdditionalInformationKey.MD:

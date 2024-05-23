@@ -70,7 +70,9 @@ export function makeIntersectionCalculatorFromIntersectionItem(
 
 export function getColorFromLayerData(layer: Layer<unknown>, index: number): string {
     if (isSurfaceLayer(layer) && layer.data) {
-        return layer.data.lines[index].color.toString();
+        if (layer.data.lines && layer.data.lines[index] && layer.data.lines[index].color) {
+            return layer.data.lines[index].color.toString();
+        }
     }
 
     if (isPolylineIntersectionLayer(layer) && layer.data) {

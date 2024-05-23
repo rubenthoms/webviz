@@ -8,6 +8,7 @@ import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/W
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
+import { Switch } from "@lib/components/Switch";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { BoundingBox, useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
@@ -122,6 +123,11 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         props.layer.maybeUpdateSettings({ parameterDateOrInterval: selected });
     }
 
+    function handleShowMeshChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const showMesh = e.target.checked;
+        props.layer.maybeUpdateSettings({ showMesh });
+    }
+
     function handleColorScaleChange(newColorScale: ColorScale, areBoundariesUserDefined: boolean) {
         props.layer.setColorScale(newColorScale);
         props.layer.setUseCustomColorScaleBoundaries(areBoundariesUserDefined);
@@ -141,7 +147,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
     );
 
     return (
-        <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
+        <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
                 <div className="table-cell">Ensemble</div>
                 <div className="table-cell">
@@ -204,7 +210,13 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Color scale</div>
+                <div className="table-cell">Show mesh</div>
+                <div className="table-cell">
+                    <Switch checked={settings.showMesh} onChange={handleShowMeshChange} />
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell max-w-0">Color scale</div>
                 <div className="table-cell">
                     <ColorScaleSelector
                         colorScale={props.layer.getColorScale()}

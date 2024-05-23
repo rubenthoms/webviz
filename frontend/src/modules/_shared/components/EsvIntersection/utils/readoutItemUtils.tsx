@@ -1,6 +1,5 @@
-import React, { ReactNode } from "react";
-
 import { Casing, Cement, Completion, HoleSize, PAndA, Perforation, SchematicData } from "@equinor/esv-intersection";
+import { ijkFromCellIndex } from "@modules/_shared/utils/cellIndexUtils";
 
 import {
     isCalloutCanvasLayer,
@@ -120,8 +119,14 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
                 .slice(0, readoutItem.index)
                 .reduce((acc, section) => acc + section.polySourceCellIndicesArr.length, 0);
             infoObject[AdditionalInformationKey.GLOBAL_POLYGON_INDEX] = cellIndexOffset + readoutItem.polygonIndex;
-            infoObject[AdditionalInformationKey.CELL_INDEX] =
+            const cellIndex =
                 layer.data.fenceMeshSections[readoutItem.index].polySourceCellIndicesArr[readoutItem.polygonIndex];
+
+            infoObject[AdditionalInformationKey.IJK] = ijkFromCellIndex(
+                cellIndex,
+                layer.data.gridDimensions.cellCountI,
+                layer.data.gridDimensions.cellCountJ
+            );
 
             const propValue = layer.data.fenceMeshSections[readoutItem.index].polyPropsArr[readoutItem.polygonIndex];
             infoObject[AdditionalInformationKey.PROP_VALUE] = propValue;

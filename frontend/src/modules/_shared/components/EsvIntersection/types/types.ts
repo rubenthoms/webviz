@@ -127,7 +127,7 @@ export type LayerDataItem = {
 
 export enum AdditionalInformationKey {
     GLOBAL_POLYGON_INDEX = "polygon-index",
-    CELL_INDEX = "cell-index",
+    IJK = "ijk",
     PROP_VALUE = "prop-value",
     MD = "md",
     MEAN = "mean",
@@ -158,7 +158,7 @@ export type AdditionalInformation = {
     [AdditionalInformationKey.P90]?: number;
     [AdditionalInformationKey.P50]?: number;
     [AdditionalInformationKey.GLOBAL_POLYGON_INDEX]?: number;
-    [AdditionalInformationKey.CELL_INDEX]?: number;
+    [AdditionalInformationKey.IJK]?: [number, number, number];
     [AdditionalInformationKey.PROP_VALUE]?: number;
     [AdditionalInformationKey.MD]?: number;
     [AdditionalInformationKey.LABEL]?: string;

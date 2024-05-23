@@ -1,27 +1,17 @@
-import { ColorPalette } from "@lib/utils/ColorPalette";
-import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import {
     LAYER_TYPE_TO_STRING_MAPPING,
-    Layer,
     LayerActionType,
     LayerActions,
     LayerType,
-    SeismicDataType,
-    SeismicSurveyType,
 } from "@modules/Intersection/typesAndEnums";
 import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { SurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { Getter, WritableAtom, atom } from "jotai";
 import { queryClientAtom } from "jotai-tanstack-query";
-import { atomWithReducer } from "jotai/utils";
-import { cloneDeep } from "lodash";
-import { v4 } from "uuid";
-
-import { availableSeismicAttributesAtom, availableSeismicDateOrIntervalStringsAtom } from "./derivedAtoms";
-import { gridModelInfosQueryAtom } from "./queryAtoms";
 
 /*
 export const layersAccessAtom = atom<Layer[]>((get) => {
@@ -185,6 +175,8 @@ function makeLayer(type: LayerType, name: string, queryClient: QueryClient): Bas
             return new GridLayer(name, queryClient);
         case LayerType.SEISMIC:
             return new SeismicLayer(name, queryClient);
+        case LayerType.SURFACES:
+            return new SurfaceLayer(name, queryClient);
         default:
             throw new Error(`Layer type ${type} not supported`);
     }

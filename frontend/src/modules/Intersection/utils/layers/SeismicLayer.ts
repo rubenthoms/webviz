@@ -2,7 +2,8 @@ import { SeismicFenceData_api } from "@api";
 import { IntersectionReferenceSystem, generateSeismicSliceImage } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { ColorScale } from "@lib/utils/ColorScale";
+import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorPalettes";
+import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { SeismicDataType, SeismicSliceImageOptions, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
@@ -47,9 +48,11 @@ export type SeismicLayerSettings = {
 export type SeismicLayerData = {
     image: ImageBitmap | null;
     options: SeismicSliceImageOptions | null;
+    seismicFenceData: SeismicFenceData_trans;
 };
 
 export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerData> {
+    private _defaultColorScale: ColorScale;
     private _colorScalesParameterMap: Map<string, ColorScale> = new Map();
     private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
 
@@ -65,19 +68,55 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             dateOrInterval: null,
         };
         super(name, defaultSettings, queryClient);
+
+        this._defaultColorScale = new ColorScale({
+            colorPalette: defaultContinuousDivergingColorPalettes[0],
+            gradientType: ColorScaleGradientType.Diverging,
+            type: ColorScaleType.Continuous,
+            steps: 10,
+        });
+    }
+
+    private makeColorScaleAddress(): string | null {
+        if (this._settings.attribute === null) {
+            return null;
+        }
+        return `${this._settings.surveyType}-${this._settings.attribute ?? ""}`;
     }
 
     getColorScale(): ColorScaleWithName {
-        const colorScale = this._colorScalesParameterMap.get(this._settings.attribute ?? "") ?? this._colorScale;
-        return ColorScaleWithName.fromColorScale(colorScale, this._settings.attribute ?? "");
+        const addr = this.makeColorScaleAddress();
+        let colorScale = this._defaultColorScale;
+        if (addr !== null) {
+            colorScale = this._colorScalesParameterMap.get(addr) ?? this._defaultColorScale;
+        }
+        return ColorScaleWithName.fromColorScale(colorScale, this._settings.attribute ?? super.getName());
     }
 
     setColorScale(colorScale: ColorScale): void {
-        this.notifySubscribers(LayerTopic.COLORSCALE);
-        this._colorScalesParameterMap.set(this._settings.attribute ?? "", colorScale);
+        const addr = this.makeColorScaleAddress();
+
+        if (addr === null) {
+            return;
+        }
+
+        this.notifySubscribers(LayerTopic.DATA);
+        this._colorScalesParameterMap.set(addr, colorScale);
+
+        if (!this._data) {
+            return;
+        }
+
+        /*
+        When already loading, we don't want to update the seismic image with the old data set
+        */
+        if (this._status === LayerStatus.LOADING) {
+            return;
+        }
+
         this._status = LayerStatus.LOADING;
         this.notifySubscribers(LayerTopic.STATUS);
-        this.fetchData()
+        this.generateImage(this._data.seismicFenceData)
             .then((data) => {
                 this._data = data;
                 this.notifySubscribers(LayerTopic.DATA);
@@ -99,7 +138,7 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             this._settings.attribute ?? "",
             useCustomColorScaleBoundaries
         );
-        this.notifySubscribers(LayerTopic.COLORSCALE);
+        this.notifySubscribers(LayerTopic.DATA);
     }
 
     protected areSettingsValid(): boolean {
@@ -110,6 +149,46 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             this._settings.attribute !== null &&
             this._settings.dateOrInterval !== null
         );
+    }
+
+    private async generateImage(data: SeismicFenceData_trans): Promise<SeismicLayerData> {
+        const datapoints = createSeismicSliceImageDatapointsArrayFromFenceData(data);
+        const yAxisValues = createSeismicSliceImageYAxisValuesArrayFromFenceData(data);
+
+        if (this._settings.intersectionReferenceSystem === null) {
+            throw new Error("No intersection reference system set");
+        }
+
+        const trajectory = this._settings.intersectionReferenceSystem.getExtendedTrajectory(
+            data.num_traces,
+            this._settings.extensionLength,
+            this._settings.extensionLength
+        );
+        const trajectoryXyProjection = IntersectionReferenceSystem.toDisplacement(trajectory.points, trajectory.offset);
+
+        const options: SeismicSliceImageOptions = {
+            datapoints,
+            yAxisValues,
+            trajectory: trajectoryXyProjection,
+            colorScale: this.getColorScale(),
+        };
+        const colormap = options.colorScale.getColorPalette().getColors();
+
+        const image = await generateSeismicSliceImage({ ...options }, options.trajectory, colormap, {
+            isLeftToRight: true,
+        })
+            .then((result) => {
+                return result ?? null;
+            })
+            .catch(() => {
+                return null;
+            });
+
+        return {
+            image,
+            options,
+            seismicFenceData: data,
+        };
     }
 
     protected async fetchData(): Promise<SeismicLayerData> {
@@ -154,45 +233,7 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             })
             .then((data) => transformSeismicFenceData(data))
             .then(async (data) => {
-                const datapoints = createSeismicSliceImageDatapointsArrayFromFenceData(data);
-                const yAxisValues = createSeismicSliceImageYAxisValuesArrayFromFenceData(data);
-
-                if (this._settings.intersectionReferenceSystem === null) {
-                    throw new Error("No intersection reference system set");
-                }
-
-                const trajectory = this._settings.intersectionReferenceSystem.getExtendedTrajectory(
-                    data.num_traces,
-                    this._settings.extensionLength,
-                    this._settings.extensionLength
-                );
-                const trajectoryXyProjection = IntersectionReferenceSystem.toDisplacement(
-                    trajectory.points,
-                    trajectory.offset
-                );
-
-                const options: SeismicSliceImageOptions = {
-                    datapoints,
-                    yAxisValues,
-                    trajectory: trajectoryXyProjection,
-                    colorScale: this.getColorScale(),
-                };
-                const colormap = options.colorScale.getColorPalette().getColors();
-
-                const image = await generateSeismicSliceImage({ ...options }, options.trajectory, colormap, {
-                    isLeftToRight: true,
-                })
-                    .then((result) => {
-                        return result ?? null;
-                    })
-                    .catch(() => {
-                        return null;
-                    });
-
-                return {
-                    image,
-                    options,
-                };
+                return this.generateImage(data);
             });
     }
 }

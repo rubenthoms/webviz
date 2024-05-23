@@ -1,13 +1,20 @@
 import React from "react";
 
 import { WellboreCasing_api } from "@api";
-import { Casing, IntersectionReferenceSystem, getSeismicInfo, getSeismicOptions } from "@equinor/esv-intersection";
+import {
+    Casing,
+    IntersectionReferenceSystem,
+    SurfaceData,
+    getSeismicInfo,
+    getSeismicOptions,
+} from "@equinor/esv-intersection";
 import { IntersectionType } from "@framework/types/intersection";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { BaseLayer, useLayers } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
 import {
     EsvIntersection,
     EsvIntersectionReadoutEvent,
@@ -26,14 +33,8 @@ import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 export type IntersectionProps = {
     referenceSystem: IntersectionReferenceSystem | null;
     layers: BaseLayer<any, any>[];
-    // combinedPolylineIntersectionResults: CombinedPolylineIntersectionResults;
-    // polylineIntersectionData: PolylineIntersection_trans | null;
-    // seismicSliceImageData: SeismicSliceImageData | null;
     wellboreCasingData: WellboreCasing_api[] | null;
-    // gridBoundingBox3d: BoundingBox3d_api | null;
-    // colorScale: ColorScale;
     intersectionExtensionLength: number;
-    showGridLines: boolean;
     hoveredMd: number | null;
     onReadout: (event: EsvIntersectionReadoutEvent) => void;
     onViewportChange?: (viewport: Viewport) => void;
@@ -314,6 +315,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
     );
 
     function makeBounds() {
+        let boundsSet: boolean = false;
         const bounds: { x: [number, number]; y: [number, number] } = {
             x: [Number.MAX_VALUE, Number.MIN_VALUE],
             y: [Number.MAX_VALUE, Number.MIN_VALUE],
@@ -323,9 +325,10 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             if (boundingBox) {
                 bounds.x = [Math.min(bounds.x[0], boundingBox.x[0]), Math.max(bounds.x[1], boundingBox.x[1])];
                 bounds.y = [Math.min(bounds.y[0], boundingBox.y[0]), Math.max(bounds.y[1], boundingBox.y[1])];
+                boundsSet = true;
             }
         }
-        if (layers.length === 0 && props.referenceSystem) {
+        if (!boundsSet && props.referenceSystem) {
             const firstPoint = props.referenceSystem.projectedPath[0];
             const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
             const xMax = Math.max(firstPoint[0], lastPoint[0]);
@@ -335,9 +338,10 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
 
             bounds.x = [xMin, xMax];
             bounds.y = [yMin, yMax];
+            boundsSet = true;
         }
-        if (layers.length === 0) {
-            bounds.x = [-1000, 1000];
+        if (!boundsSet) {
+            bounds.x = [-2000, 2000];
             bounds.y = [0, 1000];
         }
         return bounds;
@@ -363,7 +367,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             }
 
             esvLayers.push({
-                id: "intersection",
+                id: layer.getId(),
                 type: LayerType.POLYLINE_INTERSECTION,
                 hoverable: true,
                 options: {
@@ -399,8 +403,13 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                         minGridPropValue: data.min_grid_prop_value,
                         maxGridPropValue: data.max_grid_prop_value,
                         colorScale: colorScale,
-                        hideGridlines: !props.showGridLines,
+                        hideGridlines: !gridLayer.getSettings().showMesh,
                         extensionLengthStart: props.intersectionExtensionLength,
+                        gridDimensions: {
+                            cellCountI: data.grid_dimensions.i_count,
+                            cellCountJ: data.grid_dimensions.j_count,
+                            cellCountK: data.grid_dimensions.k_count,
+                        },
                     },
                     order: index,
                 },
@@ -432,7 +441,7 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
             }
 
             esvLayers.push({
-                id: "seismic",
+                id: layer.getId(),
                 type: LayerType.SEISMIC_CANVAS,
                 options: {
                     data: {
@@ -445,6 +454,51 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 },
             });
         }
+
+        if (isSurfaceLayer(layer)) {
+            const surfaceLayer = layer;
+            const data = surfaceLayer.getData();
+
+            if (!data) {
+                continue;
+            }
+
+            const colorSet = surfaceLayer.getColorSet();
+
+            let currentColor = colorSet.getFirstColor();
+            const surfaceData: SurfaceData = {
+                areas: [],
+                lines: data.map((surface) => {
+                    const color = currentColor;
+                    currentColor = colorSet.getNextColor();
+                    return {
+                        data: surface.cum_lengths.map((el, index) => [el, surface.z_points[index]]),
+                        color: color,
+                        id: surface.name,
+                        label: surface.name,
+                    };
+                }),
+            };
+
+            esvLayers.push({
+                id: `${layer.getId()}-surfaces`,
+                type: LayerType.GEOMODEL_CANVAS,
+                hoverable: true,
+                options: {
+                    data: surfaceData,
+                    order: index,
+                },
+            });
+
+            esvLayers.push({
+                id: `${layer.getId()}-surfaces-labels`,
+                type: LayerType.GEOMODEL_LABELS,
+                options: {
+                    data: surfaceData,
+                    order: index,
+                },
+            });
+        }
     }
 
     return (
@@ -454,6 +508,11 @@ export function Intersection(props: IntersectionProps): React.ReactNode {
                 zFactor={verticalScale}
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
+                axesOptions={{
+                    xLabel: "U",
+                    yLabel: "TVD",
+                    unitOfMeasure: "m",
+                }}
                 layers={esvLayers}
                 bounds={makeBounds()}
                 viewport={viewport ?? undefined}

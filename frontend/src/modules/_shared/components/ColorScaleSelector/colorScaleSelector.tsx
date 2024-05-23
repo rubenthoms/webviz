@@ -173,13 +173,6 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
         [colorScale, onChange]
     );
 
-    React.useEffect(
-        function handleMount() {
-            onChange(colorScale, areBoundariesUserDefined);
-        },
-        [onChange]
-    );
-
     return (
         <div className="flex flex-col gap-4">
             <RadioGroup

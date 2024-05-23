@@ -73,9 +73,7 @@ export function View(
 
     const syncedVerticalScale = syncHelper.useValue(SyncSettingKey.VERTICAL_SCALE, "global.syncValue.verticalScale");
 
-    const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
     const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
-    const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
     const gridModelParameterName = props.viewContext.useSettingsToViewInterfaceValue("gridModelParameterName");
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
@@ -98,23 +96,6 @@ export function View(
             gridModelParameterDateOrInterval ?? "-"
         } (${ensembleName})`
     );
-
-    const polylineUtmXy = props.viewContext.useViewAtomValue("polylineAtom");
-
-    /*
-    // Polyline intersection query
-    const polylineIntersectionQuery = useGridPolylineIntersectionQuery(
-        ensembleIdent ?? null,
-        gridModelName,
-        gridModelParameterName,
-        gridModelParameterDateOrInterval,
-        realization,
-        polylineUtmXy
-    );
-    if (polylineIntersectionQuery.isError) {
-        statusWriter.addError(polylineIntersectionQuery.error.message);
-    }
-    */
 
     // Status messages
     for (const status of layersStatuses) {
@@ -192,13 +173,7 @@ export function View(
             <Intersection
                 referenceSystem={intersectionReferenceSystem}
                 layers={layers}
-                // combinedPolylineIntersectionResults={combinedPolylineIntersectionResults}
-                //polylineIntersectionData={polylineIntersectionQuery.data ?? null}
                 wellboreCasingData={wellboreCasingQuery.data ?? null}
-                //seismicSliceImageData={showSeismic ? seismicSliceImageData : null}
-                //gridBoundingBox3d={gridModelBoundingBox3d}
-                //colorScale={colorScale}
-                showGridLines={showGridLines}
                 intersectionExtensionLength={potentialIntersectionExtensionLength}
                 hoveredMd={hoveredMd}
                 onReadout={handleReadout}

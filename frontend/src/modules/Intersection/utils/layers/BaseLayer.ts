@@ -1,8 +1,5 @@
 import React from "react";
 
-import { ColorPalette } from "@lib/utils/ColorPalette";
-import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
-import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 
 import { cloneDeep, isEqual } from "lodash";
@@ -21,7 +18,6 @@ export enum LayerTopic {
     DATA = "DATA",
     STATUS = "STATUS",
     VISIBILITY = "VISIBILITY",
-    COLORSCALE = "COLORSCALE",
 }
 
 export type BoundingBox = {
@@ -41,38 +37,15 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     private _id: string;
     private _name: string;
     private _isVisible: boolean = true;
-    protected _colorScale: ColorScale;
     private _boundingBox: BoundingBox | null = null;
     protected _data: TData | null = null;
     protected _settings: TSettings = {} as TSettings;
-    private _useCustomColorScaleBoundaries: boolean = false;
 
     constructor(name: string, settings: TSettings, queryClient: QueryClient) {
         this._id = v4();
         this._name = name;
         this._settings = settings;
         this._queryClient = queryClient;
-
-        this._colorScale = new ColorScale({
-            colorPalette: new ColorPalette({
-                name: "Blue to Yellow",
-                colors: [
-                    "#115f9a",
-                    "#1984c5",
-                    "#22a7f0",
-                    "#48b5c4",
-                    "#76c68f",
-                    "#a6d75b",
-                    "#c9e52f",
-                    "#d0ee11",
-                    "#f4f100",
-                ],
-                id: "blue-to-yellow",
-            }),
-            gradientType: ColorScaleGradientType.Sequential,
-            type: ColorScaleType.Continuous,
-            steps: 10,
-        });
     }
 
     getId(): string {
@@ -111,23 +84,6 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     setIsVisible(isVisible: boolean): void {
         this._isVisible = isVisible;
         this.notifySubscribers(LayerTopic.VISIBILITY);
-    }
-
-    getColorScale(): ColorScaleWithName {
-        return ColorScaleWithName.fromColorScale(this._colorScale, this._name);
-    }
-
-    getUseCustomColorScaleBoundaries(): boolean {
-        return this._useCustomColorScaleBoundaries;
-    }
-
-    setUseCustomColorScaleBoundaries(useCustomColorScaleBoundaries: boolean): void {
-        this._useCustomColorScaleBoundaries = useCustomColorScaleBoundaries;
-    }
-
-    setColorScale(colorScale: ColorScale) {
-        this._colorScale = colorScale;
-        this.notifySubscribers(LayerTopic.COLORSCALE);
     }
 
     getData(): TData | null {
@@ -271,8 +227,7 @@ export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] 
             for (const layer of layers) {
                 const unsubscribeData = layer.subscribe(LayerTopic.DATA, handleLayerChange);
                 const unsubscribeVisibility = layer.subscribe(LayerTopic.VISIBILITY, handleLayerChange);
-                const unsubscribeColorScale = layer.subscribe(LayerTopic.COLORSCALE, handleLayerChange);
-                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility, unsubscribeColorScale);
+                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility);
             }
 
             return () => {

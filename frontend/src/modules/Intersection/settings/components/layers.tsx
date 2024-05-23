@@ -24,6 +24,7 @@ import {
 } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
+import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
     Add,
@@ -43,6 +44,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 
 import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
 import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
+import { SurfaceLayerSettingsComponent } from "./layerSettings/surfaceLayer";
 
 import { layersAtom } from "../atoms/layersAtoms";
 
@@ -294,6 +296,16 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}
                     layer={layer as SeismicLayer}
+                />
+            );
+        }
+        if (isSurfaceLayer(layer)) {
+            return (
+                <SurfaceLayerSettingsComponent
+                    ensembleSet={props.ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
+                    layer={layer}
                 />
             );
         }

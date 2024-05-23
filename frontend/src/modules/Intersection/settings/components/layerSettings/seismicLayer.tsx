@@ -21,6 +21,7 @@ import {
 import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import { SeismicLayer, SeismicLayerSettings } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
+import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { useQuery } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
@@ -155,7 +156,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
     }
 
     return (
-        <div className="table text-sm border-spacing-y-2 border-spacing-x-3">
+        <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
                 <div className="table-cell">Ensemble</div>
                 <div className="table-cell">
@@ -277,7 +278,9 @@ function makeAttributeOptions(availableSeismicAttributes: string[]): SelectOptio
 
 function makeDateOrIntervalStringOptions(availableSeismicDateOrIntervalStrings: string[]): SelectOption[] {
     return availableSeismicDateOrIntervalStrings.map((dateOrInterval) => ({
-        label: dateOrInterval,
+        label: dateOrInterval.includes("/")
+            ? isoIntervalStringToDateLabel(dateOrInterval)
+            : isoStringToDateLabel(dateOrInterval),
         value: dateOrInterval,
     }));
 }

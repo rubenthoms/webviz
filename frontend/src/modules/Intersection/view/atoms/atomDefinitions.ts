@@ -1,36 +1,18 @@
-import { IntersectionReferenceSystem, Layer } from "@equinor/esv-intersection";
-import { apiService } from "@framework/ApiService";
+import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleAtoms } from "@framework/Module";
 import { UniDirectionalSettingsToViewInterface } from "@framework/UniDirectionalSettingsToViewInterface";
 import { IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
-import { atomWithQueries } from "@framework/utils/atomUtils";
-import { transformSeismicFenceData } from "@modules/Intersection/queryDataTransforms";
 import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
-import {
-    CombinedPolylineIntersectionResults,
-    GridLayer,
-    LayerType,
-    SeismicDataType,
-    SeismicSliceImageOptions,
-} from "@modules/Intersection/typesAndEnums";
 import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
-import { SeismicFenceData_trans } from "@modules/SeismicIntersection/utils/queryDataTransforms";
+import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
-import { QueryObserverResult, UseQueryResult } from "@tanstack/react-query";
 
 import { atom } from "jotai";
-import { atomWithQuery } from "jotai-tanstack-query";
 
 import { wellboreTrajectoryQueryAtom } from "./queryAtoms";
-
-import { PolylineIntersection_trans, transformPolylineIntersection } from "../queries/queryDataTransforms";
-import {
-    createSeismicSliceImageDatapointsArrayFromFenceData,
-    createSeismicSliceImageYAxisValuesArrayFromFenceData,
-} from "../utils/seismicDataConversion";
 
 export type ViewAtoms = {
     layers: BaseLayer<any, any>[];
@@ -40,9 +22,6 @@ export type ViewAtoms = {
     polylineAtom: number[];
     //polylineIntersectionQueriesAtom: CombinedPolylineIntersectionResults;
 };
-
-const STALE_TIME = 60 * 1000;
-const CACHE_TIME = 60 * 1000;
 
 export function viewAtomsInitialization(
     settingsToViewInterface: UniDirectionalSettingsToViewInterface<SettingsToViewInterface>
@@ -138,6 +117,9 @@ export function viewAtomsInitialization(
                 layer.maybeUpdateSettings({ polylineXyz: polyline });
             }
             if (isSeismicLayer(layer)) {
+                layer.maybeUpdateSettings({ intersectionReferenceSystem, extensionLength });
+            }
+            if (isSurfaceLayer(layer)) {
                 layer.maybeUpdateSettings({ intersectionReferenceSystem, extensionLength });
             }
         }

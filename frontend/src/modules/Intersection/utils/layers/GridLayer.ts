@@ -3,6 +3,7 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { pointDistance } from "@lib/utils/geometry";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import {
     b64DecodeFloatArrayToFloat32,
@@ -11,7 +12,7 @@ import {
 } from "@modules/_shared/base64";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer, LayerTopic } from "./BaseLayer";
+import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
 // Data structure for the transformed GridSurface data
 // Removes the base64 encoded data and replaces them with typed arrays
@@ -136,6 +137,7 @@ export type GridLayerSettings = {
     realizationNum: number | null;
     polylineXyz: number[];
     showMesh: boolean;
+    extensionLength: number;
 };
 
 export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection_trans> {
@@ -152,6 +154,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             realizationNum: null,
             polylineXyz: [],
             showMesh: false,
+            extensionLength: 0,
         };
         super(name, defaultSettings, queryClient);
 
@@ -178,6 +181,38 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
 
         this.notifySubscribers(LayerTopic.DATA);
         this._colorScalesParameterMap.set(this._settings.parameterName ?? "", colorScale);
+    }
+
+    getBoundingBox(): BoundingBox | null {
+        const bbox = super.getBoundingBox();
+        if (this._data === null || bbox === null) {
+            return null;
+        }
+
+        let minX = -this._settings.extensionLength;
+        let maxX = -this._settings.extensionLength;
+        let minY = Number.MAX_VALUE;
+        let maxY = Number.MIN_VALUE;
+
+        for (const section of this._data.fenceMeshSections) {
+            const uVectorLength = pointDistance(
+                {
+                    x: section.start_utm_x,
+                    y: section.start_utm_y,
+                },
+                {
+                    x: section.end_utm_x,
+                    y: section.end_utm_y,
+                }
+            );
+            maxX += uVectorLength;
+        }
+
+        return {
+            x: [minX, maxX],
+            y: bbox.y,
+            z: bbox.z,
+        };
     }
 
     getUseCustomColorScaleBoundaries(): boolean {

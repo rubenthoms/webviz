@@ -4,12 +4,19 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
-import { SeismicDataType, SeismicSliceImageOptions, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
+import { SeismicDataType, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
 import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer, LayerStatus, LayerTopic } from "./BaseLayer";
+import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "./BaseLayer";
+
+export type SeismicSliceImageOptions = {
+    datapoints: number[][];
+    yAxisValues: number[];
+    trajectory: number[][];
+    colorScale: ColorScale;
+};
 
 // Data structure for transformed data
 // Remove the base64 encoded data and replace with a Float32Array
@@ -47,7 +54,7 @@ export type SeismicLayerSettings = {
 
 export type SeismicLayerData = {
     image: ImageBitmap | null;
-    options: SeismicSliceImageOptions | null;
+    options: SeismicSliceImageOptions;
     seismicFenceData: SeismicFenceData_trans;
 };
 
@@ -100,8 +107,8 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             return;
         }
 
-        this.notifySubscribers(LayerTopic.DATA);
         this._colorScalesParameterMap.set(addr, colorScale);
+        this.notifySubscribers(LayerTopic.DATA);
 
         if (!this._data) {
             return;
@@ -141,6 +148,30 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
         this.notifySubscribers(LayerTopic.DATA);
     }
 
+    getBoundingBox(): BoundingBox | null {
+        if (!this._data) {
+            return null;
+        }
+
+        const xMin =
+            this._data.options.trajectory.reduce((acc: number, val: number[]) => Math.min(acc, val[0]!), 0) -
+            this._settings.extensionLength;
+        const xMax =
+            this._data.options.trajectory.reduce((acc: number, val: number[]) => Math.max(acc, val[0]!), 0) -
+            this._settings.extensionLength;
+
+        const minTvdMsl = this._data.options.yAxisValues && this._data.options.yAxisValues[0]!;
+        const maxTvdMsl =
+            this._data.options.yAxisValues &&
+            this._data.options.yAxisValues[this._data.options.yAxisValues.length - 1]!;
+
+        return {
+            x: [xMin, xMax],
+            y: [minTvdMsl, maxTvdMsl],
+            z: [this._data.seismicFenceData.min_fence_depth, this._data.seismicFenceData.max_fence_depth],
+        };
+    }
+
     protected areSettingsValid(): boolean {
         return (
             this._settings.ensembleIdent !== null &&
@@ -172,10 +203,12 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             trajectory: trajectoryXyProjection,
             colorScale: this.getColorScale(),
         };
-        const colormap = options.colorScale.getColorPalette().getColors();
+        const colormap = options.colorScale.sampleColors(options.colorScale.getNumSteps() || 10);
 
         const image = await generateSeismicSliceImage({ ...options }, options.trajectory, colormap, {
             isLeftToRight: true,
+            seismicMin: this.getUseCustomColorScaleBoundaries() ? options.colorScale.getMin() : undefined,
+            seismicMax: this.getUseCustomColorScaleBoundaries() ? options.colorScale.getMax() : undefined,
         })
             .then((result) => {
                 return result ?? null;

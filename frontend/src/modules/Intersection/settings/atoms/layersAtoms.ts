@@ -8,6 +8,7 @@ import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { SurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
+import { WellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { Getter, WritableAtom, atom } from "jotai";
@@ -177,6 +178,8 @@ function makeLayer(type: LayerType, name: string, queryClient: QueryClient): Bas
             return new SeismicLayer(name, queryClient);
         case LayerType.SURFACES:
             return new SurfaceLayer(name, queryClient);
+        case LayerType.WELLPICKS:
+            return new WellpicksLayer(name, queryClient);
         default:
             throw new Error(`Layer type ${type} not supported`);
     }

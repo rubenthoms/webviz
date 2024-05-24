@@ -33,17 +33,6 @@ export const SeismicSurveyTypeToStringMapping = {
     [SeismicSurveyType.FOUR_D]: "4D",
 };
 
-export type SeismicSliceImageOptions = {
-    datapoints: number[][];
-    yAxisValues: number[];
-    trajectory: number[][];
-    colorScale: ColorScale;
-};
-
-export type SeismicSliceImageData = SeismicSliceImageOptions & {
-    image: ImageBitmap | null;
-};
-
 export enum LayerType {
     GRID = "grid",
     SEISMIC = "seismic",

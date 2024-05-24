@@ -25,6 +25,7 @@ import {
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
+import { isWellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
 import { Dropdown, MenuButton } from "@mui/base";
 import {
     Add,
@@ -45,6 +46,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
 import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
 import { SurfaceLayerSettingsComponent } from "./layerSettings/surfaceLayer";
+import { WellpicksLayerSettingsComponent } from "./layerSettings/wellpicksLayer";
 
 import { layersAtom } from "../atoms/layersAtoms";
 
@@ -202,12 +204,13 @@ export function Layers(props: LayersProps): React.ReactNode {
                 <div className="flex-grow font-bold text-sm">Layers</div>
                 <Dropdown>
                     <MenuButton>
-                        <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded">
+                        <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
                             <Add fontSize="inherit" />
+                            <span>Add layer</span>
                             <ArrowDropDown fontSize="inherit" />
                         </div>
                     </MenuButton>
-                    <Menu anchorOrigin="bottom-start" className="text-sm p-1">
+                    <Menu anchorOrigin="bottom-end" className="text-sm p-1">
                         {Object.keys(LAYER_TYPE_TO_STRING_MAPPING).map((layerType, index) => {
                             return (
                                 <MenuItem
@@ -308,6 +311,16 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
         if (isSurfaceLayer(layer)) {
             return (
                 <SurfaceLayerSettingsComponent
+                    ensembleSet={props.ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
+                    layer={layer}
+                />
+            );
+        }
+        if (isWellpicksLayer(layer)) {
+            return (
+                <WellpicksLayerSettingsComponent
                     ensembleSet={props.ensembleSet}
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}

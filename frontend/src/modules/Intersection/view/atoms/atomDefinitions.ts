@@ -8,6 +8,7 @@ import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
+import { isWellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 
 import { atom } from "jotai";
@@ -108,6 +109,8 @@ export function viewAtomsInitialization(
 
     const layers = atom((get) => {
         const layers = get(settingsToViewInterface.getAtom("layers"));
+        const ensembleIdent = get(settingsToViewInterface.getAtom("ensembleIdent"));
+        const wellbore = get(settingsToViewInterface.getAtom("wellboreHeader"));
         const polyline = get(polylineAtom);
         const intersectionReferenceSystem = get(intersectionReferenceSystemAtom);
         const extensionLength = get(settingsToViewInterface.getAtom("intersectionExtensionLength"));
@@ -121,6 +124,9 @@ export function viewAtomsInitialization(
             }
             if (isSurfaceLayer(layer)) {
                 layer.maybeUpdateSettings({ intersectionReferenceSystem, extensionLength });
+            }
+            if (isWellpicksLayer(layer)) {
+                layer.maybeUpdateSettings({ ensembleIdent, wellboreUuid: wellbore?.uuid });
             }
         }
 

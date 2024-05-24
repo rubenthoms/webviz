@@ -132,7 +132,11 @@ export const ColorPaletteSelector: React.FC<ColorPaletteSelectorProps> = (props)
         ));
     }
 
-    const marginTop = Math.max(-boundingRect.top, convertRemToPixels((-(props.colorPalettes.length - 1) * 3) / 2));
+    const height = convertRemToPixels(props.colorPalettes.length * 3);
+    let marginTop = Math.max(-boundingRect.top, convertRemToPixels((-(props.colorPalettes.length - 1) * 3) / 2));
+    if (boundingRect.top - marginTop + height > window.innerHeight) {
+        marginTop = -(boundingRect.top + height - window.innerHeight + 8);
+    }
 
     return (
         <div className="bg-slate-100 rounded p-2 flex items-center gap-4" ref={ref}>

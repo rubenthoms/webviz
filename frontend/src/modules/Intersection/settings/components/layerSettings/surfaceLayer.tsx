@@ -1,6 +1,6 @@
 import React from "react";
 
-import { SurfaceMeta_api } from "@api";
+import { SurfaceAttributeType_api, SurfaceMeta_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
@@ -60,7 +60,15 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
     const availableAttributes: string[] = [];
 
     if (surfaceDirectoryQuery.data) {
-        availableAttributes.push(...Array.from(new Set(surfaceDirectoryQuery.data.map((el) => el.attribute_name))));
+        availableAttributes.push(
+            ...Array.from(
+                new Set(
+                    surfaceDirectoryQuery.data
+                        .filter((el) => el.attribute_type === SurfaceAttributeType_api.DEPTH)
+                        .map((el) => el.attribute_name)
+                )
+            )
+        );
 
         const fixupAttribute = fixupSetting(
             "attribute",

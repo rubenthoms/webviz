@@ -12,6 +12,7 @@ import { ColorPaletteSelector, ColorPaletteSelectorType } from "@lib/components/
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Select } from "@lib/components/Select";
+import { Switch } from "@lib/components/Switch";
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
@@ -31,11 +32,35 @@ export type WellpicksLayerSettingsComponentProps = {
 export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsComponentProps> = (props) => {
     const settings = useLayerSettings(props.layer);
 
+    function handleToggleFilterPicks(e: React.ChangeEvent<HTMLInputElement>) {
+        const checked = e.target.checked;
+        props.layer.maybeUpdateSettings({ filterPicks: checked });
+    }
+
+    function handlePickSelectionChange(selectedPicks: string[]) {
+        props.layer.maybeUpdateSettings({ selectedPicks });
+    }
+
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell">Well picks</div>
-                <div className="table-cell"></div>
+                <div className="table-cell">Filter picks</div>
+                <div className="table-cell">
+                    <Switch checked={settings.filterPicks} onChange={handleToggleFilterPicks} />
+                    <Select
+                        options={
+                            props.layer.getData()?.wellbore_picks.map((el) => ({
+                                label: el.pickIdentifier,
+                                value: el.pickIdentifier,
+                            })) ?? []
+                        }
+                        value={settings.selectedPicks}
+                        onChange={handlePickSelectionChange}
+                        multiple
+                        size={5}
+                        disabled={!settings.filterPicks}
+                    />
+                </div>
             </div>
         </div>
     );
@@ -43,19 +68,6 @@ export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsCom
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
-
-export function useSurfaceDirectoryQuery(
-    caseUuid: string | undefined,
-    ensembleName: string | undefined
-): UseQueryResult<SurfaceMeta_api[]> {
-    return useQuery({
-        queryKey: ["getSurfaceDirectory", caseUuid, ensembleName],
-        queryFn: () => apiService.surface.getSurfaceDirectory(caseUuid ?? "", ensembleName ?? ""),
-        staleTime: STALE_TIME,
-        gcTime: CACHE_TIME,
-        enabled: caseUuid && ensembleName ? true : false,
-    });
-}
 
 function fixupSetting<TSettings extends WellpicksLayerSettings, TKey extends keyof WellpicksLayerSettings>(
     setting: TKey,

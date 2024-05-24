@@ -14,6 +14,7 @@ const CACHE_TIME = 60 * 1000;
 export type WellpicksLayerSettings = {
     wellboreUuid: string | null;
     ensembleIdent: EnsembleIdent | null;
+    filterPicks: boolean;
     selectedPicks: string[];
 };
 
@@ -22,6 +23,7 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePi
         const defaultSettings = {
             ensembleIdent: null,
             wellboreUuid: null,
+            filterPicks: false,
             selectedPicks: [],
         };
         super(name, defaultSettings, queryClient);

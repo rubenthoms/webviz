@@ -33,6 +33,24 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePi
         return this._settings.ensembleIdent !== null && this._settings.wellboreUuid !== null;
     }
 
+    getData(): WellborePicksAndStratigraphicUnits_api | null {
+        const data = super.getData();
+        if (data === null) {
+            return null;
+        }
+
+        if (this._settings.filterPicks) {
+            return {
+                ...data,
+                wellbore_picks: data.wellbore_picks.filter((pick) =>
+                    this._settings.selectedPicks.includes(pick.pickIdentifier)
+                ),
+            };
+        }
+
+        return data;
+    }
+
     protected async fetchData(): Promise<WellborePicksAndStratigraphicUnits_api> {
         return this._queryClient.fetchQuery({
             queryKey: [

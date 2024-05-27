@@ -8,6 +8,7 @@ import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/W
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
+import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Switch } from "@lib/components/Switch";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
@@ -60,9 +61,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         );
         if (!isEqual(fixupGridModelName, settings.gridModelName)) {
             props.layer.maybeUpdateSettings({ gridModelName: fixupGridModelName });
-            if (fixupGridModelName) {
-                updateBoundingBox(fixupGridModelName);
-            }
         }
 
         const gridModelInfo = gridModelInfosQuery.data.find((info) => info.grid_name === settings.gridModelName);
@@ -90,18 +88,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         }
     }
 
-    function updateBoundingBox(gridModelName: string) {
-        const gridModelInfo = gridModelInfosQuery.data?.find((info) => info.grid_name === gridModelName) ?? null;
-        if (gridModelInfo) {
-            const boundingBox: BoundingBox = {
-                x: [gridModelInfo.bbox.xmin, gridModelInfo.bbox.xmax],
-                y: [gridModelInfo.bbox.ymin, gridModelInfo.bbox.ymax],
-                z: [gridModelInfo.bbox.zmin, gridModelInfo.bbox.zmax],
-            };
-            props.layer.setBoundingBox(boundingBox);
-        }
-    }
-
     function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {
         props.layer.maybeUpdateSettings({ ensembleIdent });
     }
@@ -112,7 +98,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
 
     function handleGridModelSelectionChange(selected: string) {
         props.layer.maybeUpdateSettings({ gridModelName: selected });
-        updateBoundingBox(selected);
     }
 
     function handleGridParameterSelectionChange(selected: string) {
@@ -146,6 +131,11 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         datesOrIntervalsForSelectedParameter
     );
 
+    let gridModelInfosQueryErrorMessage = "";
+    if (gridModelInfosQuery.isError) {
+        gridModelInfosQueryErrorMessage = gridModelInfosQuery.error.message;
+    }
+
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
@@ -172,23 +162,33 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
             <div className="table-row">
                 <div className="table-cell align-center">Model</div>
                 <div className="table-cell">
-                    <Dropdown
-                        options={makeGridModelOptions(gridModelInfosQuery.data ?? [])}
-                        value={settings.gridModelName ?? undefined}
-                        onChange={handleGridModelSelectionChange}
-                        showArrows
-                    />
+                    <PendingWrapper
+                        isPending={gridModelInfosQuery.isFetching}
+                        errorMessage={gridModelInfosQueryErrorMessage}
+                    >
+                        <Dropdown
+                            options={makeGridModelOptions(gridModelInfosQuery.data ?? [])}
+                            value={settings.gridModelName ?? undefined}
+                            onChange={handleGridModelSelectionChange}
+                            showArrows
+                        />
+                    </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
                 <div className="table-cell align-center">Parameter</div>
                 <div className="table-cell">
-                    <Dropdown
-                        options={makeGridParameterNameOptions(gridModelInfo)}
-                        value={settings.parameterName ?? undefined}
-                        onChange={handleGridParameterSelectionChange}
-                        showArrows
-                    />
+                    <PendingWrapper
+                        isPending={gridModelInfosQuery.isFetching}
+                        errorMessage={gridModelInfosQueryErrorMessage}
+                    >
+                        <Dropdown
+                            options={makeGridParameterNameOptions(gridModelInfo)}
+                            value={settings.parameterName ?? undefined}
+                            onChange={handleGridParameterSelectionChange}
+                            showArrows
+                        />
+                    </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
@@ -200,13 +200,18 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                     Date or interval
                 </div>
                 <div className="table-cell align-top">
-                    <Dropdown
-                        options={gridModelParameterDateOrIntervalOptions}
-                        value={settings.parameterDateOrInterval ?? undefined}
-                        onChange={handleGridParameterDateOrIntervalSelectionChange}
-                        showArrows
-                        disabled={gridModelParameterDateOrIntervalOptions.length === 0}
-                    />
+                    <PendingWrapper
+                        isPending={gridModelInfosQuery.isFetching}
+                        errorMessage={gridModelInfosQueryErrorMessage}
+                    >
+                        <Dropdown
+                            options={gridModelParameterDateOrIntervalOptions}
+                            value={settings.parameterDateOrInterval ?? undefined}
+                            onChange={handleGridParameterDateOrIntervalSelectionChange}
+                            showArrows
+                            disabled={gridModelParameterDateOrIntervalOptions.length === 0}
+                        />
+                    </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">

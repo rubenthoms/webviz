@@ -1,6 +1,6 @@
 import React from "react";
 
-import { GuiEvent, GuiMessageBroker } from "@framework/GuiMessageBroker";
+import { DrawerContent, GuiEvent, GuiMessageBroker, GuiState } from "@framework/GuiMessageBroker";
 import { ModuleInstance } from "@framework/ModuleInstance";
 import { StatusMessageType } from "@framework/ModuleInstanceStatusController";
 import { SyncSettingKey, SyncSettingsMeta } from "@framework/SyncSettings";
@@ -60,6 +60,13 @@ export const Header: React.FC<HeaderProps> = (props) => {
     function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
         props.onPointerDown(e);
         setStatusMessagesVisible(false);
+    }
+
+    function handleDoubleClick(e: React.PointerEvent<HTMLDivElement>) {
+        setStatusMessagesVisible(false);
+        props.guiMessageBroker.setState(GuiState.DrawerContent, DrawerContent.ModuleSettings);
+        e.preventDefault();
+        e.stopPropagation();
     }
 
     function handleDataChannelOriginPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -179,6 +186,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
                 "bg-slate-100": !hasErrors,
             })}
             onPointerDown={handlePointerDown}
+            onDoubleClick={handleDoubleClick}
             ref={ref}
         >
             <div

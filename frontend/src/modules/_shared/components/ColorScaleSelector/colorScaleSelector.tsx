@@ -26,6 +26,8 @@ export type ColorScaleSelectorProps = {
 export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactNode {
     const { onChange } = props;
 
+    const id = React.useId();
+
     const [colorScale, setColorScale] = React.useState<ColorScale>(
         props.workbenchSettings.useContinuousColorScale({ gradientType: ColorScaleGradientType.Sequential })
     );
@@ -204,6 +206,7 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
                 </div>
             </Label>
             <ColorScaleSetter
+                id={id}
                 selectedColorPalette={colorScale.getColorPalette()}
                 colorPalettes={props.workbenchSettings.getColorPalettes()[getPaletteTypeFromColorScale(colorScale)]}
                 type={colorScale.getType()}
@@ -222,6 +225,7 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
 }
 
 type ColorScaleSetterProps = {
+    id: string;
     type: ColorScaleType;
     min: number;
     max: number;
@@ -276,6 +280,7 @@ function ColorScaleSetter(props: ColorScaleSetterProps): React.ReactNode {
     return (
         <div>
             <ColorScalePaletteSelector
+                id={props.id}
                 colorPalettes={props.colorPalettes}
                 selectedColorPalette={props.colorPalettes[0]}
                 type={props.type}
@@ -523,6 +528,7 @@ function getPaletteTypeFromColorScale(colorScale: ColorScale): ColorPaletteType 
 }
 
 type ColorScalePaletteSelectorProps = {
+    id: string;
     colorPalettes: ColorPalette[];
     selectedColorPalette: ColorPalette;
     type: ColorScaleType;
@@ -597,6 +603,7 @@ const ColorScalePaletteSelector: React.FC<ColorScalePaletteSelectorProps> = (pro
                     handleColorPaletteSelected(colorPalette);
                 }}
                 selected={selectedColorPalette.getId() === colorPalette.getId()}
+                id={props.id}
             />
         ));
     }
@@ -613,7 +620,8 @@ const ColorScalePaletteSelector: React.FC<ColorScalePaletteSelectorProps> = (pro
                     props.steps,
                     props.min,
                     props.max,
-                    props.divMidPoint
+                    props.divMidPoint,
+                    props.id
                 )}
             </div>
             {open &&
@@ -639,13 +647,18 @@ const ColorScalePaletteSelector: React.FC<ColorScalePaletteSelectorProps> = (pro
     );
 };
 
+function makeGradientId(id: string, colorPalette: ColorPalette): string {
+    return `${id}-color-scale-gradient-${colorPalette.getId()}`;
+}
+
 type GradientDefProps = {
+    id: string;
     colorScale: ColorScale;
 };
 
 function GradientDef(props: GradientDefProps): React.ReactNode {
     const colorStops = props.colorScale.getColorStops();
-    const gradientId = `color-scale-gradient-${props.colorScale.getColorPalette().getId()}`;
+    const gradientId = makeGradientId(props.id, props.colorScale.getColorPalette());
 
     return (
         <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
@@ -663,7 +676,8 @@ function makeColorScalePalettePreview(
     steps: number,
     min: number,
     max: number,
-    divMidPoint: number
+    divMidPoint: number,
+    id: string
 ): React.ReactNode {
     const colorScale = new ColorScale({
         colorPalette,
@@ -676,22 +690,20 @@ function makeColorScalePalettePreview(
         colorScale.setRangeAndMidPoint(min, max, divMidPoint);
     }
 
+    const colorScaleGradientId = makeGradientId(id, colorPalette);
+
     return (
         <svg className="w-full h-5" version="1.1" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <GradientDef colorScale={colorScale} />
+                <GradientDef id={id} colorScale={colorScale} />
             </defs>
-            <rect
-                height="1.25rem"
-                width="100%"
-                fill={`url(#color-scale-gradient-${colorScale.getColorPalette().getId()})`}
-                stroke="#555"
-            />
+            <rect height="1.25rem" width="100%" fill={`url(#${colorScaleGradientId})`} stroke="#555" />
         </svg>
     );
 }
 
 type ColorPaletteItemProps = {
+    id: string;
     colorPalette: ColorPalette;
     onClick?: () => void;
     selected?: boolean;
@@ -733,7 +745,8 @@ const ColorPaletteItem: React.FC<ColorPaletteItemProps> = (props) => {
                     props.steps,
                     props.min,
                     props.max,
-                    props.divMid
+                    props.divMid,
+                    props.id
                 )}
             </div>
         </div>

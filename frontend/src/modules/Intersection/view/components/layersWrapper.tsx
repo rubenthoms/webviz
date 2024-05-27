@@ -311,6 +311,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 options: {
                     data: getPicksData(picksData),
                     order: index,
+                    referenceSystem: props.referenceSystem ?? undefined,
                 },
             });
         }
@@ -324,8 +325,8 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
     if (!boundsSet && props.referenceSystem) {
         const firstPoint = props.referenceSystem.projectedPath[0];
         const lastPoint = props.referenceSystem.projectedPath[props.referenceSystem.projectedPath.length - 1];
-        const xMax = Math.max(firstPoint[0], lastPoint[0]);
-        const xMin = Math.min(firstPoint[0], lastPoint[0]);
+        const xMax = Math.max(firstPoint[0], lastPoint[0], 1000);
+        const xMin = Math.min(firstPoint[0], lastPoint[0], -1000);
         const yMax = Math.max(firstPoint[1], lastPoint[1]);
         const yMin = Math.min(firstPoint[1], lastPoint[1]);
 

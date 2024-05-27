@@ -137,7 +137,7 @@ export type GridLayerSettings = {
     realizationNum: number | null;
     polylineXyz: number[];
     showMesh: boolean;
-    extensionLength: number;
+    extensionLength: number | null;
 };
 
 export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection_trans> {
@@ -154,7 +154,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             realizationNum: null,
             polylineXyz: [],
             showMesh: false,
-            extensionLength: 0,
+            extensionLength: null,
         };
         super(name, defaultSettings, queryClient);
 
@@ -183,10 +183,9 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
         this._colorScalesParameterMap.set(this._settings.parameterName ?? "", colorScale);
     }
 
-    getBoundingBox(): BoundingBox | null {
-        const bbox = super.getBoundingBox();
-        if (this._data === null || bbox === null) {
-            return null;
+    makeBoundingBox(): void {
+        if (!this._data || !this._settings.extensionLength) {
+            return;
         }
 
         let minX = -this._settings.extensionLength;
@@ -206,13 +205,38 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
                 }
             );
             maxX += uVectorLength;
+
+            minY = Math.min(
+                minY,
+                section.verticesUzFloat32Arr.reduce(
+                    (acc, val, idx) => (idx % 2 === 1 ? Math.min(acc, -val) : acc),
+                    Number.MAX_VALUE
+                )
+            );
+            maxY = Math.max(
+                maxY,
+                section.verticesUzFloat32Arr.reduce(
+                    (acc, val, idx) => (idx % 2 === 1 ? Math.max(acc, -val) : acc),
+                    Number.MIN_VALUE
+                )
+            );
         }
 
-        return {
+        super.setBoundingBox({
             x: [minX, maxX],
-            y: bbox.y,
-            z: bbox.z,
-        };
+            y: [minY, maxY],
+            z: [0, 0],
+        });
+    }
+
+    getBoundingBox(): BoundingBox | null {
+        const bbox = super.getBoundingBox();
+        if (bbox) {
+            return bbox;
+        }
+
+        this.makeBoundingBox();
+        return super.getBoundingBox();
     }
 
     getUseCustomColorScaleBoundaries(): boolean {
@@ -233,7 +257,8 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             this._settings.gridModelName !== null &&
             this._settings.parameterName !== null &&
             this._settings.realizationNum !== null &&
-            this._settings.polylineXyz.length > 0
+            this._settings.polylineXyz.length > 0 &&
+            this._settings.extensionLength !== null
         );
     }
 

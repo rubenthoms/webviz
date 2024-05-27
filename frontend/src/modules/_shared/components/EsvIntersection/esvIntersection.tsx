@@ -328,6 +328,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                     !fuzzyCompare(currentViewport[1], props.viewport[1], 0.0001) ||
                     !fuzzyCompare(currentViewport[2], props.viewport[2], 0.0001)
                 ) {
+                    automaticChanges.current = true;
                     esvController.setViewport(...props.viewport);
                     setCurrentViewport(props.viewport);
                 }

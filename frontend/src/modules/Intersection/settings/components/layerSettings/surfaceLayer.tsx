@@ -58,6 +58,7 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
     }
 
     const availableAttributes: string[] = [];
+    const availableSurfaceNames: string[] = [];
 
     if (surfaceDirectoryQuery.data) {
         availableAttributes.push(
@@ -70,13 +71,26 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
             )
         );
 
-        const fixupAttribute = fixupSetting(
-            "attribute",
-            Array.from(new Set(surfaceDirectoryQuery.data.map((el) => el.attribute_name))),
-            settings
-        );
+        const fixupAttribute = fixupSetting("attribute", availableAttributes, settings);
         if (!isEqual(fixupAttribute, settings.attribute)) {
             props.layer.maybeUpdateSettings({ attribute: fixupAttribute });
+        }
+    }
+
+    if (surfaceDirectoryQuery.data && settings.attribute) {
+        availableSurfaceNames.push(
+            ...Array.from(
+                new Set(
+                    surfaceDirectoryQuery.data
+                        .filter((el) => el.attribute_name === settings.attribute)
+                        .map((el) => el.name)
+                )
+            )
+        );
+
+        const fixupSurfaceNames = fixupSurfaceNamesSetting(settings.surfaceNames, availableSurfaceNames);
+        if (!isEqual(fixupSurfaceNames, settings.surfaceNames)) {
+            props.layer.maybeUpdateSettings({ surfaceNames: fixupSurfaceNames });
         }
     }
 
@@ -119,7 +133,6 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
         availableRealizations.push(...ensembleFilterFunc(settings.ensembleIdent));
     }
 
-    const availableSurfaceNames: string[] = [];
     if (surfaceDirectoryQuery.data && settings.attribute) {
         availableSurfaceNames.push(
             ...Array.from(
@@ -245,4 +258,16 @@ function fixupSetting<TSettings extends SurfaceLayerSettings, TKey extends keyof
     }
 
     return settings[setting];
+}
+
+function fixupSurfaceNamesSetting(currentSurfaceNames: string[], validSurfaceNames: string[]): string[] {
+    if (validSurfaceNames.length === 0) {
+        return currentSurfaceNames;
+    }
+
+    if (validSurfaceNames.some((el) => !currentSurfaceNames.includes(el))) {
+        return [validSurfaceNames[0]];
+    }
+
+    return currentSurfaceNames;
 }

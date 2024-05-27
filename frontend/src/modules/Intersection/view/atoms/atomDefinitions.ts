@@ -117,7 +117,7 @@ export function viewAtomsInitialization(
 
         for (const layer of layers) {
             if (isGridLayer(layer)) {
-                layer.maybeUpdateSettings({ polylineXyz: polyline });
+                layer.maybeUpdateSettings({ polylineXyz: polyline, extensionLength });
             }
             if (isSeismicLayer(layer)) {
                 layer.maybeUpdateSettings({ intersectionReferenceSystem, extensionLength });

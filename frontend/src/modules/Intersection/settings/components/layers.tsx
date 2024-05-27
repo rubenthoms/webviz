@@ -226,7 +226,9 @@ export function Layers(props: LayersProps): React.ReactNode {
                 </Dropdown>
             </div>
             {isDragging &&
-                createPortal(<div className="absolute z-40 transparent w-full h-full inset-0 cursor-grabbing"></div>)}
+                createPortal(
+                    <div className="absolute z-40 transparent w-screen h-screen inset-0 cursor-grabbing select-none"></div>
+                )}
             <div className="flex flex-col border border-slate-100 relative" ref={parentDivRef}>
                 {layers.map((layer) => {
                     return (

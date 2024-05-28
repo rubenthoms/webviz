@@ -6,6 +6,8 @@ import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { QueryClient } from "@tanstack/query-core";
 
+import { isEqual } from "lodash";
+
 import { BaseLayer, LayerTopic } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
@@ -30,7 +32,6 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceInterse
             intersectionReferenceSystem: null,
             surfaceNames: [],
             attribute: null,
-            polylineXyz: [],
             extensionLength: 0,
         };
         super(name, defaultSettings, queryClient);
@@ -54,6 +55,20 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceInterse
             this._settings.surfaceNames.length > 0 &&
             this._settings.realizationNum !== null &&
             this._settings.intersectionReferenceSystem !== null
+        );
+    }
+
+    protected doSettingsChangesRequireDataRefetch(
+        prevSettings: SurfaceLayerSettings,
+        newSettings: SurfaceLayerSettings
+    ): boolean {
+        return (
+            !isEqual(prevSettings.surfaceNames, newSettings.surfaceNames) ||
+            prevSettings.attribute !== newSettings.attribute ||
+            prevSettings.realizationNum !== newSettings.realizationNum ||
+            !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent) ||
+            prevSettings.extensionLength !== newSettings.extensionLength ||
+            !isEqual(prevSettings.intersectionReferenceSystem, newSettings.intersectionReferenceSystem)
         );
     }
 

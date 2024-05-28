@@ -1,6 +1,5 @@
 import { BoundingBox3d_api, WellboreTrajectory_api } from "@api";
 import { Layer, PickingInfo } from "@deck.gl/core/typed";
-import { ColorScale } from "@lib/utils/ColorScale";
 import { TGrid3DColoringMode } from "@webviz/subsurface-viewer";
 import { AxesLayer, Grid3DLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
@@ -97,7 +96,7 @@ export function makeIntersectionLayer(
         ZIncreasingDownwards: false,
         gridLines: showGridLines,
         material: { ambient: 0.4, diffuse: 0.7, shininess: 8, specularColor: [25, 25, 25] },
-        pickable: true,
+        pickable: false,
         onHover: handleHover,
     });
     return grid3dIntersectionLayer as unknown as WorkingGrid3dLayer;

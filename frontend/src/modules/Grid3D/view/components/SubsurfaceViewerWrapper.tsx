@@ -121,8 +121,10 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const layerIds: string[] = [];
 
     if (props.layers) {
-        layers.push(...props.layers);
-        layerIds.push(...props.layers.map((layer) => layer.id));
+        for (const layer of props.layers) {
+            layers.push(layer);
+            layerIds.push(layer.id);
+        }
     }
 
     function handleHover(pickingInfo: PickingInfo): void {
@@ -541,6 +543,15 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             <SubsurfaceViewerWithCameraState
                 id={subsurfaceViewerId}
                 layers={layers}
+                scale={{
+                    visible: true,
+                    incrementValue: 100,
+                    widthPerUnit: 100,
+                    cssStyle: {
+                        right: 10,
+                        top: 10,
+                    },
+                }}
                 coords={{ visible: false, multiPicking: polylineEditPointsModusActive }}
                 colorTables={props.colorTables}
                 onMouseEvent={handleMouseEvent}
@@ -612,7 +623,7 @@ function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): React.Rea
     }
 
     return (
-        <div className="absolute right-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
+        <div className="absolute left-0 top-0 bg-white p-1 rounded border-gray-300 border shadow z-30 text-sm flex flex-col gap-1 items-center">
             <Button onClick={handleAddPolylineClick} title="Add new custom intersection polyline">
                 <Polyline fontSize="inherit" />
             </Button>
@@ -770,7 +781,7 @@ export function PolylineEditingPanel(props: PolylineEditingPanelProps): React.Re
     }
 
     return (
-        <div className="w-64 absolute right-0 top-0 z-30 bg-white rounded shadow border border-gray-300 text-sm opacity-80">
+        <div className="w-64 absolute left-0 top-0 z-30 bg-white rounded shadow border border-gray-300 text-sm">
             <div className="bg-slate-300 p-2 font-bold">Polyline editing</div>
             <div className="p-2 h-36">{makeContent()}</div>
             <div className="bg-slate-100 flex items-center justify-between p-1">{makeButtons()}</div>

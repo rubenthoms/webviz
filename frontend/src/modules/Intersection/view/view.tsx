@@ -29,11 +29,6 @@ export function View(
     const layers = props.viewContext.useViewAtomValue("layers");
     const layersStatuses = useLayersStatuses(layers);
 
-    const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
-    const gridModelParameterName = props.viewContext.useSettingsToViewInterfaceValue("gridModelParameterName");
-    const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
-        "gridModelParameterDateOrInterval"
-    );
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const intersectionType = props.viewContext.useSettingsToViewInterfaceValue("intersectionType");
@@ -45,9 +40,8 @@ export function View(
     }
 
     props.viewContext.setInstanceTitle(
-        `${wellboreHeader?.identifier} - ${gridModelName ?? "-"}, ${gridModelParameterName ?? "-"}, ${
-            gridModelParameterDateOrInterval ?? "-"
-        } (${ensembleName})`
+        `${wellboreHeader?.identifier ?? "Intersection"}
+        (${ensembleName})`
     );
 
     // Status messages

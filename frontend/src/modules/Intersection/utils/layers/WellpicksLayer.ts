@@ -1,12 +1,11 @@
-import { SurfaceIntersectionData_api, WellborePicksAndStratigraphicUnits_api } from "@api";
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { transformFormationData } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { defaultColorPalettes } from "@framework/utils/colorPalettes";
-import { ColorSet } from "@lib/utils/ColorSet";
 import { QueryClient } from "@tanstack/query-core";
 
-import { BaseLayer, LayerTopic } from "./BaseLayer";
+import { isEqual } from "lodash";
+
+import { BaseLayer } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
@@ -15,16 +14,20 @@ export type WellpicksLayerSettings = {
     wellboreUuid: string | null;
     ensembleIdent: EnsembleIdent | null;
     filterPicks: boolean;
-    selectedPicks: string[];
+    selectedUnitPicks: string[];
+    selectedNonUnitPicks: string[];
 };
 
-export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePicksAndStratigraphicUnits_api> {
+export type WellPicksLayerData = ReturnType<typeof transformFormationData>;
+
+export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellPicksLayerData> {
     constructor(name: string, queryClient: QueryClient) {
         const defaultSettings = {
             ensembleIdent: null,
             wellboreUuid: null,
             filterPicks: false,
-            selectedPicks: [],
+            selectedUnitPicks: [],
+            selectedNonUnitPicks: [],
         };
         super(name, defaultSettings, queryClient);
     }
@@ -33,7 +36,17 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePi
         return this._settings.ensembleIdent !== null && this._settings.wellboreUuid !== null;
     }
 
-    getData(): WellborePicksAndStratigraphicUnits_api | null {
+    protected doSettingsChangesRequireDataRefetch(
+        prevSettings: WellpicksLayerSettings,
+        newSettings: WellpicksLayerSettings
+    ): boolean {
+        return (
+            prevSettings.wellboreUuid !== newSettings.wellboreUuid ||
+            !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent)
+        );
+    }
+
+    getFilteredData(): WellPicksLayerData | null {
         const data = super.getData();
         if (data === null) {
             return null;
@@ -42,8 +55,9 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePi
         if (this._settings.filterPicks) {
             return {
                 ...data,
-                wellbore_picks: data.wellbore_picks.filter((pick) =>
-                    this._settings.selectedPicks.includes(pick.pickIdentifier)
+                unitPicks: data.unitPicks.filter((pick) => this._settings.selectedUnitPicks.includes(pick.name)),
+                nonUnitPicks: data.nonUnitPicks.filter((pick) =>
+                    this._settings.selectedNonUnitPicks.includes(pick.identifier)
                 ),
             };
         }
@@ -51,21 +65,23 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellborePi
         return data;
     }
 
-    protected async fetchData(): Promise<WellborePicksAndStratigraphicUnits_api> {
-        return this._queryClient.fetchQuery({
-            queryKey: [
-                "getWellborePicksAndStratigraphicUnits",
-                this._settings.ensembleIdent?.getCaseUuid(),
-                this._settings.wellboreUuid,
-            ],
-            queryFn: () =>
-                apiService.well.getWellborePicksAndStratigraphicUnits(
-                    this._settings.ensembleIdent?.getCaseUuid() ?? "",
-                    this._settings.wellboreUuid ?? ""
-                ),
-            staleTime: STALE_TIME,
-            gcTime: CACHE_TIME,
-        });
+    protected async fetchData(): Promise<WellPicksLayerData> {
+        return this._queryClient
+            .fetchQuery({
+                queryKey: [
+                    "getWellborePicksAndStratigraphicUnits",
+                    this._settings.ensembleIdent?.getCaseUuid(),
+                    this._settings.wellboreUuid,
+                ],
+                queryFn: () =>
+                    apiService.well.getWellborePicksAndStratigraphicUnits(
+                        this._settings.ensembleIdent?.getCaseUuid() ?? "",
+                        this._settings.wellboreUuid ?? ""
+                    ),
+                staleTime: STALE_TIME,
+                gcTime: CACHE_TIME,
+            })
+            .then((data) => transformFormationData(data.wellbore_picks, data.stratigraphic_units as any));
     }
 }
 

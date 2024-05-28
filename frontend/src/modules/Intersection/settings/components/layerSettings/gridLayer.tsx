@@ -12,9 +12,10 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Switch } from "@lib/components/Switch";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { BoundingBox, useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
+import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
+import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { useQuery } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
@@ -139,7 +140,7 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell align-center">Ensemble</div>
+                <div className="table-cell align-center w-24">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}
@@ -265,7 +266,11 @@ function makeGridParameterDateOrIntervalOptions(datesOrIntervals: Grid3dProperty
         if (info.iso_date_or_interval === null) {
             return acc;
         } else if (!acc.includes(info.iso_date_or_interval)) {
-            acc.push(info.iso_date_or_interval);
+            acc.push(
+                info.iso_date_or_interval.includes("/")
+                    ? isoIntervalStringToDateLabel(info.iso_date_or_interval)
+                    : isoStringToDateLabel(info.iso_date_or_interval)
+            );
         }
         return acc;
     }, [] as string[]);

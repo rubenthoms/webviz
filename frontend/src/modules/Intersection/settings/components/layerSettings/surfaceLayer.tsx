@@ -94,20 +94,6 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
         }
     }
 
-    /*
-    function updateBoundingBox(gridModelName: string) {
-        const gridModelInfo = gridModelInfosQuery.data?.find((info) => info.grid_name === gridModelName) ?? null;
-        if (gridModelInfo) {
-            const boundingBox: BoundingBox = {
-                x: [gridModelInfo.bbox.xmin, gridModelInfo.bbox.xmax],
-                y: [gridModelInfo.bbox.ymin, gridModelInfo.bbox.ymax],
-                z: [gridModelInfo.bbox.zmin, gridModelInfo.bbox.zmax],
-            };
-            props.layer.setBoundingBox(boundingBox);
-        }
-    }
-    */
-
     function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {
         props.layer.maybeUpdateSettings({ ensembleIdent });
     }
@@ -133,22 +119,10 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
         availableRealizations.push(...ensembleFilterFunc(settings.ensembleIdent));
     }
 
-    if (surfaceDirectoryQuery.data && settings.attribute) {
-        availableSurfaceNames.push(
-            ...Array.from(
-                new Set(
-                    surfaceDirectoryQuery.data
-                        .filter((el) => el.attribute_name === settings.attribute)
-                        .map((el) => el.name)
-                )
-            )
-        );
-    }
-
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell">Ensemble</div>
+                <div className="table-cell w-24">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}

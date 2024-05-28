@@ -4,13 +4,15 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { pointDistance } from "@lib/utils/geometry";
-import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import {
     b64DecodeFloatArrayToFloat32,
     b64DecodeUintArrayToUint32,
     b64DecodeUintArrayToUint32OrLess,
 } from "@modules/_shared/base64";
+import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
+
+import { isEqual } from "lodash";
 
 import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
@@ -188,7 +190,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
             return;
         }
 
-        let minX = -this._settings.extensionLength;
+        const minX = -this._settings.extensionLength;
         let maxX = -this._settings.extensionLength;
         let minY = Number.MAX_VALUE;
         let maxY = Number.MIN_VALUE;
@@ -229,6 +231,21 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
         });
     }
 
+    protected doSettingsChangesRequireDataRefetch(
+        prevSettings: GridLayerSettings,
+        newSettings: GridLayerSettings
+    ): boolean {
+        return (
+            !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent) ||
+            prevSettings.gridModelName !== newSettings.gridModelName ||
+            prevSettings.parameterName !== newSettings.parameterName ||
+            prevSettings.parameterDateOrInterval !== newSettings.parameterDateOrInterval ||
+            prevSettings.realizationNum !== newSettings.realizationNum ||
+            !isEqual(prevSettings.polylineXyz, newSettings.polylineXyz) ||
+            prevSettings.extensionLength !== newSettings.extensionLength
+        );
+    }
+
     getBoundingBox(): BoundingBox | null {
         const bbox = super.getBoundingBox();
         if (bbox) {
@@ -263,6 +280,8 @@ export class GridLayer extends BaseLayer<GridLayerSettings, PolylineIntersection
     }
 
     protected async fetchData(): Promise<PolylineIntersection_trans> {
+        super.setBoundingBox(null);
+
         return this._queryClient
             .fetchQuery({
                 queryKey: ["getGridPolylineIntersection", ...Object.entries(this._settings)],

@@ -9,27 +9,19 @@ import { useIntersectionPolylines } from "@framework/UserCreatedItems";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
-import { Button } from "@lib/components/Button";
-import { Checkbox } from "@lib/components/Checkbox";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
-import { Dialog } from "@lib/components/Dialog";
 import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Radio } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
-import { Slider } from "@lib/components/Slider";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
-import { ColorScale } from "@lib/utils/ColorScale";
-import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
-import { Check, Delete, Edit } from "@mui/icons-material";
+import { Delete, Edit } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { v4 } from "uuid";
 
 import {
     userSelectedCustomIntersectionPolylineIdAtom,

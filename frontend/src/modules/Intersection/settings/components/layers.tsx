@@ -199,7 +199,7 @@ export function Layers(props: LayersProps): React.ReactNode {
     );
 
     return (
-        <div className="w-full h-full">
+        <div className="w-full flex-grow flex flex-col min-h-0">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300">
                 <div className="flex-grow font-bold text-sm">Layers</div>
                 <Dropdown>
@@ -229,24 +229,26 @@ export function Layers(props: LayersProps): React.ReactNode {
                 createPortal(
                     <div className="absolute z-40 transparent w-screen h-screen inset-0 cursor-grabbing select-none"></div>
                 )}
-            <div className="flex flex-col border border-slate-100 relative" ref={parentDivRef}>
-                {layers.map((layer) => {
-                    return (
-                        <LayerItem
-                            key={layer.getId()}
-                            layer={layer}
-                            ensembleSet={props.ensembleSet}
-                            workbenchSession={props.workbenchSession}
-                            workbenchSettings={props.workbenchSettings}
-                            onRemoveLayer={handleRemoveLayer}
-                            dispatch={dispatch}
-                            isDragging={draggingLayerId === layer.getId()}
-                            dragPosition={dragPosition}
-                        />
-                    );
-                })}
+            <div className="flex-grow overflow-auto min-h-0 bg-slate-200">
+                <div className="flex flex-col border border-slate-100 relative max-h-0" ref={parentDivRef}>
+                    {layers.map((layer) => {
+                        return (
+                            <LayerItem
+                                key={layer.getId()}
+                                layer={layer}
+                                ensembleSet={props.ensembleSet}
+                                workbenchSession={props.workbenchSession}
+                                workbenchSettings={props.workbenchSettings}
+                                onRemoveLayer={handleRemoveLayer}
+                                dispatch={dispatch}
+                                isDragging={draggingLayerId === layer.getId()}
+                                dragPosition={dragPosition}
+                            />
+                        );
+                    })}
+                </div>
                 {layers.length === 0 && (
-                    <div className="flex p-4 text-sm items-center gap-1 border-b border-b-gray-300">
+                    <div className="flex h-full -mt-1 justify-center text-sm items-center gap-1">
                         Click on <Add fontSize="inherit" /> to add a layer.
                     </div>
                 )}
@@ -406,7 +408,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
             <div
                 ref={divRef}
                 className={resolveClassNames(
-                    "flex h-10 px-1 hover:bg-blue-100 text-sm items-center gap-1 border-b border-b-gray-300 relative"
+                    "flex h-10 py-2 px-1 bg-white hover:bg-blue-100 text-sm items-center gap-1 border-b border-b-gray-300 relative"
                 )}
                 data-layer-id={props.layer.getId()}
             >

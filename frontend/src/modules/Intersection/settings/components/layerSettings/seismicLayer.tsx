@@ -12,19 +12,28 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { SelectOption } from "@lib/components/Select";
 import { ColorScale } from "@lib/utils/ColorScale";
+import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import {
     SeismicDataType,
-    SeismicDataTypeToStringMapping,
+    SeismicLayer,
+    SeismicLayerSettings,
     SeismicSurveyType,
-    SeismicSurveyTypeToStringMapping,
-} from "@modules/Intersection/typesAndEnums";
-import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
-import { SeismicLayer, SeismicLayerSettings } from "@modules/Intersection/utils/layers/SeismicLayer";
+} from "@modules/Intersection/utils/layers/SeismicLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { useQuery } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
+
+const SeismicDataTypeToStringMapping = {
+    [SeismicDataType.SIMULATED]: "Simulated",
+    [SeismicDataType.OBSERVED]: "Observed",
+};
+
+const SeismicSurveyTypeToStringMapping = {
+    [SeismicSurveyType.THREE_D]: "3D",
+    [SeismicSurveyType.FOUR_D]: "4D",
+};
 
 export type SeismicLayerSettingsProps = {
     layer: SeismicLayer;
@@ -158,7 +167,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell">Ensemble</div>
+                <div className="table-cell w-24">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}

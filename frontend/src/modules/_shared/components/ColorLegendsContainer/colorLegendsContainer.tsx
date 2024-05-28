@@ -1,9 +1,10 @@
-import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
+import React from "react";
 
-import { ColorScaleWithName } from "../utils/ColorScaleWithName";
+import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
+import { ColorScaleWithName } from "@modules_shared/utils/ColorScaleWithName";
 
 export type ColorLegendsContainerProps = {
-    colorScales: ColorScaleWithName[];
+    colorScales: { id: string; colorScale: ColorScaleWithName }[];
     height: number;
 };
 
@@ -17,6 +18,7 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
     const textWidth = 50;
     const nameWidth = 10;
     const minHeight = Math.min(60 + 2 * offset, props.height);
+    const fontSize = 10;
 
     const numRows = Math.min(Math.floor(props.height / minHeight), props.colorScales.length);
     const numCols = Math.ceil(props.colorScales.length / numRows);
@@ -32,6 +34,42 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
         fontWeight: 800,
     };
 
+    function makeMarkers(
+        colorScale: ColorScale,
+        colorScaleTop: number,
+        top: number,
+        bottom: number,
+        left: number
+    ): React.ReactNode[] {
+        const numMarkers = Math.floor(Math.abs(top - bottom) / (fontSize + 4 * textGap));
+        const markers: React.ReactNode[] = [];
+
+        const dy = (bottom - top) / (numMarkers + 1);
+
+        for (let i = 1; i <= numMarkers + 1; i++) {
+            const y = top + i * dy;
+            const relValue = 1 - (y - colorScaleTop) / height;
+            const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * relValue;
+            markers.push(
+                <line
+                    key={`${top}-${i}-marker`}
+                    x1={left}
+                    y1={y}
+                    x2={left + lineWidth}
+                    y2={y}
+                    stroke={lineColor}
+                    strokeWidth="1"
+                />
+            );
+            markers.push(
+                <text key={`${top}-${i}-text`} x={left + lineWidth + textGap} y={y + 3} fontSize="10" style={textStyle}>
+                    {formatLegendValue(value)}
+                </text>
+            );
+        }
+        return markers;
+    }
+
     function makeLegends(): React.ReactNode[] {
         const legends: React.ReactNode[] = [];
         let index = 0;
@@ -40,7 +78,7 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                 if (index >= props.colorScales.length) {
                     break;
                 }
-                const colorScale = props.colorScales[index++];
+                const { id, colorScale } = props.colorScales[index++];
                 const top = row * (height + 2 * offset) + row * legendGap;
                 const left = col * (width + legendGap + lineWidth + textGap + textWidth + nameWidth);
 
@@ -72,6 +110,17 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                         1 -
                         (colorScale.getDivMidPoint() - colorScale.getMin()) /
                             (colorScale.getMax() - colorScale.getMin());
+
+                    markers.push(
+                        makeMarkers(
+                            colorScale,
+                            top + offset,
+                            top + offset,
+                            top + y * height + offset,
+                            left + width + nameWidth + textGap
+                        )
+                    );
+
                     markers.push(
                         <line
                             key="mid-marker"
@@ -94,30 +143,25 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                             {formatLegendValue(colorScale.getDivMidPoint())}
                         </text>
                     );
-                } else {
-                    const y = 0.5;
-                    const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * y;
+
                     markers.push(
-                        <line
-                            key="mid-marker"
-                            x1={left + width + nameWidth + textGap}
-                            y1={top + y * height + offset}
-                            x2={left + width + lineWidth + nameWidth + textGap}
-                            y2={top + y * height + offset}
-                            stroke={lineColor}
-                            strokeWidth="1"
-                        />
+                        makeMarkers(
+                            colorScale,
+                            top + offset,
+                            top + y * height + offset,
+                            top + height - 2 * offset,
+                            left + width + nameWidth + textGap
+                        )
                     );
+                } else {
                     markers.push(
-                        <text
-                            key="mid-text"
-                            x={left + width + lineWidth + textGap + nameWidth + textGap}
-                            y={top + y * height + offset + 3}
-                            fontSize="10"
-                            style={textStyle}
-                        >
-                            {formatLegendValue(value)}
-                        </text>
+                        makeMarkers(
+                            colorScale,
+                            top + offset,
+                            top + offset,
+                            top + height - 2 * offset,
+                            left + width + nameWidth + textGap
+                        )
                     );
                 }
 
@@ -145,7 +189,7 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                 );
 
                 legends.push(
-                    <g key={`color-scale-${colorScale.getColorPalette().getId()}`}>
+                    <g key={`color-scale-${makeGradientId(id)}`}>
                         <rect
                             key={index}
                             x={left + nameWidth + textGap}
@@ -153,7 +197,7 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                             width={width}
                             rx="4"
                             height={height}
-                            fill={`url(#color-legend-gradient-${colorScale.getColorPalette().getId()})`}
+                            fill={`url(#${makeGradientId(id)})`}
                             stroke="#555"
                         />
                         <text
@@ -189,9 +233,10 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                 xmlns="http://www.w3.org/2000/svg"
             >
                 <defs>
-                    {props.colorScales.map((colorScale, index) => (
-                        <GradientDef key={index} colorScale={colorScale} />
-                    ))}
+                    {props.colorScales.map((el) => {
+                        const { id, colorScale } = el;
+                        return <GradientDef id={id} key={id} colorScale={colorScale} />;
+                    })}
                 </defs>
                 {makeLegends()}
             </svg>
@@ -200,12 +245,13 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
 }
 
 type GradientDefProps = {
+    id: string;
     colorScale: ColorScale;
 };
 
 function GradientDef(props: GradientDefProps): React.ReactNode {
     const colorStops = props.colorScale.getColorStops();
-    const gradientId = `color-legend-gradient-${props.colorScale.getColorPalette().getId()}`;
+    const gradientId = makeGradientId(props.id);
 
     return (
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -218,6 +264,10 @@ function GradientDef(props: GradientDefProps): React.ReactNode {
             ))}
         </linearGradient>
     );
+}
+
+function makeGradientId(id: string): string {
+    return `color-legend-gradient-${id}`;
 }
 
 function countDecimalPlaces(value: number): number {

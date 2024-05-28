@@ -8,7 +8,6 @@ import {
     getPicksData,
     getSeismicInfo,
     getSeismicOptions,
-    transformFormationData,
 } from "@equinor/esv-intersection";
 import { ViewContext } from "@framework/ModuleContext";
 import { WorkbenchServices } from "@framework/WorkbenchServices";
@@ -23,14 +22,14 @@ import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer"
 import { isWellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
 import { LayerItem, LayerType } from "@modules/_shared/components/EsvIntersection";
 import { Viewport } from "@modules/_shared/components/EsvIntersection/esvIntersection";
+import { ColorLegendsContainer } from "@modules_shared/components/ColorLegendsContainer";
 
 import { isEqual } from "lodash";
 
-import { ColorLegendsContainer } from "./colorLegendsContainer";
 import { ViewportWrapper } from "./viewportWrapper";
 
+import { ColorScaleWithName } from "../../../_shared/utils/ColorScaleWithName";
 import { ViewAtoms } from "../atoms/atomDefinitions";
-import { ColorScaleWithName } from "../utils/ColorScaleWithName";
 
 export type LayersWrapperProps = {
     referenceSystem: IntersectionReferenceSystem | null;
@@ -71,7 +70,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
     }
 
     const esvLayers: LayerItem[] = [];
-    const colorScales: ColorScaleWithName[] = [];
+    const colorScales: { id: string; colorScale: ColorScaleWithName }[] = [];
 
     if (props.intersectionType === IntersectionType.WELLBORE) {
         esvLayers.push({
@@ -88,7 +87,6 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
 
     if (props.wellboreCasingData) {
         const casingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Casing");
-        // const tubingData = props.wellboreCasingData.filter((casing) => casing.item_type === "Tubing");
 
         const casings: Casing[] = casingData.map((casing, index) => ({
             id: `casing-${index}`,
@@ -209,7 +207,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 },
             });
 
-            colorScales.push(colorScale);
+            colorScales.push({ id: `${layer.getId()}-${colorScale.getColorPalette().getId()}`, colorScale });
         }
 
         if (isSeismicLayer(layer)) {
@@ -231,7 +229,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 if (!seismicLayer.getUseCustomColorScaleBoundaries()) {
                     colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
                 }
-                colorScales.push(colorScale);
+                colorScales.push({ id: `${layer.getId()}-${colorScale.getColorPalette().getId()}`, colorScale });
             }
 
             esvLayers.push({
@@ -281,6 +279,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 options: {
                     data: surfaceData,
                     order: index,
+                    referenceSystem: props.referenceSystem ?? undefined,
                 },
             });
 
@@ -290,26 +289,25 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 options: {
                     data: surfaceData,
                     order: index,
+                    referenceSystem: props.referenceSystem ?? undefined,
                 },
             });
         }
 
         if (isWellpicksLayer(layer)) {
             const wellpicksLayer = layer;
-            const data = wellpicksLayer.getData();
+            const data = wellpicksLayer.getFilteredData();
 
             if (!data) {
                 continue;
             }
 
-            const picksData = transformFormationData(data.wellbore_picks, data.stratigraphic_units as any);
-
             esvLayers.push({
                 id: layer.getId(),
                 type: LayerType.CALLOUT_CANVAS,
-                hoverable: true,
+                hoverable: false,
                 options: {
-                    data: getPicksData(picksData),
+                    data: getPicksData(data),
                     order: index,
                     referenceSystem: props.referenceSystem ?? undefined,
                 },

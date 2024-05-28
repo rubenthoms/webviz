@@ -73,7 +73,7 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
         return this._boundingBox;
     }
 
-    setBoundingBox(boundingBox: BoundingBox): void {
+    setBoundingBox(boundingBox: BoundingBox | null): void {
         this._boundingBox = boundingBox;
     }
 
@@ -102,8 +102,12 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
             }
         }
         if (Object.keys(patchesToApply).length > 0) {
+            const prevSettings = { ...this._settings };
             this._settings = { ...this._settings, ...patchesToApply };
-            this.maybeRefetchData();
+
+            if (this.doSettingsChangesRequireDataRefetch(prevSettings, this._settings)) {
+                this.maybeRefetchData();
+            }
         }
         this.notifySubscribers(LayerTopic.SETTINGS);
     }
@@ -131,6 +135,10 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
 
     protected areSettingsValid(): boolean {
         return true;
+    }
+
+    protected doSettingsChangesRequireDataRefetch(prevSettings: TSettings, newSettings: TSettings): boolean {
+        return !isEqual(prevSettings, newSettings);
     }
 
     private async maybeRefetchData(): Promise<void> {
@@ -227,7 +235,8 @@ export function useLayers(layers: BaseLayer<any, any>[]): BaseLayer<any, any>[] 
             for (const layer of layers) {
                 const unsubscribeData = layer.subscribe(LayerTopic.DATA, handleLayerChange);
                 const unsubscribeVisibility = layer.subscribe(LayerTopic.VISIBILITY, handleLayerChange);
-                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility);
+                const unsubscribeSettings = layer.subscribe(LayerTopic.SETTINGS, handleLayerChange);
+                unsubscribeFuncs.push(unsubscribeData, unsubscribeVisibility, unsubscribeSettings);
             }
 
             return () => {

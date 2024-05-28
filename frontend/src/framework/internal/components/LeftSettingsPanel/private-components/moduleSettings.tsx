@@ -95,8 +95,8 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
                         {props.moduleInstance.getTitle()}
                     </span>
                 </div>
-                <div className="flex flex-col gap-4 overflow-auto">
-                    <div className="p-2">
+                <div className="flex flex-col gap-4 overflow-auto flex-grow">
+                    <div className="p-2 flex-grow">
                         <DebugProfiler
                             id={`${props.moduleInstance.getId()}-settings`}
                             source={StatusSource.Settings}

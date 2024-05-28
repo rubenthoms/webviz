@@ -1,26 +1,13 @@
 import React from "react";
 
-import { SurfaceAttributeType_api, SurfaceMeta_api } from "@api";
-import { apiService } from "@framework/ApiService";
-import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
-import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
+import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
-import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
-import { defaultColorPalettes } from "@framework/utils/colorPalettes";
-import { ColorPaletteSelector, ColorPaletteSelectorType } from "@lib/components/ColorPaletteSelector";
-import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { Select } from "@lib/components/Select";
+import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
-import { ColorPalette } from "@lib/utils/ColorPalette";
-import { ColorSet } from "@lib/utils/ColorSet";
-import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
-import { SurfaceLayer, SurfaceLayerSettings } from "@modules/Intersection/utils/layers/SurfaceLayer";
-import { WellpicksLayer, WellpicksLayerSettings } from "@modules/Intersection/utils/layers/WellpicksLayer";
-import { UseQueryResult, useQuery } from "@tanstack/react-query";
-
-import { isEqual } from "lodash";
+import { LayerStatus, useLayerSettings, useLayerStatus } from "@modules/Intersection/utils/layers/BaseLayer";
+import { WellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
 
 export type WellpicksLayerSettingsComponentProps = {
     layer: WellpicksLayer;
@@ -31,56 +18,77 @@ export type WellpicksLayerSettingsComponentProps = {
 
 export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsComponentProps> = (props) => {
     const settings = useLayerSettings(props.layer);
+    const status = useLayerStatus(props.layer);
 
     function handleToggleFilterPicks(e: React.ChangeEvent<HTMLInputElement>) {
         const checked = e.target.checked;
         props.layer.maybeUpdateSettings({ filterPicks: checked });
     }
 
-    function handlePickSelectionChange(selectedPicks: string[]) {
-        props.layer.maybeUpdateSettings({ selectedPicks });
+    function handleUnitPickSelectionChange(selectedUnitPicks: string[]) {
+        props.layer.maybeUpdateSettings({ selectedUnitPicks });
+    }
+
+    function handleNonUnitPickSelectionChange(selectedNonUnitPicks: string[]) {
+        props.layer.maybeUpdateSettings({ selectedNonUnitPicks });
+    }
+
+    const unitPicksFilterOptions: SelectOption[] = [];
+    const nonUnitPicksFilterOptions: SelectOption[] = [];
+    const data = props.layer.getData();
+    if (data) {
+        unitPicksFilterOptions.push(
+            ...Array.from(new Set(data.unitPicks.map((pick) => pick.name))).map((name) => ({
+                label: name,
+                value: name,
+            }))
+        );
+        nonUnitPicksFilterOptions.push(
+            ...Array.from(new Set(data.nonUnitPicks.map((pick) => pick.identifier))).map((identifier) => ({
+                label: identifier,
+                value: identifier,
+            }))
+        );
     }
 
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell">Filter picks</div>
+                <div className="table-cell align-top w-24">Filter picks</div>
                 <div className="table-cell">
                     <Switch checked={settings.filterPicks} onChange={handleToggleFilterPicks} />
-                    <Select
-                        options={
-                            props.layer.getData()?.wellbore_picks.map((el) => ({
-                                label: el.pickIdentifier,
-                                value: el.pickIdentifier,
-                            })) ?? []
-                        }
-                        value={settings.selectedPicks}
-                        onChange={handlePickSelectionChange}
-                        multiple
-                        size={5}
-                        disabled={!settings.filterPicks}
-                    />
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell align-top">Unit picks</div>
+                <div className="table-cell">
+                    <PendingWrapper isPending={status === LayerStatus.LOADING}>
+                        <Select
+                            options={unitPicksFilterOptions}
+                            value={settings.selectedUnitPicks}
+                            onChange={handleUnitPickSelectionChange}
+                            multiple
+                            size={5}
+                            disabled={!settings.filterPicks}
+                        />
+                    </PendingWrapper>
+                </div>
+            </div>
+            <div className="table-row">
+                <div className="table-cell align-top">Non-unit picks</div>
+                <div className="table-cell">
+                    <PendingWrapper isPending={status === LayerStatus.LOADING}>
+                        <Select
+                            options={nonUnitPicksFilterOptions}
+                            value={settings.selectedNonUnitPicks}
+                            onChange={handleNonUnitPickSelectionChange}
+                            multiple
+                            size={5}
+                            disabled={!settings.filterPicks}
+                        />
+                    </PendingWrapper>
                 </div>
             </div>
         </div>
     );
 };
-
-const STALE_TIME = 60 * 1000;
-const CACHE_TIME = 60 * 1000;
-
-function fixupSetting<TSettings extends WellpicksLayerSettings, TKey extends keyof WellpicksLayerSettings>(
-    setting: TKey,
-    validOptions: readonly TSettings[TKey][],
-    settings: TSettings
-): TSettings[TKey] {
-    if (validOptions.length === 0) {
-        return settings[setting];
-    }
-
-    if (!validOptions.includes(settings[setting]) || settings[setting] === null) {
-        return validOptions[0];
-    }
-
-    return settings[setting];
-}

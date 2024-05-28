@@ -1,5 +1,3 @@
-import { ColorScale } from "@lib/utils/ColorScale";
-
 import { PolylineIntersection_trans } from "./view/queries/queryDataTransforms";
 
 export enum IntersectionType {
@@ -11,26 +9,6 @@ export type CustomIntersectionPolyline = {
     id: string;
     name: string;
     polyline: number[][];
-};
-
-export enum SeismicDataType {
-    SIMULATED = "simulated",
-    OBSERVED = "observed",
-}
-
-export enum SeismicSurveyType {
-    THREE_D = "3D",
-    FOUR_D = "4D",
-}
-
-export const SeismicDataTypeToStringMapping = {
-    [SeismicDataType.SIMULATED]: "Simulated",
-    [SeismicDataType.OBSERVED]: "Observed",
-};
-
-export const SeismicSurveyTypeToStringMapping = {
-    [SeismicSurveyType.THREE_D]: "3D",
-    [SeismicSurveyType.FOUR_D]: "4D",
 };
 
 export enum LayerType {
@@ -52,16 +30,6 @@ export type LayerBoundingBox = {
     y: [number, number];
 };
 
-export interface Layer {
-    id: string;
-    type: LayerType;
-    name: string;
-    visible: boolean;
-    showSettings: boolean;
-    settings: Record<string, unknown>;
-    boundingBox: LayerBoundingBox;
-}
-
 export enum LayerActionType {
     ADD_LAYER = "add-layer",
     REMOVE_LAYER = "remove-layer",
@@ -70,13 +38,6 @@ export enum LayerActionType {
     UPDATE_SETTING = "update-settings",
     UPDATE_BOUNDING_BOX = "update-bounding-box",
     MOVE_LAYER = "move-layer",
-}
-
-export enum LayerStatus {
-    IDLE = "idle",
-    LOADING = "loading",
-    ERROR = "error",
-    SUCCESS = "success",
 }
 
 export type LayerActionPayloads = {
@@ -99,26 +60,6 @@ export type LayerActions = {
         ? { type: K }
         : { type: K; payload: LayerActionPayloads[K] };
 }[keyof LayerActionPayloads];
-
-export interface GridLayer extends Layer {
-    type: LayerType.GRID;
-    settings: {
-        modelName: string | null;
-        parameterName: string | null;
-        parameterDateOrInterval: string | null;
-        colorScale: ColorScale;
-    };
-}
-
-export interface SeismicLayer extends Layer {
-    type: LayerType.SEISMIC;
-    settings: {
-        surveyType: SeismicSurveyType;
-        dataType: SeismicDataType;
-        attribute: string | null;
-        dateOrInterval: string | null;
-    };
-}
 
 export type PolylineIntersectionResult = {
     id: string;

@@ -118,7 +118,7 @@ export function Settings(
     }
 
     return (
-        <div className="flex flex-col gap-1">
+        <div className="h-full flex flex-col gap-1">
             <CollapsibleGroup title="Intersection" expanded>
                 <div className="flex flex-col gap-4 text-sm mb-4">
                     <Radio
@@ -175,11 +175,13 @@ export function Settings(
                     </Label>
                 </div>
             </CollapsibleGroup>
-            <Layers
-                ensembleSet={ensembleSet}
-                workbenchSession={props.workbenchSession}
-                workbenchSettings={props.workbenchSettings}
-            />
+            <div className="flex-grow flex flex-col min-h-0">
+                <Layers
+                    ensembleSet={ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
+                />
+            </div>
         </div>
     );
 }

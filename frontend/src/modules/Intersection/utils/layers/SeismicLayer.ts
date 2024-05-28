@@ -4,10 +4,11 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
-import { SeismicDataType, SeismicSurveyType } from "@modules/Intersection/typesAndEnums";
-import { ColorScaleWithName } from "@modules/Intersection/view/utils/ColorScaleWithName";
 import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
+import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
+
+import { isEqual } from "lodash";
 
 import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "./BaseLayer";
 
@@ -17,6 +18,16 @@ export type SeismicSliceImageOptions = {
     trajectory: number[][];
     colorScale: ColorScale;
 };
+
+export enum SeismicDataType {
+    SIMULATED = "simulated",
+    OBSERVED = "observed",
+}
+
+export enum SeismicSurveyType {
+    THREE_D = "3D",
+    FOUR_D = "4D",
+}
 
 // Data structure for transformed data
 // Remove the base64 encoded data and replace with a Float32Array
@@ -178,7 +189,22 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             this._settings.realizationNum !== null &&
             this._settings.intersectionReferenceSystem !== null &&
             this._settings.attribute !== null &&
-            this._settings.dateOrInterval !== null
+            this._settings.dateOrInterval !== null &&
+            this._settings.extensionLength > 0
+        );
+    }
+
+    protected doSettingsChangesRequireDataRefetch(
+        prevSettings: SeismicLayerSettings,
+        newSettings: SeismicLayerSettings
+    ): boolean {
+        return (
+            !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent) ||
+            prevSettings.realizationNum !== newSettings.realizationNum ||
+            !isEqual(prevSettings.intersectionReferenceSystem, newSettings.intersectionReferenceSystem) ||
+            prevSettings.attribute !== newSettings.attribute ||
+            prevSettings.dateOrInterval !== newSettings.dateOrInterval ||
+            prevSettings.extensionLength !== newSettings.extensionLength
         );
     }
 

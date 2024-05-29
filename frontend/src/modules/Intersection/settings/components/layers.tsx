@@ -65,6 +65,8 @@ export function Layers(props: LayersProps): React.ReactNode {
     const [dragPosition, setDragPosition] = React.useState<Point2D>({ x: 0, y: 0 });
 
     const parentDivRef = React.useRef<HTMLDivElement>(null);
+    const upperScrollDivRef = React.useRef<HTMLDivElement>(null);
+    const lowerScrollDivRef = React.useRef<HTMLDivElement>(null);
 
     function handleAddLayer(type: LayerType) {
         dispatch({ type: LayerActionType.ADD_LAYER, payload: { type } });
@@ -151,6 +153,30 @@ export function Layers(props: LayersProps): React.ReactNode {
                 }
             }
 
+            function maybeScrollUp(position: Point2D) {
+                if (upperScrollDivRef.current === null) {
+                    return;
+                }
+
+                const boundingClientRect = upperScrollDivRef.current.getBoundingClientRect();
+                if (rectContainsPoint(boundingClientRect, position)) {
+                    console.debug("scroll up");
+                    currentParentDivRef.scrollTop -= 10;
+                }
+            }
+
+            function maybeScrollDown(position: Point2D) {
+                if (lowerScrollDivRef.current === null) {
+                    return;
+                }
+
+                const boundingClientRect = lowerScrollDivRef.current.getBoundingClientRect();
+                if (rectContainsPoint(boundingClientRect, position)) {
+                    currentParentDivRef.scrollTop += 10;
+                    console.debug("scroll down");
+                }
+            }
+
             function handlePointerMove(e: PointerEvent) {
                 if (!pointerDownPosition || !layerId) {
                     return;
@@ -172,7 +198,12 @@ export function Layers(props: LayersProps): React.ReactNode {
                 const dy = e.clientY - pointerDownPositionRelativeToElement.y;
                 setDragPosition({ x: dx, y: dy });
 
-                handleElementDrag(layerId, { x: e.clientX, y: e.clientY });
+                const point: Point2D = { x: e.clientX, y: e.clientY };
+
+                handleElementDrag(layerId, point);
+
+                maybeScrollUp(point);
+                maybeScrollDown(point);
             }
 
             function handlePointerUp() {
@@ -229,7 +260,9 @@ export function Layers(props: LayersProps): React.ReactNode {
                 createPortal(
                     <div className="absolute z-40 transparent w-screen h-screen inset-0 cursor-grabbing select-none"></div>
                 )}
-            <div className="flex-grow overflow-auto min-h-0 bg-slate-200">
+            <div className="flex-grow overflow-auto min-h-0 bg-slate-200 relative">
+                <div className="absolute inset-0 w-full h-5 bg-black z-50" ref={upperScrollDivRef}></div>
+                <div className="absolute left-0 bottom-0 w-full h-5 bg-black z-50" ref={lowerScrollDivRef}></div>
                 <div className="flex flex-col border border-slate-100 relative max-h-0" ref={parentDivRef}>
                     {layers.map((layer) => {
                         return (

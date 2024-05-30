@@ -4,6 +4,7 @@ import { UniDirectionalSettingsToViewInterface } from "@framework/UniDirectional
 import { IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
 import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
+import { CURVE_FITTING_EPSILON } from "@modules/Intersection/typesAndEnums";
 import { BaseLayer } from "@modules/Intersection/utils/layers/BaseLayer";
 import { isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
@@ -78,7 +79,6 @@ export function viewAtomsInitialization(
     const polylineAtom = atom((get) => {
         const intersectionType = get(settingsToViewInterface.getAtom("intersectionType"));
         const intersectionExtensionLength = get(settingsToViewInterface.getAtom("intersectionExtensionLength"));
-        const curveFittingEpsilon = get(settingsToViewInterface.getAtom("curveFittingEpsilon"));
         const selectedCustomIntersectionPolyline = get(selectedCustomIntersectionPolylineAtom);
         const intersectionReferenceSystem = get(intersectionReferenceSystemAtom);
 
@@ -91,7 +91,7 @@ export function viewAtomsInitialization(
                     ...calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
                         path,
                         intersectionExtensionLength,
-                        curveFittingEpsilon
+                        CURVE_FITTING_EPSILON
                     ).flat()
                 );
             } else if (intersectionType === IntersectionType.CUSTOM_POLYLINE && selectedCustomIntersectionPolyline) {

@@ -14,10 +14,12 @@ import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { Radio } from "@lib/components/RadioGroup";
+import { Radio, RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { Delete, Edit } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -61,7 +63,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
     const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
-    const [zFactor, setZFactor] = props.settingsContext.useSettingsToViewInterfaceState("zFactor");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
     const setPolylineEditModeActive = useSetAtom(editCustomIntersectionPolylineEditModeActiveAtom);
@@ -71,6 +72,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const [pickSingleGridCellIndexI, setPickSingleGridCellIndexI] = React.useState<boolean>(false);
     const [pickSingleGridCellIndexJ, setPickSingleGridCellIndexJ] = React.useState<boolean>(false);
     const [pickSingleGridCellIndexK, setPickSingleGridCellIndexK] = React.useState<boolean>(false);
+    const [customPolylineFilterText, setCustomPolylineFilterText] = React.useState<string>("");
 
     const syncedSettingKeys = props.settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
@@ -184,15 +186,11 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setShowGridLines(event.target.checked);
     }
 
-    function handleZFactorChange(event: React.ChangeEvent<HTMLInputElement>) {
-        setZFactor(parseFloat(event.target.value));
-    }
-
     function handleIntersectionExtensionLengthChange(event: React.ChangeEvent<HTMLInputElement>) {
         setIntersectionExtensionLength(parseFloat(event.target.value));
     }
 
-    function handleIntersectionTypeChange(type: IntersectionType) {
+    function handleIntersectionTypeChange(_: React.ChangeEvent<HTMLInputElement>, type: IntersectionType) {
         setIntersectionType(type);
     }
 
@@ -228,6 +226,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setSelectedGridCellIndexRanges(newGridCellIndexRanges);
     }
 
+    function handleCustomPolylineFilterTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+        setCustomPolylineFilterText(e.target.value);
+    }
+
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
@@ -236,20 +238,24 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     return (
         <div className="flex flex-col gap-1">
             <CollapsibleGroup title="Ensemble & realization" expanded>
-                <Label text="Ensemble">
-                    <EnsembleDropdown
-                        ensembleSet={ensembleSet}
-                        value={selectedEnsembleIdent}
-                        onChange={handleEnsembleSelectionChange}
-                    />
-                </Label>
-                <Label text="Realization">
-                    <Dropdown
-                        options={realizationOptions}
-                        value={selectedRealization?.toString()}
-                        onChange={handleRealizationSelectionChange}
-                    />
-                </Label>
+                <div className="flex flex-col gap-2">
+                    <Label text="Ensemble">
+                        <EnsembleDropdown
+                            ensembleSet={ensembleSet}
+                            value={selectedEnsembleIdent}
+                            onChange={handleEnsembleSelectionChange}
+                            showArrows
+                        />
+                    </Label>
+                    <Label text="Realization">
+                        <Dropdown
+                            options={realizationOptions}
+                            value={selectedRealization?.toString()}
+                            onChange={handleRealizationSelectionChange}
+                            showArrows
+                        />
+                    </Label>
+                </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Grid model" expanded>
                 <div className="flex flex-col gap-2">
@@ -322,36 +328,48 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
             </CollapsibleGroup>
             <CollapsibleGroup title="Intersection" expanded>
                 <div className="flex flex-col gap-4 text-sm mb-4">
-                    <Radio
-                        name="intersectionType"
+                    <RadioGroup
+                        options={[
+                            {
+                                label: "Use wellbore",
+                                value: IntersectionType.WELLBORE,
+                            },
+                            {
+                                label: "Use custom polyline",
+                                value: IntersectionType.CUSTOM_POLYLINE,
+                            },
+                        ]}
                         value={intersectionType}
-                        checked={intersectionType === IntersectionType.WELLBORE}
-                        onChange={() => handleIntersectionTypeChange(IntersectionType.WELLBORE)}
-                        label={<strong>Use wellbore</strong>}
+                        onChange={handleIntersectionTypeChange}
+                        direction="horizontal"
                     />
-                    <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
-                        <Select
-                            options={makeWellHeaderOptions(wellHeaders.data ?? [])}
-                            value={selectedWellboreHeader ? [selectedWellboreHeader] : []}
-                            onChange={handleWellHeaderSelectionChange}
-                            size={5}
-                            filter
-                            debounceTimeMs={600}
-                            disabled={intersectionType !== IntersectionType.WELLBORE}
-                        />
-                    </PendingWrapper>
-                    <div className="flex flex-col gap-2">
-                        <Radio
-                            name="intersectionType"
-                            value={intersectionType}
-                            checked={intersectionType === IntersectionType.CUSTOM_POLYLINE}
-                            onChange={() => handleIntersectionTypeChange(IntersectionType.CUSTOM_POLYLINE)}
-                            label={<strong>Use custom polyline</strong>}
+                    <div className={resolveClassNames({ hidden: intersectionType !== IntersectionType.WELLBORE })}>
+                        <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
+                            <Select
+                                options={makeWellHeaderOptions(wellHeaders.data ?? [])}
+                                value={selectedWellboreHeader ? [selectedWellboreHeader] : []}
+                                onChange={handleWellHeaderSelectionChange}
+                                size={5}
+                                filter
+                                debounceTimeMs={600}
+                                disabled={intersectionType !== IntersectionType.WELLBORE}
+                            />
+                        </PendingWrapper>
+                    </div>
+                    <div
+                        className={resolveClassNames({ hidden: intersectionType !== IntersectionType.CUSTOM_POLYLINE })}
+                    >
+                        <Input
+                            type="text"
+                            value={customPolylineFilterText}
+                            onChange={handleCustomPolylineFilterTextChange}
+                            placeholder="Filter options..."
                         />
                         <TableSelect
                             options={makeCustomIntersectionPolylineOptions(
                                 availableUserCreatedIntersectionPolylines,
                                 selectedCustomIntersectionPolylineId,
+                                customPolylineFilterText,
                                 <div className="flex items-center">
                                     <div
                                         onClick={handleEditPolyline}
@@ -374,25 +392,24 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             onChange={handleCustomPolylineSelectionChange}
                             size={5}
                             columnSizesInPercent={[80, 20]}
+                            debounceTimeMs={600}
                             disabled={intersectionType !== IntersectionType.CUSTOM_POLYLINE || polylineAddModeActive}
                         />
                     </div>
+                    <Label text="Intersection extension length">
+                        <Input
+                            type="number"
+                            value={intersectionExtensionLength}
+                            min={0}
+                            onChange={handleIntersectionExtensionLengthChange}
+                            debounceTimeMs={600}
+                        />
+                    </Label>
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Visualization options" expanded>
                 <Label text="Show grid lines" position="left">
                     <Switch checked={showGridLines} onChange={handleShowGridLinesChange} />
-                </Label>
-                <Label text="Z factor">
-                    <Input type="number" value={zFactor} min={0} onChange={handleZFactorChange} />
-                </Label>
-                <Label text="Intersection extension length">
-                    <Input
-                        type="number"
-                        value={intersectionExtensionLength}
-                        min={0}
-                        onChange={handleIntersectionExtensionLengthChange}
-                    />
                 </Label>
             </CollapsibleGroup>
         </div>
@@ -429,7 +446,11 @@ function makeGridParameterDateOrIntervalOptions(datesOrIntervals: Grid3dProperty
         if (info.iso_date_or_interval === null) {
             return acc;
         } else if (!acc.includes(info.iso_date_or_interval)) {
-            acc.push(info.iso_date_or_interval);
+            acc.push(
+                info.iso_date_or_interval.includes("/")
+                    ? isoIntervalStringToDateLabel(info.iso_date_or_interval)
+                    : isoStringToDateLabel(info.iso_date_or_interval)
+            );
         }
         return acc;
     }, [] as string[]);
@@ -450,10 +471,16 @@ function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[
 function makeCustomIntersectionPolylineOptions(
     polylines: IntersectionPolyline[],
     selectedId: string | null,
+    filter: string,
     actions: React.ReactNode
 ): TableSelectOption[] {
-    return polylines.map((polyline) => ({
-        id: polyline.id,
-        values: [{ label: polyline.name }, { label: "", adornment: selectedId === polyline.id ? actions : undefined }],
-    }));
+    return polylines
+        .filter((polyline) => polyline.name.includes(filter))
+        .map((polyline) => ({
+            id: polyline.id,
+            values: [
+                { label: polyline.name },
+                { label: "", adornment: selectedId === polyline.id ? actions : undefined },
+            ],
+        }));
 }

@@ -122,28 +122,30 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell w-24">Ensemble</div>
+                <div className="table-cell w-24 align-middle">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}
                         ensembleSet={props.ensembleSet}
                         onChange={handleEnsembleChange}
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Realization</div>
+                <div className="table-cell align-middle">Realization</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeRealizationOptions(availableRealizations)}
                         value={settings.realizationNum?.toString() ?? undefined}
                         onChange={handleRealizationChange}
                         showArrows
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Attribute</div>
+                <div className="table-cell align-middle">Attribute</div>
                 <div className="table-cell">
                     <PendingWrapper
                         isPending={surfaceDirectoryQuery.isFetching}
@@ -154,6 +156,7 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
                             value={settings.attribute ?? undefined}
                             onChange={handleAttributeChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
@@ -171,12 +174,13 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
                             onChange={handleSurfaceNamesChange}
                             size={5}
                             multiple
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Color set</div>
+                <div className="table-cell align-middle">Color set</div>
                 <div className="table-cell">
                     <ColorPaletteSelector
                         type={ColorPaletteSelectorType.Categorical}

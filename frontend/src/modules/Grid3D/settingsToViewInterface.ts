@@ -16,7 +16,6 @@ export type SettingsToViewInterface = {
     baseStates: {
         showGridlines: boolean;
         gridLayer: number;
-        zFactor: number;
         intersectionExtensionLength: number;
     };
     derivedStates: {
@@ -33,7 +32,6 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
     baseStates: {
         showGridlines: false,
         gridLayer: 1,
-        zFactor: 1,
         intersectionExtensionLength: 1000,
     },
     derivedStates: {

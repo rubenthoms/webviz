@@ -53,7 +53,13 @@ export function GridCellIndexFilter(props: GridCellIndexFilterProps): React.Reac
                 <Checkbox checked={props.pickSingle} onChange={handlePickSingleChange} label="Use single" />
             </div>
             <div className="flex gap-1">
-                <Input type="number" value={props.range[0]} onChange={handleRangeMinChange} className="w-12" />
+                <Input
+                    type="number"
+                    value={props.range[0]}
+                    onChange={handleRangeMinChange}
+                    className="w-12"
+                    debounceTimeMs={600}
+                />
                 <div className="flex-grow">
                     <Slider
                         min={0}
@@ -72,6 +78,7 @@ export function GridCellIndexFilter(props: GridCellIndexFilterProps): React.Reac
                     onChange={handleRangeMaxChange}
                     disabled={props.pickSingle}
                     className="w-12"
+                    debounceTimeMs={600}
                 />
             </div>
         </div>

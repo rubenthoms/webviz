@@ -7,21 +7,15 @@ import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
-import { GlobalTopicDefinitions, useSubscribedValue } from "@framework/WorkbenchServices";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
-import { EsvIntersectionReadoutEvent } from "@modules/_shared/components/EsvIntersection";
-import { isWellborepathLayer } from "@modules/_shared/components/EsvIntersection/utils/layers";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 import { NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { useAtom, useAtomValue } from "jotai";
-import { isEqual } from "lodash";
 
-import { HoverUpdateWrapper } from "./components/HoverUpdateWrapper";
-import { SubsurfaceViewerWrapper } from "./components/SubsurfaceViewerWrapper";
 import { SyncedSettingsUpdateWrapper } from "./components/SyncedSettingsUpdateWrapper";
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
@@ -79,11 +73,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         statusWriter.addError(fieldWellboreTrajectoriesQuery.error.message);
     }
 
-    const syncedVerticalScale = syncHelper.useValue(SyncSettingKey.VERTICAL_SCALE, "global.syncValue.verticalScale");
-
     const polylineUtmXy: number[] = [];
     const oldPolylineUtmXy: number[] = [];
-    let hoveredMdPoint3d: number[] | null = null;
 
     let intersectionReferenceSystem: IntersectionReferenceSystem | null = null;
     const customIntersectionPolyline = intersectionPolylines.getPolyline(selectedCustomIntersectionPolylineId ?? "");
@@ -263,6 +254,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 enableIntersectionPolylineEditing
                 onAddIntersectionPolyline={handleAddPolyline}
                 intersectionPolyline={editPolylineModeActive ? customIntersectionPolyline : undefined}
+                intersectionPolylines={intersectionPolylines.getPolylines()}
                 onIntersectionPolylineChange={handlePolylineChange}
                 onIntersectionPolylineEditCancel={handleEditPolylineCancel}
                 wellboreUuid={wellboreUuid}

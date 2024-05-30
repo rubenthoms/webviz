@@ -140,28 +140,30 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell align-center w-24">Ensemble</div>
+                <div className="table-cell align-middle w-24">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}
                         ensembleSet={props.ensembleSet}
                         onChange={handleEnsembleChange}
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell align-center">Realization</div>
+                <div className="table-cell align-middle">Realization</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeRealizationOptions(availableRealizations)}
                         value={settings.realizationNum?.toString() ?? undefined}
                         onChange={handleRealizationChange}
                         showArrows
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell align-center">Model</div>
+                <div className="table-cell align-middle">Model</div>
                 <div className="table-cell">
                     <PendingWrapper
                         isPending={gridModelInfosQuery.isFetching}
@@ -172,12 +174,13 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                             value={settings.gridModelName ?? undefined}
                             onChange={handleGridModelSelectionChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell align-center">Parameter</div>
+                <div className="table-cell align-middle">Parameter</div>
                 <div className="table-cell">
                     <PendingWrapper
                         isPending={gridModelInfosQuery.isFetching}
@@ -188,13 +191,14 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                             value={settings.parameterName ?? undefined}
                             onChange={handleGridParameterSelectionChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
                 <div
-                    className={resolveClassNames("table-cell align-center", {
+                    className={resolveClassNames("table-cell align-middle", {
                         "text-gray-300": gridModelParameterDateOrIntervalOptions.length === 0,
                     })}
                 >
@@ -211,18 +215,19 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                             onChange={handleGridParameterDateOrIntervalSelectionChange}
                             showArrows
                             disabled={gridModelParameterDateOrIntervalOptions.length === 0}
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell align-center">Show mesh</div>
+                <div className="table-cell align-middle">Show mesh</div>
                 <div className="table-cell align-top">
                     <Switch checked={settings.showMesh} onChange={handleShowMeshChange} />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell max-w-0">Color scale</div>
+                <div className="table-cell max-w-0 align-top">Color scale</div>
                 <div className="table-cell">
                     <ColorScaleSelector
                         colorScale={props.layer.getColorScale()}

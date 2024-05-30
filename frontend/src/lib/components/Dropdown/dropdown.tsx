@@ -28,6 +28,7 @@ export type DropdownProps = {
     filter?: boolean;
     width?: string | number;
     showArrows?: boolean;
+    debounceTimeMs?: number;
 } & BaseComponentProps;
 
 const defaultProps = {
@@ -70,6 +71,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
 
     const inputRef = React.useRef<HTMLInputElement>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const inputBoundingRect = useElementBoundingRect(inputRef);
 
@@ -196,6 +198,23 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         ]
     );
 
+    const handleOnChange = React.useCallback(
+        function handleOnChange(value: string) {
+            if (!onChange) {
+                return;
+            }
+
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+
+            debounceTimerRef.current = setTimeout(() => {
+                onChange(value);
+            }, props.debounceTimeMs ?? 0);
+        },
+        [onChange, props.debounceTimeMs]
+    );
+
     const handleOptionClick = React.useCallback(
         function handleOptionClick(value: string) {
             setSelection(value);
@@ -203,13 +222,11 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
             setDropdownVisible(false);
             setFilter(null);
             setFilteredOptions(props.options);
-            if (onChange) {
-                onChange(value);
-            }
             setOptionIndexWithFocus(-1);
+
+            handleOnChange(value);
         },
         [
-            onChange,
             props.options,
             setOptionIndexWithFocus,
             setSelectionIndex,
@@ -217,6 +234,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
             setFilter,
             setFilteredOptions,
             setSelection,
+            handleOnChange,
         ]
     );
 
@@ -316,9 +334,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         const newValue = filteredOptions[newIndex].value;
         setSelectionIndex(newIndex);
         setSelection(newValue);
-        if (onChange) {
-            onChange(newValue);
-        }
+        handleOnChange(newValue);
         setOptionIndexWithFocus(-1);
     }
 
@@ -327,9 +343,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         const newValue = filteredOptions[newIndex].value;
         setSelectionIndex(newIndex);
         setSelection(newValue);
-        if (onChange) {
-            onChange(newValue);
-        }
+        handleOnChange(newValue);
         setOptionIndexWithFocus(-1);
     }
 

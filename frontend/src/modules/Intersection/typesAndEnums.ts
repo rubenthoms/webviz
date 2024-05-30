@@ -1,5 +1,7 @@
 import { PolylineIntersection_trans } from "./view/queries/queryDataTransforms";
 
+export const CURVE_FITTING_EPSILON = 5; // meters
+
 export enum IntersectionType {
     CUSTOM_POLYLINE = "custom-polyline",
     WELLBORE = "wellbore",

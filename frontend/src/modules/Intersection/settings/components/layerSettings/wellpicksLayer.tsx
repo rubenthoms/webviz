@@ -54,7 +54,7 @@ export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsCom
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell align-top w-24">Filter picks</div>
+                <div className="table-cell align-middle w-24">Filter picks</div>
                 <div className="table-cell">
                     <Switch checked={settings.filterPicks} onChange={handleToggleFilterPicks} />
                 </div>
@@ -70,6 +70,7 @@ export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsCom
                             multiple
                             size={5}
                             disabled={!settings.filterPicks}
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
@@ -85,6 +86,7 @@ export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsCom
                             multiple
                             size={5}
                             disabled={!settings.filterPicks}
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>

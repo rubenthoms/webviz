@@ -57,9 +57,6 @@ export function View(
 
     // Wellbore casing query
     const wellboreCasingQuery = useWellboreCasingQuery(wellboreHeader?.uuid ?? undefined);
-    if (wellboreCasingQuery.isError) {
-        statusWriter.addError(wellboreCasingQuery.error.message);
-    }
 
     // Set loading status
     statusWriter.setLoading(

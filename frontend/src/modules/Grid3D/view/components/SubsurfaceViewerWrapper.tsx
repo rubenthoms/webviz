@@ -5,17 +5,16 @@ import { ColumnLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
-import { IconButton } from "@lib/components/IconButton";
-import { Input } from "@lib/components/Input";
-import { Label } from "@lib/components/Label";
-import { Select, SelectOption } from "@lib/components/Select";
-import { Add, ArrowBack, ArrowForward, Delete, FilterCenterFocus, Polyline, Remove, Save } from "@mui/icons-material";
-import { LayerPickInfo, SubsurfaceViewerProps, ViewStateType } from "@webviz/subsurface-viewer";
-import SubsurfaceViewer, { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
+import { Add, FilterCenterFocus, Polyline, Remove } from "@mui/icons-material";
+import { LayerPickInfo, ViewStateType } from "@webviz/subsurface-viewer";
+import { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import { WellsPickInfo } from "@webviz/subsurface-viewer/dist/layers/wells/wellsLayer";
 
 import { Feature } from "geojson";
 import { isEqual } from "lodash";
+
+import { PolylineEditingPanel } from "./PolylineEditingPanel";
+import { SubsurfaceViewerWithCameraState } from "./SubsurfaceViewerWithCameraState";
 
 export type BoundingBox3D = {
     xmin: number;
@@ -46,6 +45,7 @@ export type SubsurfaceViewerWrapperProps = {
     onIntersectionPolylineEditCancel?: () => void;
     onVerticalScaleChange?: (verticalScale: number) => void;
     intersectionPolyline?: IntersectionPolyline;
+    intersectionPolylines?: IntersectionPolyline[];
 };
 
 type IntersectionZValues = {
@@ -376,6 +376,25 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         [selectedPolylinePointIndex]
     );
 
+    const handleCurrentlySelectedPointChange = React.useCallback(
+        function handleCurrentlySelectedPointChange(index: number, value: number) {
+            if (selectedPolylinePointIndex !== null) {
+                setCurrentlyEditedPolyline((prev) => {
+                    const newPolyline = prev.map((point, i) => {
+                        if (i === selectedPolylinePointIndex) {
+                            const newPoint = [...point];
+                            newPoint[index] = value;
+                            return newPoint;
+                        }
+                        return point;
+                    });
+                    return newPolyline;
+                });
+            }
+        },
+        [selectedPolylinePointIndex]
+    );
+
     React.useEffect(() => {
         function handleKeyboardEvent(event: KeyboardEvent) {
             if (!polylineEditPointsModusActive) {
@@ -533,10 +552,12 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                     currentlyEditedPolylineName={props.intersectionPolyline?.name}
                     selectedPolylineIndex={selectedPolylinePointIndex}
                     hoveredPolylineIndex={hoveredPolylinePointIndex}
+                    intersectionPolylines={props.intersectionPolylines ?? []}
                     onPolylinePointSelectionChange={setSelectedPolylinePointIndex}
                     onEditingCancel={handlePolylineEditingCancel}
                     onEditingFinish={handlePolylineEditingFinish}
                     onDeleteCurrentlySelectedPoint={handleDeleteCurrentlySelectedPoint}
+                    onChangeCurrentlySelectedPoint={handleCurrentlySelectedPointChange}
                     onPolylineEditingModusChange={handlePolylineEditingModusChange}
                 />
             )}
@@ -650,189 +671,6 @@ function SubsurfaceViewerToolbar(props: SubsurfaceViewerToolbarProps): React.Rea
 
 function ToolBarDivider(): React.ReactNode {
     return <div className="w-full h-[1px] bg-gray-300" />;
-}
-
-type PolylineEditingPanelProps = {
-    currentlyEditedPolyline: number[][];
-    currentlyEditedPolylineName?: string;
-    selectedPolylineIndex: number | null;
-    hoveredPolylineIndex: number | null;
-    onPolylinePointSelectionChange: (index: number | null) => void;
-    onPolylineEditingModusChange: (active: boolean) => void;
-    onDeleteCurrentlySelectedPoint: () => void;
-    onEditingFinish: (name: string) => void;
-    onEditingCancel: () => void;
-};
-
-export function PolylineEditingPanel(props: PolylineEditingPanelProps): React.ReactNode {
-    const [pointEditingFinished, setPointEditingFinished] = React.useState<boolean>(false);
-    const [polylineName, setPolylineName] = React.useState<string>(props.currentlyEditedPolylineName ?? "");
-
-    function handlePolylinePointSelectionChange(values: string[]): void {
-        if (values.length === 0) {
-            props.onPolylinePointSelectionChange(null);
-        } else {
-            props.onPolylinePointSelectionChange(parseInt(values[0], 10));
-        }
-    }
-
-    function handleFinishEditingClick(): void {
-        setPointEditingFinished(true);
-        props.onPolylineEditingModusChange(false);
-    }
-
-    function handleSaveClick(): void {
-        setPointEditingFinished(false);
-        props.onEditingFinish(polylineName);
-        setPolylineName("");
-    }
-
-    function handleCancelClick(): void {
-        setPointEditingFinished(false);
-        setPolylineName("");
-        props.onEditingCancel();
-    }
-
-    function handleBackClick(): void {
-        setPointEditingFinished(false);
-        props.onPolylineEditingModusChange(true);
-    }
-
-    function handleNameChange(event: React.ChangeEvent<HTMLInputElement>): void {
-        setPolylineName(event.target.value);
-    }
-
-    function handleDeleteCurrentlySelectedPoint(): void {
-        if (props.selectedPolylineIndex !== null) {
-            props.onDeleteCurrentlySelectedPoint();
-        }
-    }
-
-    function makeContent() {
-        if (pointEditingFinished) {
-            return (
-                <Label text="Name">
-                    <Input
-                        value={polylineName}
-                        autoFocus
-                        type="text"
-                        placeholder="Polyline name"
-                        onChange={handleNameChange}
-                    />
-                </Label>
-            );
-        }
-        return (
-            <>
-                <div className="flex gap-2">
-                    <div className="flex-grow">
-                        <Select
-                            value={props.selectedPolylineIndex !== null ? [props.selectedPolylineIndex.toString()] : []}
-                            options={makeSelectOptionsFromPoints(props.currentlyEditedPolyline)}
-                            onChange={handlePolylinePointSelectionChange}
-                            size={5}
-                            placeholder="Click on map to set first point"
-                        />
-                    </div>
-                    <div className="flex flex-col gap-2 rounded bg-slate-50">
-                        <IconButton
-                            onClick={handleDeleteCurrentlySelectedPoint}
-                            disabled={props.selectedPolylineIndex === null}
-                            title="Delete currently selected point"
-                        >
-                            <Delete fontSize="inherit" />
-                        </IconButton>
-                    </div>
-                </div>
-            </>
-        );
-    }
-
-    function makeButtons() {
-        if (pointEditingFinished) {
-            return (
-                <>
-                    <Button onClick={handleCancelClick} color="danger">
-                        Cancel
-                    </Button>
-                    <Button onClick={handleBackClick} startIcon={<ArrowBack fontSize="inherit" />}>
-                        Back
-                    </Button>
-                    <Button onClick={handleSaveClick} color="success" startIcon={<Save fontSize="inherit" />}>
-                        Save
-                    </Button>
-                </>
-            );
-        }
-        return (
-            <>
-                <Button onClick={handleCancelClick} color="danger">
-                    Cancel
-                </Button>
-                <Button
-                    onClick={handleFinishEditingClick}
-                    disabled={props.currentlyEditedPolyline.length < 2}
-                    endIcon={<ArrowForward fontSize="inherit" />}
-                >
-                    Continue
-                </Button>
-            </>
-        );
-    }
-
-    return (
-        <div className="w-64 absolute left-0 top-0 z-30 bg-white rounded shadow border border-gray-300 text-sm">
-            <div className="bg-slate-300 p-2 font-bold">Polyline editing</div>
-            <div className="p-2 h-36">{makeContent()}</div>
-            <div className="bg-slate-100 flex items-center justify-between p-1">{makeButtons()}</div>
-        </div>
-    );
-}
-
-function makeStringFromPoint(point: number[]): string {
-    return `${point[0].toFixed(2)}, ${point[1].toFixed(2)}`;
-}
-
-function makeSelectOptionsFromPoints(points: number[][]): SelectOption[] {
-    return points.map((point, index) => ({
-        value: index.toString(),
-        label: makeStringFromPoint(point),
-    }));
-}
-
-type SubsurfaceViewerWithCameraStateProps = SubsurfaceViewerProps & {
-    userCameraInteractionActive?: boolean;
-    onCameraPositionApplied?: () => void;
-};
-
-function SubsurfaceViewerWithCameraState(props: SubsurfaceViewerWithCameraStateProps): React.ReactNode {
-    const [prevBounds, setPrevBounds] = React.useState<[number, number, number, number] | undefined>(undefined);
-    const [prevCameraPosition, setPrevCameraPosition] = React.useState<ViewStateType | undefined>(undefined);
-    const [cameraPosition, setCameraPosition] = React.useState<ViewStateType | undefined>(undefined);
-
-    if (!isEqual(props.bounds, prevBounds)) {
-        setPrevBounds(props.bounds);
-        setCameraPosition(undefined);
-    }
-
-    if (!isEqual(props.cameraPosition, prevCameraPosition)) {
-        setPrevCameraPosition(props.cameraPosition);
-        if (props.cameraPosition) {
-            setCameraPosition(props.cameraPosition);
-            props.onCameraPositionApplied?.();
-        }
-    }
-
-    const handleCameraChange = React.useCallback(
-        function handleCameraChange(viewport: ViewStateType): void {
-            if (props.userCameraInteractionActive || props.userCameraInteractionActive === undefined) {
-                setCameraPosition(viewport);
-            }
-        },
-        [props.userCameraInteractionActive]
-    );
-
-    return <SubsurfaceViewer {...props} cameraPosition={cameraPosition} getCameraPosition={handleCameraChange} />;
 }
 
 function makePolylineData(

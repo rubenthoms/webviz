@@ -15,7 +15,6 @@ export type SettingsToViewInterface = {
         zFactor: number;
         intersectionExtensionLength: number;
         intersectionType: IntersectionType;
-        curveFittingEpsilon: number;
         seismicColorScale: ColorScale | null;
         showSeismic: boolean;
     };
@@ -34,7 +33,6 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         zFactor: 1,
         intersectionExtensionLength: 1000,
         intersectionType: IntersectionType.WELLBORE,
-        curveFittingEpsilon: 5,
         seismicColorScale: null,
         showSeismic: false,
     },

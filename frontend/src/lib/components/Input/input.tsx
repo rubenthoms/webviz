@@ -10,6 +10,7 @@ export type InputProps = InputUnstyledProps & {
     min?: number;
     max?: number;
     rounded?: "all" | "left" | "right" | "none";
+    debounceTimeMs?: number;
 };
 
 export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRef<HTMLInputElement>) => {
@@ -29,6 +30,8 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
         HTMLInputElement | HTMLTextAreaElement | null,
         HTMLInputElement | HTMLTextAreaElement | null
     >(props.inputRef, () => internalRef.current);
+
+    const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleAdornmentClick = React.useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
         if (internalRef.current) {
@@ -60,11 +63,20 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
 
                 event.target.value = newValue.toString();
             }
-            if (onChange) {
-                onChange(event);
+
+            if (!onChange) {
+                return;
             }
+
+            if (debounceTimerRef.current) {
+                clearTimeout(debounceTimerRef.current);
+            }
+
+            debounceTimerRef.current = setTimeout(() => {
+                onChange(event);
+            }, props.debounceTimeMs ?? 0);
         },
-        [props.min, props.max, onChange, props.type]
+        [props.min, props.max, onChange, props.type, props.debounceTimeMs]
     );
 
     return (

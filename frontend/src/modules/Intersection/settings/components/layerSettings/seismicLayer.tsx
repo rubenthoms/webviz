@@ -167,28 +167,30 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">
-                <div className="table-cell w-24">Ensemble</div>
+                <div className="table-cell align-middle w-24">Ensemble</div>
                 <div className="table-cell">
                     <EnsembleDropdown
                         value={props.layer.getSettings().ensembleIdent}
                         ensembleSet={props.ensembleSet}
                         onChange={handleEnsembleChange}
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Realization</div>
+                <div className="table-cell align-middle">Realization</div>
                 <div className="table-cell">
                     <Dropdown
                         options={makeRealizationOptions(availableRealizations)}
                         value={settings.realizationNum?.toString() ?? undefined}
                         onChange={handleRealizationChange}
                         showArrows
+                        debounceTimeMs={600}
                     />
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Data type</div>
+                <div className="table-cell align-middle">Data type</div>
                 <div className="table-cell">
                     <RadioGroup
                         options={[
@@ -208,7 +210,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Survey type</div>
+                <div className="table-cell align-middle">Survey type</div>
                 <div className="table-cell">
                     <RadioGroup
                         options={[
@@ -228,7 +230,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Attribute</div>
+                <div className="table-cell align-middle">Attribute</div>
                 <div className="table-cell">
                     <PendingWrapper
                         isPending={seismicCubeMetaListQuery.isFetching}
@@ -239,12 +241,13 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                             value={props.layer.getSettings().attribute ?? undefined}
                             onChange={handleAttributeChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Date or interval</div>
+                <div className="table-cell align-middle">Date or interval</div>
                 <div className="table-cell">
                     <PendingWrapper
                         isPending={seismicCubeMetaListQuery.isFetching}
@@ -255,12 +258,13 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                             value={props.layer.getSettings().dateOrInterval ?? undefined}
                             onChange={handleDateOrIntervalChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </PendingWrapper>
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell">Color scale</div>
+                <div className="table-cell align-top">Color scale</div>
                 <div className="table-cell">
                     <ColorScaleSelector
                         colorScale={props.layer.getColorScale()}

@@ -54,7 +54,7 @@ export function viewAtomsInitialization(
 
                     path.push([easting, northing, tvd_msl]);
                 }
-                const offset = wellboreTrajectory.tvd_msl_arr[0];
+                const offset = wellboreTrajectory.md_arr[0];
 
                 const referenceSystem = new IntersectionReferenceSystem(path);
                 referenceSystem.offset = offset;

@@ -202,6 +202,8 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent) ||
             prevSettings.realizationNum !== newSettings.realizationNum ||
             !isEqual(prevSettings.intersectionReferenceSystem, newSettings.intersectionReferenceSystem) ||
+            prevSettings.surveyType !== newSettings.surveyType ||
+            prevSettings.dataType !== newSettings.dataType ||
             prevSettings.attribute !== newSettings.attribute ||
             prevSettings.dateOrInterval !== newSettings.dateOrInterval ||
             prevSettings.extensionLength !== newSettings.extensionLength
@@ -276,6 +278,8 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
                     this._settings.dateOrInterval ?? "",
                     this._settings.intersectionReferenceSystem,
                     this._settings.extensionLength,
+                    this._settings.surveyType,
+                    this._settings.dataType,
                 ],
                 queryFn: () =>
                     apiService.seismic.postGetSeismicFence(

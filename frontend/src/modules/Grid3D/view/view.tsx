@@ -57,6 +57,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     );
     const gridCellIndexRanges = props.viewContext.useSettingsToViewInterfaceValue("gridCellIndexRanges");
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
+    const showIntersection = props.viewContext.useSettingsToViewInterfaceValue("showIntersection");
+
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");
     const [editPolylineModeActive, setEditPolylineModeActive] = useAtom(
@@ -141,7 +143,8 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         gridModelParameterName,
         gridModelParameterDateOrInterval,
         realization,
-        polylineUtmXy
+        polylineUtmXy,
+        showIntersection
     );
     if (polylineIntersectionQuery.isError) {
         statusWriter.addError(polylineIntersectionQuery.error.message);
@@ -240,7 +243,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         colorScale.setRange(minPropValue, maxPropValue);
         layers.push(makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines));
 
-        if (polylineIntersectionQuery.data) {
+        if (polylineIntersectionQuery.data && showIntersection) {
             layers.push(
                 makeIntersectionLayer(polylineIntersectionQuery.data, showGridLines, [minPropValue, maxPropValue])
             );

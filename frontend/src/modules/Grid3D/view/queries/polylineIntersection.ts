@@ -12,7 +12,8 @@ export function useGridPolylineIntersection(
     gridModelParameterName: string | null,
     gridModelDateOrInterval: string | null,
     realizationNum: number | null,
-    polyline_utm_xy: number[]
+    polyline_utm_xy: number[],
+    enabled: boolean
 ): UseQueryResult<PolylineIntersection_trans> {
     return useQuery({
         queryKey: [
@@ -37,6 +38,9 @@ export function useGridPolylineIntersection(
         select: transformPolylineIntersection,
         staleTime: 0,
         gcTime: 0,
-        enabled: ensembleIdent && gridModelName && realizationNum !== null && polyline_utm_xy.length ? true : false,
+        enabled:
+            ensembleIdent && gridModelName && realizationNum !== null && polyline_utm_xy.length && enabled
+                ? true
+                : false,
     });
 }

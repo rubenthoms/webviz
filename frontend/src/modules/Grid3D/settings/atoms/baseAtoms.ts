@@ -12,3 +12,4 @@ export const userSelectedWellboreUuidsAtom = atom<string[]>([]);
 export const userSelectedHighlightedWellboreUuidAtom = atom<string | null>(null);
 export const userSelectedCustomIntersectionPolylineIdAtom = atom<string | null>(null);
 export const userSelectedGridCellIndexRangesAtom = atom<GridCellIndexRanges | null>(null);
+export const userSelectedShowIntersectionAtom = atom<boolean>(false);

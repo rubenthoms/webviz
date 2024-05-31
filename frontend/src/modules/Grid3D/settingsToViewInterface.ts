@@ -16,6 +16,7 @@ import { GridCellIndexRanges } from "./typesAndEnums";
 export type SettingsToViewInterface = {
     baseStates: {
         showGridlines: boolean;
+        showIntersection: boolean;
         gridLayer: number;
         intersectionExtensionLength: number;
     };
@@ -33,6 +34,7 @@ export type SettingsToViewInterface = {
 export const interfaceInitialization: InterfaceInitialization<SettingsToViewInterface> = {
     baseStates: {
         showGridlines: false,
+        showIntersection: false,
         gridLayer: 1,
         intersectionExtensionLength: 1000,
     },

@@ -66,6 +66,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const statusWriter = useSettingsStatusWriter(props.settingsContext);
 
     const [showGridLines, setShowGridLines] = props.settingsContext.useSettingsToViewInterfaceState("showGridlines");
+    const [showIntersection, setShowIntersection] =
+        props.settingsContext.useSettingsToViewInterfaceState("showIntersection");
     const [intersectionExtensionLength, setIntersectionExtensionLength] =
         props.settingsContext.useSettingsToViewInterfaceState("intersectionExtensionLength");
     const setPolylineEditModeActive = useSetAtom(editCustomIntersectionPolylineEditModeActiveAtom);
@@ -194,7 +196,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     function handleShowGridLinesChange(event: React.ChangeEvent<HTMLInputElement>) {
         setShowGridLines(event.target.checked);
     }
-
+    function handleShowIntersectionChange(event: React.ChangeEvent<HTMLInputElement>) {
+        setShowIntersection(event.target.checked);
+    }
     function handleIntersectionExtensionLengthChange(event: React.ChangeEvent<HTMLInputElement>) {
         setIntersectionExtensionLength(parseFloat(event.target.value));
     }
@@ -349,6 +353,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                 </div>
             </CollapsibleGroup>
             <CollapsibleGroup title="Intersection" expanded>
+                <Label text="Show intersection" position="left">
+                    <Switch checked={showIntersection} onChange={handleShowIntersectionChange} />
+                </Label>
                 <div className="flex flex-col gap-4 text-sm mb-4">
                     <RadioGroup
                         options={[

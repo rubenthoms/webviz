@@ -32,8 +32,9 @@ import {
     userSelectedGridModelNameAtom,
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
+    userSelectedHighlightedWellboreUuidAtom,
     userSelectedRealizationAtom,
-    userSelectedWellboreUuidAtom,
+    userSelectedWellboreUuidsAtom,
 } from "./atoms/baseAtoms";
 import {
     availableRealizationsAtom,
@@ -43,9 +44,11 @@ import {
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
+    selectedWellboreUuidsAtom,
 } from "./atoms/derivedAtoms";
 import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./atoms/queryAtoms";
 import { GridCellIndexFilter } from "./components/gridCellIndexFilter";
+import { WellboreSelector } from "./components/wellboreSelector";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import {
@@ -53,7 +56,7 @@ import {
     editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
     selectedEnsembleIdentAtom,
-    selectedWellboreUuidAtom,
+    selectedHighlightedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 import { GridCellIndexRanges } from "../typesAndEnums";
@@ -96,6 +99,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const gridModelInfos = useAtomValue(gridModelInfosQueryAtom);
     const wellHeaders = useAtomValue(drilledWellboreHeadersQueryAtom);
 
+    const selectedWellboreUuids = useAtomValue(selectedWellboreUuidsAtom);
+    const setSelectedWellboreUuids = useSetAtom(userSelectedWellboreUuidsAtom);
+
     const selectedGridModelName = useAtomValue(selectedGridModelNameAtom);
     const setSelectedGridModelName = useSetAtom(userSelectedGridModelNameAtom);
 
@@ -105,8 +111,8 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
     const selectedGridModelParameterDateOrInterval = useAtomValue(selectedGridModelParameterDateOrIntervalAtom);
     const setSelectedGridModelParameterDateOrInterval = useSetAtom(userSelectedGridModelParameterDateOrIntervalAtom);
 
-    const selectedWellboreHeader = useAtomValue(selectedWellboreUuidAtom);
-    const setSelectedWellboreHeader = useSetAtom(userSelectedWellboreUuidAtom);
+    const selectedWellboreHeader = useAtomValue(selectedHighlightedWellboreUuidAtom);
+    const setSelectedWellboreHeader = useSetAtom(userSelectedHighlightedWellboreUuidAtom);
 
     const availableUserCreatedIntersectionPolylines = useIntersectionPolylines(props.workbenchSession).getPolylines();
     const selectedCustomIntersectionPolylineId = useAtomValue(userSelectedCustomIntersectionPolylineIdAtom);
@@ -160,6 +166,9 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setSelectedRealization(parseInt(realization));
     }
 
+    function handleWellboreSelectionChange(wellboreUuids: string[]) {
+        setSelectedWellboreUuids(wellboreUuids);
+    }
     function handleGridModelSelectionChange(gridModelName: string[]) {
         setSelectedGridModelName(gridModelName.at(0) ?? null);
     }
@@ -254,6 +263,19 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             onChange={handleRealizationSelectionChange}
                             showArrows
                         />
+                    </Label>
+                </div>
+            </CollapsibleGroup>
+            <CollapsibleGroup title="Well data" expanded>
+                <div className="flex flex-col gap-2">
+                    <Label text="Drilled Well trajectories">
+                        <PendingWrapper isPending={wellHeaders.isFetching} errorMessage={wellHeadersErrorMessage}>
+                            <WellboreSelector
+                                wellboreHeaders={wellHeaders.data ?? []}
+                                selectedWellboreUuids={selectedWellboreUuids}
+                                onSelectedWellboreUuidsChange={setSelectedWellboreUuids}
+                            />
+                        </PendingWrapper>
                     </Label>
                 </div>
             </CollapsibleGroup>

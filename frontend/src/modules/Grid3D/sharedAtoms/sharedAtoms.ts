@@ -8,7 +8,7 @@ import { atom } from "jotai";
 import {
     userSelectedCustomIntersectionPolylineIdAtom,
     userSelectedEnsembleIdentAtom,
-    userSelectedWellboreUuidAtom,
+    userSelectedHighlightedWellboreUuidAtom,
 } from "../settings/atoms/baseAtoms";
 import { drilledWellboreHeadersQueryAtom } from "../settings/atoms/queryAtoms";
 import { CustomIntersectionPolyline } from "../typesAndEnums";
@@ -24,8 +24,8 @@ export const selectedEnsembleIdentAtom = atom<EnsembleIdent | null>((get) => {
     return userSelectedEnsembleIdent;
 });
 
-export const selectedWellboreUuidAtom = atom((get) => {
-    const userSelectedWellboreUuid = get(userSelectedWellboreUuidAtom);
+export const selectedHighlightedWellboreUuidAtom = atom((get) => {
+    const userSelectedHighlightedWellboreUuid = get(userSelectedHighlightedWellboreUuidAtom);
     const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
 
     if (!wellboreHeaders.data) {
@@ -33,13 +33,13 @@ export const selectedWellboreUuidAtom = atom((get) => {
     }
 
     if (
-        !userSelectedWellboreUuid ||
-        !wellboreHeaders.data.some((el) => el.wellbore_uuid === userSelectedWellboreUuid)
+        !userSelectedHighlightedWellboreUuid ||
+        !wellboreHeaders.data.some((el) => el.wellbore_uuid === userSelectedHighlightedWellboreUuid)
     ) {
         return wellboreHeaders.data[0].wellbore_uuid ?? null;
     }
 
-    return userSelectedWellboreUuid;
+    return userSelectedHighlightedWellboreUuid;
 });
 
 export const intersectionTypeAtom = atom<IntersectionType>(IntersectionType.WELLBORE);

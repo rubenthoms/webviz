@@ -4,7 +4,7 @@ import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/Intersect
 import {
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
-    selectedWellboreUuidAtom,
+    selectedHighlightedWellboreUuidAtom,
 } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
@@ -20,7 +20,7 @@ export const selectedCustomIntersectionPolylineAtom = atom((get) => {
 
 export const intersectionReferenceSystemAtom = atom((get) => {
     const fieldWellboreTrajectories = get(fieldWellboreTrajectoriesQueryAtom);
-    const wellboreUuid = get(selectedWellboreUuidAtom);
+    const wellboreUuid = get(selectedHighlightedWellboreUuidAtom);
     const customIntersectionPolylines = get(IntersectionPolylinesAtom);
     const customIntersectionPolylineId = get(selectedCustomIntersectionPolylineIdAtom);
 

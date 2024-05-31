@@ -9,6 +9,7 @@ import {
     selectedGridModelParameterDateOrIntervalAtom,
     selectedGridModelParameterNameAtom,
     selectedRealizationAtom,
+    selectedWellboreUuidsAtom,
 } from "./settings/atoms/derivedAtoms";
 import { GridCellIndexRanges } from "./typesAndEnums";
 
@@ -20,6 +21,7 @@ export type SettingsToViewInterface = {
     };
     derivedStates: {
         realization: number | null;
+        wellboreUuids: string[];
         gridModelName: string | null;
         gridModelBoundingBox3d: BoundingBox3d_api | null;
         gridModelParameterName: string | null;
@@ -37,6 +39,9 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
     derivedStates: {
         realization: (get) => {
             return get(selectedRealizationAtom);
+        },
+        wellboreUuids: (get) => {
+            return get(selectedWellboreUuidsAtom);
         },
         gridModelName: (get) => {
             return get(selectedGridModelNameAtom);

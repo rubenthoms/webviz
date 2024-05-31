@@ -13,8 +13,9 @@ import {
     userSelectedGridModelParameterDateOrIntervalAtom,
     userSelectedGridModelParameterNameAtom,
     userSelectedRealizationAtom,
+    userSelectedWellboreUuidsAtom,
 } from "./baseAtoms";
-import { gridModelInfosQueryAtom } from "./queryAtoms";
+import { drilledWellboreHeadersQueryAtom, gridModelInfosQueryAtom } from "./queryAtoms";
 
 export const availableRealizationsAtom = atom((get) => {
     const ensembleSet = get(EnsembleSetAtom);
@@ -46,6 +47,16 @@ export const selectedRealizationAtom = atom((get) => {
     return userSelectedRealization;
 });
 
+export const selectedWellboreUuidsAtom = atom((get) => {
+    const userSelectedWellboreUuids = get(userSelectedWellboreUuidsAtom);
+    const wellboreHeaders = get(drilledWellboreHeadersQueryAtom);
+
+    if (!wellboreHeaders.data) {
+        return [];
+    }
+
+    return userSelectedWellboreUuids.filter((uuid) => wellboreHeaders.data.some((el) => el.wellbore_uuid === uuid));
+});
 export const selectedGridModelNameAtom = atom((get) => {
     const gridModelInfos = get(gridModelInfosQueryAtom);
     const userSelectedGridModelName = get(userSelectedGridModelNameAtom);

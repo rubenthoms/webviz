@@ -29,7 +29,7 @@ import {
     editCustomIntersectionPolylineEditModeActiveAtom,
     intersectionTypeAtom,
     selectedEnsembleIdentAtom,
-    selectedWellboreUuidAtom,
+    selectedHighlightedWellboreUuidAtom,
 } from "../sharedAtoms/sharedAtoms";
 import { State } from "../state";
 
@@ -42,12 +42,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         gradientType: ColorScaleGradientType.Sequential,
     });
 
-    const wellboreUuid = useAtomValue(selectedWellboreUuidAtom);
+    const highlightedWellboreUuid = useAtomValue(selectedHighlightedWellboreUuidAtom);
 
     const ensembleIdent = useAtomValue(selectedEnsembleIdentAtom);
     const intersectionPolylines = useIntersectionPolylines(props.workbenchSession);
 
     const realization = props.viewContext.useSettingsToViewInterfaceValue("realization");
+    const wellboreUuids = props.viewContext.useSettingsToViewInterfaceValue("wellboreUuids");
     const gridModelName = props.viewContext.useSettingsToViewInterfaceValue("gridModelName");
     const gridModelBoundingBox3d = props.viewContext.useSettingsToViewInterfaceValue("gridModelBoundingBox3d");
     const gridModelParameterName = props.viewContext.useSettingsToViewInterfaceValue("gridModelParameterName");
@@ -72,6 +73,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (fieldWellboreTrajectoriesQuery.isError) {
         statusWriter.addError(fieldWellboreTrajectoriesQuery.error.message);
     }
+    const displayedWellboreUuid = [...wellboreUuids];
+    if (highlightedWellboreUuid && !displayedWellboreUuid.includes(highlightedWellboreUuid)) {
+        displayedWellboreUuid.push(highlightedWellboreUuid);
+    }
+    const filteredFieldWellBoreTrajectories = fieldWellboreTrajectoriesQuery.data?.filter((wellbore) =>
+        displayedWellboreUuid.includes(wellbore.wellbore_uuid)
+    );
 
     const polylineUtmXy: number[] = [];
     const oldPolylineUtmXy: number[] = [];
@@ -80,9 +88,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const customIntersectionPolyline = intersectionPolylines.getPolyline(selectedCustomIntersectionPolylineId ?? "");
 
     if (intersectionType === IntersectionType.WELLBORE) {
-        if (fieldWellboreTrajectoriesQuery.data && wellboreUuid) {
-            const wellboreTrajectory = fieldWellboreTrajectoriesQuery.data.find(
-                (wellbore) => wellbore.wellbore_uuid === wellboreUuid
+        if (filteredFieldWellBoreTrajectories && highlightedWellboreUuid) {
+            const wellboreTrajectory = filteredFieldWellBoreTrajectories.find(
+                (wellbore) => wellbore.wellbore_uuid === highlightedWellboreUuid
             );
             if (wellboreTrajectory) {
                 const path: number[][] = [];
@@ -140,7 +148,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     }
 
     // Wellbore casing query
-    const wellboreCasingQuery = useWellboreCasingQuery(wellboreUuid ?? undefined);
+    const wellboreCasingQuery = useWellboreCasingQuery(highlightedWellboreUuid ?? undefined);
     if (wellboreCasingQuery.isError) {
         statusWriter.addError(wellboreCasingQuery.error.message);
     }
@@ -239,9 +247,9 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         }
     }
 
-    if (fieldWellboreTrajectoriesQuery.data) {
-        const maybeWellboreUuid = intersectionType === IntersectionType.WELLBORE ? wellboreUuid : null;
-        layers.push(makeWellsLayer(fieldWellboreTrajectoriesQuery.data, maybeWellboreUuid));
+    if (filteredFieldWellBoreTrajectories) {
+        const maybeWellboreUuid = intersectionType === IntersectionType.WELLBORE ? highlightedWellboreUuid : null;
+        layers.push(makeWellsLayer(filteredFieldWellBoreTrajectories, maybeWellboreUuid));
     }
 
     return (
@@ -257,7 +265,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 intersectionPolylines={intersectionPolylines.getPolylines()}
                 onIntersectionPolylineChange={handlePolylineChange}
                 onIntersectionPolylineEditCancel={handleEditPolylineCancel}
-                wellboreUuid={wellboreUuid}
+                wellboreUuid={highlightedWellboreUuid}
                 intersectionReferenceSystem={intersectionReferenceSystem ?? undefined}
                 workbenchServices={props.workbenchServices}
                 viewContext={props.viewContext}

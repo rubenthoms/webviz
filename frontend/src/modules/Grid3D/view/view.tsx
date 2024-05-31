@@ -7,6 +7,7 @@ import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
+import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -55,6 +56,17 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const gridModelParameterDateOrInterval = props.viewContext.useSettingsToViewInterfaceValue(
         "gridModelParameterDateOrInterval"
     );
+    const ensembleSet = useEnsembleSet(props.workbenchSession);
+
+    let ensembleName = "";
+    if (ensembleIdent) {
+        const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+        ensembleName = ensemble?.getDisplayName() ?? "";
+    }
+    props.viewContext.setInstanceTitle(
+        `${ensembleName}, R=${realization} -- ${gridModelName} / ${gridModelParameterName}`
+    );
+
     const gridCellIndexRanges = props.viewContext.useSettingsToViewInterfaceValue("gridCellIndexRanges");
     const showGridLines = props.viewContext.useSettingsToViewInterfaceValue("showGridlines");
     const showIntersection = props.viewContext.useSettingsToViewInterfaceValue("showIntersection");

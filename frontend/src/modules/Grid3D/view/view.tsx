@@ -1,7 +1,6 @@
 import React from "react";
 
 import { Layer } from "@deck.gl/core/typed";
-import { GeoJsonLayer } from "@deck.gl/layers/typed";
 import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
@@ -12,6 +11,7 @@ import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { useFieldWellboreTrajectoriesQuery } from "@modules/_shared/WellBore/queryHooks";
+import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { calcExtendedSimplifiedWellboreTrajectoryInXYPlane } from "@modules/_shared/utils/wellbore";
 import { NorthArrow3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 
@@ -21,7 +21,6 @@ import { SyncedSettingsUpdateWrapper } from "./components/SyncedSettingsUpdateWr
 import { useGridParameterQuery, useGridSurfaceQuery } from "./queries/gridQueries";
 import { useGridPolylineIntersection as useGridPolylineIntersectionQuery } from "./queries/polylineIntersection";
 import { useWellboreCasingQuery } from "./queries/wellboreSchematicsQueries";
-import { createContinuousColorScaleForMap } from "./utils/colorTables";
 import { makeAxesLayer, makeGrid3DLayer, makeIntersectionLayer, makeWellsLayer } from "./utils/layers";
 
 import { userSelectedCustomIntersectionPolylineIdAtom } from "../settings/atoms/baseAtoms";
@@ -39,9 +38,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const syncedSettingKeys = props.viewContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
-    const colorScale = props.workbenchSettings.useContinuousColorScale({
-        gradientType: ColorScaleGradientType.Sequential,
-    });
+    let colorScale = props.viewContext.useSettingsToViewInterfaceValue("colorScale");
+    if (!colorScale) {
+        colorScale = props.workbenchSettings.useContinuousColorScale({
+            gradientType: ColorScaleGradientType.Sequential,
+        });
+    }
+    const useCustomBounds = props.viewContext.useSettingsToViewInterfaceValue("useCustomBounds");
 
     const highlightedWellboreUuid = useAtomValue(selectedHighlightedWellboreUuidAtom);
 
@@ -238,8 +241,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         return null;
     }
 
-    const colorTables = createContinuousColorScaleForMap(colorScale);
-
     const northArrowLayer = new NorthArrow3DLayer({
         id: "north-arrow-layer",
         visible: true,
@@ -252,7 +253,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     if (gridSurfaceQuery.data && gridParameterQuery.data) {
         const minPropValue = gridParameterQuery.data.min_grid_prop_value;
         const maxPropValue = gridParameterQuery.data.max_grid_prop_value;
-        colorScale.setRange(minPropValue, maxPropValue);
+        if (!useCustomBounds) {
+            colorScale.setRangeAndMidPoint(
+                minPropValue,
+                maxPropValue,
+                minPropValue + (maxPropValue - minPropValue) / 2
+            );
+        }
         layers.push(makeGrid3DLayer(gridSurfaceQuery.data, gridParameterQuery.data, showGridLines));
 
         if (polylineIntersectionQuery.data && showIntersection) {
@@ -267,11 +274,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         layers.push(makeWellsLayer(filteredFieldWellBoreTrajectories, maybeWellboreUuid));
     }
 
+    const colorScaleWithName = ColorScaleWithName.fromColorScale(colorScale, gridModelParameterName ?? "Grid model");
+
     return (
         <div className="w-full h-full">
             <SyncedSettingsUpdateWrapper
                 boundingBox={gridModelBoundingBox3d ?? undefined}
-                colorTables={colorTables}
+                colorScale={colorScaleWithName}
                 layers={layers}
                 show3D
                 enableIntersectionPolylineEditing

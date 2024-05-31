@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Grid3dInfo_api, Grid3dPropertyInfo_api, WellboreHeader_api } from "@api";
+import { Grid3dInfo_api, WellboreHeader_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
@@ -14,11 +14,13 @@ import { Dropdown } from "@lib/components/Dropdown";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { Radio, RadioGroup } from "@lib/components/RadioGroup";
+import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
 import { TableSelect, TableSelectOption } from "@lib/components/TableSelect";
+import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
 import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { Delete, Edit } from "@mui/icons-material";
 
@@ -122,6 +124,10 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     const selectedGridCellIndexRanges = useAtomValue(selectedGridCellIndexRangesAtom);
     const setSelectedGridCellIndexRanges = useSetAtom(userSelectedGridCellIndexRangesAtom);
+
+    const [colorScale, setColorScale] = props.settingsContext.useSettingsToViewInterfaceState("colorScale");
+    const [useCustomBounds, setUseCustomBounds] =
+        props.settingsContext.useSettingsToViewInterfaceState("useCustomBounds");
 
     if (!isEqual(syncedIntersection, prevSyncedIntersection)) {
         setPrevSyncedIntersection(syncedIntersection);
@@ -243,10 +249,17 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setCustomPolylineFilterText(e.target.value);
     }
 
+    function handleColorScaleChange(colorScale: ColorScale, areBoundariesUserDefined: boolean) {
+        setColorScale(colorScale);
+        setUseCustomBounds(areBoundariesUserDefined);
+    }
+
     const realizationOptions = makeRealizationOptions(availableRealizations);
     const gridModelInfo = gridModelInfos.data?.find((info) => info.grid_name === selectedGridModelName) ?? null;
     const datesOrIntervalsForSelectedParameter =
-        gridModelInfo?.property_info_arr.filter((el) => el.property_name === selectedGridModelParameterName) ?? [];
+        gridModelInfo?.property_info_arr
+            .filter((el) => el.property_name === selectedGridModelParameterName)
+            .map((el) => el.iso_date_or_interval) ?? [];
 
     return (
         <div className="flex flex-col gap-1">
@@ -258,6 +271,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             value={selectedEnsembleIdent}
                             onChange={handleEnsembleSelectionChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </Label>
                     <Label text="Realization">
@@ -266,6 +280,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             value={selectedRealization?.toString()}
                             onChange={handleRealizationSelectionChange}
                             showArrows
+                            debounceTimeMs={600}
                         />
                     </Label>
                 </div>
@@ -319,8 +334,17 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                                 onChange={handleGridParameterDateOrIntervalSelectionChange}
                                 size={5}
                                 debounceTimeMs={600}
+                                filter
                             />
                         </PendingWrapper>
+                    </Label>
+                    <Label text="Color scale">
+                        <ColorScaleSelector
+                            workbenchSettings={props.workbenchSettings}
+                            colorScale={colorScale ?? undefined}
+                            onChange={handleColorScaleChange}
+                            areBoundariesUserDefined={useCustomBounds}
+                        />
                     </Label>
                 </div>
             </CollapsibleGroup>
@@ -470,24 +494,20 @@ function makeGridParameterNameOptions(gridModelInfo: Grid3dInfo_api | null): Sel
     }));
 }
 
-function makeGridParameterDateOrIntervalOptions(datesOrIntervals: Grid3dPropertyInfo_api[]): SelectOption[] {
-    const reduced = datesOrIntervals.reduce((acc, info) => {
-        if (info.iso_date_or_interval === null) {
+function makeGridParameterDateOrIntervalOptions(datesOrIntervals: (string | null)[]): SelectOption[] {
+    const reduced = datesOrIntervals.sort().reduce((acc, info) => {
+        if (info === null) {
             return acc;
-        } else if (!acc.includes(info.iso_date_or_interval)) {
-            acc.push(
-                info.iso_date_or_interval.includes("/")
-                    ? isoIntervalStringToDateLabel(info.iso_date_or_interval)
-                    : isoStringToDateLabel(info.iso_date_or_interval)
-            );
+        } else if (!acc.map((el) => el.value).includes(info)) {
+            acc.push({
+                label: info.includes("/") ? isoIntervalStringToDateLabel(info) : isoStringToDateLabel(info),
+                value: info,
+            });
         }
         return acc;
-    }, [] as string[]);
+    }, [] as SelectOption[]);
 
-    return reduced.map((info) => ({
-        label: info,
-        value: info,
-    }));
+    return reduced;
 }
 
 function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[] {

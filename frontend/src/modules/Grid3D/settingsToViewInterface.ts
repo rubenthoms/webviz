@@ -1,6 +1,6 @@
 import { BoundingBox3d_api } from "@api";
-import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToViewInterface";
+import { ColorScale } from "@lib/utils/ColorScale";
 
 import {
     selectedGridCellIndexRangesAtom,
@@ -19,6 +19,8 @@ export type SettingsToViewInterface = {
         showIntersection: boolean;
         gridLayer: number;
         intersectionExtensionLength: number;
+        colorScale: ColorScale | null;
+        useCustomBounds: boolean;
     };
     derivedStates: {
         realization: number | null;
@@ -37,6 +39,8 @@ export const interfaceInitialization: InterfaceInitialization<SettingsToViewInte
         showIntersection: false,
         gridLayer: 1,
         intersectionExtensionLength: 1000,
+        colorScale: null,
+        useCustomBounds: false,
     },
     derivedStates: {
         realization: (get) => {

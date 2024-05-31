@@ -20,6 +20,7 @@ import {
     BaseLayer,
     LayerStatus,
     useIsLayerVisible,
+    useLayerName,
     useLayerStatus,
 } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
@@ -71,7 +72,6 @@ export function Layers(props: LayersProps): React.ReactNode {
     const scrollDivRef = React.useRef<HTMLDivElement>(null);
     const upperScrollDivRef = React.useRef<HTMLDivElement>(null);
     const lowerScrollDivRef = React.useRef<HTMLDivElement>(null);
-    let currentScrollTime = 100;
 
     if (!isEqual(prevLayers, layers)) {
         setPrevLayers(layers);
@@ -103,6 +103,7 @@ export function Layers(props: LayersProps): React.ReactNode {
 
             let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
             let doScroll: boolean = false;
+            let currentScrollTime = 100;
 
             function findLayerElement(element: HTMLElement): [HTMLElement | null, string | null] {
                 if (element?.parentElement && element.dataset.layerId) {
@@ -457,17 +458,17 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 </div>
                 <div
                     className={resolveClassNames("px-0.5 hover:cursor-pointer rounded", {
-                        "hover:bg-blue-100": !props.isDragging,
+                        "hover:text-blue-800": !props.isDragging,
                     })}
                     onClick={handleToggleLayerVisibility}
                     title="Toggle visibility"
                 >
                     {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
                 </div>
-                <div className="flex-grow font-bold flex items-center gap-1">{props.layer.getName()}</div>
+                <LayerName layer={props.layer} />
                 {makeStatus()}
                 <div
-                    className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded"
+                    className="hover:cursor-pointer hover:text-blue-800 p-0.5 rounded"
                     onClick={handleToggleSettingsVisibility}
                     title={showSettings ? "Hide settings" : "Show settings"}
                 >
@@ -490,7 +491,11 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
             <div
                 ref={divRef}
                 className={resolveClassNames(
-                    "flex h-10 py-2 px-1 bg-white hover:bg-blue-100 text-sm items-center gap-1 border-b border-b-gray-300 relative"
+                    "flex h-10 py-2 px-1 hover:bg-blue-100 text-sm items-center gap-1 border-b border-b-gray-300 relative",
+                    {
+                        "bg-red-100": props.layer.getStatus() === LayerStatus.ERROR,
+                        "bg-white": props.layer.getStatus() !== LayerStatus.ERROR,
+                    }
                 )}
                 data-layer-id={props.layer.getId()}
             >
@@ -524,5 +529,54 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 {makeSettingsContainer(props.layer)}
             </div>
         </>
+    );
+}
+
+type LayerNameProps = {
+    layer: BaseLayer<any, any>;
+};
+
+function LayerName(props: LayerNameProps): React.ReactNode {
+    const layerName = useLayerName(props.layer);
+    const [editingName, setEditingName] = React.useState<boolean>(false);
+
+    function handleNameDoubleClick() {
+        setEditingName(true);
+    }
+
+    function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+        props.layer.setName(e.target.value);
+    }
+
+    function handleBlur() {
+        setEditingName(false);
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter") {
+            setEditingName(false);
+        }
+    }
+
+    return (
+        <div
+            className="flex-grow font-bold flex items-center pt-1"
+            onDoubleClick={handleNameDoubleClick}
+            title="Double-click to edit name"
+        >
+            {editingName ? (
+                <input
+                    type="text"
+                    className="p-0.5 w-full"
+                    value={layerName}
+                    onChange={handleNameChange}
+                    onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
+                    autoFocus
+                />
+            ) : (
+                layerName
+            )}
+        </div>
     );
 }

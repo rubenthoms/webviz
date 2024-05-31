@@ -1,4 +1,4 @@
-import { Grid3dDimensions_api, GridDimensions_api } from "@api";
+import { Grid3dDimensions_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";

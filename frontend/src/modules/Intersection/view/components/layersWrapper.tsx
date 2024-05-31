@@ -155,7 +155,11 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
             const colorScale = gridLayer.getColorScale().clone();
 
             if (!gridLayer.getUseCustomColorScaleBoundaries()) {
-                colorScale.setRange(data.min_grid_prop_value, data.max_grid_prop_value);
+                colorScale.setRangeAndMidPoint(
+                    data.min_grid_prop_value,
+                    data.max_grid_prop_value,
+                    data.min_grid_prop_value + (data.max_grid_prop_value - data.min_grid_prop_value) / 2
+                );
             }
 
             esvLayers.push({

@@ -9,13 +9,17 @@ export type ColorLegendsContainerProps = {
 };
 
 export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNode {
-    const width = Math.max(5, Math.min(10, 100 / props.colorScales.length));
+    if (props.colorScales.length === 0) {
+        return null;
+    }
+
+    const width = Math.max(5, Math.min(10, 120 / props.colorScales.length));
     const lineWidth = 6;
     const lineColor = "#555";
     const textGap = 6;
     const offset = 10;
     const legendGap = 4;
-    const textWidth = 50;
+    const textWidth = 70;
     const nameWidth = 10;
     const minHeight = Math.min(60 + 2 * offset, props.height);
     const fontSize = 10;
@@ -235,6 +239,9 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                 <defs>
                     {props.colorScales.map((el) => {
                         const { id, colorScale } = el;
+                        if (colorScale.getMin() === colorScale.getMax()) {
+                            return null;
+                        }
                         return <GradientDef id={id} key={id} colorScale={colorScale} />;
                     })}
                 </defs>

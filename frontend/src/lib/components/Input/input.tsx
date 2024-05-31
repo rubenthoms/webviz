@@ -62,6 +62,8 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
                 setValue(newValue);
 
                 event.target.value = newValue.toString();
+            } else {
+                setValue(event.target.value);
             }
 
             if (!onChange) {

@@ -177,7 +177,11 @@ export class WorkbenchSettings {
                     : ColorPaletteType.ContinuousDiverging
             ),
             gradientType: options.gradientType,
-            steps: 0,
+            steps: this._steps[
+                options.gradientType === ColorScaleGradientType.Sequential
+                    ? ColorScaleDiscreteSteps.Sequential
+                    : ColorScaleDiscreteSteps.Diverging
+            ],
         };
 
         const [adjustedOptions, setAdjustedOptions] = React.useState<ColorScaleOptions>(optionsWithDefaults);

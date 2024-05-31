@@ -99,7 +99,7 @@ export const Select = withDefaults<SelectProps>()(defaultProps, (props) => {
                 onChange(values);
             }, props.debounceTimeMs ?? 0);
         },
-        [onChange]
+        [onChange, props.debounceTimeMs]
     );
 
     React.useEffect(

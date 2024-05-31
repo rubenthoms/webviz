@@ -92,6 +92,8 @@ export const SurfaceLayerSettingsComponent: React.FC<SurfaceLayerSettingsCompone
         if (!isEqual(fixupSurfaceNames, settings.surfaceNames)) {
             props.layer.maybeUpdateSettings({ surfaceNames: fixupSurfaceNames });
         }
+
+        props.layer.maybeRefetchData();
     }
 
     function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {

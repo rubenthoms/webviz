@@ -6,6 +6,8 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { getTextWidthWithFont } from "@lib/utils/textSize";
 import { ArrowDropDown, ArrowDropUp, ExpandLess, ExpandMore } from "@mui/icons-material";
 
+import { isEqual } from "lodash";
+
 import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 import { IconButton } from "../IconButton";
 import { Input } from "../Input";
@@ -63,6 +65,7 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
     const [filter, setFilter] = React.useState<string | null>(null);
     const [selection, setSelection] = React.useState<string | number>(props.value);
     const [prevValue, setPrevValue] = React.useState<string | number>(props.value);
+    const [prevFilteredOptions, setPrevFilteredOptions] = React.useState<DropdownOption[]>(props.options);
     const [selectionIndex, setSelectionIndex] = React.useState<number>(-1);
     const [filteredOptions, setFilteredOptions] = React.useState<DropdownOption[]>(props.options);
     const [optionIndexWithFocus, setOptionIndexWithFocus] = React.useState<number>(-1);
@@ -88,6 +91,11 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         setSelection(props.value);
         setSelectionIndex(props.options.findIndex((option) => option.value === props.value));
         setPrevValue(props.value);
+    }
+
+    if (!isEqual(prevFilteredOptions, filteredOptions)) {
+        setOptionIndexWithFocusToCurrentSelection();
+        setPrevFilteredOptions(filteredOptions);
     }
 
     React.useEffect(

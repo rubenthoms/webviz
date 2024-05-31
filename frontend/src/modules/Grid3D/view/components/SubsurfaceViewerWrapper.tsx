@@ -5,9 +5,12 @@ import { ColumnLayer, SolidPolygonLayer } from "@deck.gl/layers/typed";
 import { IntersectionPolyline, IntersectionPolylineWithoutId } from "@framework/userCreatedItems/IntersectionPolylines";
 import { Button } from "@lib/components/Button";
 import { HoldPressedIntervalCallbackButton } from "@lib/components/HoldPressedIntervalCallbackButton/holdPressedIntervalCallbackButton";
+import { useElementSize } from "@lib/hooks/useElementSize";
+import { ColorLegendsContainer } from "@modules/_shared/components/ColorLegendsContainer";
+import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { Add, FilterCenterFocus, Polyline, Remove } from "@mui/icons-material";
 import { LayerPickInfo, ViewStateType } from "@webviz/subsurface-viewer";
-import { MapMouseEvent, colorTablesArray } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
+import { MapMouseEvent } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import { WellsPickInfo } from "@webviz/subsurface-viewer/dist/layers/wells/wellsLayer";
 
 import { Feature } from "geojson";
@@ -15,6 +18,8 @@ import { isEqual } from "lodash";
 
 import { PolylineEditingPanel } from "./PolylineEditingPanel";
 import { SubsurfaceViewerWithCameraState } from "./SubsurfaceViewerWithCameraState";
+
+import { createContinuousColorScaleForMap } from "../utils/colorTables";
 
 export type BoundingBox3D = {
     xmin: number;
@@ -38,7 +43,7 @@ export type SubsurfaceViewerWrapperProps = {
     layers: Layer[];
     show3D?: boolean;
     verticalScale?: number;
-    colorTables: colorTablesArray;
+    colorScale: ColorScaleWithName;
     enableIntersectionPolylineEditing?: boolean;
     onAddIntersectionPolyline?: (intersectionPolyline: IntersectionPolylineWithoutId) => void;
     onIntersectionPolylineChange?: (intersectionPolyline: IntersectionPolyline) => void;
@@ -85,6 +90,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     );
 
     const internalRef = React.useRef<HTMLDivElement>(null);
+    const divSize = useElementSize(internalRef);
 
     React.useImperativeHandle<HTMLDivElement | null, HTMLDivElement | null>(props.ref, () => internalRef.current);
 
@@ -532,6 +538,9 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         return nodes;
     }
 
+    const colorTables = createContinuousColorScaleForMap(props.colorScale);
+    const colorScaleWithName = { id: "grid3d", colorScale: props.colorScale };
+
     return (
         <div ref={internalRef} className="w-full h-full relative overflow-hidden">
             <SubsurfaceViewerToolbar
@@ -546,6 +555,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 onVerticalScaleDecrease={handleVerticalScaleDecrease}
                 zFactor={verticalScale}
             />
+            <ColorLegendsContainer colorScales={[colorScaleWithName]} height={divSize.height / 2 - 50} />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}
@@ -574,7 +584,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                     },
                 }}
                 coords={{ visible: false, multiPicking: polylineEditPointsModusActive }}
-                colorTables={props.colorTables}
+                colorTables={colorTables}
                 onMouseEvent={handleMouseEvent}
                 userCameraInteractionActive={userCameraInteractionActive}
                 cameraPosition={cameraPositionSetByAction ?? undefined}

@@ -51,6 +51,8 @@ export const WellpicksLayerSettingsComponent: React.FC<WellpicksLayerSettingsCom
         );
     }
 
+    props.layer.maybeRefetchData();
+
     return (
         <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
             <div className="table-row">

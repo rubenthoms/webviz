@@ -114,7 +114,7 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
                         })
                         .map((el) => el.iso_date_or_interval)
                 )
-            )
+            ).sort()
         );
     }
 
@@ -128,6 +128,8 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
         if (!isEqual(fixupDateOrInterval, settings.dateOrInterval)) {
             props.layer.maybeUpdateSettings({ dateOrInterval: fixupDateOrInterval });
         }
+
+        props.layer.maybeRefetchData();
     }
 
     let seismicCubeMetaListErrorMessage = "";
@@ -140,15 +142,21 @@ export const SeismicLayerSettingsComponent: React.FC<SeismicLayerSettingsProps> 
     }
 
     function handleRealizationChange(realizationNum: string) {
-        props.layer.maybeUpdateSettings({ realizationNum: parseInt(realizationNum) });
+        props.layer.maybeUpdateSettings({
+            realizationNum: parseInt(realizationNum),
+        });
     }
 
     function handleDataTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
-        props.layer.maybeUpdateSettings({ dataType: event.target.value as SeismicDataType });
+        props.layer.maybeUpdateSettings({
+            dataType: event.target.value as SeismicDataType,
+        });
     }
 
     function handleSurveyTypeChange(event: React.ChangeEvent<HTMLInputElement>) {
-        props.layer.maybeUpdateSettings({ surveyType: event.target.value as SeismicSurveyType });
+        props.layer.maybeUpdateSettings({
+            surveyType: event.target.value as SeismicSurveyType,
+        });
     }
 
     function handleAttributeChange(selected: string) {

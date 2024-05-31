@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Grid3dInfo_api, Grid3dPropertyInfo_api } from "@api";
+import { Grid3dInfo_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
@@ -54,6 +54,13 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         }
     }
 
+    const gridModelInfo = gridModelInfosQuery.data?.find((info) => info.grid_name === settings.gridModelName) ?? null;
+    const datesOrIntervalsForSelectedParameter =
+        gridModelInfo?.property_info_arr
+            .filter((el) => el.property_name === settings.parameterName)
+            .map((el) => el.iso_date_or_interval)
+            .sort() ?? [];
+
     if (gridModelInfosQuery.data) {
         const fixupGridModelName = fixupSetting(
             "gridModelName",
@@ -64,7 +71,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
             props.layer.maybeUpdateSettings({ gridModelName: fixupGridModelName });
         }
 
-        const gridModelInfo = gridModelInfosQuery.data.find((info) => info.grid_name === settings.gridModelName);
         if (gridModelInfo) {
             const fixupParameterName = fixupSetting(
                 "parameterName",
@@ -75,18 +81,17 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
                 props.layer.maybeUpdateSettings({ parameterName: fixupParameterName });
             }
 
-            const datesOrIntervalsForSelectedParameter = gridModelInfo.property_info_arr.filter(
-                (el) => el.property_name === settings.parameterName
-            );
             const fixupParameterDateOrInterval = fixupSetting(
                 "parameterDateOrInterval",
-                datesOrIntervalsForSelectedParameter.map((el) => el.iso_date_or_interval),
+                datesOrIntervalsForSelectedParameter,
                 settings
             );
             if (!isEqual(fixupParameterDateOrInterval, settings.parameterDateOrInterval)) {
                 props.layer.maybeUpdateSettings({ parameterDateOrInterval: fixupParameterDateOrInterval });
             }
         }
+
+        props.layer.maybeRefetchData();
     }
 
     function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {
@@ -118,10 +123,6 @@ export const GridLayerSettingsComponent: React.FC<GridLayerSettingsComponentProp
         props.layer.setColorScale(newColorScale);
         props.layer.setUseCustomColorScaleBoundaries(areBoundariesUserDefined);
     }
-
-    const gridModelInfo = gridModelInfosQuery.data?.find((info) => info.grid_name === settings.gridModelName) ?? null;
-    const datesOrIntervalsForSelectedParameter =
-        gridModelInfo?.property_info_arr.filter((el) => el.property_name === settings.parameterName) ?? [];
 
     const availableRealizations: number[] = [];
     if (settings.ensembleIdent) {
@@ -266,24 +267,20 @@ function makeGridParameterNameOptions(gridModelInfo: Grid3dInfo_api | null): Dro
     }));
 }
 
-function makeGridParameterDateOrIntervalOptions(datesOrIntervals: Grid3dPropertyInfo_api[]): DropdownOption[] {
+function makeGridParameterDateOrIntervalOptions(datesOrIntervals: (string | null)[]): DropdownOption[] {
     const reduced = datesOrIntervals.reduce((acc, info) => {
-        if (info.iso_date_or_interval === null) {
+        if (info === null) {
             return acc;
-        } else if (!acc.includes(info.iso_date_or_interval)) {
-            acc.push(
-                info.iso_date_or_interval.includes("/")
-                    ? isoIntervalStringToDateLabel(info.iso_date_or_interval)
-                    : isoStringToDateLabel(info.iso_date_or_interval)
-            );
+        } else if (!acc.map((el) => el.value).includes(info)) {
+            acc.push({
+                value: info,
+                label: info.includes("/") ? isoIntervalStringToDateLabel(info) : isoStringToDateLabel(info),
+            });
         }
         return acc;
-    }, [] as string[]);
+    }, [] as { label: string; value: string }[]);
 
-    return reduced.map((info) => ({
-        label: info,
-        value: info,
-    }));
+    return reduced;
 }
 
 const STALE_TIME = 60 * 1000;

@@ -40,11 +40,13 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     private _boundingBox: BoundingBox | null = null;
     protected _data: TData | null = null;
     protected _settings: TSettings = {} as TSettings;
+    private _lastDataFetchSettings: TSettings;
 
     constructor(name: string, settings: TSettings, queryClient: QueryClient) {
         this._id = v4();
         this._name = name;
         this._settings = settings;
+        this._lastDataFetchSettings = cloneDeep(settings);
         this._queryClient = queryClient;
     }
 
@@ -102,12 +104,7 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
             }
         }
         if (Object.keys(patchesToApply).length > 0) {
-            const prevSettings = { ...this._settings };
             this._settings = { ...this._settings, ...patchesToApply };
-
-            if (this.doSettingsChangesRequireDataRefetch(prevSettings, this._settings)) {
-                this.maybeRefetchData();
-            }
         }
         this.notifySubscribers(LayerTopic.SETTINGS);
     }
@@ -141,10 +138,17 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
         return !isEqual(prevSettings, newSettings);
     }
 
-    private async maybeRefetchData(): Promise<void> {
+    async maybeRefetchData(): Promise<void> {
+        if (!this.doSettingsChangesRequireDataRefetch(this._lastDataFetchSettings, this._settings)) {
+            return;
+        }
+
+        this._lastDataFetchSettings = cloneDeep(this._settings);
+
         if (!this.areSettingsValid()) {
             return;
         }
+
         this._status = LayerStatus.LOADING;
         this.notifySubscribers(LayerTopic.STATUS);
         try {
@@ -152,7 +156,7 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
             this.notifySubscribers(LayerTopic.DATA);
             this._status = LayerStatus.SUCCESS;
         } catch (error) {
-            console.error("Error fetching GridLayer data", error);
+            console.error("Error fetching data", error);
             this._status = LayerStatus.ERROR;
         }
         this.notifySubscribers(LayerTopic.STATUS);
@@ -180,6 +184,25 @@ export function useLayerStatus(layer: BaseLayer<any, any>): LayerStatus {
     );
 
     return status;
+}
+
+export function useLayerName(layer: BaseLayer<any, any>): string {
+    const [name, setName] = React.useState<string>(layer.getName());
+
+    React.useEffect(
+        function handleHookMount() {
+            function handleNameChange() {
+                setName(layer.getName());
+            }
+
+            const unsubscribe = layer.subscribe(LayerTopic.NAME, handleNameChange);
+
+            return unsubscribe;
+        },
+        [layer]
+    );
+
+    return name;
 }
 
 export function useIsLayerVisible(layer: BaseLayer<any, any>): boolean {

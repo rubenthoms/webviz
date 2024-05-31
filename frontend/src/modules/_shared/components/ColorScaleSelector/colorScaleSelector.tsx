@@ -19,8 +19,8 @@ import { isEqual } from "lodash";
 export type ColorScaleSelectorProps = {
     workbenchSettings: WorkbenchSettings;
     colorScale?: ColorScale;
-    areBoundariesUserDefined: boolean;
-    onChange: (colorScale: ColorScale, areBoundariesUserDefined: boolean) => void;
+    areBoundariesUserDefined?: boolean;
+    onChange?: (colorScale: ColorScale, areBoundariesUserDefined: boolean) => void;
 };
 
 export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactNode {
@@ -55,8 +55,8 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
     }
 
     if (!isEqual(props.areBoundariesUserDefined, prevAreBoundariesUserDefined)) {
-        setPrevAreBoundariesUserDefined(props.areBoundariesUserDefined);
-        setAreBoundariesUserDefined(props.areBoundariesUserDefined);
+        setPrevAreBoundariesUserDefined(props.areBoundariesUserDefined ?? false);
+        setAreBoundariesUserDefined(props.areBoundariesUserDefined ?? false);
     }
 
     function toggleDiscrete(e: React.ChangeEvent<HTMLInputElement>) {
@@ -145,7 +145,9 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
                 colorScale.setRange(min, max);
             }
             setColorScale(colorScale);
-            onChange(colorScale, areBoundariesUserDefined);
+            if (onChange) {
+                onChange(colorScale, areBoundariesUserDefined);
+            }
         },
         [onChange]
     );
@@ -170,7 +172,9 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
     const handleAreBoundariesUserDefinedChange = React.useCallback(
         function handleAreBoundariesUserDefinedChange(areBoundariesUserDefined: boolean) {
             setAreBoundariesUserDefined(areBoundariesUserDefined);
-            onChange(colorScale, areBoundariesUserDefined);
+            if (onChange) {
+                onChange(colorScale, areBoundariesUserDefined);
+            }
         },
         [colorScale, onChange]
     );
@@ -282,7 +286,7 @@ function ColorScaleSetter(props: ColorScaleSetterProps): React.ReactNode {
             <ColorScalePaletteSelector
                 id={props.id}
                 colorPalettes={props.colorPalettes}
-                selectedColorPalette={props.colorPalettes[0]}
+                selectedColorPalette={props.selectedColorPalette}
                 type={props.type}
                 gradientType={props.gradientType}
                 min={min}
@@ -441,19 +445,39 @@ function MinMaxDivMidPointSetter(props: MinMaxDivMidPointSetterProps): React.Rea
     );
 
     function handleMinChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const newMin = parseFloat(e.target.value);
+        let newMin = parseFloat(e.target.value);
+        let newDivMidPoint = divMidPoint;
+        if (newMin >= max) {
+            newMin = max - 0.000001;
+        }
+        if (newMin > divMidPoint) {
+            newDivMidPoint = newMin;
+        }
         setMin(newMin);
-        props.onChange(newMin, max, divMidPoint);
+        props.onChange(newMin, max, newDivMidPoint);
     }
 
     function handleMaxChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const newMax = parseFloat(e.target.value);
+        let newMax = parseFloat(e.target.value);
+        let newDivMidPoint = divMidPoint;
+        if (newMax <= min) {
+            newMax = min + 0.000001;
+        }
+        if (newMax < divMidPoint) {
+            newDivMidPoint = newMax;
+        }
         setMax(newMax);
-        props.onChange(min, newMax, divMidPoint);
+        props.onChange(min, newMax, newDivMidPoint);
     }
 
     function handleDivMidPointChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const newDivMidPoint = parseFloat(e.target.value);
+        let newDivMidPoint = parseFloat(e.target.value);
+        if (newDivMidPoint <= min) {
+            newDivMidPoint = min;
+        }
+        if (newDivMidPoint >= max) {
+            newDivMidPoint = max;
+        }
         setDivMidPoint(newDivMidPoint);
         props.onChange(min, max, newDivMidPoint);
     }
@@ -488,7 +512,7 @@ function MinMaxDivMidPointSetter(props: MinMaxDivMidPointSetterProps): React.Rea
                     value={min}
                     onChange={handleMinChange}
                     title="Min"
-                    max={max}
+                    max={max - 0.000001}
                     disabled={!areBoundariesUserDefined}
                 />
                 {props.gradientType !== ColorScaleGradientType.Sequential && (
@@ -496,7 +520,7 @@ function MinMaxDivMidPointSetter(props: MinMaxDivMidPointSetterProps): React.Rea
                         type="number"
                         value={divMidPoint}
                         onChange={handleDivMidPointChange}
-                        min={min}
+                        min={min + 0.000001}
                         max={max}
                         title="Mid point"
                         disabled={!areBoundariesUserDefined}

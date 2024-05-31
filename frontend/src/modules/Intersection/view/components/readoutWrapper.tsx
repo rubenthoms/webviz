@@ -95,8 +95,8 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
                 intersectionReferenceSystem={props.referenceSystem ?? undefined}
                 showAxes
                 axesOptions={{
-                    xLabel: "U",
-                    yLabel: "TVD",
+                    xLabel: "X",
+                    yLabel: "Z",
                     unitOfMeasure: "m",
                 }}
                 layers={props.layers}

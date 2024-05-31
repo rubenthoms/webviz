@@ -174,9 +174,6 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
         setSelectedRealization(parseInt(realization));
     }
 
-    function handleWellboreSelectionChange(wellboreUuids: string[]) {
-        setSelectedWellboreUuids(wellboreUuids);
-    }
     function handleGridModelSelectionChange(gridModelName: string[]) {
         setSelectedGridModelName(gridModelName.at(0) ?? null);
     }

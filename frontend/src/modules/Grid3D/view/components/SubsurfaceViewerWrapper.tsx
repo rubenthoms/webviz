@@ -337,6 +337,8 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             handleMouseHover(event);
             return;
         }
+
+        event.infos;
     }
 
     function handlePolylineEditingCancel(): void {
@@ -555,7 +557,11 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 onVerticalScaleDecrease={handleVerticalScaleDecrease}
                 zFactor={verticalScale}
             />
-            <ColorLegendsContainer colorScales={[colorScaleWithName]} height={divSize.height / 2 - 50} />
+            <ColorLegendsContainer
+                colorScales={[colorScaleWithName]}
+                height={divSize.height / 2 - 50}
+                position="right"
+            />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}
@@ -583,7 +589,11 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                         top: 10,
                     },
                 }}
-                coords={{ visible: false, multiPicking: polylineEditPointsModusActive }}
+                coords={{
+                    visible: true,
+                    multiPicking: polylineEditPointsModusActive,
+                    pickDepth: polylineEditPointsModusActive ? 2 : undefined,
+                }}
                 colorTables={colorTables}
                 onMouseEvent={handleMouseEvent}
                 userCameraInteractionActive={userCameraInteractionActive}

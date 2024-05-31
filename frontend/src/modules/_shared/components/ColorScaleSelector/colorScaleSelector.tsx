@@ -206,6 +206,7 @@ export function ColorScaleSelector(props: ColorScaleSelectorProps): React.ReactN
                         value={colorScale.getNumSteps()}
                         onChange={(e) => setNumSteps(parseInt(e.target.value, 10))}
                         disabled={colorScale.getType() !== ColorScaleType.Discrete}
+                        min={2}
                     />
                 </div>
             </Label>

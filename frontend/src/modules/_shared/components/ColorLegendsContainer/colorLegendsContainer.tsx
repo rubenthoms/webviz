@@ -1,11 +1,13 @@
 import React from "react";
 
 import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { ColorScaleWithName } from "@modules_shared/utils/ColorScaleWithName";
 
 export type ColorLegendsContainerProps = {
     colorScales: { id: string; colorScale: ColorScaleWithName }[];
     height: number;
+    position?: "left" | "right";
 };
 
 export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.ReactNode {
@@ -227,7 +229,12 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
     }
 
     return (
-        <div className="absolute bottom-8 left-0 flex gap-2 z-50">
+        <div
+            className={resolveClassNames("absolute bottom-8 flex gap-2 z-50", {
+                "left-0": props.position === "left" || props.position === undefined,
+                "right-0": props.position === "right",
+            })}
+        >
             <svg
                 style={{
                     height: numRows * (height + 2 * offset) + (numRows - 1) * legendGap,

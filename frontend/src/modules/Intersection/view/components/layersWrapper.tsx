@@ -206,6 +206,8 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                             cellCountJ: data.grid_dimensions.j_count,
                             cellCountK: data.grid_dimensions.k_count,
                         },
+                        propertyName: layer.getSettings().parameterName ?? "",
+                        propertyUnit: "",
                     },
                     order: index,
                 },

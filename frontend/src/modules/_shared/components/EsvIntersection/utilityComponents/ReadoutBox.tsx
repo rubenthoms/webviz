@@ -1,4 +1,4 @@
-import { AdditionalInformationKey, ReadoutItem } from "../types";
+import { AdditionalInformationKey, PropValue, ReadoutItem } from "../types";
 import { getColorFromLayerData } from "../utils/intersectionConversion";
 import { getAdditionalInformationFromReadoutItem, getLabelFromLayerData } from "../utils/readoutItemUtils";
 
@@ -7,46 +7,102 @@ export type ReadoutBoxProps = {
     maxNumItems?: number;
 };
 
-function additionalInformationItemToReadableString(key: string, value: unknown): string {
+function additionalInformationItemToReadableString(
+    key: string,
+    value: unknown
+): { label: string; value: string } | null {
     switch (key) {
         case AdditionalInformationKey.IJK:
-            return `IJK: ${(value as [number, number, number])[0].toFixed(0)}, ${(
-                value as [number, number, number]
-            )[1].toFixed(0)}, ${(value as [number, number, number])[2].toFixed(0)}`;
+            return {
+                label: "IJK",
+                value: `${(value as [number, number, number])[0].toFixed(0)}, ${(
+                    value as [number, number, number]
+                )[1].toFixed(0)}, ${(value as [number, number, number])[2].toFixed(0)}`,
+            };
         case AdditionalInformationKey.PROP_VALUE:
-            return `Property value: ${(value as number).toFixed(2)}`;
+            const propValue = value as PropValue;
+            return {
+                label: propValue.name,
+                value: `${propValue.value.toFixed(2)} ${propValue.unit}`,
+            };
         case AdditionalInformationKey.MD:
-            return `MD: ${(value as number).toFixed(2)}`;
+            return {
+                label: "MD",
+                value: `${(value as number).toFixed(2)} m`,
+            };
         case AdditionalInformationKey.MAX:
-            return `Max: ${(value as number).toFixed(2)}`;
+            return {
+                label: "Max",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.MIN:
-            return `Min: ${(value as number).toFixed(2)}`;
+            return {
+                label: "Min",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.P10:
-            return `P10: ${(value as number).toFixed(2)}`;
+            return {
+                label: "P10",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.P90:
-            return `P90: ${(value as number).toFixed(2)}`;
+            return {
+                label: "P90",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.P50:
-            return `P50: ${(value as number).toFixed(2)}`;
+            return {
+                label: "P50",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.MEAN:
-            return `Mean: ${(value as number).toFixed(2)}`;
+            return {
+                label: "Mean",
+                value: `${(value as number).toFixed(2)}`,
+            };
         case AdditionalInformationKey.SCHEMATIC_INFO:
-            return (value as string[]).join(", ");
+            return {
+                label: "Schematic info",
+                value: (value as string[]).join(", "),
+            };
         case AdditionalInformationKey.X:
-            return `X: ${(value as number).toFixed(2)}`;
+            return {
+                label: "X",
+                value: `${(value as number).toFixed(2)} m`,
+            };
         case AdditionalInformationKey.Y:
-            return `Y: ${(value as number).toFixed(2)}`;
+            return {
+                label: "Y",
+                value: `${(value as number).toFixed(2)} m`,
+            };
         default:
-            return "";
+            return null;
     }
 }
 
-function makeAdditionalInformation(item: ReadoutItem): React.ReactNode {
+function makeAdditionalInformation(item: ReadoutItem): { label: string; value: string }[] {
     const additionalInformation = getAdditionalInformationFromReadoutItem(item);
-    return Object.entries(additionalInformation).map(([key, value], index) => {
+    return Object.entries(additionalInformation)
+        .map(([key, value]) => {
+            return additionalInformationItemToReadableString(key, value);
+        })
+        .filter((el): el is { label: string; value: string } => el !== null);
+}
+
+function convertAdditionalInformationToHtml(items: { label: string; value: string }[]): React.ReactNode {
+    function formatValue(value: number | string): string {
+        if (typeof value === "number") {
+            return value.toFixed(2);
+        }
+        return value.toString();
+    }
+
+    return items.map((el, index) => {
         return (
-            <span key={index} className="block">
-                {additionalInformationItemToReadableString(key, value)}
-            </span>
+            <div className="table-row" key={index}>
+                <div className="table-cell w-32">{el.label}:</div>
+                <div className="table-cell">{formatValue(el.value)}</div>
+            </div>
         );
     });
 }
@@ -61,21 +117,22 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     });
 
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 text-sm z-50 w-60 pointer-events-none">
             {sortedReadoutItems.map((item, index) => {
                 if (index < (props.maxNumItems ?? 3)) {
                     return (
-                        <div key={index} className="flex items-center gap-2">
-                            <div
-                                className="rounded-full w-3 h-3"
-                                style={{ backgroundColor: getColorFromLayerData(item.layer, item.index) }}
-                            />
-                            <div>
-                                <strong>{getLabelFromLayerData(item)}</strong>
-                                <br />
-                                {makeAdditionalInformation(item)}
+                        <>
+                            <div className="flex gap-2 font-bold items-center">
+                                <div
+                                    className="rounded-full w-3 h-3 border border-slate-500"
+                                    style={{ backgroundColor: getColorFromLayerData(item.layer, item.index) }}
+                                />
+                                {getLabelFromLayerData(item)}
                             </div>
-                        </div>
+                            <div className="table">
+                                {convertAdditionalInformationToHtml(makeAdditionalInformation(item))}
+                            </div>
+                        </>
                     );
                 }
             })}

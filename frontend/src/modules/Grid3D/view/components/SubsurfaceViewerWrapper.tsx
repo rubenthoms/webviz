@@ -17,6 +17,7 @@ import { Feature } from "geojson";
 import { isEqual } from "lodash";
 
 import { PolylineEditingPanel } from "./PolylineEditingPanel";
+import { ReadoutBox } from "./ReadoutBox";
 import { SubsurfaceViewerWithCameraState } from "./SubsurfaceViewerWithCameraState";
 
 import { createContinuousColorScaleForMap } from "../utils/colorTables";
@@ -73,6 +74,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const [hoverPreviewPoint, setHoverPreviewPoint] = React.useState<number[] | null>(null);
     const [cameraPositionSetByAction, setCameraPositionSetByAction] = React.useState<ViewStateType | null>(null);
     const [isDragging, setIsDragging] = React.useState<boolean>(false);
+    const [layerPickingInfo, setLayerPickingInfo] = React.useState<LayerPickInfo[]>([]);
 
     const [verticalScale, setVerticalScale] = React.useState<number>(1);
     const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
@@ -307,6 +309,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
 
     function handleMouseHover(event: MapMouseEvent): void {
         if (!polylineEditPointsModusActive) {
+            setLayerPickingInfo(event.infos);
             setHoverPreviewPoint(null);
             return;
         }
@@ -337,8 +340,6 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             handleMouseHover(event);
             return;
         }
-
-        event.infos;
     }
 
     function handlePolylineEditingCancel(): void {
@@ -560,8 +561,9 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
             <ColorLegendsContainer
                 colorScales={[colorScaleWithName]}
                 height={divSize.height / 2 - 50}
-                position="right"
+                position="left"
             />
+            <ReadoutBox layerPickInfo={layerPickingInfo} />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}
@@ -590,7 +592,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                     },
                 }}
                 coords={{
-                    visible: true,
+                    visible: false,
                     multiPicking: polylineEditPointsModusActive,
                     pickDepth: polylineEditPointsModusActive ? 2 : undefined,
                 }}

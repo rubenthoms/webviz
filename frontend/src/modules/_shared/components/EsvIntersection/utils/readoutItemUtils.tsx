@@ -129,7 +129,11 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
             );
 
             const propValue = layer.data.fenceMeshSections[readoutItem.index].polyPropsArr[readoutItem.polygonIndex];
-            infoObject[AdditionalInformationKey.PROP_VALUE] = propValue;
+            infoObject[AdditionalInformationKey.PROP_VALUE] = {
+                name: layer.data.propertyName,
+                unit: layer.data.propertyUnit,
+                value: propValue,
+            };
         }
     }
 

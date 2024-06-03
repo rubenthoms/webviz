@@ -38,6 +38,8 @@ export type PolylineIntersectionData = {
     extensionLengthStart?: number;
     hideGridlines?: boolean;
     colorScale: ColorScale;
+    propertyName: string;
+    propertyUnit: string;
 };
 
 type CellIndexPolygonsLookupMap = Map<number, { sectionIndex: number; polygonIndex: number; startOffset: number }[]>;

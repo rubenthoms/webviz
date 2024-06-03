@@ -145,6 +145,12 @@ export enum AdditionalInformationKey {
     LABEL = "label",
 }
 
+export type PropValue = {
+    name: string;
+    unit: string;
+    value: number;
+};
+
 export type AdditionalInformation = {
     [AdditionalInformationKey.B]?: number;
     [AdditionalInformationKey.G]?: number;
@@ -159,7 +165,7 @@ export type AdditionalInformation = {
     [AdditionalInformationKey.P50]?: number;
     [AdditionalInformationKey.GLOBAL_POLYGON_INDEX]?: number;
     [AdditionalInformationKey.IJK]?: [number, number, number];
-    [AdditionalInformationKey.PROP_VALUE]?: number;
+    [AdditionalInformationKey.PROP_VALUE]?: PropValue;
     [AdditionalInformationKey.MD]?: number;
     [AdditionalInformationKey.LABEL]?: string;
     [AdditionalInformationKey.SCHEMATIC_INFO]?: string[];

@@ -130,7 +130,7 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     }
 
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-12 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border border-neutral-300 bottom-10 right-12 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none backdrop-blur-sm">
             {infoData.map((el, index) => {
                 if (index < (props.maxNumItems ?? 3)) {
                     return (

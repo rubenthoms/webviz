@@ -4,6 +4,225 @@ import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { ColorScaleWithName } from "@modules_shared/utils/ColorScaleWithName";
 
+const lineWidth = 6;
+const lineColor = "#555";
+const textGap = 6;
+const offset = 10;
+const legendGap = 4;
+const textWidth = 70;
+const nameLabelWidth = 10;
+const fontSize = 10;
+
+const textStyle: React.CSSProperties = {
+    fontSize: "11px",
+    stroke: "#fff",
+    paintOrder: "stroke",
+    strokeWidth: "6px",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    fontWeight: 800,
+};
+
+function makeMarkers(
+    colorScale: ColorScale,
+    barTop: number,
+    sectionTop: number,
+    sectionBottom: number,
+    left: number,
+    barHeight: number
+): React.ReactNode[] {
+    const sectionHeight = Math.abs(sectionBottom - sectionTop);
+    const numMarkers = Math.floor(sectionHeight / (fontSize + 4 * textGap));
+    const markerDistance = sectionHeight / (numMarkers + 1);
+
+    const markers: React.ReactNode[] = [];
+
+    let currentLocalY = sectionTop - barTop + markerDistance;
+    for (let i = 0; i < numMarkers; i++) {
+        const relValue = 1 - currentLocalY / barHeight;
+        const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * relValue;
+
+        const globalY = barTop + currentLocalY;
+
+        markers.push(
+            <line
+                key={`${sectionTop}-${i}-marker`}
+                x1={left}
+                y1={globalY}
+                x2={left + lineWidth}
+                y2={globalY}
+                stroke={lineColor}
+                strokeWidth="1"
+            />
+        );
+        markers.push(
+            <text
+                key={`${sectionTop}-${i}-text`}
+                x={left + lineWidth + textGap}
+                y={globalY + 3}
+                fontSize="10"
+                style={textStyle}
+            >
+                {formatLegendValue(value)}
+            </text>
+        );
+
+        currentLocalY += markerDistance;
+    }
+    return markers;
+}
+
+type ColorLegendProps = {
+    id: string;
+    colorScale: ColorScaleWithName;
+    top: number;
+    left: number;
+    totalHeight: number;
+    barWidth: number;
+};
+
+function ColorLegend(props: ColorLegendProps): React.ReactNode {
+    const barHeight = props.totalHeight - offset;
+
+    const barStartPosition = props.left + nameLabelWidth + textGap;
+    const lineMarkerStartPosition = barStartPosition + props.barWidth;
+    const lineMarkerEndPosition = lineMarkerStartPosition + lineWidth;
+    const textStartPosition = lineMarkerStartPosition + lineWidth + textGap;
+
+    const markers: React.ReactNode[] = [];
+    markers.push(
+        <line
+            key="max-marker"
+            x1={lineMarkerStartPosition}
+            y1={props.top + offset}
+            x2={lineMarkerEndPosition}
+            y2={props.top + offset}
+            stroke={lineColor}
+            strokeWidth="1"
+        />
+    );
+    markers.push(
+        <text key="max-text" x={textStartPosition} y={props.top + offset + 3} fontSize="10" style={textStyle}>
+            {formatLegendValue(props.colorScale.getMax())}
+        </text>
+    );
+    if (props.colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
+        const relY =
+            1 -
+            (props.colorScale.getDivMidPoint() - props.colorScale.getMin()) /
+                (props.colorScale.getMax() - props.colorScale.getMin());
+
+        markers.push(
+            makeMarkers(
+                props.colorScale,
+                props.top + offset,
+                props.top + offset,
+                props.top + offset + barHeight * relY,
+                props.left + props.barWidth + nameLabelWidth + textGap,
+                barHeight
+            )
+        );
+
+        markers.push(
+            <line
+                key="mid-marker"
+                x1={props.left + props.barWidth + nameLabelWidth + textGap}
+                y1={props.top + relY * barHeight + offset}
+                x2={props.left + props.barWidth + lineWidth + nameLabelWidth + textGap}
+                y2={props.top + relY * barHeight + offset}
+                stroke={lineColor}
+                strokeWidth="2"
+            />
+        );
+        markers.push(
+            <text
+                key="mid-text"
+                x={props.left + props.barWidth + lineWidth + textGap + nameLabelWidth + textGap}
+                y={props.top + relY * barHeight + offset + 3}
+                fontSize="10"
+                style={textStyle}
+            >
+                {formatLegendValue(props.colorScale.getDivMidPoint())}
+            </text>
+        );
+
+        markers.push(
+            makeMarkers(
+                props.colorScale,
+                props.top + offset,
+                props.top + relY * barHeight + offset,
+                props.top + offset + barHeight,
+                props.left + props.barWidth + nameLabelWidth + textGap,
+                barHeight
+            )
+        );
+    } else {
+        markers.push(
+            makeMarkers(
+                props.colorScale,
+                props.top + offset,
+                props.top + offset,
+                props.top + offset + barHeight,
+                props.left + props.barWidth + nameLabelWidth + textGap,
+                barHeight
+            )
+        );
+    }
+
+    markers.push(
+        <line
+            key="min-marker"
+            x1={lineMarkerStartPosition}
+            y1={props.top + offset + barHeight}
+            x2={lineMarkerEndPosition}
+            y2={props.top + offset + barHeight}
+            stroke={lineColor}
+            strokeWidth="1"
+        />
+    );
+    markers.push(
+        <text
+            key="min-text"
+            x={props.left + props.barWidth + lineWidth + textGap + nameLabelWidth + textGap}
+            y={props.top + offset + barHeight + 3}
+            fontSize="10"
+            style={textStyle}
+        >
+            {formatLegendValue(props.colorScale.getMin())}
+        </text>
+    );
+
+    return (
+        <g key={`color-scale-${makeGradientId(props.id)}`}>
+            <rect
+                key={props.id}
+                x={props.left + nameLabelWidth + textGap}
+                y={props.top + offset}
+                width={props.barWidth}
+                rx="4"
+                height={barHeight}
+                fill={`url(#${makeGradientId(props.id)})`}
+                stroke="#555"
+            />
+            <text
+                x={props.left}
+                y={props.top + offset + props.totalHeight / 2 + 6}
+                width={props.totalHeight}
+                height={10}
+                fontSize="10"
+                textAnchor="middle"
+                dominantBaseline="central"
+                alignmentBaseline="baseline"
+                transform={`rotate(270, ${props.left}, ${props.top + offset + props.totalHeight / 2})`}
+                style={textStyle}
+            >
+                {props.colorScale.getName()}
+            </text>
+            {markers}
+        </g>
+    );
+}
+
 export type ColorLegendsContainerProps = {
     colorScales: { id: string; colorScale: ColorScaleWithName }[];
     height: number;
@@ -16,65 +235,11 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
     }
 
     const width = Math.max(5, Math.min(10, 120 / props.colorScales.length));
-    const lineWidth = 6;
-    const lineColor = "#555";
-    const textGap = 6;
-    const offset = 10;
-    const legendGap = 4;
-    const textWidth = 70;
-    const nameWidth = 10;
     const minHeight = Math.min(60 + 2 * offset, props.height);
-    const fontSize = 10;
 
     const numRows = Math.min(Math.floor(props.height / minHeight), props.colorScales.length);
     const numCols = Math.ceil(props.colorScales.length / numRows);
     const height = Math.max(minHeight, props.height / numRows - (numRows - 1) * legendGap);
-
-    const textStyle: React.CSSProperties = {
-        fontSize: "11px",
-        stroke: "#fff",
-        paintOrder: "stroke",
-        strokeWidth: "6px",
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
-        fontWeight: 800,
-    };
-
-    function makeMarkers(
-        colorScale: ColorScale,
-        colorScaleTop: number,
-        top: number,
-        bottom: number,
-        left: number
-    ): React.ReactNode[] {
-        const numMarkers = Math.floor(Math.abs(top - bottom) / (fontSize + 4 * textGap));
-        const markers: React.ReactNode[] = [];
-
-        const dy = (bottom - top) / (numMarkers + 1);
-
-        for (let i = 1; i <= numMarkers + 1; i++) {
-            const y = top + i * dy;
-            const relValue = 1 - (y - colorScaleTop) / height;
-            const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * relValue;
-            markers.push(
-                <line
-                    key={`${top}-${i}-marker`}
-                    x1={left}
-                    y1={y}
-                    x2={left + lineWidth}
-                    y2={y}
-                    stroke={lineColor}
-                    strokeWidth="1"
-                />
-            );
-            markers.push(
-                <text key={`${top}-${i}-text`} x={left + lineWidth + textGap} y={y + 3} fontSize="10" style={textStyle}>
-                    {formatLegendValue(value)}
-                </text>
-            );
-        }
-        return markers;
-    }
 
     function makeLegends(): React.ReactNode[] {
         const legends: React.ReactNode[] = [];
@@ -86,142 +251,18 @@ export function ColorLegendsContainer(props: ColorLegendsContainerProps): React.
                 }
                 const { id, colorScale } = props.colorScales[index++];
                 const top = row * (height + 2 * offset) + row * legendGap;
-                const left = col * (width + legendGap + lineWidth + textGap + textWidth + nameWidth);
-
-                const markers: React.ReactNode[] = [];
-                markers.push(
-                    <line
-                        key="max-marker"
-                        x1={left + width + nameWidth + textGap}
-                        y1={top + offset}
-                        x2={left + width + lineWidth + nameWidth + textGap}
-                        y2={top + offset}
-                        stroke={lineColor}
-                        strokeWidth="1"
-                    />
-                );
-                markers.push(
-                    <text
-                        key="max-text"
-                        x={left + width + lineWidth + textGap + nameWidth + textGap}
-                        y={top + offset + 3}
-                        fontSize="10"
-                        style={textStyle}
-                    >
-                        {formatLegendValue(colorScale.getMax())}
-                    </text>
-                );
-                if (colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
-                    const y =
-                        1 -
-                        (colorScale.getDivMidPoint() - colorScale.getMin()) /
-                            (colorScale.getMax() - colorScale.getMin());
-
-                    markers.push(
-                        makeMarkers(
-                            colorScale,
-                            top + offset,
-                            top + offset,
-                            top + y * height + offset,
-                            left + width + nameWidth + textGap
-                        )
-                    );
-
-                    markers.push(
-                        <line
-                            key="mid-marker"
-                            x1={left + width + nameWidth + textGap}
-                            y1={top + y * height + offset}
-                            x2={left + width + lineWidth + nameWidth + textGap}
-                            y2={top + y * height + offset}
-                            stroke={lineColor}
-                            strokeWidth="2"
-                        />
-                    );
-                    markers.push(
-                        <text
-                            key="mid-text"
-                            x={left + width + lineWidth + textGap + nameWidth + textGap}
-                            y={top + y * height + offset + 3}
-                            fontSize="10"
-                            style={textStyle}
-                        >
-                            {formatLegendValue(colorScale.getDivMidPoint())}
-                        </text>
-                    );
-
-                    markers.push(
-                        makeMarkers(
-                            colorScale,
-                            top + offset,
-                            top + y * height + offset,
-                            top + height - 2 * offset,
-                            left + width + nameWidth + textGap
-                        )
-                    );
-                } else {
-                    markers.push(
-                        makeMarkers(
-                            colorScale,
-                            top + offset,
-                            top + offset,
-                            top + height - 2 * offset,
-                            left + width + nameWidth + textGap
-                        )
-                    );
-                }
-
-                markers.push(
-                    <line
-                        key="min-marker"
-                        x1={left + width + nameWidth + textGap}
-                        y1={top + height + offset}
-                        x2={left + width + lineWidth + nameWidth + textGap}
-                        y2={top + height + offset}
-                        stroke={lineColor}
-                        strokeWidth="1"
-                    />
-                );
-                markers.push(
-                    <text
-                        key="min-text"
-                        x={left + width + lineWidth + textGap + nameWidth + textGap}
-                        y={top + height + offset + 3}
-                        fontSize="10"
-                        style={textStyle}
-                    >
-                        {formatLegendValue(colorScale.getMin())}
-                    </text>
-                );
+                const left = col * (width + legendGap + lineWidth + textGap + textWidth + nameLabelWidth);
 
                 legends.push(
-                    <g key={`color-scale-${makeGradientId(id)}`}>
-                        <rect
-                            key={index}
-                            x={left + nameWidth + textGap}
-                            y={top + offset}
-                            width={width}
-                            rx="4"
-                            height={height}
-                            fill={`url(#${makeGradientId(id)})`}
-                            stroke="#555"
-                        />
-                        <text
-                            x={left}
-                            y={top + offset + height / 2 + 6}
-                            width={height}
-                            height={10}
-                            fontSize="10"
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            alignmentBaseline="baseline"
-                            transform={`rotate(270, ${left}, ${top + offset + height / 2})`}
-                            style={textStyle}
-                        >
-                            {colorScale.getName()}
-                        </text>
-                        {markers}
-                    </g>
+                    <ColorLegend
+                        key={id}
+                        id={id}
+                        colorScale={colorScale}
+                        top={top}
+                        left={left}
+                        totalHeight={height}
+                        barWidth={width}
+                    />
                 );
             }
         }

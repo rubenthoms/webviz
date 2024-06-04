@@ -245,9 +245,11 @@ function fixupSurfaceNamesSetting(currentSurfaceNames: string[], validSurfaceNam
         return currentSurfaceNames;
     }
 
-    if (validSurfaceNames.some((el) => !currentSurfaceNames.includes(el))) {
-        return [validSurfaceNames[0]];
+    let adjustedSurfaceNames = currentSurfaceNames.filter((el) => validSurfaceNames.includes(el));
+
+    if (adjustedSurfaceNames.length === 0) {
+        adjustedSurfaceNames = [validSurfaceNames[0]];
     }
 
-    return currentSurfaceNames;
+    return adjustedSurfaceNames;
 }

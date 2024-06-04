@@ -1,6 +1,7 @@
 import React from "react";
 
 import { WellboreHeader_api } from "@api";
+import { Button } from "@lib/components/Button";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Deselect, SelectAll } from "@mui/icons-material";
 
@@ -14,14 +15,30 @@ export function WellboreSelector(props: WellboreSelectorProps): React.ReactNode 
     function handleSelectAll() {
         props.onSelectedWellboreUuidsChange(props.wellboreHeaders.map((header) => header.wellbore_uuid));
     }
-    function handleSelectNone() {
+    function handleUnselectAll() {
         props.onSelectedWellboreUuidsChange([]);
     }
     return (
         <div className="flex flex-col gap-2 text-sm">
             <div className="flex gap-2 items-center">
-                <SelectAll titleAccess={"Select all"} onClick={handleSelectAll} />
-                <Deselect titleAccess={"Select none"} onClick={handleSelectNone} />
+                <Button
+                    onClick={handleSelectAll}
+                    startIcon={<SelectAll />}
+                    variant="text"
+                    title="Select all"
+                    size="small"
+                >
+                    Select all
+                </Button>
+                <Button
+                    onClick={handleUnselectAll}
+                    startIcon={<Deselect />}
+                    variant="text"
+                    title="Unselect all"
+                    size="small"
+                >
+                    Unselect all
+                </Button>
             </div>
             <Select
                 options={makeWellHeadersOptions(props.wellboreHeaders)}

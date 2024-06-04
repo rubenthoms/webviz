@@ -4,11 +4,6 @@ import { ExtendedLayerProps, LayerPickInfo, PropertyDataType } from "@webviz/sub
 
 import { isEqual } from "lodash";
 
-export type ReadoutBoxProps = {
-    layerPickInfo: LayerPickInfo[];
-    maxNumItems?: number;
-};
-
 type ReadoutInfo = {
     label: string;
     properties?: PropertyDataType[];
@@ -45,15 +40,24 @@ function makeAdditionalInformation(item: ReadoutInfo): React.ReactNode {
         return value.toString();
     }
 
-    return item.properties.map((el, index) => {
-        return (
-            <div className="table-row" key={index}>
-                <div className="table-cell w-32">{el.name}:</div>
-                <div className="table-cell">{formatValue(el.value)}</div>
-            </div>
-        );
-    });
+    // depth readout from SubsurfaceViewer is not properly working
+    return item.properties
+        .filter((el) => el.name !== "Depth")
+        .map((el, index) => {
+            return (
+                <div className="table-row" key={index}>
+                    <div className="table-cell w-32">{el.name}:</div>
+                    <div className="table-cell">{formatValue(el.value)}</div>
+                </div>
+            );
+        });
 }
+
+export type ReadoutBoxProps = {
+    layerPickInfo: LayerPickInfo[];
+    maxNumItems?: number;
+    visible?: boolean;
+};
 
 export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     const [infoData, setInfoData] = React.useState<ReadoutInfo[]>([]);
@@ -121,8 +125,12 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
         setInfoData(newInfoData);
     }
 
+    if (!props.visible) {
+        return null;
+    }
+
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-0 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-12 bg-white bg-opacity-75 p-2 flex flex-col gap-2 text-sm z-50 w-60 pointer-events-none">
             {infoData.map((el, index) => {
                 if (index < (props.maxNumItems ?? 3)) {
                     return (

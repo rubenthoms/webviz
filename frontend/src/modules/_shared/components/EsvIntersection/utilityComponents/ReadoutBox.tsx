@@ -117,7 +117,7 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
     });
 
     return (
-        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-20 bg-white bg-opacity-75 p-2 text-sm z-50 w-60 pointer-events-none">
+        <div className="absolute rounded border-2 border-neutral-300 bottom-10 right-12 bg-white bg-opacity-75 p-2 text-sm z-50 w-60 pointer-events-none">
             {sortedReadoutItems.map((item, index) => {
                 if (index < (props.maxNumItems ?? 3)) {
                     return (

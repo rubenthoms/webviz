@@ -75,6 +75,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
     const [cameraPositionSetByAction, setCameraPositionSetByAction] = React.useState<ViewStateType | null>(null);
     const [isDragging, setIsDragging] = React.useState<boolean>(false);
     const [layerPickingInfo, setLayerPickingInfo] = React.useState<LayerPickInfo[]>([]);
+    const [pointerOver, setPointerOver] = React.useState<boolean>(false);
 
     const [verticalScale, setVerticalScale] = React.useState<number>(1);
     const [prevVerticalScale, setPrevVerticalScale] = React.useState<number | undefined>(props.verticalScale);
@@ -541,6 +542,30 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
         return nodes;
     }
 
+    React.useEffect(function handleMount() {
+        if (!internalRef.current) {
+            return;
+        }
+
+        const internalRefCurrent = internalRef.current;
+
+        function handlePointerEnter() {
+            setPointerOver(true);
+        }
+
+        function handlePointerLeave() {
+            setPointerOver(false);
+        }
+
+        internalRefCurrent.addEventListener("pointerenter", handlePointerEnter);
+        internalRefCurrent.addEventListener("pointerleave", handlePointerLeave);
+
+        return function handleUnmount() {
+            internalRefCurrent.removeEventListener("pointerenter", handlePointerEnter);
+            internalRefCurrent.removeEventListener("pointerleave", handlePointerLeave);
+        };
+    });
+
     const colorTables = createContinuousColorScaleForMap(props.colorScale);
     const colorScaleWithName = { id: "grid3d", colorScale: props.colorScale };
 
@@ -563,7 +588,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 height={divSize.height / 2 - 50}
                 position="left"
             />
-            <ReadoutBox layerPickInfo={layerPickingInfo} />
+            <ReadoutBox layerPickInfo={layerPickingInfo} visible={pointerOver} />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}

@@ -113,7 +113,8 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceInterse
                     this._settings.realizationNum ?? 0,
                     surfaceName,
                     this._settings.attribute ?? "",
-                    queryBody,
+                    this._settings.intersectionReferenceSystem,
+                    this._settings.extensionLength,
                 ],
                 queryFn: () =>
                     apiService.surface.postGetSurfaceIntersection(

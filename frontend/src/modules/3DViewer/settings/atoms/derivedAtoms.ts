@@ -2,8 +2,8 @@ import { Grid3dDimensions_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
-import { selectedEnsembleIdentAtom } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
-import { GridCellIndexRanges } from "@modules/Grid3D/typesAndEnums";
+import { selectedEnsembleIdentAtom } from "@modules/3DViewer/sharedAtoms/sharedAtoms";
+import { GridCellIndexRanges } from "@modules/3DViewer/typesAndEnums";
 
 import { atom } from "jotai";
 

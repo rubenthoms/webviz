@@ -1,5 +1,5 @@
 import { apiService } from "@framework/ApiService";
-import { selectedEnsembleIdentAtom } from "@modules/Grid3D/sharedAtoms/sharedAtoms";
+import { selectedEnsembleIdentAtom } from "@modules/3DViewer/sharedAtoms/sharedAtoms";
 
 import { atomWithQuery } from "jotai-tanstack-query";
 

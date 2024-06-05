@@ -1,5 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { GridCellIndexRanges } from "@modules/Grid3D/typesAndEnums";
+import { GridCellIndexRanges } from "@modules/3DViewer/typesAndEnums";
 
 import { atom } from "jotai";
 

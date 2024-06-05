@@ -5,7 +5,7 @@ import {
     intersectionTypeAtom,
     selectedCustomIntersectionPolylineIdAtom,
     selectedHighlightedWellboreUuidAtom,
-} from "@modules/Grid3D/sharedAtoms/sharedAtoms";
+} from "@modules/3DViewer/sharedAtoms/sharedAtoms";
 
 import { atom } from "jotai";
 

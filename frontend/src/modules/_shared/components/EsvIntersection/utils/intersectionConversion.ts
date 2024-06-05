@@ -15,6 +15,7 @@ import {
     isPolylineIntersectionLayer,
     isSchematicLayer,
     isSeismicCanvasLayer,
+    isSeismicLayer,
     isStatisticalFanchartsCanvasLayer,
     isSurfaceLayer,
     isWellborepathLayer,
@@ -99,6 +100,10 @@ export function getColorFromLayerData(layer: Layer<unknown>, index: number): str
         return "rgba(0, 0, 255, 0.3)";
     }
 
+    if (isSeismicLayer(layer)) {
+        return "rgba(0, 0, 0, 0.6)";
+    }
+
     return "#000";
 }
 
@@ -176,8 +181,8 @@ export function makeHighlightItemFromIntersectionResult(
     }
     if (isRectangleIntersectionResult(intersectionResult)) {
         return {
-            shape: HighlightItemShape.POINT,
-            point: intersectionResult.point,
+            shape: HighlightItemShape.CROSS,
+            center: intersectionResult.point,
             paintOrder: layer.order,
             color,
         };

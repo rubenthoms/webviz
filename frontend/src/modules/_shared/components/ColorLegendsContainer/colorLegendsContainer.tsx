@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ColorScale, ColorScaleGradientType } from "@lib/utils/ColorScale";
+import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { ColorScaleWithName } from "@modules_shared/utils/ColorScaleWithName";
 
@@ -32,7 +32,12 @@ function makeMarkers(
     barHeight: number
 ): React.ReactNode[] {
     const sectionHeight = Math.abs(sectionBottom - sectionTop);
-    const numMarkers = Math.floor(sectionHeight / (fontSize + 4 * textGap));
+
+    const minMarkerHeight = fontSize + 4 * textGap;
+    const maxNumMarkers = Math.floor(sectionHeight / minMarkerHeight);
+
+    // Odd number of markers makes sure the midpoint in each section is shown which is preferable
+    const numMarkers = maxNumMarkers % 2 === 0 ? maxNumMarkers - 1 : maxNumMarkers;
     const markerDistance = sectionHeight / (numMarkers + 1);
 
     const markers: React.ReactNode[] = [];
@@ -48,9 +53,9 @@ function makeMarkers(
             <line
                 key={`${sectionTop}-${i}-marker`}
                 x1={left}
-                y1={globalY}
+                y1={globalY + 1}
                 x2={left + lineWidth}
-                y2={globalY}
+                y2={globalY + 1}
                 stroke={lineColor}
                 strokeWidth="1"
             />
@@ -59,7 +64,7 @@ function makeMarkers(
             <text
                 key={`${sectionTop}-${i}-text`}
                 x={left + lineWidth + textGap}
-                y={globalY + 3}
+                y={globalY + 4}
                 fontSize="10"
                 style={textStyle}
             >
@@ -69,6 +74,58 @@ function makeMarkers(
 
         currentLocalY += markerDistance;
     }
+    return markers;
+}
+
+function makeDiscreteMarkers(colorScale: ColorScale, left: number, top: number, barHeight: number): React.ReactNode[] {
+    const minMarkerHeight = fontSize + 2 * textGap;
+
+    const numSteps = colorScale.getNumSteps();
+    let markerDistance = barHeight / numSteps;
+
+    while (markerDistance < minMarkerHeight) {
+        markerDistance += barHeight / numSteps;
+    }
+
+    let steps = Math.floor(barHeight / markerDistance);
+    if (Math.abs(barHeight - steps * markerDistance) < minMarkerHeight) {
+        steps--;
+    }
+
+    const markers: React.ReactNode[] = [];
+    let currentLocalY = markerDistance;
+    for (let i = 0; i < steps; i++) {
+        const relValue = 1 - currentLocalY / barHeight;
+        const value = colorScale.getMin() + (colorScale.getMax() - colorScale.getMin()) * relValue;
+
+        const globalY = top + currentLocalY;
+
+        markers.push(
+            <line
+                key={`${top}-${i}-marker`}
+                x1={left}
+                y1={globalY + 1}
+                x2={left + lineWidth}
+                y2={globalY + 1}
+                stroke={lineColor}
+                strokeWidth="1"
+            />
+        );
+        markers.push(
+            <text
+                key={`${top}-${i}-text`}
+                x={left + lineWidth + textGap}
+                y={globalY + 4}
+                fontSize="10"
+                style={textStyle}
+            >
+                {formatLegendValue(value)}
+            </text>
+        );
+
+        currentLocalY += markerDistance;
+    }
+
     return markers;
 }
 
@@ -106,67 +163,72 @@ function ColorLegend(props: ColorLegendProps): React.ReactNode {
             {formatLegendValue(props.colorScale.getMax())}
         </text>
     );
-    if (props.colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
-        const relY =
-            1 -
-            (props.colorScale.getDivMidPoint() - props.colorScale.getMin()) /
-                (props.colorScale.getMax() - props.colorScale.getMin());
 
-        markers.push(
-            makeMarkers(
-                props.colorScale,
-                props.top + offset,
-                props.top + offset,
-                props.top + offset + barHeight * relY,
-                props.left + props.barWidth + nameLabelWidth + textGap,
-                barHeight
-            )
-        );
-
-        markers.push(
-            <line
-                key="mid-marker"
-                x1={props.left + props.barWidth + nameLabelWidth + textGap}
-                y1={props.top + relY * barHeight + offset}
-                x2={props.left + props.barWidth + lineWidth + nameLabelWidth + textGap}
-                y2={props.top + relY * barHeight + offset}
-                stroke={lineColor}
-                strokeWidth="2"
-            />
-        );
-        markers.push(
-            <text
-                key="mid-text"
-                x={props.left + props.barWidth + lineWidth + textGap + nameLabelWidth + textGap}
-                y={props.top + relY * barHeight + offset + 3}
-                fontSize="10"
-                style={textStyle}
-            >
-                {formatLegendValue(props.colorScale.getDivMidPoint())}
-            </text>
-        );
-
-        markers.push(
-            makeMarkers(
-                props.colorScale,
-                props.top + offset,
-                props.top + relY * barHeight + offset,
-                props.top + offset + barHeight,
-                props.left + props.barWidth + nameLabelWidth + textGap,
-                barHeight
-            )
-        );
+    if (props.colorScale.getType() === ColorScaleType.Discrete) {
+        markers.push(makeDiscreteMarkers(props.colorScale, lineMarkerStartPosition, props.top + offset, barHeight));
     } else {
-        markers.push(
-            makeMarkers(
-                props.colorScale,
-                props.top + offset,
-                props.top + offset,
-                props.top + offset + barHeight,
-                props.left + props.barWidth + nameLabelWidth + textGap,
-                barHeight
-            )
-        );
+        if (props.colorScale.getGradientType() === ColorScaleGradientType.Diverging) {
+            const relY =
+                1 -
+                (props.colorScale.getDivMidPoint() - props.colorScale.getMin()) /
+                    (props.colorScale.getMax() - props.colorScale.getMin());
+
+            markers.push(
+                makeMarkers(
+                    props.colorScale,
+                    props.top + offset,
+                    props.top + offset,
+                    props.top + offset + barHeight * relY,
+                    lineMarkerStartPosition,
+                    barHeight
+                )
+            );
+
+            markers.push(
+                <line
+                    key="mid-marker"
+                    x1={lineMarkerStartPosition}
+                    y1={props.top + relY * barHeight + offset}
+                    x2={lineMarkerEndPosition}
+                    y2={props.top + relY * barHeight + offset}
+                    stroke={lineColor}
+                    strokeWidth="2"
+                />
+            );
+            markers.push(
+                <text
+                    key="mid-text"
+                    x={props.left + props.barWidth + lineWidth + textGap + nameLabelWidth + textGap}
+                    y={props.top + relY * barHeight + offset + 3}
+                    fontSize="10"
+                    style={textStyle}
+                >
+                    {formatLegendValue(props.colorScale.getDivMidPoint())}
+                </text>
+            );
+
+            markers.push(
+                makeMarkers(
+                    props.colorScale,
+                    props.top + offset,
+                    props.top + relY * barHeight + offset,
+                    props.top + offset + barHeight,
+                    lineMarkerStartPosition,
+                    barHeight
+                )
+            );
+        } else {
+            markers.push(
+                makeMarkers(
+                    props.colorScale,
+                    props.top + offset,
+                    props.top + offset,
+                    props.top + offset + barHeight,
+                    lineMarkerStartPosition,
+                    barHeight
+                )
+            );
+        }
     }
 
     markers.push(
@@ -183,7 +245,7 @@ function ColorLegend(props: ColorLegendProps): React.ReactNode {
     markers.push(
         <text
             key="min-text"
-            x={props.left + props.barWidth + lineWidth + textGap + nameLabelWidth + textGap}
+            x={textStartPosition}
             y={props.top + offset + barHeight + 3}
             fontSize="10"
             style={textStyle}
@@ -196,7 +258,7 @@ function ColorLegend(props: ColorLegendProps): React.ReactNode {
         <g key={`color-scale-${makeGradientId(props.id)}`}>
             <rect
                 key={props.id}
-                x={props.left + nameLabelWidth + textGap}
+                x={barStartPosition}
                 y={props.top + offset}
                 width={props.barWidth}
                 rx="4"

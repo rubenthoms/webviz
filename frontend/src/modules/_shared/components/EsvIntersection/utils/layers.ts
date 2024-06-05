@@ -12,6 +12,7 @@ import {
 } from "@equinor/esv-intersection";
 
 import { PolylineIntersectionLayer } from "../layers/PolylineIntersectionLayer";
+import { SeismicLayer } from "../layers/SeismicLayer";
 import {
     SurfaceStatisticalFanchartsCanvasLayer,
     SurfaceStatisticalFanchartsData,
@@ -45,4 +46,8 @@ export function isSchematicLayer(layer: Layer<unknown>): layer is SchematicLayer
 
 export function isSeismicCanvasLayer(layer: Layer<unknown>): layer is SeismicCanvasLayer {
     return layer instanceof SeismicCanvasLayer;
+}
+
+export function isSeismicLayer(layer: Layer<unknown>): layer is SeismicLayer {
+    return layer instanceof SeismicLayer;
 }

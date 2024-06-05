@@ -1,6 +1,6 @@
 import React from "react";
 
-import { IntersectionReferenceSystem } from "@equinor/esv-intersection";
+import { IntersectionReferenceSystem, Layer } from "@equinor/esv-intersection";
 import { ViewContext } from "@framework/ModuleContext";
 import { GlobalTopicDefinitions, WorkbenchServices, useSubscribedValue } from "@framework/WorkbenchServices";
 import { SettingsToViewInterface } from "@modules/Intersection/settingsToViewInterface";
@@ -24,6 +24,7 @@ export type ReadoutWrapperProps = {
     showGrid: boolean;
     referenceSystem?: IntersectionReferenceSystem;
     layers: LayerItem[];
+    layerIdToNameMap: Record<string, string>;
     viewport?: Viewport;
     onViewportChange: (viewport: Viewport) => void;
     bounds: {
@@ -76,6 +77,13 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
         [moduleInstanceId, props.wellboreHeaderUuid, props.workbenchServices]
     );
 
+    const makeLabelFromLayer = React.useCallback(
+        function makeLabelFromLayer(layer: Layer<any>): string | null {
+            return props.layerIdToNameMap[layer.id] ?? null;
+        },
+        [props.layerIdToNameMap]
+    );
+
     const highlightItems: HighlightItem[] = [];
     if (props.referenceSystem && hoveredMd) {
         const point = props.referenceSystem.project(hoveredMd);
@@ -107,7 +115,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
                 onReadout={handleReadoutItemsChange}
                 onViewportChange={props.onViewportChange}
             />
-            <ReadoutBox readoutItems={readoutItems} />
+            <ReadoutBox readoutItems={readoutItems} makeLabelFromLayer={makeLabelFromLayer} />
         </>
     );
 }

@@ -16,6 +16,7 @@ export enum IntersectionItemShape {
 }
 
 export enum HighlightItemShape {
+    CROSS = "cross",
     POINT = "point",
     LINE = "line",
     POLYGON = "polygon",
@@ -82,6 +83,10 @@ export type HighlightItem = {
     color: string;
     paintOrder: number;
 } & (
+    | {
+          shape: HighlightItemShape.CROSS;
+          center: number[];
+      }
     | {
           shape: HighlightItemShape.POINT;
           point: number[];
@@ -151,6 +156,11 @@ export type PropValue = {
     value: number;
 };
 
+export type SchematicInfo = {
+    label: string;
+    value: string | number;
+}[];
+
 export type AdditionalInformation = {
     [AdditionalInformationKey.B]?: number;
     [AdditionalInformationKey.G]?: number;
@@ -168,5 +178,5 @@ export type AdditionalInformation = {
     [AdditionalInformationKey.PROP_VALUE]?: PropValue;
     [AdditionalInformationKey.MD]?: number;
     [AdditionalInformationKey.LABEL]?: string;
-    [AdditionalInformationKey.SCHEMATIC_INFO]?: string[];
+    [AdditionalInformationKey.SCHEMATIC_INFO]?: SchematicInfo;
 };

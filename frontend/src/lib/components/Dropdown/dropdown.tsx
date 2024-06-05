@@ -3,6 +3,7 @@ import React from "react";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { createPortal } from "@lib/utils/createPortal";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { convertRemToPixels } from "@lib/utils/screenUnitConversions";
 import { getTextWidthWithFont } from "@lib/utils/textSize";
 import { ArrowDropDown, ArrowDropUp, ExpandLess, ExpandMore } from "@mui/icons-material";
 
@@ -127,8 +128,10 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
         function updateDropdownRectWidth() {
             let longestOptionWidth = props.options.reduce((prev, current) => {
                 const labelWidth = getTextWidthWithFont(current.label, "Equinor", 1);
-                if (labelWidth > prev) {
-                    return labelWidth;
+                const adornmentWidth = current.adornment ? convertRemToPixels((5 + 2) / 4) : 0;
+                const totalWidth = labelWidth + adornmentWidth;
+                if (totalWidth > prev) {
+                    return totalWidth;
                 }
                 return prev;
             }, 0);
@@ -463,7 +466,11 @@ export const Dropdown = withDefaults<DropdownProps>()(defaultProps, (props) => {
                                         title={option.label}
                                     >
                                         <span className="whitespace-nowrap text-ellipsis overflow-hidden min-w-0 flex gap-2">
-                                            {option.adornment}
+                                            {option.adornment && (
+                                                <span className="max-w-5 max-h-5 overflow-hidden">
+                                                    {option.adornment}
+                                                </span>
+                                            )}
                                             {option.label}
                                         </span>
                                     </div>

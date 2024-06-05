@@ -49,6 +49,31 @@ export class HighlightOverlay {
         });
 
         for (const item of sortedHighlightItems) {
+            if (item.shape === HighlightItemShape.CROSS) {
+                const itemCenter = [xScale(item.center[0]), yScale(item.center[1])];
+                const size = 16;
+                const strokeWidth = 2;
+
+                const points: number[][] = [
+                    [itemCenter[0] - size / 2, itemCenter[1] - strokeWidth / 2],
+                    [itemCenter[0] - strokeWidth / 2, itemCenter[1] - strokeWidth / 2],
+                    [itemCenter[0] - strokeWidth / 2, itemCenter[1] - size / 2],
+                    [itemCenter[0] + strokeWidth / 2, itemCenter[1] - size / 2],
+                    [itemCenter[0] + strokeWidth / 2, itemCenter[1] - strokeWidth / 2],
+                    [itemCenter[0] + size / 2, itemCenter[1] - strokeWidth / 2],
+                    [itemCenter[0] + size / 2, itemCenter[1] + strokeWidth / 2],
+                    [itemCenter[0] + strokeWidth / 2, itemCenter[1] + strokeWidth / 2],
+                    [itemCenter[0] + strokeWidth / 2, itemCenter[1] + size / 2],
+                    [itemCenter[0] - strokeWidth / 2, itemCenter[1] + size / 2],
+                    [itemCenter[0] - strokeWidth / 2, itemCenter[1] + strokeWidth / 2],
+                    [itemCenter[0] - size / 2, itemCenter[1] + strokeWidth / 2],
+                ];
+                const cross = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                cross.setAttribute("points", points.map((point) => point.join(",")).join(" "));
+                cross.setAttribute("fill", item.color);
+
+                svgLayer.appendChild(cross);
+            }
             if (item.shape === HighlightItemShape.POINT) {
                 const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", xScale(item.point[0]).toString());

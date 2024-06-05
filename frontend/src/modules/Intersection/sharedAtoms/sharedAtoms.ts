@@ -40,6 +40,8 @@ export const selectedWellboreAtom = atom((get) => {
     return {
         uuid: userSelectedWellboreUuid,
         identifier: userSelectedWellboreHeader.unique_wellbore_identifier,
+        depthReferencePoint: userSelectedWellboreHeader.depth_reference_point,
+        depthReferenceElevation: userSelectedWellboreHeader.depth_reference_elevation,
     };
 });
 

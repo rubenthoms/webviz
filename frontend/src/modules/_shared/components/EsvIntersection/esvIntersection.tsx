@@ -32,6 +32,7 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { Size2D } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { fuzzyCompare } from "@modules/_shared/utils/fuzzyCompare";
 
 import { cloneDeep, isEqual } from "lodash";
 
@@ -45,6 +46,7 @@ import {
     PolylineIntersectionLayer,
     PolylineIntersectionLayerOptions,
 } from "./layers/PolylineIntersectionLayer";
+import { SeismicLayer, SeismicLayerData } from "./layers/SeismicLayer";
 import {
     SurfaceStatisticalFanchartsCanvasLayer,
     SurfaceStatisticalFanchartsData,
@@ -61,6 +63,7 @@ export enum LayerType {
     REFERENCE_LINE = "reference-line",
     SCHEMATIC = "schematic-layer",
     SEISMIC_CANVAS = "seismic-canvas",
+    SEISMIC = "seismic",
     SURFACE_STATISTICAL_FANCHARTS_CANVAS = "surface-statistical-fancharts-canvas",
     WELLBORE_PATH = "wellborepath",
 }
@@ -74,6 +77,7 @@ type LayerDataTypeMap = {
     [LayerType.POLYLINE_INTERSECTION]: PolylineIntersectionData;
     [LayerType.REFERENCE_LINE]: ReferenceLine[];
     [LayerType.SCHEMATIC]: SchematicData;
+    [LayerType.SEISMIC]: SeismicLayerData;
     [LayerType.SEISMIC_CANVAS]: SeismicCanvasData;
     [LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS]: SurfaceStatisticalFanchartsData;
     [LayerType.WELLBORE_PATH]: [number, number][];
@@ -88,6 +92,7 @@ type LayerOptionsMap = {
     [LayerType.POLYLINE_INTERSECTION]: PolylineIntersectionLayerOptions;
     [LayerType.REFERENCE_LINE]: LayerOptions<ReferenceLine[]>;
     [LayerType.SCHEMATIC]: SchematicLayerOptions<SchematicData>;
+    [LayerType.SEISMIC]: LayerOptions<SeismicLayerData>;
     [LayerType.SEISMIC_CANVAS]: LayerOptions<SeismicCanvasData & { colorScale?: ColorScale }>;
     [LayerType.SURFACE_STATISTICAL_FANCHARTS_CANVAS]: LayerOptions<SurfaceStatisticalFanchartsData>;
     [LayerType.WELLBORE_PATH]: WellborepathLayerOptions<[number, number][]>;
@@ -176,6 +181,10 @@ function makeLayer<T extends keyof LayerDataTypeMap>(
                 id,
                 options as SchematicLayerOptions<SchematicData>
             ) as unknown as Layer<LayerDataTypeMap[T]>;
+        case LayerType.SEISMIC:
+            return new SeismicLayer(id, options as LayerOptions<SeismicLayerData>) as unknown as Layer<
+                LayerDataTypeMap[T]
+            >;
         case LayerType.SEISMIC_CANVAS:
             return new SeismicCanvasLayer(id, options as LayerOptions<SeismicCanvasData>) as unknown as Layer<
                 LayerDataTypeMap[T]
@@ -354,12 +363,13 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             if (props.layers) {
                 for (const layer of props.layers) {
                     if (!esvController.getLayer(layer.id)) {
-                        const newLayer = makeLayer(
-                            layer.type,
-                            layer.id,
-                            cloneDeep(layer.options),
-                            pixiRenderApplication
-                        );
+                        const newLayerOptions = cloneDeep(layer.options);
+                        // Grid layer has order 1 and should not be considered when setting order for other layers
+                        // Hence, the internal order of the new layer is increased by 1
+                        if (newLayerOptions.order !== undefined) {
+                            newLayerOptions.order = newLayerOptions.order + 1;
+                        }
+                        const newLayer = makeLayer(layer.type, layer.id, newLayerOptions, pixiRenderApplication);
                         newLayerIds.push(layer.id);
                         esvController.addLayer(newLayer);
                         newLayer?.element?.setAttribute("width", containerSize.width.toString());
@@ -372,7 +382,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                         if (existingLayer) {
                             existingLayer.onUpdate({ data: cloneDeep(layer.options.data) });
                             if (layer.options.order !== undefined) {
-                                existingLayer.order = layer.options.order;
+                                existingLayer.order = layer.options.order + 1;
                             }
                             interactionHandler.removeLayer(layer.id);
                             if (layer.hoverable) {
@@ -425,7 +435,9 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 oldOnRescaleFunction(event);
             };
 
-            const gridLayer = new GridLayer("grid");
+            const gridLayer = new GridLayer("grid", {
+                order: 1,
+            });
             newEsvController.addLayer(gridLayer);
             newEsvController.hideLayer("grid");
 
@@ -480,7 +492,7 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
                 newInteractionHandler.destroy();
             };
         },
-        [onReadout, onViewportChange, props.intersectionThreshold, setCurrentViewport]
+        [onReadout, onViewportChange, props.intersectionThreshold]
     );
 
     return (
@@ -492,8 +504,4 @@ export function EsvIntersection(props: EsvIntersectionProps): React.ReactNode {
             ></div>
         </>
     );
-}
-
-function fuzzyCompare(a: number, b: number, epsilon: number): boolean {
-    return Math.abs(a - b) < epsilon;
 }

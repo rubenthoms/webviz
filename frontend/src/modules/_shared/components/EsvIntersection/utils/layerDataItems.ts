@@ -6,6 +6,7 @@ import { isEqual } from "lodash";
 import {
     isCalloutCanvasLayer,
     isPolylineIntersectionLayer,
+    isSeismicLayer,
     isStatisticalFanchartsCanvasLayer,
     isSurfaceLayer,
     isWellborepathLayer,
@@ -186,6 +187,27 @@ export function makeLayerDataItems(layer: Layer<any>): LayerDataItem[] {
                 intersectionItem: {
                     id: layer.id,
                     shape: IntersectionItemShape.WELLBORE_PATH,
+                },
+            },
+        ];
+    }
+
+    if (isSeismicLayer(layer)) {
+        if (!layer.data) {
+            return [];
+        }
+        return [
+            {
+                id: layer.id,
+                layer,
+                index: 0,
+                intersectionItem: {
+                    id: layer.id,
+                    shape: IntersectionItemShape.RECTANGLE,
+                    data: [
+                        [layer.data.minFenceX, layer.data.minFenceDepth],
+                        [layer.data.maxFenceX, layer.data.maxFenceDepth],
+                    ],
                 },
             },
         ];

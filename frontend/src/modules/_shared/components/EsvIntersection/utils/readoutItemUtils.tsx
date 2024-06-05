@@ -6,6 +6,7 @@ import {
     isPolylineIntersectionLayer,
     isSchematicLayer,
     isSeismicCanvasLayer,
+    isSeismicLayer,
     isStatisticalFanchartsCanvasLayer,
     isSurfaceLayer,
     isWellborepathLayer,
@@ -58,6 +59,10 @@ export function getLabelFromLayerData(readoutItem: ReadoutItem): string {
         return "Seismic";
     }
 
+    if (isSeismicLayer(layer)) {
+        return "Seismic";
+    }
+
     return "Unknown";
 }
 
@@ -66,45 +71,45 @@ type ArrayElement<T extends unknown[]> = T extends readonly (infer U)[] ? U : T;
 export function makeSchematicInfo<T extends keyof Omit<SchematicData, "symbols">>(
     type: T,
     item: ArrayElement<SchematicData[T]>
-): string[] {
-    const arr: string[] = [];
+): { label: string; value: string | number }[] {
+    const arr: { label: string; value: string | number }[] = [];
 
     if (type === "casings") {
         const casing = item as Casing;
-        arr.push(`ID: ${casing.id}`);
-        arr.push(`Diameter: ${casing.diameter}`);
-        arr.push(`Inner diameter: ${casing.innerDiameter}`);
-        arr.push(`Has shoe: ${casing.hasShoe}`);
-        arr.push(`MD range: ${casing.start} - ${casing.end}`);
+        arr.push({ label: "ID", value: casing.id });
+        arr.push({ label: "Diameter", value: casing.diameter });
+        arr.push({ label: "Inner diameter", value: casing.innerDiameter });
+        arr.push({ label: "Has shoe", value: casing.hasShoe.toString() });
+        arr.push({ label: "MD range", value: `${casing.start} - ${casing.end}` });
     } else if (type === "cements") {
         const cement = item as Cement;
-        arr.push(`ID: ${cement.id}`);
-        arr.push(`TOC: ${cement.toc}`);
+        arr.push({ label: "ID", value: cement.id });
+        arr.push({ label: "TOC", value: cement.toc });
     } else if (type === "completion") {
         const completion = item as Completion;
-        arr.push(`ID: ${completion.id}`);
-        arr.push(`Kind: ${completion.kind}`);
-        arr.push(`Diameter: ${completion.diameter}`);
-        arr.push(`MD range: ${completion.start} - ${completion.end}`);
+        arr.push({ label: "ID", value: completion.id });
+        arr.push({ label: "Kind", value: completion.kind });
+        arr.push({ label: "Diameter", value: completion.diameter });
+        arr.push({ label: "MD range", value: `${completion.start} - ${completion.end}` });
     } else if (type === "holeSizes") {
         const holeSize = item as HoleSize;
-        arr.push(`ID: ${holeSize.id}`);
-        arr.push(`Diameter: ${holeSize.diameter}`);
-        arr.push(`MD range: ${holeSize.start} - ${holeSize.end}`);
+        arr.push({ label: "ID", value: holeSize.id });
+        arr.push({ label: "Diameter", value: holeSize.diameter });
+        arr.push({ label: "MD range", value: `${holeSize.start} - ${holeSize.end}` });
     } else if (type === "pAndA") {
         const pAndA = item as PAndA;
-        arr.push(`ID: ${pAndA.id}`);
-        arr.push(`Kind: ${pAndA.kind}`);
+        arr.push({ label: "ID", value: pAndA.id });
+        arr.push({ label: "Kind", value: pAndA.kind });
         if (pAndA.kind === "pAndASymbol") {
-            arr.push(`Diameter: ${pAndA.diameter}`);
+            arr.push({ label: "Diameter", value: pAndA.diameter });
         }
-        arr.push(`MD range: ${pAndA.start} - ${pAndA.end}`);
+        arr.push({ label: "MD range", value: `${pAndA.start} - ${pAndA.end}` });
     } else if (type === "perforations") {
         const perforation = item as Perforation;
-        arr.push(`ID: ${perforation.id}`);
-        arr.push(`Open: ${perforation.isOpen}`);
-        arr.push(`Subkind: ${perforation.subKind}`);
-        arr.push(`MD range: ${perforation.start} - ${perforation.end}`);
+        arr.push({ label: "ID", value: perforation.id });
+        arr.push({ label: "Open", value: perforation.isOpen ? "Yes" : "No" });
+        arr.push({ label: "Subkind", value: perforation.subKind });
+        arr.push({ label: "MD range", value: `${perforation.start} - ${perforation.end}` });
     }
     return arr;
 }
@@ -232,6 +237,31 @@ export function getAdditionalInformationFromReadoutItem(readoutItem: ReadoutItem
                 infoObject[AdditionalInformationKey.G] = imageData.data[1];
                 infoObject[AdditionalInformationKey.B] = imageData.data[2];
             }
+        }
+    }
+
+    if (isSeismicLayer(layer)) {
+        const seismicData = layer.getData();
+        if (seismicData) {
+            const x = readoutItem.point[0];
+            const y = readoutItem.point[1];
+
+            const height = Math.abs(seismicData.maxFenceDepth - seismicData.minFenceDepth);
+            const width = Math.abs(seismicData.maxFenceX - seismicData.minFenceX);
+            const rowHeight = height / seismicData.numSamplesPerTrace;
+            const columnWidth = width / seismicData.numTraces;
+
+            const sampleNum = Math.floor((y - seismicData.minFenceDepth) / rowHeight);
+            const traceNum = Math.floor((x - seismicData.minFenceX) / columnWidth);
+
+            const index = traceNum * seismicData.numSamplesPerTrace + sampleNum;
+            const value = seismicData.fenceTracesFloat32Array[index];
+
+            infoObject[AdditionalInformationKey.PROP_VALUE] = {
+                name: seismicData.propertyName,
+                unit: seismicData.propertyUnit,
+                value,
+            };
         }
     }
 

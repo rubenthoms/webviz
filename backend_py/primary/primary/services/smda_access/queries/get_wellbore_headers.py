@@ -18,6 +18,8 @@ async def get_wellbore_headers(
         "unique_well_identifier",
         "well_easting",
         "well_northing",
+        "depth_reference_point",
+        "depth_reference_elevation",
     ]
     params = {
         "_projection": ",".join(projection),

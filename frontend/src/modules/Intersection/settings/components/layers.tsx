@@ -487,9 +487,13 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     }
 
     return (
-        <>
+        <div ref={divRef} className={resolveClassNames("relative")} data-layer-id={props.layer.getId()}>
             <div
-                ref={divRef}
+                className={resolveClassNames("bg-red-300 z-10 w-full h-full absolute left-0 top-0", {
+                    hidden: !props.isDragging,
+                })}
+            ></div>
+            <div
                 className={resolveClassNames(
                     "flex h-10 py-2 px-1 hover:bg-blue-100 text-sm items-center gap-1 border-b border-b-gray-300 relative",
                     {
@@ -497,13 +501,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                         "bg-white": props.layer.getStatus() !== LayerStatus.ERROR,
                     }
                 )}
-                data-layer-id={props.layer.getId()}
             >
-                <div
-                    className={resolveClassNames("bg-red-300 z-10 w-full h-full absolute left-0 top-0", {
-                        hidden: !props.isDragging,
-                    })}
-                ></div>
                 {makeLayerElement(dragIndicatorRef)}
             </div>
             {props.isDragging &&
@@ -528,7 +526,7 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
             >
                 {makeSettingsContainer(props.layer)}
             </div>
-        </>
+        </div>
     );
 }
 

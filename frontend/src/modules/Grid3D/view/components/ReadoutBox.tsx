@@ -28,7 +28,7 @@ function makePositionInfo(layerPickInfo: LayerPickInfo): ReadoutInfo | null {
     };
 }
 
-function makeAdditionalInformation(item: ReadoutInfo): React.ReactNode {
+function makeAdditionalInformation(item: ReadoutInfo, verticalScale: number): React.ReactNode {
     if (!item.properties) {
         return null;
     }
@@ -41,22 +41,26 @@ function makeAdditionalInformation(item: ReadoutInfo): React.ReactNode {
     }
 
     // depth readout from SubsurfaceViewer is not properly working
-    return item.properties
-        .filter((el) => el.name !== "Depth")
-        .map((el, index) => {
-            return (
-                <div className="table-row" key={index}>
-                    <div className="table-cell w-32">{el.name}:</div>
-                    <div className="table-cell">{formatValue(el.value)}</div>
+    return item.properties.map((el, index) => {
+        return (
+            <div className="table-row" key={index}>
+                <div className="table-cell w-32">{el.name}:</div>
+                <div className="table-cell">
+                    {el.name === "Depth"
+                        ? formatValue((typeof el.value === "string" ? parseFloat(el.value) : el.value) / verticalScale)
+                        : formatValue(el.value)}
                 </div>
-            );
-        });
+            </div>
+        );
+    });
 }
 
 export type ReadoutBoxProps = {
     layerPickInfo: LayerPickInfo[];
     maxNumItems?: number;
     visible?: boolean;
+    // Required as long as the SubsurfaceViewer is not providing correct depth readout
+    verticalScale: number;
 };
 
 export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
@@ -138,7 +142,7 @@ export function ReadoutBox(props: ReadoutBoxProps): React.ReactNode {
                             <div className="table-row">
                                 <div className="table-cell font-bold">{el.label}</div>
                             </div>
-                            {makeAdditionalInformation(el)}
+                            {makeAdditionalInformation(el, props.verticalScale)}
                         </div>
                     );
                 }

@@ -19,6 +19,7 @@ export type ViewportWrapperProps = {
     wellboreHeaderUuid: string | null;
     referenceSystem?: IntersectionReferenceSystem;
     layers: LayerItem[];
+    layerIdToNameMap: Record<string, string>;
     bounds: {
         x: [number, number];
         y: [number, number];
@@ -150,6 +151,7 @@ export function ViewportWrapper(props: ViewportWrapperProps): React.ReactNode {
                 verticalScale={verticalScale}
                 referenceSystem={props.referenceSystem ?? undefined}
                 layers={props.layers}
+                layerIdToNameMap={props.layerIdToNameMap}
                 bounds={props.bounds}
                 viewport={viewport ?? undefined}
                 onViewportChange={handleViewportChange}

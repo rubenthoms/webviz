@@ -85,7 +85,6 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
 
         const showGridlines = !(this.data?.hideGridlines ?? false);
         let startU = -(this.data?.extensionLengthStart ?? 0);
-        let totalPolyCount = 0;
         this.data.fenceMeshSections.forEach((section) => {
             this.createFenceMeshSection(startU, section, showGridlines);
             const uVectorLength = pointDistance(
@@ -99,11 +98,7 @@ export class PolylineIntersectionLayer extends PixiLayer<PolylineIntersectionDat
                 }
             );
             startU += uVectorLength;
-            totalPolyCount += section.verticesPerPolyArr.length;
         });
-
-        console.debug("Total section count: ", this.data.fenceMeshSections.length);
-        console.debug("Total poly count: ", totalPolyCount);
 
         this._isPreRendered = true;
     }

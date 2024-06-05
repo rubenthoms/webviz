@@ -77,6 +77,8 @@ export function View(
                 workbenchServices={props.workbenchServices}
                 viewContext={props.viewContext}
                 wellboreHeaderUuid={wellboreHeader?.uuid ?? null}
+                wellboreHeaderDepthReferencePoint={wellboreHeader?.depthReferencePoint ?? null}
+                wellboreHeaderDepthReferenceElevation={wellboreHeader?.depthReferenceElevation ?? null}
             />
         </div>
     );

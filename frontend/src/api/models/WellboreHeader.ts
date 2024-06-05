@@ -9,5 +9,7 @@ export type WellboreHeader = {
     unique_well_identifier: string;
     well_easting: number;
     well_northing: number;
+    depth_reference_point: string;
+    depth_reference_elevation: number;
 };
 

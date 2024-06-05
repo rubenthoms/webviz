@@ -588,7 +588,7 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 height={divSize.height / 2 - 50}
                 position="left"
             />
-            <ReadoutBox layerPickInfo={layerPickingInfo} visible={pointerOver} />
+            <ReadoutBox layerPickInfo={layerPickingInfo} visible={pointerOver} verticalScale={verticalScale} />
             {props.enableIntersectionPolylineEditing && polylineEditingActive && (
                 <PolylineEditingPanel
                     currentlyEditedPolyline={currentlyEditedPolyline}
@@ -618,8 +618,8 @@ export function SubsurfaceViewerWrapper(props: SubsurfaceViewerWrapperProps): Re
                 }}
                 coords={{
                     visible: false,
-                    multiPicking: polylineEditPointsModusActive,
-                    pickDepth: polylineEditPointsModusActive ? 2 : undefined,
+                    multiPicking: true, //polylineEditPointsModusActive,
+                    pickDepth: 2, // polylineEditPointsModusActive ? 2 : undefined,
                 }}
                 colorTables={colorTables}
                 onMouseEvent={handleMouseEvent}

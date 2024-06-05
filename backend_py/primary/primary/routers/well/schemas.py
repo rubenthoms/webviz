@@ -22,6 +22,7 @@ class StratigraphicUnit(BaseModel):
     colorB: int
     lithologyType: int | float | str = "unknown"
 
+
 class WellboreHeader(BaseModel):
     wellbore_uuid: str
     unique_wellbore_identifier: str
@@ -29,6 +30,9 @@ class WellboreHeader(BaseModel):
     unique_well_identifier: str
     well_easting: float
     well_northing: float
+    depth_reference_point: str
+    depth_reference_elevation: float
+
 
 class WellboreTrajectory(BaseModel):
     wellbore_uuid: str
@@ -37,6 +41,7 @@ class WellboreTrajectory(BaseModel):
     md_arr: List[float]
     easting_arr: List[float]
     northing_arr: List[float]
+
 
 class WellborePick(BaseModel):
     """

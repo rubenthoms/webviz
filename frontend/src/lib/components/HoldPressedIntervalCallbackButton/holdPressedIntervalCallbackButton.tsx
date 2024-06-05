@@ -7,18 +7,20 @@ export type HoldPressedIntervalCallbackButtonProps = ButtonProps & {
 };
 
 export function HoldPressedIntervalCallbackButton(props: HoldPressedIntervalCallbackButtonProps): React.ReactNode {
+    const { onHoldPressedIntervalCallback, ...other } = props;
+
     const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
     function handleClick() {
-        props.onHoldPressedIntervalCallback();
+        onHoldPressedIntervalCallback();
     }
 
     function handlePointerDown(e: React.PointerEvent<HTMLButtonElement>) {
         timeoutRef.current = setTimeout(() => {
             e.preventDefault();
             intervalRef.current = setInterval(() => {
-                props.onHoldPressedIntervalCallback();
+                onHoldPressedIntervalCallback();
             }, 100);
         }, 300);
     }
@@ -36,7 +38,7 @@ export function HoldPressedIntervalCallbackButton(props: HoldPressedIntervalCall
 
     return (
         <Button
-            {...props}
+            {...other}
             onClick={handleClick}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}

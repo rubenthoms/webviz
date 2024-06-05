@@ -14,7 +14,7 @@ export type InputProps = InputUnstyledProps & {
 };
 
 export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRef<HTMLInputElement>) => {
-    const { startAdornment, endAdornment, wrapperStyle, value: propsValue, onChange, ...other } = props;
+    const { startAdornment, endAdornment, wrapperStyle, value: propsValue, onChange, debounceTimeMs, ...other } = props;
 
     const [value, setValue] = React.useState<unknown>(propsValue);
     const [prevValue, setPrevValue] = React.useState<unknown>(propsValue);
@@ -76,9 +76,9 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
 
             debounceTimerRef.current = setTimeout(() => {
                 onChange(event);
-            }, props.debounceTimeMs ?? 0);
+            }, debounceTimeMs ?? 0);
         },
-        [props.min, props.max, onChange, props.type, props.debounceTimeMs]
+        [props.min, props.max, onChange, props.type, debounceTimeMs]
     );
 
     return (

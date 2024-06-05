@@ -39,11 +39,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, props.workbenchServices);
 
     let colorScale = props.viewContext.useSettingsToViewInterfaceValue("colorScale");
+    const defaultColorScale = props.workbenchSettings.useContinuousColorScale({
+        gradientType: ColorScaleGradientType.Sequential,
+    });
     if (!colorScale) {
-        colorScale = props.workbenchSettings.useContinuousColorScale({
-            gradientType: ColorScaleGradientType.Sequential,
-        });
+        colorScale = defaultColorScale;
     }
+
     const useCustomBounds = props.viewContext.useSettingsToViewInterfaceValue("useCustomBounds");
 
     const highlightedWellboreUuid = useAtomValue(selectedHighlightedWellboreUuidAtom);
@@ -66,6 +68,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         const ensemble = ensembleSet.findEnsemble(ensembleIdent);
         ensembleName = ensemble?.getDisplayName() ?? "";
     }
+
     props.viewContext.setInstanceTitle(
         `${ensembleName}, R=${realization} -- ${gridModelName} / ${gridModelParameterName}`
     );

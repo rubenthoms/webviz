@@ -4,6 +4,7 @@ import { WellboreCasing_api } from "@api";
 import {
     Casing,
     IntersectionReferenceSystem,
+    ReferenceLine,
     SurfaceData,
     getPicksData,
     getSeismicInfo,
@@ -40,6 +41,8 @@ export type LayersWrapperProps = {
     workbenchServices: WorkbenchServices;
     viewContext: ViewContext<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>;
     wellboreHeaderUuid: string | null;
+    wellboreHeaderDepthReferencePoint: string | null;
+    wellboreHeaderDepthReferenceElevation: number | null;
 };
 
 export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
@@ -70,6 +73,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
     }
 
     const esvLayers: LayerItem[] = [];
+    const esvLayerIdToNameMap: Record<string, string> = {};
     const colorScales: { id: string; colorScale: ColorScaleWithName }[] = [];
 
     if (props.intersectionType === IntersectionType.WELLBORE) {
@@ -81,6 +85,35 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
                 stroke: "red",
                 strokeWidth: "2",
                 order: 6 + layers.length,
+            },
+        });
+
+        const referenceLines: ReferenceLine[] = [
+            {
+                depth: 0,
+                text: "MSL",
+                color: "blue",
+                lineType: "wavy",
+                textColor: "blue",
+            },
+        ];
+
+        if (props.wellboreHeaderDepthReferencePoint && props.wellboreHeaderDepthReferenceElevation) {
+            referenceLines.push({
+                depth: -props.wellboreHeaderDepthReferenceElevation,
+                text: props.wellboreHeaderDepthReferencePoint,
+                color: "black",
+                lineType: "dashed",
+                textColor: "black",
+            });
+        }
+
+        esvLayers.push({
+            id: "reference-line",
+            type: LayerType.REFERENCE_LINE,
+            hoverable: false,
+            options: {
+                data: referenceLines,
             },
         });
     }
@@ -143,6 +176,8 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
         if (!layer.getIsVisible() || layer.getStatus() !== LayerStatus.SUCCESS) {
             continue;
         }
+
+        esvLayerIdToNameMap[layer.getId()] = layer.getName();
 
         if (isGridLayer(layer)) {
             const gridLayer = layer as GridLayer;
@@ -228,28 +263,39 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
 
             const colorScale = seismicLayer.getColorScale();
 
-            if (seismicInfo) {
-                seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
-                seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
-
-                if (!seismicLayer.getUseCustomColorScaleBoundaries()) {
-                    colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
-                }
-                colorScales.push({ id: `${layer.getId()}-${colorScale.getColorPalette().getId()}`, colorScale });
+            if (!seismicInfo) {
+                continue;
             }
+
+            seismicInfo.minX = seismicInfo.minX - props.intersectionExtensionLength;
+            seismicInfo.maxX = seismicInfo.maxX - props.intersectionExtensionLength;
+
+            if (!seismicLayer.getUseCustomColorScaleBoundaries()) {
+                colorScale.setRangeAndMidPoint(seismicInfo.domain.min, seismicInfo.domain.max, 0);
+            }
+            colorScales.push({ id: `${layer.getId()}-${colorScale.getColorPalette().getId()}`, colorScale });
 
             esvLayers.push({
                 id: layer.getId(),
-                type: LayerType.SEISMIC_CANVAS,
+                type: LayerType.SEISMIC,
                 options: {
                     data: {
                         image: data.image,
                         options: getSeismicOptions(seismicInfo),
-                        colorScale,
+                        propertyName: layer.getSettings().attribute ?? "",
+                        propertyUnit: "",
+                        minFenceX: seismicInfo.minX,
+                        maxFenceX: seismicInfo.maxX,
+                        minFenceDepth: seismicInfo.minTvdMsl,
+                        maxFenceDepth: seismicInfo.maxTvdMsl,
+                        numSamplesPerTrace: data.seismicFenceData.num_samples_per_trace,
+                        numTraces: data.seismicFenceData.num_traces,
+                        fenceTracesFloat32Array: data.seismicFenceData.fenceTracesFloat32Arr,
                     },
                     order: index,
                     layerOpacity: 1,
                 },
+                hoverable: true,
             });
         }
 
@@ -348,6 +394,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
             <ViewportWrapper
                 referenceSystem={props.referenceSystem ?? undefined}
                 layers={esvLayers}
+                layerIdToNameMap={esvLayerIdToNameMap}
                 bounds={bounds}
                 viewport={viewport}
                 workbenchServices={props.workbenchServices}

@@ -1,4 +1,4 @@
-import { ErrorInfo } from "react";
+import React, { ErrorInfo } from "react";
 
 import { JTDDataType } from "ajv/dist/core";
 import { cloneDeep } from "lodash";
@@ -6,22 +6,14 @@ import { cloneDeep } from "lodash";
 import { AtomStore } from "./AtomStoreMaster";
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import { InitialSettings } from "./InitialSettings";
-import {
-    ImportState,
-    JTDBaseType,
-    Module,
-    ModuleSettings,
-    ModuleStateDeserializer,
-    ModuleStateSerializer,
-    ModuleView,
-} from "./Module";
+import { AtomsInitialization, ImportState, Module, ModuleAtoms, ModuleSettings, ModuleView } from "./Module";
 import { ModuleContext } from "./ModuleContext";
 import { ModuleStateStorageManager } from "./ModuleStateStorageManager";
 import { StateBaseType, StateOptions, StateStore } from "./StateStore";
 import { SyncSettingKey } from "./SyncSettings";
 import {
     InterfaceBaseType,
-    InterfaceHydration,
+    InterfaceInitialization,
     UniDirectionalSettingsToViewInterface,
 } from "./UniDirectionalSettingsToViewInterface";
 import { Workbench } from "./Workbench";
@@ -35,13 +27,27 @@ export enum ModuleInstanceState {
     RESETTING,
 }
 
+export enum ModuleInstanceTopic {
+    TITLE = "title",
+    SYNCED_SETTINGS = "synced-settings",
+    STATE = "state",
+    IMPORT_STATE = "import-state",
+}
+
+export type ModuleInstanceTopicValueTypes = {
+    [ModuleInstanceTopic.TITLE]: string;
+    [ModuleInstanceTopic.SYNCED_SETTINGS]: SyncSettingKey[];
+    [ModuleInstanceTopic.STATE]: ModuleInstanceState;
+    [ModuleInstanceTopic.IMPORT_STATE]: ImportState;
+};
+
 export interface ModuleInstanceOptions<
     TStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
-    TSerializedStateDef extends JTDBaseType
+    TSettingsAtomsType extends Record<string, unknown>,
+    TViewAtomsType extends Record<string, unknown>
 > {
-    id: string;
-    module: Module<TStateType, TInterfaceType, TSerializedStateDef>;
+    module: Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
     workbench: Workbench;
     instanceNumber: number;
     channelDefinitions: ChannelDefinition[] | null;
@@ -51,6 +57,8 @@ export interface ModuleInstanceOptions<
 export class ModuleInstance<
     TStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
+    TSettingsAtomsType extends Record<string, unknown>,
+    TViewAtomsType extends Record<string, unknown>
     TSerializedStateDef extends JTDBaseType
 > {
     private _id: string;
@@ -60,12 +68,9 @@ export class ModuleInstance<
     private _fatalError: { err: Error; errInfo: ErrorInfo } | null;
     private _syncedSettingKeys: SyncSettingKey[];
     private _stateStore: StateStore<TStateType> | null;
-    private _module: Module<TStateType, TInterfaceType, TSerializedStateDef>;
-    private _context: ModuleContext<TStateType, TInterfaceType, TSerializedStateDef> | null;
-    private _importStateSubscribers: Set<() => void>;
-    private _moduleInstanceStateSubscribers: Set<(moduleInstanceState: ModuleInstanceState) => void>;
-    private _syncedSettingsSubscribers: Set<(syncedSettings: SyncSettingKey[]) => void>;
-    private _titleChangeSubscribers: Set<(title: string) => void>;
+    private _module: Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+    private _context: ModuleContext<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> | null;
+    private _subscribers: Map<keyof ModuleInstanceTopicValueTypes, Set<() => void>> = new Map();
     private _cachedDefaultState: TStateType | null;
     private _cachedStateStoreOptions?: StateOptions<TStateType>;
     private _initialSettings: InitialSettings | null;
@@ -73,20 +78,18 @@ export class ModuleInstance<
     private _channelManager: ChannelManager;
     private _workbench: Workbench;
     private _settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null;
+    private _settingsAtoms: ModuleAtoms<TSettingsAtomsType> | null;
+    private _viewAtoms: ModuleAtoms<TViewAtomsType> | null;
     private _moduleStatePersistor: ModuleStateStorageManager<TStateType, TInterfaceType, TSerializedStateDef> | null;
 
-    constructor(options: ModuleInstanceOptions<TStateType, TInterfaceType, TSerializedStateDef>) {
-        this._id = options.id;
+    constructor(options: ModuleInstanceOptions<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>) {
+        this._id = `${options.module.getName()}-${options.instanceNumber}`;
         this._title = options.module.getDefaultTitle();
         this._stateStore = null;
         this._module = options.module;
-        this._importStateSubscribers = new Set();
         this._context = null;
         this._initialised = false;
         this._syncedSettingKeys = [];
-        this._syncedSettingsSubscribers = new Set();
-        this._moduleInstanceStateSubscribers = new Set();
-        this._titleChangeSubscribers = new Set();
         this._moduleInstanceState = ModuleInstanceState.INITIALIZING;
         this._fatalError = null;
         this._cachedDefaultState = null;
@@ -94,6 +97,8 @@ export class ModuleInstance<
         this._statusController = new ModuleInstanceStatusControllerInternal();
         this._workbench = options.workbench;
         this._settingsViewInterface = null;
+        this._settingsAtoms = null;
+        this._viewAtoms = null;
         this._moduleStatePersistor = null;
 
         this._channelManager = new ChannelManager(this._id);
@@ -123,6 +128,20 @@ export class ModuleInstance<
         return this._settingsViewInterface;
     }
 
+    getSettingsAtom<TKey extends keyof TSettingsAtomsType>(key: TKey): ModuleAtoms<TSettingsAtomsType>[TKey] {
+        if (!this._settingsAtoms) {
+            throw `Module instance '${this._title}' does not have initialized settings atoms yet. Did you forget to add an atom initialization when registering the module?`;
+        }
+        return this._settingsAtoms[key];
+    }
+
+    getViewAtom<TKey extends keyof TViewAtomsType>(key: TKey): ModuleAtoms<TViewAtomsType>[TKey] {
+        if (!this._viewAtoms) {
+            throw `Module instance '${this._title}' does not have initialized view atoms yet. Did you forget to add an atom initialization when registering the module?`;
+        }
+        return this._viewAtoms[key];
+    }
+
     getChannelManager(): ChannelManager {
         return this._channelManager;
     }
@@ -134,7 +153,11 @@ export class ModuleInstance<
         }
 
         this._stateStore = new StateStore<TStateType>(cloneDeep(defaultState), options);
-        this._context = new ModuleContext<TStateType, TInterfaceType, TSerializedStateDef>(this, this._stateStore);
+        this._context = new ModuleContext<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>(
+            this,
+            this._stateStore
+        );
+        this._initialised = true;
         this.setModuleInstanceState(ModuleInstanceState.OK);
     }
 
@@ -167,14 +190,27 @@ export class ModuleInstance<
         }
         return this._moduleStatePersistor;
     }
+    makeSettingsToViewInterface(interfaceInitialization: InterfaceInitialization<TInterfaceType>) {
+        this._settingsViewInterface = new UniDirectionalSettingsToViewInterface(interfaceInitialization);
+    }
 
-    makeSettingsToViewInterface(interfaceHydration: InterfaceHydration<TInterfaceType>) {
-        this._settingsViewInterface = new UniDirectionalSettingsToViewInterface(interfaceHydration);
+    makeSettingsAtoms(initFunc: AtomsInitialization<TSettingsAtomsType, TInterfaceType>) {
+        if (!this._settingsViewInterface) {
+            throw `Module instance '${this._title}' does not have an interface yet. Did you forget to init the module?`;
+        }
+        this._settingsAtoms = initFunc(this._settingsViewInterface);
+    }
+
+    makeViewAtoms(initFunc: AtomsInitialization<TViewAtomsType, TInterfaceType>) {
+        if (!this._settingsViewInterface) {
+            throw `Module instance '${this._title}' does not have an interface yet. Did you forget to init the module?`;
+        }
+        this._viewAtoms = initFunc(this._settingsViewInterface);
     }
 
     addSyncedSetting(settingKey: SyncSettingKey): void {
         this._syncedSettingKeys.push(settingKey);
-        this.notifySubscribersAboutSyncedSettingKeysChange();
+        this.notifySubscribers(ModuleInstanceTopic.SYNCED_SETTINGS);
     }
 
     getSyncedSettingKeys(): SyncSettingKey[] {
@@ -187,33 +223,18 @@ export class ModuleInstance<
 
     removeSyncedSetting(settingKey: SyncSettingKey): void {
         this._syncedSettingKeys = this._syncedSettingKeys.filter((a) => a !== settingKey);
-        this.notifySubscribersAboutSyncedSettingKeysChange();
+        this.notifySubscribers(ModuleInstanceTopic.SYNCED_SETTINGS);
     }
 
-    subscribeToSyncedSettingKeysChange(cb: (syncedSettings: SyncSettingKey[]) => void): () => void {
-        this._syncedSettingsSubscribers.add(cb);
-
-        // Trigger callback immediately with our current set of keys
-        cb(this._syncedSettingKeys);
-
-        return () => {
-            this._syncedSettingsSubscribers.delete(cb);
-        };
-    }
-
-    setIsInitialised(): void {
-        this._initialised = true;
-    }
-
-    isInitialised(): boolean {
+    isInitialized(): boolean {
         return this._initialised;
     }
 
-    getViewFC(): ModuleView<TStateType, TInterfaceType, TSerializedStateDef> {
+    getViewFC(): ModuleView<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
         return this._module.viewFC;
     }
 
-    getSettingsFC(): ModuleSettings<TStateType, TInterfaceType, TSerializedStateDef> {
+    getSettingsFC(): ModuleSettings<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
         return this._module.settingsFC;
     }
 
@@ -221,7 +242,7 @@ export class ModuleInstance<
         return this._module.getImportState();
     }
 
-    getContext(): ModuleContext<TStateType, TInterfaceType, TSerializedStateDef> {
+    getContext(): ModuleContext<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
         if (!this._context) {
             throw `Module context is not available yet. Did you forget to init the module '${this._title}.'?`;
         }
@@ -242,23 +263,56 @@ export class ModuleInstance<
 
     setTitle(title: string): void {
         this._title = title;
-        this.notifySubscribersAboutTitleChange();
+        this.notifySubscribers(ModuleInstanceTopic.TITLE);
     }
 
-    subscribeToTitleChange(cb: (title: string) => void): () => void {
-        this._titleChangeSubscribers.add(cb);
-        return () => {
-            this._titleChangeSubscribers.delete(cb);
+    notifySubscribers(topic: ModuleInstanceTopic): void {
+        const subscribers = this._subscribers.get(topic);
+        if (subscribers) {
+            subscribers.forEach((subscriber) => {
+                subscriber();
+            });
+        }
+    }
+
+    makeSubscriberFunction(topic: ModuleInstanceTopic): (onStoreChangeCallback: () => void) => () => void {
+        // Using arrow function in order to keep "this" in context
+        const subscriber = (onStoreChangeCallback: () => void): (() => void) => {
+            const subscribers = this._subscribers.get(topic) || new Set();
+            subscribers.add(onStoreChangeCallback);
+            this._subscribers.set(topic, subscribers);
+
+            return () => {
+                subscribers.delete(onStoreChangeCallback);
+            };
         };
-    }
-
-    notifySubscribersAboutTitleChange(): void {
-        this._titleChangeSubscribers.forEach((subscriber) => {
-            subscriber(this._title);
-        });
-    }
-
     getModule(): Module<TStateType, TInterfaceType, TSerializedStateDef> {
+        return this._module;
+    }
+
+        return subscriber;
+    }
+
+    makeSnapshotGetter<T extends ModuleInstanceTopic>(topic: T): () => ModuleInstanceTopicValueTypes[T] {
+        const snapshotGetter = (): any => {
+            if (topic === ModuleInstanceTopic.TITLE) {
+                return this.getTitle();
+            }
+            if (topic === ModuleInstanceTopic.SYNCED_SETTINGS) {
+                return this.getSyncedSettingKeys();
+            }
+            if (topic === ModuleInstanceTopic.STATE) {
+                return this.getModuleInstanceState();
+            }
+            if (topic === ModuleInstanceTopic.IMPORT_STATE) {
+                return this.getImportState();
+            }
+        };
+
+        return snapshotGetter;
+    }
+
+    getModule(): Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
         return this._module;
     }
 
@@ -266,41 +320,9 @@ export class ModuleInstance<
         return this._statusController;
     }
 
-    subscribeToImportStateChange(cb: () => void): () => void {
-        this._importStateSubscribers.add(cb);
-        return () => {
-            this._importStateSubscribers.delete(cb);
-        };
-    }
-
-    notifySubscribersAboutImportStateChange(): void {
-        this._importStateSubscribers.forEach((subscriber) => {
-            subscriber();
-        });
-    }
-
-    notifySubscribersAboutSyncedSettingKeysChange(): void {
-        this._syncedSettingsSubscribers.forEach((subscriber) => {
-            subscriber(this._syncedSettingKeys);
-        });
-    }
-
-    subscribeToModuleInstanceStateChange(cb: () => void): () => void {
-        this._moduleInstanceStateSubscribers.add(cb);
-        return () => {
-            this._moduleInstanceStateSubscribers.delete(cb);
-        };
-    }
-
-    notifySubscribersAboutModuleInstanceStateChange(): void {
-        this._moduleInstanceStateSubscribers.forEach((subscriber) => {
-            subscriber(this._moduleInstanceState);
-        });
-    }
-
     private setModuleInstanceState(moduleInstanceState: ModuleInstanceState): void {
         this._moduleInstanceState = moduleInstanceState;
-        this.notifySubscribersAboutModuleInstanceStateChange();
+        this.notifySubscribers(ModuleInstanceTopic.STATE);
     }
 
     getModuleInstanceState(): ModuleInstanceState {
@@ -345,4 +367,16 @@ export class ModuleInstance<
 
         this._moduleStatePersistor?.removePersistedState();
     }
+}
+
+export function useModuleInstanceTopicValue<T extends ModuleInstanceTopic>(
+    moduleInstance: ModuleInstance<any, any, any, any>,
+    topic: T
+): ModuleInstanceTopicValueTypes[T] {
+    const value = React.useSyncExternalStore<ModuleInstanceTopicValueTypes[T]>(
+        moduleInstance.makeSubscriberFunction(topic),
+        moduleInstance.makeSnapshotGetter(topic)
+    );
+
+    return value;
 }

@@ -4,12 +4,7 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { atomWithQueries } from "@framework/utils/atomUtils";
 import { UseQueryResult } from "@tanstack/react-query";
 
-import {
-    selectedEnsembleIdentsAreValidAtom,
-    selectedEnsembleIdentsAtom,
-    selectedRealizationsAreValidAtom,
-    selectedRealizationsAtom,
-} from "./derivedAtoms";
+import { selectedEnsembleIdentsAtom, selectedRealizationsAtom } from "./derivedAtoms";
 
 import { CombinedPvtDataResult } from "../../typesAndEnums";
 
@@ -19,8 +14,6 @@ const CACHE_TIME = 60 * 1000;
 export const pvtDataQueriesAtom = atomWithQueries((get) => {
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
     const selectedRealizations = get(selectedRealizationsAtom);
-    const selectedEnsembleIdentsAreValid = get(selectedEnsembleIdentsAreValidAtom);
-    const selectedRealizationsAreValid = get(selectedRealizationsAreValidAtom);
 
     const ensembleIdentsAndRealizations: { ensembleIdent: EnsembleIdent; realization: number }[] = [];
     for (const ensembleIdent of selectedEnsembleIdents) {
@@ -32,7 +25,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
     const queries = ensembleIdentsAndRealizations
         .map((el) => {
             return () => ({
-                queryKey: ["tableData", el.ensembleIdent.toString(), el.realization],
+                queryKey: ["pvtTableData", el.ensembleIdent.toString(), el.realization],
                 queryFn: () =>
                     apiService.pvt.tableData(
                         el.ensembleIdent.getCaseUuid(),
@@ -41,9 +34,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
                     ),
                 staleTime: STALE_TIME,
                 gcTime: CACHE_TIME,
-                enabled:
-                    !!(el.ensembleIdent && el.realization !== null) &&
-                    !(selectedEnsembleIdentsAreValid || selectedRealizationsAreValid),
+                enabled: !!(el.ensembleIdent && el.realization !== null),
             });
         })
         .flat();
@@ -60,7 +51,6 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
             isFetching: results.some((result) => result.isFetching),
             someQueriesFailed: results.some((result) => result.isError),
             allQueriesFailed: results.every((result) => result.isError),
-            notStartedYet: results.every((result) => result.fetchStatus === "idle" && result.data === undefined),
         };
     }
 

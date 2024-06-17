@@ -2,7 +2,6 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleRealizationFilterFunctionAtom, EnsembleSetAtom } from "@framework/GlobalAtoms";
 
 import { atom } from "jotai";
-import { isEqual } from "lodash";
 
 import { userSelectedEnsembleIdentsAtom, userSelectedPvtNumsAtom, userSelectedRealizationsAtom } from "./baseAtoms";
 import { pvtDataQueriesAtom } from "./queryAtoms";
@@ -14,7 +13,7 @@ export const selectedEnsembleIdentsAtom = atom((get) => {
     const ensembleSet = get(EnsembleSetAtom);
     const userSelectedEnsembleIdents = get(userSelectedEnsembleIdentsAtom);
 
-    let computedEnsembleIdents = userSelectedEnsembleIdents.value.filter((el) => ensembleSet.hasEnsemble(el));
+    let computedEnsembleIdents = userSelectedEnsembleIdents.filter((el) => ensembleSet.hasEnsemble(el));
     if (computedEnsembleIdents.length === 0 && ensembleSet.getEnsembleArr().length > 0) {
         computedEnsembleIdents = [ensembleSet.getEnsembleArr()[0].getIdent()];
     }
@@ -28,14 +27,6 @@ export const selectedRealizationsAtom = atom((get) => {
     const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
     let ensembleRealizationFilterFunction = get(EnsembleRealizationFilterFunctionAtom);
 
-    const areAllEnsemblesValid = selectedEnsembleIdents.every((ensembleIdent) =>
-        ensembleSet.hasEnsemble(ensembleIdent)
-    );
-
-    if (!areAllEnsemblesValid) {
-        return [];
-    }
-
     if (ensembleRealizationFilterFunction === null) {
         ensembleRealizationFilterFunction = (ensembleIdent: EnsembleIdent) => {
             return ensembleSet.findEnsemble(ensembleIdent)?.getRealizations() ?? [];
@@ -44,7 +35,7 @@ export const selectedRealizationsAtom = atom((get) => {
 
     const realizations = computeRealizationsIntersection(selectedEnsembleIdents, ensembleRealizationFilterFunction);
 
-    let computedRealizations = userSelectedRealizations.value.filter((el) => realizations.includes(el));
+    let computedRealizations = userSelectedRealizations.filter((el) => realizations.includes(el));
     if (computedRealizations.length === 0 && realizations.length > 0) {
         computedRealizations = [realizations[0]];
     }
@@ -64,7 +55,7 @@ export const pvtDataAccessorAtom = atom((get) => {
 });
 
 export const selectedPvtNumsAtom = atom<number[]>((get) => {
-    const userSelectedPvtNums = get(userSelectedPvtNumsAtom).value;
+    const userSelectedPvtNums = get(userSelectedPvtNumsAtom);
     const pvtDataAccessor = get(pvtDataAccessorAtom);
 
     const uniquePvtNums = pvtDataAccessor.getUniquePvtNums();
@@ -80,33 +71,4 @@ export const selectedPvtNumsAtom = atom<number[]>((get) => {
     }
 
     return computedPvtNums;
-});
-
-export const selectedEnsembleIdentsAreValidAtom = atom((get) => {
-    const userSelectedEnsembleIdents = get(userSelectedEnsembleIdentsAtom);
-    const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom);
-
-    return (
-        userSelectedEnsembleIdents.isPersistedValue &&
-        !isEqual(userSelectedEnsembleIdents.value, selectedEnsembleIdents)
-    );
-});
-
-export const selectedRealizationsAreValidAtom = atom((get) => {
-    const userSelectedRealizations = get(userSelectedRealizationsAtom);
-    const selectedRealizations = get(selectedRealizationsAtom);
-
-    return userSelectedRealizations.isPersistedValue && !isEqual(userSelectedRealizations.value, selectedRealizations);
-});
-
-export const selectedPvtNumsAreValidAtom = atom((get) => {
-    const userSelectedPvtNums = get(userSelectedPvtNumsAtom);
-    const selectedPvtNums = get(selectedPvtNumsAtom);
-    const pvtDataQueries = get(pvtDataQueriesAtom);
-
-    return (
-        !pvtDataQueries.isFetching &&
-        userSelectedPvtNums.isPersistedValue &&
-        !isEqual(userSelectedPvtNums.value, selectedPvtNums)
-    );
 });

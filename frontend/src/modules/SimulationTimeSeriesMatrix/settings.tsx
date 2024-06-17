@@ -7,7 +7,7 @@ import { EnsembleSet } from "@framework/EnsembleSet";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
-import { MultiEnsembleSelect } from "@framework/components/MultiEnsembleSelect";
+import { EnsembleSelect } from "@framework/components/EnsembleSelect";
 import { ParameterListFilter } from "@framework/components/ParameterListFilter";
 import { VectorSelector, createVectorSelectorDataFromVectors } from "@framework/components/VectorSelector";
 import { fixupEnsembleIdents } from "@framework/utils/ensembleUiHelpers";
@@ -195,6 +195,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
 
                     newVectorSpecifications.push({
                         ensembleIdent: ensembleIdent,
+                        color: ensembleSet.findEnsemble(ensembleIdent)?.getColor() ?? null,
                         vectorName: vector,
                         hasHistoricalVector: ensembleVectorListsHelper.current.hasHistoricalVector(
                             ensembleIdent,
@@ -205,7 +206,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
             }
             setVectorSpecifications(newVectorSpecifications);
         },
-        [selectedEnsembleIdents, selectedVectorNames, numberOfQueriesWithData, setVectorSpecifications]
+        [selectedEnsembleIdents, selectedVectorNames, numberOfQueriesWithData, setVectorSpecifications, ensembleSet]
     );
 
     React.useEffect(
@@ -391,7 +392,7 @@ export function Settings({ settingsContext, workbenchSession }: ModuleSettingsPr
                 />
             </CollapsibleGroup>
             <CollapsibleGroup expanded={true} title="Ensembles">
-                <MultiEnsembleSelect
+                <EnsembleSelect
                     ensembleSet={ensembleSet}
                     value={selectedEnsembleIdents}
                     size={5}

@@ -1,6 +1,9 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
+import { MODULE_NAME } from "./registerModule";
+import { Settings } from "./settings/settings";
+import { Interface, State, interfaceInitialization } from "./state";
 import { MODULE_SERIALIZED_STATE, ModuleSerializedState } from "./persistence";
 import { MODULE_NAME } from "./registerModule";
 import {
@@ -13,8 +16,6 @@ import {
     selectedPvtNumsAtom,
     selectedRealizationsAtom,
 } from "./settings/atoms/derivedAtoms";
-import { Settings } from "./settings/settings";
-import { Interface, State, interfaceHydration } from "./state";
 import { View } from "./view";
 
 const defaultState: State = {};

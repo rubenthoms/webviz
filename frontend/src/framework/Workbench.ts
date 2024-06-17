@@ -27,8 +27,20 @@ export type LayoutElement = {
     relWidth: number;
 };
 
+export type UserEnsembleSetting = {
+    ensembleIdent: EnsembleIdent;
+    customName: string | null;
+    color: string;
+};
+
+export type StoredUserEnsembleSetting = {
+    ensembleIdent: string;
+    customName: string;
+    color: string;
+};
+
 export class Workbench {
-    private _moduleInstances: ModuleInstance<any, any, any>[];
+    private _moduleInstances: ModuleInstance<any, any, any, any>[];
     private _workbenchSession: WorkbenchSessionPrivate;
     private _workbenchServices: PrivateWorkbenchServices;
     private _workbenchSettings: PrivateWorkbenchSettings;
@@ -101,11 +113,11 @@ export class Workbench {
         };
     }
 
-    getModuleInstances(): ModuleInstance<any, any, any>[] {
+    getModuleInstances(): ModuleInstance<any, any, any, any>[] {
         return this._moduleInstances;
     }
 
-    getModuleInstance(id: string): ModuleInstance<any, any, any> | undefined {
+    getModuleInstance(id: string): ModuleInstance<any, any, any, any> | undefined {
         return this._moduleInstances.find((moduleInstance) => moduleInstance.getId() === id);
     }
 
@@ -149,9 +161,8 @@ export class Workbench {
             }
 
             module.setWorkbench(this);
-            const instanceNumber = this.getNextModuleInstanceNumber(module.getName());
-            this._atomStoreMaster.makeAtomStoreForModuleInstance(module.makeId(instanceNumber));
-            const moduleInstance = module.makeInstance(instanceNumber);
+            const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
+            this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
             this._moduleInstances.push(moduleInstance);
             this._layout[index] = { ...this._layout[index], moduleInstanceId: moduleInstance.getId() };
             this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
@@ -172,16 +183,16 @@ export class Workbench {
         this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
     }
 
-    makeAndAddModuleInstance(moduleName: string, layout: LayoutElement): ModuleInstance<any, any, any> {
+    makeAndAddModuleInstance(moduleName: string, layout: LayoutElement): ModuleInstance<any, any, any, any> {
         const module = ModuleRegistry.getModule(moduleName);
         if (!module) {
             throw new Error(`Module ${moduleName} not found`);
         }
 
         module.setWorkbench(this);
-        const instanceNumber = this.getNextModuleInstanceNumber(module.getName());
-        this._atomStoreMaster.makeAtomStoreForModuleInstance(module.makeId(instanceNumber));
-        const moduleInstance = module.makeInstance(instanceNumber);
+
+        const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
+        this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
         this._moduleInstances.push(moduleInstance);
 
         this._layout.push({ ...layout, moduleInstanceId: moduleInstance.getId() });
@@ -251,35 +262,36 @@ export class Workbench {
 
     async loadAndSetupEnsembleSetInSession(
         queryClient: QueryClient,
-        specifiedEnsembleIdents: EnsembleIdent[]
+        userEnsembleSettings: UserEnsembleSetting[]
     ): Promise<void> {
-        this.storeEnsembleSetInLocalStorage(specifiedEnsembleIdents);
-
-        const ensembleIdentsToLoad: EnsembleIdent[] = [];
-        for (const ensSpec of specifiedEnsembleIdents) {
-            ensembleIdentsToLoad.push(new EnsembleIdent(ensSpec.getCaseUuid(), ensSpec.getEnsembleName()));
-        }
+        this.storeEnsembleSetInLocalStorage(userEnsembleSettings);
 
         console.debug("loadAndSetupEnsembleSetInSession - starting load");
         this._workbenchSession.setEnsembleSetLoadingState(true);
-        const newEnsembleSet = await loadEnsembleSetMetadataFromBackend(queryClient, ensembleIdentsToLoad);
+        const newEnsembleSet = await loadEnsembleSetMetadataFromBackend(queryClient, userEnsembleSettings);
         console.debug("loadAndSetupEnsembleSetInSession - loading done");
         console.debug("loadAndSetupEnsembleSetInSession - publishing");
         this._workbenchSession.setEnsembleSetLoadingState(false);
         return this._workbenchSession.setEnsembleSet(newEnsembleSet);
     }
 
-    private storeEnsembleSetInLocalStorage(specifiedEnsembleIdents: EnsembleIdent[]): void {
-        const ensembleIdentsToStore = specifiedEnsembleIdents.map((el) => el.toString());
-        localStorage.setItem("ensembleIdents", JSON.stringify(ensembleIdentsToStore));
+    private storeEnsembleSetInLocalStorage(ensemblesToStore: UserEnsembleSetting[]): void {
+        const ensembleIdentsToStore = ensemblesToStore.map((el) => ({
+            ...el,
+            ensembleIdent: el.ensembleIdent.toString(),
+        }));
+        localStorage.setItem("userEnsembleSettings", JSON.stringify(ensembleIdentsToStore));
     }
 
-    maybeLoadEnsembleSetFromLocalStorage(): EnsembleIdent[] | null {
-        const ensembleIdentsString = localStorage.getItem("ensembleIdents");
-        if (!ensembleIdentsString) return null;
+    maybeLoadEnsembleSettingsFromLocalStorage(): UserEnsembleSetting[] | null {
+        const ensembleSettingsString = localStorage.getItem("userEnsembleSettings");
+        if (!ensembleSettingsString) return null;
 
-        const ensembleIdents = JSON.parse(ensembleIdentsString) as string[];
-        const ensembleIdentsParsed = ensembleIdents.map((el) => EnsembleIdent.fromString(el));
+        const ensembleIdents = JSON.parse(ensembleSettingsString) as StoredUserEnsembleSetting[];
+        const ensembleIdentsParsed = ensembleIdents.map((el) => ({
+            ...el,
+            ensembleIdent: EnsembleIdent.fromString(el.ensembleIdent),
+        }));
 
         return ensembleIdentsParsed;
     }

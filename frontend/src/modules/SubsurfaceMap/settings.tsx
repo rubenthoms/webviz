@@ -5,7 +5,7 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleSettingsProps } from "@framework/Module";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
-import { SingleEnsembleSelect } from "@framework/components/SingleEnsembleSelect";
+import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { fixupEnsembleIdent, maybeAssignFirstSyncedEnsemble } from "@framework/utils/ensembleUiHelpers";
 import { Button } from "@lib/components/Button";
 import { Checkbox } from "@lib/components/Checkbox";
@@ -24,7 +24,7 @@ import {
     SurfaceTimeType,
     useSurfaceDirectoryQuery,
 } from "@modules/_shared/Surface";
-import { useWellHeadersQuery } from "@modules/_shared/WellBore/queryHooks";
+import { useDrilledWellboreHeadersQuery } from "@modules/_shared/WellBore/queryHooks";
 
 import { AggregationSelector } from "./components/AggregationSelector";
 import { state } from "./state";
@@ -367,13 +367,13 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
         [show3D, settingsContext]
     );
 
-    const wellHeadersQuery = useWellHeadersQuery(computedEnsembleIdent?.getCaseUuid());
+    const wellHeadersQuery = useDrilledWellboreHeadersQuery(computedEnsembleIdent?.getCaseUuid());
     let wellHeaderOptions: SelectOption[] = [];
 
     if (wellHeadersQuery.data) {
         wellHeaderOptions = wellHeadersQuery.data.map((header) => ({
-            label: header.unique_wellbore_identifier,
-            value: header.wellbore_uuid,
+            label: header.uniqueWellboreIdentifier,
+            value: header.wellboreUuid,
         }));
     }
 
@@ -473,7 +473,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
         <div className="flex flex-col gap-2 overflow-y-auto">
             <CollapsibleGroup expanded={true} title="Ensemble and realization">
                 <Label text="Ensemble" synced={syncHelper.isSynced(SyncSettingKey.ENSEMBLE)}>
-                    <SingleEnsembleSelect
+                    <EnsembleDropdown
                         ensembleSet={ensembleSet}
                         value={computedEnsembleIdent ? computedEnsembleIdent : null}
                         onChange={handleEnsembleSelectionChange}

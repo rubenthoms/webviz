@@ -15,7 +15,7 @@ import { ViewWrapperPlaceholder } from "../viewWrapperPlaceholder";
 
 type ViewWrapperProps = {
     isActive: boolean;
-    moduleInstance: ModuleInstance<any, any, any>;
+    moduleInstance: ModuleInstance<any, any, any, any>;
     workbench: Workbench;
     width: number;
     height: number;
@@ -204,8 +204,8 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
                         className={resolveClassNames(
                             "absolute w-full h-full z-10 inset-0 bg-transparent box-border border-solid border-2 pointer-events-none",
                             {
-                                "border-blue-500": showAsActive && drawerContent === DrawerContent.ModuleSettings,
-                                "border-transparent": !showAsActive || drawerContent !== DrawerContent.ModuleSettings,
+                                "border-blue-500": showAsActive,
+                                "border-transparent": !showAsActive,
                             }
                         )}
                     />

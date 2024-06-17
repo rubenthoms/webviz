@@ -1,3 +1,4 @@
+import { ModuleCategory, ModuleDevState } from "@framework/Module";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
 import { MODULE_SERIALIZED_STATE, ModuleSerializedState } from "./persistence";
@@ -10,5 +11,8 @@ ModuleRegistry.registerModule<
 >({
     moduleName: "MyModule",
     defaultTitle: "My Module",
+    category: ModuleCategory.DEBUG,
+    devState: ModuleDevState.DEV,
+    description: "My module description",
     serializedStateDefinition: MODULE_SERIALIZED_STATE,
 });

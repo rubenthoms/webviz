@@ -20,6 +20,7 @@ export enum GuiState {
     EditDataChannelConnections = "editDataChannelConnections",
     RightSettingsPanelWidthInPercent = "rightSettingsPanelWidthInPercent",
     RightSettingsPanelExpanded = "rightSettingsPanelExpanded",
+    AppInitialized = "appInitialized",
 }
 
 export enum GuiEvent {
@@ -85,6 +86,7 @@ type GuiStateValueTypes = {
     [GuiState.EditDataChannelConnections]: boolean;
     [GuiState.RightSettingsPanelWidthInPercent]: number;
     [GuiState.RightSettingsPanelExpanded]: boolean;
+    [GuiState.AppInitialized]: boolean;
 };
 
 const defaultStates: Map<GuiState, any> = new Map();
@@ -95,6 +97,7 @@ defaultStates.set(GuiState.DataChannelConnectionLayerVisible, false);
 defaultStates.set(GuiState.DevToolsVisible, isDevMode());
 defaultStates.set(GuiState.RightSettingsPanelWidthInPercent, 0);
 defaultStates.set(GuiState.RightSettingsPanelExpanded, false);
+defaultStates.set(GuiState.AppInitialized, false);
 
 const persistentStates: GuiState[] = [
     GuiState.LeftSettingsPanelWidthInPercent,
@@ -120,7 +123,14 @@ export class GuiMessageBroker {
         persistentStates.forEach((state) => {
             const value = localStorage.getItem(state);
             if (value) {
-                this._storedValues.set(state, JSON.parse(value));
+                try {
+                    this._storedValues.set(state, JSON.parse(value));
+                } catch (e) {
+                    console.warn(
+                        `Failed to parse value for state '${state}': ${value} - removing invalid state from local storage and using default value instead.`
+                    );
+                    localStorage.removeItem(state);
+                }
             }
         });
     }
@@ -129,7 +139,11 @@ export class GuiMessageBroker {
         if (persistentStates.includes(state)) {
             // For now, persistent states are only stored in localStorage
             // However, in the future, we may want to store at least some of them in a database on the server
-            localStorage.setItem(state, JSON.stringify(this._storedValues.get(state)));
+            const stateValue = this._storedValues.get(state);
+            if (stateValue === undefined || stateValue === null) {
+                return;
+            }
+            localStorage.setItem(state, JSON.stringify(stateValue));
         }
     }
 

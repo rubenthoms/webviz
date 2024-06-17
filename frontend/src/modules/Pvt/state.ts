@@ -1,7 +1,6 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { InterfaceHydration } from "@framework/UniDirectionalSettingsToViewInterface";
+import { InterfaceInitialization } from "@framework/UniDirectionalSettingsToViewInterface";
 
-import { userSelectedEnsembleIdentsAtom } from "./settings/atoms/baseAtoms";
 import { selectedEnsembleIdentsAtom, selectedPvtNumsAtom } from "./settings/atoms/derivedAtoms";
 import { pvtDataQueriesAtom } from "./settings/atoms/queryAtoms";
 import { ColorBy, CombinedPvtDataResult, PhaseType, PressureDependentVariable } from "./typesAndEnums";
@@ -21,7 +20,7 @@ export type Interface = {
     };
 };
 
-export const interfaceHydration: InterfaceHydration<Interface> = {
+export const interfaceInitialization: InterfaceInitialization<Interface> = {
     baseStates: {
         selectedPhase: PhaseType.OIL,
         selectedColorBy: ColorBy.ENSEMBLE,
@@ -34,10 +33,6 @@ export const interfaceHydration: InterfaceHydration<Interface> = {
     },
     derivedStates: {
         selectedEnsembleIdents: (get) => {
-            const userSelectedEnsembleIdents = get(userSelectedEnsembleIdentsAtom);
-            if (userSelectedEnsembleIdents.isPersistedValue) {
-                return userSelectedEnsembleIdents.value;
-            }
             return get(selectedEnsembleIdentsAtom);
         },
         selectedPvtNums: (get) => {

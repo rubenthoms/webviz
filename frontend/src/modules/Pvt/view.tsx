@@ -15,21 +15,17 @@ import { Interface, State } from "./state";
 import { PvtDataAccessor } from "./utils/PvtDataAccessor";
 import { PvtPlotBuilder } from "./utils/PvtPlotBuilder";
 
-export function View({
-    viewContext,
-    workbenchSettings,
-    workbenchSession,
-}: ModuleViewProps<State, Interface, ModuleSerializedState>) {
+export function View({ viewContext, workbenchSettings, workbenchSession }: ModuleViewProps<State, Interface>) {
     const colorSet = workbenchSettings.useColorSet();
     const statusWriter = useViewStatusWriter(viewContext);
     const ensembleSet = useEnsembleSet(workbenchSession);
 
-    const selectedEnsembleIdents = viewContext.useInterfaceValue("selectedEnsembleIdents");
-    const selectedPvtNums = viewContext.useInterfaceValue("selectedPvtNums");
-    const selectedPhase = viewContext.useInterfaceValue("selectedPhase");
-    const selectedColorBy = viewContext.useInterfaceValue("selectedColorBy");
-    const selectedPlots = viewContext.useInterfaceValue("selectedDependentVariables");
-    const pvtDataQueries = viewContext.useInterfaceValue("pvtDataQueries");
+    const selectedEnsembleIdents = viewContext.useSettingsToViewInterfaceValue("selectedEnsembleIdents");
+    const selectedPvtNums = viewContext.useSettingsToViewInterfaceValue("selectedPvtNums");
+    const selectedPhase = viewContext.useSettingsToViewInterfaceValue("selectedPhase");
+    const selectedColorBy = viewContext.useSettingsToViewInterfaceValue("selectedColorBy");
+    const selectedPlots = viewContext.useSettingsToViewInterfaceValue("selectedDependentVariables");
+    const pvtDataQueries = viewContext.useSettingsToViewInterfaceValue("pvtDataQueries");
 
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
@@ -43,9 +39,6 @@ export function View({
     }
 
     function makeContent() {
-        if (pvtDataQueries.notStartedYet) {
-            return <ContentMessage type={ContentMessageType.INFO}>No data loaded yet.</ContentMessage>;
-        }
         if (pvtDataQueries.isFetching) {
             return (
                 <ContentMessage type={ContentMessageType.INFO}>

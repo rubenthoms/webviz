@@ -14,7 +14,7 @@ export class ModuleStateStorageManager<
     TInterfaceType extends InterfaceBaseType,
     TSerializedStateDef extends JTDBaseType
 > {
-    private _moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>;
+    private _moduleInstance: ModuleInstance<TStateType, TInterfaceType, any, any, TSerializedStateDef>;
     private _stateStore: StateStore<TStateType>;
     private _atomStore: AtomStore;
     private _settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null;
@@ -25,7 +25,7 @@ export class ModuleStateStorageManager<
     private _persistanceAtom: Atom<JTDDataType<TSerializedStateDef>>;
 
     constructor(
-        moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>,
+        moduleInstance: ModuleInstance<TStateType, TInterfaceType, any, any, TSerializedStateDef>,
         stateStore: StateStore<TStateType>,
         atomStore: AtomStore,
         settingsViewInterface: UniDirectionalSettingsToViewInterface<TInterfaceType> | null,
@@ -164,7 +164,7 @@ export class ModuleStateStorageManager<
             if (this._settingsViewInterface === null) {
                 throw new Error("Settings view interface not available");
             }
-            const atom = this._settingsViewInterface.getBaseAtom(key);
+            const atom = this._settingsViewInterface.getAtom(key);
             return atomStore.set(atom, value);
         };
 

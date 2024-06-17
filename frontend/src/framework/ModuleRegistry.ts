@@ -1,6 +1,5 @@
 import { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
-import { JTDBaseType, MakeReadonly, Module } from "./Module";
-import { AtomsInitialization, Module, ModuleCategory, ModuleDevState } from "./Module";
+import { AtomsInitialization, JTDBaseType, MakeReadonly, Module, ModuleCategory, ModuleDevState } from "./Module";
 import { ModuleDataTagId } from "./ModuleDataTags";
 import { DrawPreviewFunc } from "./Preview";
 import { StateBaseType, StateOptions } from "./StateStore";
@@ -33,8 +32,8 @@ export class ModuleNotFoundError extends Error {
 }
 
 export class ModuleRegistry {
-    private static _registeredModules: Record<string, Module<any, any, any, any>> = {};
-    private static _moduleNotFoundPlaceholders: Record<string, Module<any, any, any, any>> = {};
+    private static _registeredModules: Record<string, Module<any, any, any, any, any>> = {};
+    private static _moduleNotFoundPlaceholders: Record<string, Module<any, any, any, any, any>> = {};
 
     /* eslint-disable-next-line @typescript-eslint/no-empty-function */
     private constructor() {}
@@ -46,10 +45,12 @@ export class ModuleRegistry {
             derivedStates: Record<string, never>;
         },
         TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-        TViewAtomsType extends Record<string, unknown> = Record<string, never>
+        TViewAtomsType extends Record<string, unknown> = Record<string, never>,
         TSerializedStateDef extends JTDBaseType = Record<string, never>
-    >(options: RegisterModuleOptions): Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
-        const module = new Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>({
+    >(
+        options: RegisterModuleOptions<TSerializedStateDef>
+    ): Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef> {
+        const module = new Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>({
             name: options.moduleName,
             defaultTitle: options.defaultTitle,
             category: options.category,
@@ -73,7 +74,7 @@ export class ModuleRegistry {
             derivedStates: Record<string, never>;
         },
         TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-        TViewAtomsType extends Record<string, unknown> = Record<string, never>
+        TViewAtomsType extends Record<string, unknown> = Record<string, never>,
         TSerializedStateDef extends JTDBaseType = Record<string, never>
     >(
         moduleName: string,
@@ -82,7 +83,7 @@ export class ModuleRegistry {
         interfaceInitialization?: InterfaceInitialization<TInterfaceType>,
         settingsAtomsInitialization?: AtomsInitialization<TSettingsAtomsType, TInterfaceType>,
         viewAtomsInitialization?: AtomsInitialization<TViewAtomsType, TInterfaceType>
-    ): Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
+    ): Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef> {
         const module = this._registeredModules[moduleName];
         if (module) {
             module.setDefaultState(defaultState, options);
@@ -95,25 +96,31 @@ export class ModuleRegistry {
             if (viewAtomsInitialization) {
                 module.setViewAtomsInitialization(viewAtomsInitialization);
             }
-            return module as Module<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+            return module as Module<
+                TStateType,
+                TInterfaceType,
+                TSettingsAtomsType,
+                TViewAtomsType,
+                TSerializedStateDef
+            >;
         }
         throw new ModuleNotFoundError(moduleName);
     }
 
-    static getModule(moduleName: string): Module<any, any, any, any> {
+    static getModule(moduleName: string): Module<any, any, any, any, any> {
         const module = this._registeredModules[moduleName];
         if (module) {
-            return module as Module<any, any, any, any>;
+            return module as Module<any, any, any, any, any>;
         }
         const placeholder = this._moduleNotFoundPlaceholders[moduleName];
         if (placeholder) {
-            return placeholder as Module<any, any, any, any>;
+            return placeholder as Module<any, any, any, any, any>;
         }
         this._moduleNotFoundPlaceholders[moduleName] = new ModuleNotFoundPlaceholder(moduleName);
-        return this._moduleNotFoundPlaceholders[moduleName] as Module<any, any, any, any>;
+        return this._moduleNotFoundPlaceholders[moduleName] as Module<any, any, any, any, any>;
     }
 
-    static getRegisteredModules(): Record<string, Module<any, any, any, any>> {
+    static getRegisteredModules(): Record<string, Module<any, any, any, any, any>> {
         return this._registeredModules;
     }
 }

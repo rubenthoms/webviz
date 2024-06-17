@@ -20,7 +20,7 @@ import { DebugProfiler } from "../../DebugProfiler";
 import { HydrateQueryClientAtom } from "../../HydrateQueryClientAtom";
 
 type ModuleSettingsProps = {
-    moduleInstance: ModuleInstance<any, any, any, any>;
+    moduleInstance: ModuleInstance<any, any, any, any, any>;
     activeModuleInstanceId: string;
     workbench: Workbench;
 };
@@ -64,7 +64,6 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
     }
 
     const Settings = props.moduleInstance.getSettingsFC();
-    const atomStore = props.moduleInstance.getAtomStore();
 
     return (
         <div

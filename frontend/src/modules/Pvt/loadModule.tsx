@@ -1,10 +1,7 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
-import { MODULE_NAME } from "./registerModule";
-import { Settings } from "./settings/settings";
-import { Interface, State, interfaceInitialization } from "./state";
-import { MODULE_SERIALIZED_STATE, ModuleSerializedState } from "./persistence";
+import { ModuleSerializedState } from "./persistence";
 import { MODULE_NAME } from "./registerModule";
 import {
     userSelectedEnsembleIdentsAtom,
@@ -16,16 +13,19 @@ import {
     selectedPvtNumsAtom,
     selectedRealizationsAtom,
 } from "./settings/atoms/derivedAtoms";
+import { Settings } from "./settings/settings";
+import { Interface, State, interfaceInitialization } from "./state";
 import { View } from "./view";
 
 const defaultState: State = {};
 
-const module = ModuleRegistry.initModule<State, Interface, ModuleSerializedState>(
-    MODULE_NAME,
-    defaultState,
-    {},
-    interfaceHydration
-);
+const module = ModuleRegistry.initModule<
+    State,
+    Interface,
+    Record<string, never>,
+    Record<string, never>,
+    ModuleSerializedState
+>(MODULE_NAME, defaultState, {}, interfaceInitialization);
 
 module.viewFC = View;
 module.settingsFC = Settings;

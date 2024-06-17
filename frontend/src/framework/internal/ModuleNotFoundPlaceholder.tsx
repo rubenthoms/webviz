@@ -11,6 +11,7 @@ export class ModuleNotFoundPlaceholder extends Module<
         derivedStates: Record<string, never>;
     },
     Record<string, never>,
+    Record<string, never>,
     Record<string, never>
 > {
     constructor(moduleName: string) {
@@ -29,6 +30,7 @@ export class ModuleNotFoundPlaceholder extends Module<
             baseStates: Record<string, never>;
             derivedStates: Record<string, never>;
         },
+        Record<string, never>,
         Record<string, never>,
         Record<string, never>
     > {

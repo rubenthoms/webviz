@@ -7,6 +7,8 @@ import { State } from "./state";
 ModuleRegistry.registerModule<
     State,
     { baseStates: Record<string, never>; derivedStates: Record<string, never> },
+    Record<string, never>,
+    Record<string, never>,
     ModuleSerializedState
 >({
     moduleName: "MyModule",

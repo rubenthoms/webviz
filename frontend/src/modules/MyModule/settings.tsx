@@ -19,6 +19,8 @@ export const Settings = (
     props: ModuleSettingsProps<
         State,
         { baseStates: Record<string, never>; derivedStates: Record<string, never> },
+        Record<string, never>,
+        Record<string, never>,
         ModuleSerializedState
     >
 ) => {

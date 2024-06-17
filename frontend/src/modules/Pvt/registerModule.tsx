@@ -11,7 +11,7 @@ export const MODULE_NAME = "Pvt";
 const description =
     "Visualizes formation volume factor and viscosity data for oil, gas, and water from Eclipse init and include files.";
 
-ModuleRegistry.registerModule<State, Interface>({
+ModuleRegistry.registerModule<State, Interface, Record<string, never>, Record<string, never>, ModuleSerializedState>({
     moduleName: MODULE_NAME,
     defaultTitle: "PVT",
     category: ModuleCategory.MAIN,

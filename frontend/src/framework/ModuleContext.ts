@@ -36,13 +36,26 @@ export class ModuleContext<
     TStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
     TSettingsAtomsType extends Record<string, unknown>,
-    TViewAtomsType extends Record<string, unknown>
+    TViewAtomsType extends Record<string, unknown>,
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
 > {
-    protected _moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+    protected _moduleInstance: ModuleInstance<
+        TStateType,
+        TInterfaceType,
+        TSettingsAtomsType,
+        TViewAtomsType,
+        TSerializedStateDef
+    >;
     private _stateStore: StateStore<TStateType>;
 
     constructor(
-        moduleInstance: ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>,
+        moduleInstance: ModuleInstance<
+            TStateType,
+            TInterfaceType,
+            TSettingsAtomsType,
+            TViewAtomsType,
+            TSerializedStateDef
+        >,
         stateStore: StateStore<TStateType>
     ) {
         this._moduleInstance = moduleInstance;
@@ -203,9 +216,10 @@ export type ViewContext<
     StateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
     TSettingsAtomsType extends Record<string, unknown>,
-    TViewAtomsType extends Record<string, unknown>
+    TViewAtomsType extends Record<string, unknown>,
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = Omit<
-    ModuleContext<StateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>,
+    ModuleContext<StateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>,
     | "useSettingsToViewInterfaceState"
     | "useSetSettingsToViewInterfaceValue"
     | "useSettingsAtom"
@@ -217,8 +231,9 @@ export type SettingsContext<
     StateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
     TSettingsAtomsType extends Record<string, unknown>,
-    TViewAtomsType extends Record<string, unknown>
+    TViewAtomsType extends Record<string, unknown>,
+    TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = Omit<
-    ModuleContext<StateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>,
+    ModuleContext<StateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>,
     "useViewAtom" | "useViewAtomValue" | "useSetViewAtom"
 >;

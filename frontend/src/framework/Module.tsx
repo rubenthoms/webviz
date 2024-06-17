@@ -42,10 +42,16 @@ export type ModuleSettingsProps<
         derivedStates: Record<string, never>;
     },
     TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-    TViewAtomsType extends Record<string, unknown> = Record<string, never>
+    TViewAtomsType extends Record<string, unknown> = Record<string, never>,
     TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = {
-    settingsContext: SettingsContext<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+    settingsContext: SettingsContext<
+        TTStateType,
+        TInterfaceType,
+        TSettingsAtomsType,
+        TViewAtomsType,
+        TSerializedStateDef
+    >;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
@@ -59,10 +65,10 @@ export type ModuleViewProps<
         derivedStates: Record<string, never>;
     },
     TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-    TViewAtomsType extends Record<string, unknown> = Record<string, never>
+    TViewAtomsType extends Record<string, unknown> = Record<string, never>,
     TSerializedStateDef extends JTDBaseType = Record<string, never>
 > = {
-    viewContext: ViewContext<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+    viewContext: ViewContext<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>;
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
@@ -84,9 +90,9 @@ export type ModuleSettings<
         derivedStates: Record<string, never>;
     },
     TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-    TViewAtomsType extends Record<string, unknown> = Record<string, never>
+    TViewAtomsType extends Record<string, unknown> = Record<string, never>,
     TSerializedStateDef extends JTDBaseType = Record<string, never>
-> = React.FC<ModuleSettingsProps<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>>;
+> = React.FC<ModuleSettingsProps<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>>;
 
 export type ModuleView<
     TTStateType extends StateBaseType,
@@ -95,9 +101,9 @@ export type ModuleView<
         derivedStates: Record<string, never>;
     },
     TSettingsAtomsType extends Record<string, unknown> = Record<string, never>,
-    TViewAtomsType extends Record<string, unknown> = Record<string, never>
+    TViewAtomsType extends Record<string, unknown> = Record<string, never>,
     TSerializedStateDef extends JTDBaseType = Record<string, never>
-> = React.FC<ModuleViewProps<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>>;
+> = React.FC<ModuleViewProps<TTStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>>;
 
 export type JTDBaseType = Record<string, unknown>;
 
@@ -165,15 +171,27 @@ export class Module<
     TStateType extends StateBaseType,
     TInterfaceType extends InterfaceBaseType,
     TSettingsAtomsType extends Record<string, unknown>,
-    TViewAtomsType extends Record<string, unknown>
+    TViewAtomsType extends Record<string, unknown>,
     TSerializedStateDef extends JTDBaseType
 > {
     private _name: string;
     private _defaultTitle: string;
-    public viewFC: ModuleView<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
-    public settingsFC: ModuleSettings<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>;
+    public viewFC: ModuleView<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>;
+    public settingsFC: ModuleSettings<
+        TStateType,
+        TInterfaceType,
+        TSettingsAtomsType,
+        TViewAtomsType,
+        TSerializedStateDef
+    >;
     protected _importState: ImportState;
-    private _moduleInstances: ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>[];
+    private _moduleInstances: ModuleInstance<
+        TStateType,
+        TInterfaceType,
+        TSettingsAtomsType,
+        TViewAtomsType,
+        TSerializedStateDef
+    >[];
     private _defaultState: TStateType | null;
     private _settingsToViewInterfaceInitialization: InterfaceInitialization<TInterfaceType> | null;
     private _settingsAtomsInitialization: AtomsInitialization<TSettingsAtomsType, TInterfaceType> | null;
@@ -337,12 +355,18 @@ export class Module<
 
     makeInstance(
         instanceNumber: number
-    ): ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType> {
+    ): ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef> {
         if (!this._workbench) {
             throw new Error("Module must be added to a workbench before making an instance");
         }
 
-        const instance = new ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType>({
+        const instance = new ModuleInstance<
+            TStateType,
+            TInterfaceType,
+            TSettingsAtomsType,
+            TViewAtomsType,
+            TSerializedStateDef
+        >({
             module: this,
             workbench: this._workbench,
             instanceNumber,
@@ -365,13 +389,15 @@ export class Module<
         }
     }
 
-    private initModuleInstance(instance: ModuleInstance<TStateType, TInterfaceType, TSerializedStateDef>) {
-        if (!instance.isInitialised() && this._importState !== ImportState.NotImported) {
+    private initModuleInstance(
+        instance: ModuleInstance<TStateType, TInterfaceType, TSettingsAtomsType, TViewAtomsType, TSerializedStateDef>
+    ) {
+        if (!instance.isInitialized() && this._importState !== ImportState.NotImported) {
             if (this._defaultState) {
                 instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
             }
-            if (this._settingsToViewInterfaceHydration) {
-                instance.makeSettingsToViewInterface(this._settingsToViewInterfaceHydration);
+            if (this._settingsToViewInterfaceInitialization) {
+                instance.makeSettingsToViewInterface(this._settingsToViewInterfaceInitialization);
             }
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
                 instance.makeAndInitStateStorageManager(
@@ -381,7 +407,7 @@ export class Module<
                 );
             }
 
-            instance.setIsInitialised();
+            instance.setIsInitialized(true);
         }
     }
 

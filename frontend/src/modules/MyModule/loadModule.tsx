@@ -17,6 +17,8 @@ const defaultState: State = {
 const module = ModuleRegistry.initModule<
     State,
     { baseStates: Record<string, never>; derivedStates: Record<string, never> },
+    Record<string, never>,
+    Record<string, never>,
     ModuleSerializedState
 >("MyModule", defaultState);
 

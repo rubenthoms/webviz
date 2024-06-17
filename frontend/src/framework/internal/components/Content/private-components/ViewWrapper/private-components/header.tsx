@@ -16,7 +16,7 @@ import { Close, Error, Input, Output, Warning } from "@mui/icons-material";
 import { CloneButton } from "./cloneButton";
 
 export type HeaderProps = {
-    moduleInstance: ModuleInstance<any, any, any, any>;
+    moduleInstance: ModuleInstance<any, any, any, any, any>;
     isDragged: boolean;
     onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
     onRemoveClick: (event: React.PointerEvent<HTMLDivElement>) => void;

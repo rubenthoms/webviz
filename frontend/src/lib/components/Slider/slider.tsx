@@ -11,6 +11,7 @@ import { BaseComponent, BaseComponentProps } from "../BaseComponent";
 export type SliderProps = {
     valueLabelDisplay?: "auto" | "off";
     valueLabelFormat?: string | ((value: number) => React.ReactNode);
+    debounceTimeMs?: number;
 } & Omit<SliderUnstyledProps, "valueLabelFormat"> &
     BaseComponentProps;
 

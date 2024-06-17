@@ -13,7 +13,7 @@ export const selectedEnsembleIdentsAtom = atom((get) => {
     const ensembleSet = get(EnsembleSetAtom);
     const userSelectedEnsembleIdents = get(userSelectedEnsembleIdentsAtom);
 
-    let computedEnsembleIdents = userSelectedEnsembleIdents.filter((el) => ensembleSet.hasEnsemble(el));
+    let computedEnsembleIdents = userSelectedEnsembleIdents.value.filter((el) => ensembleSet.hasEnsemble(el));
     if (computedEnsembleIdents.length === 0 && ensembleSet.getEnsembleArr().length > 0) {
         computedEnsembleIdents = [ensembleSet.getEnsembleArr()[0].getIdent()];
     }
@@ -35,7 +35,7 @@ export const selectedRealizationsAtom = atom((get) => {
 
     const realizations = computeRealizationsIntersection(selectedEnsembleIdents, ensembleRealizationFilterFunction);
 
-    let computedRealizations = userSelectedRealizations.filter((el) => realizations.includes(el));
+    let computedRealizations = userSelectedRealizations.value.filter((el) => realizations.includes(el));
     if (computedRealizations.length === 0 && realizations.length > 0) {
         computedRealizations = [realizations[0]];
     }
@@ -60,7 +60,7 @@ export const selectedPvtNumsAtom = atom<number[]>((get) => {
 
     const uniquePvtNums = pvtDataAccessor.getUniquePvtNums();
 
-    let computedPvtNums = userSelectedPvtNums.filter((el) => uniquePvtNums.includes(el));
+    let computedPvtNums = userSelectedPvtNums.value.filter((el) => uniquePvtNums.includes(el));
 
     if (computedPvtNums.length === 0) {
         if (uniquePvtNums.length > 0) {

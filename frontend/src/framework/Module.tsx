@@ -258,16 +258,6 @@ export class Module<
     ) {
         this._stateSerializer = serializerFunc;
         this._stateDeserializer = deserializerFunc;
-
-        this._moduleInstances.forEach((instance) => {
-            if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
-                instance.makeAndInitStateStorageManager(
-                    this._serializedStateDef,
-                    this._stateSerializer,
-                    this._stateDeserializer
-                );
-            }
-        });
     }
 
     getSerializedStateDef(): TSerializedStateDef | null {
@@ -398,6 +388,12 @@ export class Module<
             }
             if (this._settingsToViewInterfaceInitialization) {
                 instance.makeSettingsToViewInterface(this._settingsToViewInterfaceInitialization);
+                if (this._settingsAtomsInitialization) {
+                    instance.makeSettingsAtoms(this._settingsAtomsInitialization);
+                }
+                if (this._viewAtomsInitialization) {
+                    instance.makeViewAtoms(this._viewAtomsInitialization);
+                }
             }
             if (this._serializedStateDef && this._stateSerializer && this._stateDeserializer) {
                 instance.makeAndInitStateStorageManager(
@@ -413,25 +409,9 @@ export class Module<
 
     private maybeImportSelf(): void {
         if (this._importState !== ImportState.NotImported) {
-            if (this._defaultState && this._importState === ImportState.Imported) {
-                this._moduleInstances.forEach((instance) => {
-                    if (instance.isInitialized()) {
-                        return;
-                    }
-                    if (this._defaultState) {
-                        instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
-                    }
-                    if (this._settingsToViewInterfaceInitialization) {
-                        instance.makeSettingsToViewInterface(this._settingsToViewInterfaceInitialization);
-                        if (this._settingsAtomsInitialization) {
-                            instance.makeSettingsAtoms(this._settingsAtomsInitialization);
-                        }
-                        if (this._viewAtomsInitialization) {
-                            instance.makeViewAtoms(this._viewAtomsInitialization);
-                        }
-                    }
-                });
-            }
+            this._moduleInstances.forEach((instance) => {
+                this.initModuleInstance(instance);
+            });
             return;
         }
 
@@ -441,18 +421,7 @@ export class Module<
             .then(() => {
                 this.setImportState(ImportState.Imported);
                 this._moduleInstances.forEach((instance) => {
-                    if (this._defaultState) {
-                        instance.setDefaultState(cloneDeep(this._defaultState), cloneDeep(this._stateOptions));
-                    }
-                    if (this._settingsToViewInterfaceInitialization) {
-                        instance.makeSettingsToViewInterface(this._settingsToViewInterfaceInitialization);
-                        if (this._settingsAtomsInitialization) {
-                            instance.makeSettingsAtoms(this._settingsAtomsInitialization);
-                        }
-                        if (this._viewAtomsInitialization) {
-                            instance.makeViewAtoms(this._viewAtomsInitialization);
-                        }
-                    }
+                    this.initModuleInstance(instance);
                 });
             })
             .catch((e) => {

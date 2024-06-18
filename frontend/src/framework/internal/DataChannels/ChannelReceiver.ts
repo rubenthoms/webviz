@@ -1,7 +1,16 @@
 import { KeyKind } from "@framework/DataChannelTypes";
+import { Workbench } from "@framework/Workbench";
 
 import { Channel, ChannelNotificationTopic } from "./Channel";
 import { ChannelManager } from "./ChannelManager";
+
+export type ChannelReceiverPersistedState = {
+    receiverId: string;
+    moduleInstanceId: string;
+    channelId: string;
+    contentIds: string[];
+    subscribedToAllContents: boolean;
+};
 
 export interface ChannelReceiverDefinition {
     readonly idString: string;
@@ -136,6 +145,37 @@ export class ChannelReceiver {
         return () => {
             topicSubscribers.delete(callback);
         };
+    }
+
+    makePersistanceState(): ChannelReceiverPersistedState | null {
+        if (!this._channel) {
+            return null;
+        }
+
+        return {
+            receiverId: this._idString,
+            moduleInstanceId: this._channel.getManager().getModuleInstanceId(),
+            channelId: this._channel.getIdString(),
+            contentIds: this._contentIdStrings,
+            subscribedToAllContents: this._subscribedToAllContents,
+        };
+    }
+
+    applyPersistedState(state: ChannelReceiverPersistedState, workbench: Workbench): void {
+        const moduleInstance = workbench.getModuleInstance(state.moduleInstanceId);
+        if (!moduleInstance) {
+            return;
+        }
+        const channel = moduleInstance
+            .getChannelManager()
+            .getChannels()
+            .find((c) => c.getIdString() === state.channelId);
+
+        if (!channel) {
+            return;
+        }
+
+        this.subscribeToChannel(channel, state.subscribedToAllContents ? "All" : state.contentIds);
     }
 
     private notifySubscribers(topic: ChannelReceiverNotificationTopic): void {

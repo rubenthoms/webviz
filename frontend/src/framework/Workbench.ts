@@ -9,6 +9,7 @@ import { ModuleInstance } from "./ModuleInstance";
 import { ModuleRegistry } from "./ModuleRegistry";
 import { Template } from "./TemplateRegistry";
 import { WorkbenchServices } from "./WorkbenchServices";
+import { ChannelReceiverPersistedState } from "./internal/DataChannels/ChannelReceiver";
 import { loadEnsembleSetMetadataFromBackend } from "./internal/EnsembleSetLoader";
 import { PrivateWorkbenchServices } from "./internal/PrivateWorkbenchServices";
 import { PrivateWorkbenchSettings } from "./internal/PrivateWorkbenchSettings";
@@ -67,7 +68,10 @@ export class Workbench {
         if (!layoutString) return false;
 
         const layout = JSON.parse(layoutString) as LayoutElement[];
-        this.makeLayout(layout);
+        this.makeLayout(layout).then(() => {
+            this.applyPersistedModuleInstanceStates();
+            this.maybeMakeFirstModuleInstanceActive();
+        });
         return true;
     }
 
@@ -147,8 +151,9 @@ export class Workbench {
         }
     }
 
-    makeLayout(layout: LayoutElement[]): void {
+    async makeLayout(layout: LayoutElement[]): Promise<void> {
         this._moduleInstances = [];
+        const promises: Promise<void>[] = [];
         this.setLayout(layout);
         layout.forEach((element, index: number) => {
             if (element.moduleInstanceId) {
@@ -163,10 +168,24 @@ export class Workbench {
             module.setWorkbench(this);
             const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
             this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
+            promises.push(module.maybeImportSelf());
             this._moduleInstances.push(moduleInstance);
             this._layout[index] = { ...this._layout[index], moduleInstanceId: moduleInstance.getId() };
-            this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
         });
+        await Promise.all(promises);
+        this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
+    }
+
+    private applyPersistedModuleInstanceStates(): void {
+        for (const moduleInstance of this._moduleInstances) {
+            const persistedState = localStorage.getItem(`${moduleInstance.getId()}-receivers`);
+            if (persistedState === null) {
+                continue;
+            }
+
+            const parsedState = JSON.parse(persistedState) as ChannelReceiverPersistedState[];
+            moduleInstance.getChannelManager().applyPersistedReceiversState(parsedState, this);
+        }
     }
 
     resetModuleInstanceNumbers(): void {
@@ -193,6 +212,7 @@ export class Workbench {
 
         const moduleInstance = module.makeInstance(this.getNextModuleInstanceNumber(module.getName()));
         this._atomStoreMaster.makeAtomStoreForModuleInstance(moduleInstance.getId());
+        module.maybeImportSelf();
         this._moduleInstances.push(moduleInstance);
 
         this._layout.push({ ...layout, moduleInstanceId: moduleInstance.getId() });
@@ -303,53 +323,55 @@ export class Workbench {
             return { ...el.layout, moduleName: el.moduleName };
         });
 
-        this.makeLayout(newLayout);
+        this.makeLayout(newLayout).then(() => {
+            for (let i = 0; i < this._moduleInstances.length; i++) {
+                const moduleInstance = this._moduleInstances[i];
+                const templateModule = template.moduleInstances[i];
+                if (templateModule.syncedSettings) {
+                    for (const syncSettingKey of templateModule.syncedSettings) {
+                        moduleInstance.addSyncedSetting(syncSettingKey);
+                    }
+                }
 
-        for (let i = 0; i < this._moduleInstances.length; i++) {
-            const moduleInstance = this._moduleInstances[i];
-            const templateModule = template.moduleInstances[i];
-            if (templateModule.syncedSettings) {
-                for (const syncSettingKey of templateModule.syncedSettings) {
-                    moduleInstance.addSyncedSetting(syncSettingKey);
+                const initialSettings: Record<string, unknown> = templateModule.initialSettings || {};
+
+                if (templateModule.dataChannelsToInitialSettingsMapping) {
+                    for (const propName of Object.keys(templateModule.dataChannelsToInitialSettingsMapping)) {
+                        const dataChannel = templateModule.dataChannelsToInitialSettingsMapping[propName];
+
+                        const moduleInstanceIndex = template.moduleInstances.findIndex(
+                            (el) => el.instanceRef === dataChannel.listensToInstanceRef
+                        );
+                        if (moduleInstanceIndex === -1) {
+                            throw new Error("Could not find module instance for data channel");
+                        }
+
+                        const listensToModuleInstance = this._moduleInstances[moduleInstanceIndex];
+                        const channel = listensToModuleInstance
+                            .getChannelManager()
+                            .getChannel(dataChannel.channelIdString);
+                        if (!channel) {
+                            throw new Error("Could not find channel");
+                        }
+
+                        const receiver = moduleInstance.getChannelManager().getReceiver(propName);
+
+                        if (!receiver) {
+                            throw new Error("Could not find receiver");
+                        }
+
+                        receiver.subscribeToChannel(channel, "All");
+                    }
+                }
+
+                moduleInstance.setInitialSettings(new InitialSettings(initialSettings));
+
+                if (i === 0) {
+                    this.getGuiMessageBroker().setState(GuiState.ActiveModuleInstanceId, moduleInstance.getId());
                 }
             }
 
-            const initialSettings: Record<string, unknown> = templateModule.initialSettings || {};
-
-            if (templateModule.dataChannelsToInitialSettingsMapping) {
-                for (const propName of Object.keys(templateModule.dataChannelsToInitialSettingsMapping)) {
-                    const dataChannel = templateModule.dataChannelsToInitialSettingsMapping[propName];
-
-                    const moduleInstanceIndex = template.moduleInstances.findIndex(
-                        (el) => el.instanceRef === dataChannel.listensToInstanceRef
-                    );
-                    if (moduleInstanceIndex === -1) {
-                        throw new Error("Could not find module instance for data channel");
-                    }
-
-                    const listensToModuleInstance = this._moduleInstances[moduleInstanceIndex];
-                    const channel = listensToModuleInstance.getChannelManager().getChannel(dataChannel.channelIdString);
-                    if (!channel) {
-                        throw new Error("Could not find channel");
-                    }
-
-                    const receiver = moduleInstance.getChannelManager().getReceiver(propName);
-
-                    if (!receiver) {
-                        throw new Error("Could not find receiver");
-                    }
-
-                    receiver.subscribeToChannel(channel, "All");
-                }
-            }
-
-            moduleInstance.setInitialSettings(new InitialSettings(initialSettings));
-
-            if (i === 0) {
-                this.getGuiMessageBroker().setState(GuiState.ActiveModuleInstanceId, moduleInstance.getId());
-            }
-        }
-
-        this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
+            this.notifySubscribers(WorkbenchEvents.ModuleInstancesChanged);
+        });
     }
 }

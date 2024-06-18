@@ -364,7 +364,6 @@ export class Module<
             channelReceiverDefinitions: this._channelReceiverDefinitions,
         });
         this._moduleInstances.push(instance);
-        this.maybeImportSelf();
         return instance;
     }
 
@@ -373,10 +372,6 @@ export class Module<
         this._moduleInstances.forEach((instance) => {
             instance.notifySubscribers(ModuleInstanceTopic.IMPORT_STATE);
         });
-
-        if (this._workbench && state === ImportState.Imported) {
-            this._workbench.maybeMakeFirstModuleInstanceActive();
-        }
     }
 
     private initModuleInstance(
@@ -407,7 +402,7 @@ export class Module<
         }
     }
 
-    private maybeImportSelf(): void {
+    async maybeImportSelf(): Promise<void> {
         if (this._importState !== ImportState.NotImported) {
             this._moduleInstances.forEach((instance) => {
                 this.initModuleInstance(instance);
@@ -417,16 +412,16 @@ export class Module<
 
         this.setImportState(ImportState.Importing);
 
-        import(`@modules/${this._name}/loadModule.tsx`)
-            .then(() => {
-                this.setImportState(ImportState.Imported);
-                this._moduleInstances.forEach((instance) => {
-                    this.initModuleInstance(instance);
-                });
-            })
-            .catch((e) => {
-                console.error(`Failed to import module ${this._name}`, e);
-                this.setImportState(ImportState.Failed);
+        try {
+            await import(`@modules/${this._name}/loadModule.tsx`);
+
+            this.setImportState(ImportState.Imported);
+            this._moduleInstances.forEach((instance) => {
+                this.initModuleInstance(instance);
             });
+        } catch (e) {
+            console.error(`Failed to import module ${this._name}`, e);
+            this.setImportState(ImportState.Failed);
+        }
     }
 }

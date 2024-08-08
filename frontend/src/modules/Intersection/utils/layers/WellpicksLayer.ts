@@ -1,11 +1,10 @@
 import { transformFormationData } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
+import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
-
-import { BaseLayer } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;

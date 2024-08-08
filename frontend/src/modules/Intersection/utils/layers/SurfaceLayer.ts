@@ -4,11 +4,10 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
+import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;

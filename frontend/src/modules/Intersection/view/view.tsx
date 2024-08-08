@@ -6,6 +6,8 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { LayerStatus, useLayersStatuses } from "@modules_shared/layers/BaseLayer";
+import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules_shared/layers/LayerManager";
 
 import { ViewAtoms } from "./atoms/atomDefinitions";
 import { LayersWrapper } from "./components/layersWrapper";
@@ -13,9 +15,7 @@ import { useWellboreCasingsQuery } from "./queries/wellboreSchematicsQueries";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { State } from "../state";
-import { LayerStatus, useLayersStatuses } from "../utils/layers/BaseLayer";
 import { isGridLayer } from "../utils/layers/GridLayer";
-import { LayerManagerTopic, useLayerManagerTopicValue } from "../utils/layers/LayerManager";
 import { isSeismicLayer } from "../utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "../utils/layers/SurfaceLayer";
 import { isSurfacesUncertaintyLayer } from "../utils/layers/SurfacesUncertaintyLayer";

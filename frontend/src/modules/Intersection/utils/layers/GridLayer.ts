@@ -2,6 +2,7 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import {
     AdjustedPolylineIntersection,
@@ -11,8 +12,6 @@ import {
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;

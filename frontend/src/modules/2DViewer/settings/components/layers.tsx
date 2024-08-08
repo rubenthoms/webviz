@@ -12,13 +12,10 @@ import { createPortal } from "@lib/utils/createPortal";
 import { MANHATTAN_LENGTH, rectContainsPoint } from "@lib/utils/geometry";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Vec2, point2Distance } from "@lib/utils/vec2";
-import { isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
-import { LayerFactory } from "@modules/Intersection/utils/layers/LayerFactory";
-import { isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
-import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
-import { isSurfacesUncertaintyLayer } from "@modules/Intersection/utils/layers/SurfacesUncertaintyLayer";
-import { isWellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
-import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "@modules/Intersection/utils/layers/types";
+import { LayerFactory } from "@modules/2DViewer/layers/LayerFactory";
+import { isSurfaceLayer } from "@modules/2DViewer/layers/SurfaceLayer";
+import { isWellboreLayer } from "@modules/2DViewer/layers/WellboreLayer";
+import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "@modules/2DViewer/layers/types";
 import {
     BaseLayer,
     LayerStatus,
@@ -44,11 +41,8 @@ import {
 
 import { isEqual } from "lodash";
 
-import { GridLayerSettingsComponent } from "./layerSettings/gridLayer";
-import { SeismicLayerSettingsComponent } from "./layerSettings/seismicLayer";
 import { SurfaceLayerSettingsComponent } from "./layerSettings/surfaceLayer";
-import { SurfacesUncertaintyLayerSettingsComponent } from "./layerSettings/surfacesUncertaintyLayer";
-import { WellpicksLayerSettingsComponent } from "./layerSettings/wellpicksLayer";
+import { WellboreLayerSettingsComponent } from "./layerSettings/wellboreLayer";
 
 export type LayersProps = {
     ensembleSet: EnsembleSet;
@@ -404,26 +398,6 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
     }
 
     function makeSettingsContainer(layer: BaseLayer<any, any>): React.ReactNode {
-        if (isGridLayer(layer)) {
-            return (
-                <GridLayerSettingsComponent
-                    ensembleSet={props.ensembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                    layer={layer}
-                />
-            );
-        }
-        if (isSeismicLayer(layer)) {
-            return (
-                <SeismicLayerSettingsComponent
-                    ensembleSet={props.ensembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                    layer={layer}
-                />
-            );
-        }
         if (isSurfaceLayer(layer)) {
             return (
                 <SurfaceLayerSettingsComponent
@@ -434,19 +408,9 @@ function LayerItem(props: LayerItemProps): React.ReactNode {
                 />
             );
         }
-        if (isWellpicksLayer(layer)) {
+        if (isWellboreLayer(layer)) {
             return (
-                <WellpicksLayerSettingsComponent
-                    ensembleSet={props.ensembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                    layer={layer}
-                />
-            );
-        }
-        if (isSurfacesUncertaintyLayer(layer)) {
-            return (
-                <SurfacesUncertaintyLayerSettingsComponent
+                <WellboreLayerSettingsComponent
                     ensembleSet={props.ensembleSet}
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}

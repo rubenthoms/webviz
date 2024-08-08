@@ -6,13 +6,12 @@ import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorP
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
 import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
+import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "@modules/_shared/layers/BaseLayer";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 
 import { Rgb, parse } from "culori";
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "./BaseLayer";
 
 export type SeismicSliceImageOptions = {
     datapoints: number[][];

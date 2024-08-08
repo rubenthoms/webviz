@@ -7,32 +7,29 @@ import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
-import { defaultColorPalettes } from "@framework/utils/colorPalettes";
-import { ColorPaletteSelector, ColorPaletteSelectorType } from "@lib/components/ColorPaletteSelector";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
-import { Input } from "@lib/components/Input";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Select } from "@lib/components/Select";
-import { ColorPalette } from "@lib/utils/ColorPalette";
-import { ColorSet } from "@lib/utils/ColorSet";
-import { SurfaceLayer, SurfaceLayerSettings } from "@modules/Intersection/utils/layers/SurfaceLayer";
+import { WellboreLayer } from "@modules/2DViewer/layers/WellboreLayer";
+import { WellboreLayerSettings } from "@modules/2DViewer/layers/WellboreLayer";
 import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
-import { fixupSetting } from "@modules/_shared/layers/utils";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { cloneDeep, isEqual } from "lodash";
 
-export type SurfaceLayerSettingsComponentProps = {
-    layer: SurfaceLayer;
+import { fixupSetting } from "./utils";
+
+export type WellboreLayerSettingsComponentProps = {
+    layer: WellboreLayer;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
 };
 
-export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsComponentProps): React.ReactNode {
+export function WellboreLayerSettingsComponent(props: WellboreLayerSettingsComponentProps): React.ReactNode {
     const settings = useLayerSettings(props.layer);
-    const [newSettings, setNewSettings] = React.useState<SurfaceLayerSettings>(cloneDeep(settings));
-    const [prevSettings, setPrevSettings] = React.useState<SurfaceLayerSettings>(cloneDeep(settings));
+    const [newSettings, setNewSettings] = React.useState<WellboreLayerSettings>(cloneDeep(settings));
+    const [prevSettings, setPrevSettings] = React.useState<WellboreLayerSettings>(cloneDeep(settings));
 
     if (!isEqual(settings, prevSettings)) {
         setPrevSettings(settings);
@@ -134,14 +131,6 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
         setNewSettings((prev) => ({ ...prev, surfaceNames }));
     }
 
-    function handleResolutionChange(e: React.ChangeEvent<HTMLInputElement>) {
-        setNewSettings((prev) => ({ ...prev, resolution: parseFloat(e.target.value) }));
-    }
-
-    function handleColorPaletteChange(colorPalette: ColorPalette) {
-        props.layer.setColorSet(new ColorSet(colorPalette));
-    }
-
     const availableRealizations: number[] = [];
     if (fixupEnsembleIdent) {
         availableRealizations.push(...ensembleFilterFunc(fixupEnsembleIdent));
@@ -201,34 +190,9 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
                             value={newSettings.surfaceNames ?? undefined}
                             onChange={handleSurfaceNamesChange}
                             size={5}
-                            multiple
                             debounceTimeMs={600}
                         />
                     </PendingWrapper>
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-middle">Sample resolution</div>
-                <div className="table-cell">
-                    <Input
-                        value={newSettings.resolution}
-                        onChange={handleResolutionChange}
-                        debounceTimeMs={600}
-                        endAdornment="m"
-                        type="number"
-                        min={1}
-                    />
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-middle">Color set</div>
-                <div className="table-cell">
-                    <ColorPaletteSelector
-                        type={ColorPaletteSelectorType.Categorical}
-                        selectedColorPaletteId={props.layer.getColorSet().getColorPalette().getId()}
-                        colorPalettes={defaultColorPalettes}
-                        onChange={handleColorPaletteChange}
-                    />
                 </div>
             </div>
         </div>

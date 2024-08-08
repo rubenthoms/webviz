@@ -6,8 +6,8 @@ import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Select, SelectOption } from "@lib/components/Select";
 import { Switch } from "@lib/components/Switch";
-import { LayerStatus, useLayerSettings, useLayerStatus } from "@modules/Intersection/utils/layers/BaseLayer";
 import { WellpicksLayer, WellpicksLayerSettings } from "@modules/Intersection/utils/layers/WellpicksLayer";
+import { LayerStatus, useLayerSettings, useLayerStatus } from "@modules/_shared/layers/BaseLayer";
 
 export type WellpicksLayerSettingsComponentProps = {
     layer: WellpicksLayer;

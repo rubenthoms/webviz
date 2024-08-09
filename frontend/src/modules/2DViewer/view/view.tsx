@@ -3,9 +3,10 @@ import React from "react";
 import { Layer } from "@deck.gl/core/typed";
 import { ModuleViewProps } from "@framework/Module";
 import { useViewStatusWriter } from "@framework/StatusWriter";
-import { LayerStatus, useLayersStatuses } from "@modules/_shared/layers/BaseLayer";
+import { BaseLayer, LayerStatus, useLayersStatuses } from "@modules/_shared/layers/BaseLayer";
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
-import SubsurfaceViewer from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
+import { ViewportType } from "@webviz/subsurface-viewer";
+import SubsurfaceViewer, { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import { MapLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { SurfaceLayer } from "../layers/SurfaceLayer";
@@ -15,19 +16,26 @@ import { State } from "../state";
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): React.ReactNode {
     const statusWriter = useViewStatusWriter(props.viewContext);
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
-    const layers = useLayerManagerTopicValue(layerManager, LayerManagerTopic.LAYERS_CHANGED);
-    const layersStatuses = useLayersStatuses(layers);
+    const items = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    const layers = items.filter((item) => item instanceof BaseLayer) as BaseLayer<any, any>[];
+    const layersStatuses = useLayersStatuses(layers.filter((el) => el instanceof BaseLayer) as BaseLayer<any, any>[]);
 
     statusWriter.setLoading(layersStatuses.some((status) => status.status === LayerStatus.LOADING));
 
-    const viewerLayers: Layer[] = [];
+    const groupLayersMap: Map<string, Layer[]> = new Map();
 
     for (const layer of layers) {
+        const groupId = layerManager.getGroupOfLayer(layer.getId())?.getId() ?? "main";
+        let layerArr = groupLayersMap.get(groupId);
+        if (!layerArr) {
+            layerArr = [];
+            groupLayersMap.set(groupId, layerArr);
+        }
         if (layer instanceof SurfaceLayer) {
             const data = layer.getData();
             if (data) {
                 for (const surfData of data) {
-                    viewerLayers.push(
+                    layerArr.push(
                         new MapLayer({
                             id: layer.getId(),
                             meshData: Array.from(surfData.valuesFloat32Arr),
@@ -50,9 +58,28 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         }
     }
 
+    const numCols = Math.ceil(Math.sqrt(groupLayersMap.size));
+    const numRows = Math.ceil(groupLayersMap.size / numCols);
+
+    const viewports: ViewportType[] = [];
+    const viewerLayers: Layer[] = [];
+    for (const [group, layers] of groupLayersMap) {
+        viewports.push({
+            id: group,
+            name: group,
+            layerIds: layers.map((layer) => (layer as unknown as Layer).id),
+        });
+        viewerLayers.push(...layers);
+    }
+
+    const views: ViewsType = {
+        layout: [numRows, numCols],
+        viewports: viewports,
+    };
+
     return (
         <div className="relative w-full h-full flex flex-col">
-            <SubsurfaceViewer id="deckgl" layers={viewerLayers} />
+            <SubsurfaceViewer id="deckgl" views={views} layers={viewerLayers} />
         </div>
     );
 }

@@ -1,10 +1,12 @@
 import React from "react";
 
 import { WellboreHeader_api } from "@api";
+import { EnsembleSet } from "@framework/EnsembleSet";
 import { ModuleSettingsProps } from "@framework/Module";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey, SyncSettingsHelper } from "@framework/SyncSettings";
-import { useEnsembleSet } from "@framework/WorkbenchSession";
+import { WorkbenchSession, useEnsembleSet } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { FieldDropdown } from "@framework/components/FieldDropdown";
 import { Intersection, IntersectionType } from "@framework/types/intersection";
 import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
@@ -15,7 +17,9 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+import { LayersPanel } from "@modules/_shared/components/Layers";
 import { usePropagateApiErrorToStatusWriter } from "@modules/_shared/hooks/usePropagateApiErrorToStatusWriter";
+import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
@@ -36,10 +40,21 @@ import {
     selectedWellboreAtom,
 } from "./atoms/derivedAtoms";
 import { drilledWellboreHeadersQueryAtom } from "./atoms/queryAtoms";
-import { Layers } from "./components/layers";
+import { GridLayerSettingsComponent } from "./components/layerSettings/gridLayer";
+import { SeismicLayerSettingsComponent } from "./components/layerSettings/seismicLayer";
+import { SurfaceLayerSettingsComponent } from "./components/layerSettings/surfaceLayer";
+import { SurfacesUncertaintyLayerSettingsComponent } from "./components/layerSettings/surfacesUncertaintyLayer";
+import { WellpicksLayerSettingsComponent } from "./components/layerSettings/wellpicksLayer";
 
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { State } from "../state";
+import { isGridLayer } from "../utils/layers/GridLayer";
+import { LayerFactory } from "../utils/layers/LayerFactory";
+import { isSeismicLayer } from "../utils/layers/SeismicLayer";
+import { isSurfaceLayer } from "../utils/layers/SurfaceLayer";
+import { isSurfacesUncertaintyLayer } from "../utils/layers/SurfacesUncertaintyLayer";
+import { isWellpicksLayer } from "../utils/layers/WellpicksLayer";
+import { LAYER_TYPE_TO_STRING_MAPPING } from "../utils/layers/types";
 import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
 export function Settings(
@@ -193,15 +208,77 @@ export function Settings(
                 </div>
             </CollapsibleGroup>
             <div className="flex-grow flex flex-col min-h-0">
-                <Layers
+                <LayersPanel
                     ensembleSet={filteredEnsembleSet}
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}
                     layerManager={layerManager}
+                    layerFactory={LayerFactory}
+                    layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
+                    makeSettingsContainerFunc={makeSettingsContainer}
                 />
             </div>
         </div>
     );
+}
+
+function makeSettingsContainer(
+    layer: BaseLayer<any, any>,
+    ensembleSet: EnsembleSet,
+    workbenchSession: WorkbenchSession,
+    workbenchSettings: WorkbenchSettings
+): React.ReactNode {
+    if (isGridLayer(layer)) {
+        return (
+            <GridLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    if (isSeismicLayer(layer)) {
+        return (
+            <SeismicLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    if (isSurfaceLayer(layer)) {
+        return (
+            <SurfaceLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    if (isWellpicksLayer(layer)) {
+        return (
+            <WellpicksLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    if (isSurfacesUncertaintyLayer(layer)) {
+        return (
+            <SurfacesUncertaintyLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    return null;
 }
 
 function makeWellHeaderOptions(wellHeaders: WellboreHeader_api[]): SelectOption[] {

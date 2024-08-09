@@ -6,7 +6,7 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { LayerStatus, useLayersStatuses } from "@modules_shared/layers/BaseLayer";
+import { BaseLayer, LayerStatus, useLayersStatuses } from "@modules_shared/layers/BaseLayer";
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules_shared/layers/LayerManager";
 
 import { ViewAtoms } from "./atoms/atomDefinitions";
@@ -36,8 +36,8 @@ export function View(
     const wellbore = props.viewContext.useSettingsToViewInterfaceValue("wellboreHeader");
 
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
-    const layers = useLayerManagerTopicValue(layerManager, LayerManagerTopic.LAYERS_CHANGED);
-    const layersStatuses = useLayersStatuses(layers);
+    const layers = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    const layersStatuses = useLayersStatuses(layers.filter((el) => el instanceof BaseLayer) as BaseLayer<any, any>[]);
 
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");

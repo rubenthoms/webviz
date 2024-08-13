@@ -7,9 +7,7 @@ import { BaseLayer, LayerStatus, useLayersStatuses } from "@modules/_shared/laye
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
 import { ViewportType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
-import { MapLayer } from "@webviz/subsurface-viewer/dist/layers";
 
-import { SurfaceLayer } from "../layers/SurfaceLayer";
 import { SettingsToViewInterface } from "../settingsToViewInterface";
 import { State } from "../state";
 
@@ -24,6 +22,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
 
     const groupLayersMap: Map<string, Layer[]> = new Map();
 
+    /*
     for (const layer of layers) {
         const groupId = layerManager.getGroupOfLayer(layer.getId())?.getId() ?? "main";
         let layerArr = groupLayersMap.get(groupId);
@@ -57,6 +56,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             }
         }
     }
+        */
 
     const numCols = Math.ceil(Math.sqrt(groupLayersMap.size));
     const numRows = Math.ceil(groupLayersMap.size / numCols);

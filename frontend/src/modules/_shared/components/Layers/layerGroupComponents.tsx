@@ -1,9 +1,12 @@
 import React from "react";
 
 import { LayerGroup, LayerGroupTopic, useLayerGroupTopicValue } from "@modules/_shared/layers/LayerGroup";
-import { Folder, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Delete, Folder, Remove, Visibility, VisibilityOff } from "@mui/icons-material";
 
-type LayerGroupStartAdornmentProps = {
+import { AddLayerDropdown } from "./addLayerDropdown";
+import { LayerFactory } from "./layersPanel";
+
+export type LayerGroupStartAdornmentProps = {
     group: LayerGroup;
 };
 
@@ -23,6 +26,38 @@ export function LayerGroupStartAdornment(props: LayerGroupStartAdornmentProps): 
                 title="Toggle visibility"
             >
                 {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
+            </div>
+        </>
+    );
+}
+
+export type LayerGroundEndAdornmentProps<TLayerType extends string> = {
+    group: LayerGroup;
+    layerTypeToStringMapping: Record<string, string>;
+    layerFactory: LayerFactory<TLayerType>;
+    onRemove: (groupId: string) => void;
+};
+
+export function LayerGroundEndAdornment<TLayerType extends string>(
+    props: LayerGroundEndAdornmentProps<TLayerType>
+): React.ReactNode {
+    function handleRemoveLayerGroup() {
+        props.onRemove(props.group.getId());
+    }
+
+    return (
+        <>
+            <AddLayerDropdown
+                parent={props.group}
+                layerFactory={props.layerFactory}
+                layerTypeToStringMapping={props.layerTypeToStringMapping}
+            />
+            <div
+                className="hover:cursor-pointer rounded hover:text-red-800"
+                onClick={handleRemoveLayerGroup}
+                title="Remove layer group"
+            >
+                <Delete fontSize="inherit" />
             </div>
         </>
     );

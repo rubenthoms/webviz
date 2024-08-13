@@ -20,7 +20,7 @@ import { Add, ArrowDropDown, CreateNewFolder } from "@mui/icons-material";
 import { isEqual } from "lodash";
 
 import { LayerName, LayerStartAdornment } from "./layerComponents";
-import { LayerGroupName, LayerGroupStartAdornment } from "./layerGroupComponents";
+import { LayerGroundEndAdornment, LayerGroupName, LayerGroupStartAdornment } from "./layerGroupComponents";
 
 export interface LayerFactory<TLayerType extends string> {
     makeLayer(layerType: TLayerType): BaseLayer<any, any>;
@@ -142,11 +142,21 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                 id={group.getId()}
                 title={<LayerGroupName group={group} />}
                 startAdornment={<LayerGroupStartAdornment group={group} />}
+                endAdornment={
+                    <LayerGroundEndAdornment
+                        group={group}
+                        onRemove={handleRemoveGroup}
+                        layerFactory={props.layerFactory}
+                        layerTypeToStringMapping={props.layerTypeToStringMapping}
+                    />
+                }
+                contentWhenEmpty={<div className="text-sm p-1.5">No layers in group</div>}
             >
                 {group.getLayers().map((layer) => makeLayerElement(layer))}
             </SortableListGroup>
         );
     }
+
     function makeLayersAndGroupsContent(): React.ReactElement<SortableListItemProps>[] {
         const nodes: React.ReactElement<SortableListItemProps>[] = [];
 

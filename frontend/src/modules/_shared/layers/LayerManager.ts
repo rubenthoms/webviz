@@ -3,7 +3,7 @@ import React from "react";
 import { QueryClient } from "@tanstack/query-core";
 
 import { BaseLayer } from "./BaseLayer";
-import { LayerGroup } from "./LayerGroup";
+import { LayerGroup, LayerGroupTopic } from "./LayerGroup";
 
 export enum LayerManagerTopic {
     ITEMS_CHANGED = "items-changed",
@@ -56,6 +56,9 @@ export class LayerManager {
         const group = new LayerGroup(uniqueName);
         this._items = [group, ...this._items];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        group.subscribe(LayerGroupTopic.LAYERS_CHANGED, () => {
+            this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        });
     }
 
     insertGroup(group: LayerGroup, position: number): void {

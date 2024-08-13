@@ -65,7 +65,7 @@ export function LayerStartAdornment(props: LayerStartAdornmentProps): React.Reac
 
     return (
         <div
-            className="px-0.5 hover:cursor-pointer rounded hover:text-blue-800"
+            className="hover:cursor-pointer rounded hover:text-blue-800"
             onClick={handleToggleLayerVisibility}
             title="Toggle visibility"
         >

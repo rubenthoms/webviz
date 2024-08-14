@@ -39,12 +39,14 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                     globalLayers.push(
                         new MapLayer({
                             id: item.getId(),
-                            meshData: Array.from(surfData.valuesFloat32Arr),
+                            meshData: surfData.valuesFloat32Arr,
+                            typedArraySupport: true,
+                            
                             frame: {
-                                origin: [surfData.x_ori ?? 0, surfData.y_ori ?? 0],
-                                count: [surfData.x_count ?? 0, surfData.y_count ?? 0],
-                                increment: [surfData.x_inc ?? 0, surfData.y_inc ?? 0],
-                                rotDeg: surfData.rot_deg ?? 0,
+                                origin: [surfData.surface_def.origin_utm_x, surfData.surface_def.origin_utm_y],
+                                count: [surfData.surface_def.npoints_x, surfData.surface_def.npoints_y],
+                                increment: [surfData.surface_def.inc_x, surfData.surface_def.inc_y],
+                                rotDeg: surfData.surface_def.rot_deg,
                             },
                             contours: [0, 100],
                             isContoursDepth: true,
@@ -68,13 +70,14 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                     for (const surfData of data) {
                         groupLayers.push(
                             new MapLayer({
-                                id: layer.getId(),
-                                meshData: Array.from(surfData.valuesFloat32Arr),
+                                id: item.getId(),
+                                meshData: surfData.valuesFloat32Arr,
+                                typedArraySupport: true,
                                 frame: {
-                                    origin: [surfData.x_ori ?? 0, surfData.y_ori ?? 0],
-                                    count: [surfData.x_count ?? 0, surfData.y_count ?? 0],
-                                    increment: [surfData.x_inc ?? 0, surfData.y_inc ?? 0],
-                                    rotDeg: surfData.rot_deg ?? 0,
+                                    origin: [surfData.surface_def.origin_utm_x, surfData.surface_def.origin_utm_y],
+                                    count: [surfData.surface_def.npoints_x, surfData.surface_def.npoints_y],
+                                    increment: [surfData.surface_def.inc_x, surfData.surface_def.inc_y],
+                                    rotDeg: surfData.surface_def.rot_deg,
                                 },
                                 contours: [0, 100],
                                 isContoursDepth: true,
@@ -90,7 +93,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             groupLayersMap.set(item.getName(), groupLayers);
         }
     }
-
+    
     const numCols = Math.ceil(Math.sqrt(groupLayersMap.size));
     const numRows = Math.ceil(groupLayersMap.size / numCols);
 

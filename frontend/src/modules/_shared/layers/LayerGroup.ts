@@ -72,6 +72,7 @@ export class LayerGroup {
 
     addLayer(layer: BaseLayer<any, any>): void {
         layer.setName(this._layerManager.makeUniqueLayerName(layer.getName()));
+        layer.setQueryClient(this._layerManager.getQueryClient());
         this._layers = [...this._layers, layer];
         this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
     }

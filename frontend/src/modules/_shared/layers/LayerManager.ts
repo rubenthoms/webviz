@@ -23,6 +23,7 @@ export class LayerManager {
     private _queryClient: QueryClient | null = null;
     private _subscribers: Map<LayerManagerTopic, Set<() => void>> = new Map();
     private _items: LayerManagerItem[] = [];
+    private _allLayers: BaseLayer<any, any>[] = [];
 
     setQueryClient(queryClient: QueryClient): void {
         this._queryClient = queryClient;
@@ -43,6 +44,7 @@ export class LayerManager {
         layer.setQueryClient(this._queryClient);
         this._items = [layer, ...this._items];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        this._allLayers = this.getAllLayersRecursively();
     }
 
     insertLayer(layer: BaseLayer<any, any>, position: number): void {
@@ -53,6 +55,7 @@ export class LayerManager {
         layer.setName(this.makeUniqueLayerName(layer.getName()));
         this._items = [...this._items.slice(0, position), layer, ...this._items.slice(position)];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        this._allLayers = this.getAllLayersRecursively();
     }
 
     addGroup(name: string): void {
@@ -61,6 +64,7 @@ export class LayerManager {
         this._items = [group, ...this._items];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
         group.subscribe(LayerGroupTopic.LAYERS_CHANGED, () => {
+            this._allLayers = this.getAllLayersRecursively();
             this.notifySubscribers(LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY);
         });
     }
@@ -72,11 +76,13 @@ export class LayerManager {
 
     removeLayer(id: string): void {
         this._items = this._items.filter((item) => item.getId() !== id);
+        this._allLayers = this.getAllLayersRecursively();
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
     }
 
     removeGroup(id: string): void {
         this._items = this._items.filter((item) => item.getId() !== id);
+        this._allLayers = this.getAllLayersRecursively();
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
     }
 
@@ -181,10 +187,10 @@ export class LayerManager {
     makeSnapshotGetter<T extends LayerManagerTopic>(topic: T): () => LayerManagerTopicValueTypes[T] {
         const snapshotGetter = (): any => {
             if (topic === LayerManagerTopic.ITEMS_CHANGED) {
-                return this.getItems();
+                return this._items;
             }
             if (topic === LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY) {
-                return this.getAllLayersRecursively();
+                return this._allLayers;
             }
         };
 

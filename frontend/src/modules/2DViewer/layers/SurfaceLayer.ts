@@ -103,7 +103,7 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceData_tr
 
         for (const surfaceName of this._settings.surfaceNames) {
             const queryKey = [
-                "getSurfaceIntersection",
+                "getRealizationSurfaceData",
                 this._settings.ensembleIdent?.getCaseUuid() ?? "",
                 this._settings.ensembleIdent?.getEnsembleName() ?? "",
                 this._settings.realizationNum ?? 0,

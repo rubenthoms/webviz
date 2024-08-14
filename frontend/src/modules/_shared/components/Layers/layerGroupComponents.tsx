@@ -1,10 +1,66 @@
 import React from "react";
 
+import { EnsembleSet } from "@framework/EnsembleSet";
+import { WorkbenchSession } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
+import { SortableListGroup } from "@lib/components/SortableList";
 import { LayerGroup, LayerGroupTopic, useLayerGroupTopicValue } from "@modules/_shared/layers/LayerGroup";
-import { Delete, Folder, Remove, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Delete, Folder, Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { AddLayerDropdown } from "./addLayerDropdown";
-import { LayerFactory } from "./layersPanel";
+import { LayerComponent } from "./layerComponents";
+import { LayerFactory, MakeSettingsContainerFunc } from "./layersPanel";
+
+export type LayerGroupComponentProps<TLayerType extends string> = {
+    group: LayerGroup;
+    layerFactory: LayerFactory<TLayerType>;
+    layerTypeToStringMapping: Record<string, string>;
+    ensembleSet: EnsembleSet;
+    workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
+    makeSettingsContainerFunc: MakeSettingsContainerFunc;
+    onRemove: (groupId: string) => void;
+};
+
+export function LayerGroupComponent<TLayerType extends string>(
+    props: LayerGroupComponentProps<TLayerType>
+): React.ReactNode {
+    const layers = useLayerGroupTopicValue(props.group, LayerGroupTopic.LAYERS_CHANGED);
+
+    function handleRemoveLayer(layerId: string) {
+        props.group.removeLayer(layerId);
+    }
+
+    return (
+        <SortableListGroup
+            key={props.group.getId()}
+            id={props.group.getId()}
+            title={<LayerGroupName group={props.group} />}
+            startAdornment={<LayerGroupStartAdornment group={props.group} />}
+            endAdornment={
+                <LayerGroundEndAdornment
+                    group={props.group}
+                    onRemove={props.onRemove}
+                    layerFactory={props.layerFactory}
+                    layerTypeToStringMapping={props.layerTypeToStringMapping}
+                />
+            }
+            contentWhenEmpty={<div className="text-sm p-1.5">No layers</div>}
+        >
+            {layers.map((layer) => (
+                <LayerComponent
+                    key={layer.getId()}
+                    layer={layer}
+                    onRemove={handleRemoveLayer}
+                    makeSettingsContainerFunc={props.makeSettingsContainerFunc}
+                    ensembleSet={props.ensembleSet}
+                    workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
+                />
+            ))}
+        </SortableListGroup>
+    );
+}
 
 export type LayerGroupStartAdornmentProps = {
     group: LayerGroup;

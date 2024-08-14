@@ -3,6 +3,7 @@ import React from "react";
 import { v4 } from "uuid";
 
 import { BaseLayer } from "./BaseLayer";
+import { LayerManager } from "./LayerManager";
 
 export enum LayerGroupTopic {
     NAME_CHANGED = "name-changed",
@@ -11,21 +12,24 @@ export enum LayerGroupTopic {
 }
 
 export type LayerGroupTopicValueTypes = {
-    [LayerGroupTopic.LAYERS_CHANGED]: string[];
+    [LayerGroupTopic.LAYERS_CHANGED]: BaseLayer<any, any>[];
     [LayerGroupTopic.NAME_CHANGED]: string;
     [LayerGroupTopic.VISIBILITY_CHANGED]: boolean;
 };
 
 export class LayerGroup {
+    private _layerManager: LayerManager;
     private _id: string;
     private _name: string;
     private _subscribers: Map<LayerGroupTopic, Set<() => void>> = new Map();
     private _layers: BaseLayer<any, any>[] = [];
     private _isVisible: boolean = true;
+    private _isExpanded: boolean = true;
 
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         this._id = v4();
         this._name = name;
+        this._layerManager = layerManager;
     }
 
     getId(): string {
@@ -39,6 +43,14 @@ export class LayerGroup {
     setIsVisible(isVisible: boolean): void {
         this._isVisible = isVisible;
         this.notifySubscribers(LayerGroupTopic.VISIBILITY_CHANGED);
+    }
+
+    getIsExpanded(): boolean {
+        return this._isExpanded;
+    }
+
+    setIsExpanded(isExpanded: boolean): void {
+        this._isExpanded = isExpanded;
     }
 
     getName(): string {
@@ -59,6 +71,7 @@ export class LayerGroup {
     }
 
     addLayer(layer: BaseLayer<any, any>): void {
+        layer.setName(this._layerManager.makeUniqueLayerName(layer.getName()));
         this._layers = [...this._layers, layer];
         this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
     }
@@ -122,7 +135,7 @@ export class LayerGroup {
                 return this.getName();
             }
             if (topic === LayerGroupTopic.LAYERS_CHANGED) {
-                return this.getLayers().map((layer) => layer.getId());
+                return this.getLayers();
             }
             if (topic === LayerGroupTopic.VISIBILITY_CHANGED) {
                 return this.getIsVisible();

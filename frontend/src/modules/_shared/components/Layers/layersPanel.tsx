@@ -5,7 +5,8 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { Menu } from "@lib/components/Menu";
 import { MenuItem } from "@lib/components/MenuItem";
-import { SortableList, SortableListGroup, SortableListItem, SortableListItemProps } from "@lib/components/SortableList";
+import { SortableList, SortableListItemProps } from "@lib/components/SortableList";
+import { IsMoveAllowedArgs, ItemType } from "@lib/components/SortableList/sortableList";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
 import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import {
@@ -19,8 +20,8 @@ import { Add, ArrowDropDown, CreateNewFolder } from "@mui/icons-material";
 
 import { isEqual } from "lodash";
 
-import { LayerName, LayerStartAdornment } from "./layerComponents";
-import { LayerGroundEndAdornment, LayerGroupName, LayerGroupStartAdornment } from "./layerGroupComponents";
+import { LayerComponent } from "./layerComponents";
+import { LayerGroupComponent } from "./layerGroupComponents";
 
 export interface LayerFactory<TLayerType extends string> {
     makeLayer(layerType: TLayerType): BaseLayer<any, any>;
@@ -44,6 +45,7 @@ export type LayersPanelProps<TLayerType extends string> = {
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
     allowGroups?: boolean;
+    groupDefaultName: string;
 };
 
 export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<TLayerType>): React.ReactNode {
@@ -66,7 +68,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     }
 
     function handleAddGroup() {
-        props.layerManager.addGroup("Group");
+        props.layerManager.addGroup(props.groupDefaultName);
     }
 
     function handleRemoveGroup(id: string) {
@@ -119,41 +121,30 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
 
     function makeLayerElement(layer: BaseLayer<any, any>): React.ReactElement<SortableListItemProps> {
         return (
-            <SortableListItem
+            <LayerComponent
                 key={layer.getId()}
-                id={layer.getId()}
-                title={<LayerName layer={layer} />}
-                startAdornment={<LayerStartAdornment layer={layer} />}
-            >
-                {props.makeSettingsContainerFunc(
-                    layer,
-                    props.ensembleSet,
-                    props.workbenchSession,
-                    props.workbenchSettings
-                )}
-            </SortableListItem>
+                layer={layer}
+                onRemove={handleRemoveItem}
+                makeSettingsContainerFunc={props.makeSettingsContainerFunc}
+                ensembleSet={props.ensembleSet}
+                workbenchSession={props.workbenchSession}
+                workbenchSettings={props.workbenchSettings}
+            />
         );
     }
 
-    function makeLayerGroup(group: LayerGroup): React.ReactElement<SortableListItemProps> {
+    function makeLayerGroup(group: LayerGroup): React.ReactElement {
         return (
-            <SortableListGroup
-                key={group.getId()}
-                id={group.getId()}
-                title={<LayerGroupName group={group} />}
-                startAdornment={<LayerGroupStartAdornment group={group} />}
-                endAdornment={
-                    <LayerGroundEndAdornment
-                        group={group}
-                        onRemove={handleRemoveGroup}
-                        layerFactory={props.layerFactory}
-                        layerTypeToStringMapping={props.layerTypeToStringMapping}
-                    />
-                }
-                contentWhenEmpty={<div className="text-sm p-1.5">No layers in group</div>}
-            >
-                {group.getLayers().map((layer) => makeLayerElement(layer))}
-            </SortableListGroup>
+            <LayerGroupComponent
+                group={group}
+                layerFactory={props.layerFactory}
+                layerTypeToStringMapping={props.layerTypeToStringMapping}
+                onRemove={handleRemoveGroup}
+                makeSettingsContainerFunc={props.makeSettingsContainerFunc}
+                ensembleSet={props.ensembleSet}
+                workbenchSession={props.workbenchSession}
+                workbenchSettings={props.workbenchSettings}
+            />
         );
     }
 
@@ -177,6 +168,13 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
         return nodes;
     }
 
+    function isMoveAllowed(args: IsMoveAllowedArgs): boolean {
+        if (args.movedItemType === ItemType.GROUP && args.destinationType === ItemType.GROUP) {
+            return false;
+        }
+        return true;
+    }
+
     return (
         <div className="w-full flex-grow flex flex-col min-h-0">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
@@ -187,7 +185,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                         onClick={handleAddGroup}
                     >
                         <CreateNewFolder fontSize="inherit" />
-                        <span>Add group</span>
+                        <span>Add {props.groupDefaultName.toLowerCase()}</span>
                     </div>
                 )}
                 <Dropdown>
@@ -220,7 +218,8 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                             Click on <Add fontSize="inherit" /> to add a layer.
                         </div>
                     }
-                    onItemMove={handleItemMove}
+                    onItemMoved={handleItemMove}
+                    isMoveAllowed={isMoveAllowed}
                 >
                     {makeLayersAndGroupsContent()}
                 </SortableList>

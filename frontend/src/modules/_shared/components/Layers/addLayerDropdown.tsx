@@ -23,7 +23,7 @@ export function AddLayerDropdown<TLayerType extends string>(props: AddLayerDropd
     return (
         <Dropdown>
             <MenuButton>
-                <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
+                <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2 whitespace-nowrap">
                     <Add fontSize="inherit" />
                     <span>Add layer</span>
                     <ArrowDropDown fontSize="inherit" />

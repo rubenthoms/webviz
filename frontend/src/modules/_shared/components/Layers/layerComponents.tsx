@@ -1,7 +1,49 @@
 import React from "react";
 
+import { EnsembleSet } from "@framework/EnsembleSet";
+import { WorkbenchSession } from "@framework/WorkbenchSession";
+import { WorkbenchSettings } from "@framework/WorkbenchSettings";
+import { SortableListItem } from "@lib/components/SortableList";
 import { BaseLayer, useIsLayerVisible, useLayerName } from "@modules/_shared/layers/BaseLayer";
-import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { Delete, Visibility, VisibilityOff } from "@mui/icons-material";
+
+import { MakeSettingsContainerFunc } from "./layersPanel";
+
+export type LayerComponentProps = {
+    layer: BaseLayer<any, any>;
+    ensembleSet: EnsembleSet;
+    workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
+    makeSettingsContainerFunc: MakeSettingsContainerFunc;
+    onRemove: (id: string) => void;
+};
+
+export function LayerComponent(props: LayerComponentProps): React.ReactNode {
+    return (
+        <SortableListItem
+            key={props.layer.getId()}
+            id={props.layer.getId()}
+            title={<LayerName layer={props.layer} />}
+            startAdornment={<LayerStartAdornment layer={props.layer} />}
+            endAdornment={
+                <div
+                    className="hover:cursor-pointer rounded hover:text-red-800"
+                    onClick={() => props.onRemove(props.layer.getId())}
+                    title="Remove layer"
+                >
+                    <Delete fontSize="inherit" />
+                </div>
+            }
+        >
+            {props.makeSettingsContainerFunc(
+                props.layer,
+                props.ensembleSet,
+                props.workbenchSession,
+                props.workbenchSettings
+            )}
+        </SortableListItem>
+    );
+}
 
 type LayerNameProps = {
     layer: BaseLayer<any, any>;

@@ -7,10 +7,14 @@ import { LayerGroup, LayerGroupTopic } from "./LayerGroup";
 
 export enum LayerManagerTopic {
     ITEMS_CHANGED = "items-changed",
+    LAYERS_CHANGED = "layers-changed",
+    LAYERS_CHANGED_RECURSIVELY = "layers-changed-recursively",
 }
 
 export type LayerManagerTopicValueTypes = {
-    [LayerManagerTopic.ITEMS_CHANGED]: BaseLayer<any, any>[];
+    [LayerManagerTopic.ITEMS_CHANGED]: LayerManagerItem[];
+    [LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY]: BaseLayer<any, any>[];
+    [LayerManagerTopic.LAYERS_CHANGED]: BaseLayer<any, any>[];
 };
 
 export type LayerManagerItem = BaseLayer<any, any> | LayerGroup;
@@ -45,19 +49,19 @@ export class LayerManager {
         if (!this._queryClient) {
             throw new Error("Query client not set");
         }
-        layer.setName(this.makeUniqueLayerName(layer.getName()));
         layer.setQueryClient(this._queryClient);
+        layer.setName(this.makeUniqueLayerName(layer.getName()));
         this._items = [...this._items.slice(0, position), layer, ...this._items.slice(position)];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
     }
 
     addGroup(name: string): void {
         const uniqueName = this.makeUniqueGroupName(name);
-        const group = new LayerGroup(uniqueName);
+        const group = new LayerGroup(uniqueName, this);
         this._items = [group, ...this._items];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
         group.subscribe(LayerGroupTopic.LAYERS_CHANGED, () => {
-            this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+            this.notifySubscribers(LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY);
         });
     }
 
@@ -121,8 +125,16 @@ export class LayerManager {
         }
     }
 
-    private getAllLayers(): BaseLayer<any, any>[] {
-        return this._items.filter((item) => item instanceof BaseLayer) as BaseLayer<any, any>[];
+    private getAllLayersRecursively(): BaseLayer<any, any>[] {
+        const layers: BaseLayer<any, any>[] = [];
+        for (const item of this._items) {
+            if (item instanceof BaseLayer) {
+                layers.push(item);
+            } else if (item instanceof LayerGroup) {
+                layers.push(...item.getLayers());
+            }
+        }
+        return layers;
     }
 
     private getAllGroups(): LayerGroup[] {
@@ -132,7 +144,7 @@ export class LayerManager {
     makeUniqueLayerName(name: string): string {
         let potentialName = name;
         let i = 1;
-        const allLayers = this.getAllLayers();
+        const allLayers = this.getAllLayersRecursively();
         while (allLayers.some((layer) => layer.getName() === potentialName)) {
             potentialName = `${name} (${i})`;
             i++;
@@ -170,6 +182,9 @@ export class LayerManager {
         const snapshotGetter = (): any => {
             if (topic === LayerManagerTopic.ITEMS_CHANGED) {
                 return this.getItems();
+            }
+            if (topic === LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY) {
+                return this.getAllLayersRecursively();
             }
         };
 

@@ -56,6 +56,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                     layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
                     makeSettingsContainerFunc={makeSettingsContainer}
                     allowGroups
+                    groupDefaultName="View"
                 />
             </div>
         </div>

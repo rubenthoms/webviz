@@ -216,6 +216,7 @@ export function Settings(
                     layerFactory={LayerFactory}
                     layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
                     makeSettingsContainerFunc={makeSettingsContainer}
+                    groupDefaultName="View"
                 />
             </div>
         </div>

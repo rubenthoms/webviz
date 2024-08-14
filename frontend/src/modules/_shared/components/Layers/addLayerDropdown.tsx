@@ -11,13 +11,14 @@ import { LayerFactory } from "./layersPanel";
 
 export type AddLayerDropdownProps<TLayerType extends string> = {
     parent: LayerGroup | LayerManager;
+    layerManager: LayerManager;
     layerTypeToStringMapping: Record<TLayerType, string>;
     layerFactory: LayerFactory<TLayerType>;
 };
 
 export function AddLayerDropdown<TLayerType extends string>(props: AddLayerDropdownProps<TLayerType>): React.ReactNode {
     function handleAddLayer(type: TLayerType) {
-        props.parent.addLayer(props.layerFactory.makeLayer(type));
+        props.parent.addLayer(props.layerFactory.makeLayer(type, props.layerManager));
     }
 
     return (

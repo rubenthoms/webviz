@@ -3,8 +3,6 @@ import React from "react";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
-import { Menu } from "@lib/components/Menu";
-import { MenuItem } from "@lib/components/MenuItem";
 import { SortableList, SortableListItemProps } from "@lib/components/SortableList";
 import { IsMoveAllowedArgs, ItemType } from "@lib/components/SortableList/sortableList";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
@@ -15,16 +13,18 @@ import {
     LayerManagerTopic,
     useLayerManagerTopicValue,
 } from "@modules/_shared/layers/LayerManager";
-import { Dropdown, MenuButton } from "@mui/base";
-import { Add, ArrowDropDown, CreateNewFolder } from "@mui/icons-material";
+import { BaseSetting } from "@modules/_shared/layers/settings/BaseSetting";
+import { Add } from "@mui/icons-material";
 
 import { isEqual } from "lodash";
 
+import { LayerSettingContentFactory } from "./LayerSettingContentFactory";
 import { LayerComponent } from "./layerComponents";
 import { LayerGroupComponent } from "./layerGroupComponents";
+import { LayerSettingComponent } from "./settingComponents";
 
 export interface LayerFactory<TLayerType extends string> {
-    makeLayer(layerType: TLayerType): BaseLayer<any, any>;
+    makeLayer(layerType: TLayerType, layerManager: LayerManager): BaseLayer<any, any>;
 }
 
 export interface MakeSettingsContainerFunc {
@@ -37,6 +37,7 @@ export interface MakeSettingsContainerFunc {
 }
 
 export type LayersPanelProps<TLayerType extends string> = {
+    title: string;
     ensembleSet: EnsembleSet;
     layerManager: LayerManager;
     layerFactory: LayerFactory<TLayerType>;
@@ -44,12 +45,16 @@ export type LayersPanelProps<TLayerType extends string> = {
     makeSettingsContainerFunc: MakeSettingsContainerFunc;
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
-    allowGroups?: boolean;
-    groupDefaultName: string;
+    actions?: React.ReactNode;
 };
 
 export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<TLayerType>): React.ReactNode {
     const items = useLayerManagerTopicValue(props.layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    const layerSettingFactory = new LayerSettingContentFactory(
+        props.ensembleSet,
+        props.workbenchSession,
+        props.workbenchSettings
+    );
 
     const [prevItems, setPrevItems] = React.useState<LayerManagerItem[]>(items);
     const [itemsOrder, setItemsOrder] = React.useState<string[]>(items.map((item) => item.getId()));
@@ -57,18 +62,6 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     if (!isEqual(prevItems, items)) {
         setPrevItems(items);
         setItemsOrder(items.map((layer) => layer.getId()));
-    }
-
-    function handleAddLayer(type: TLayerType, group?: LayerGroup) {
-        if (group) {
-            group.addLayer(props.layerFactory.makeLayer(type));
-            return;
-        }
-        props.layerManager.addLayer(props.layerFactory.makeLayer(type));
-    }
-
-    function handleAddGroup() {
-        props.layerManager.addGroup(props.groupDefaultName);
     }
 
     function handleRemoveGroup(id: string) {
@@ -136,6 +129,8 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     function makeLayerGroup(group: LayerGroup): React.ReactElement {
         return (
             <LayerGroupComponent
+                key={group.getId()}
+                layerManager={props.layerManager}
                 group={group}
                 layerFactory={props.layerFactory}
                 layerTypeToStringMapping={props.layerTypeToStringMapping}
@@ -148,7 +143,15 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
         );
     }
 
-    function makeLayersAndGroupsContent(): React.ReactElement<SortableListItemProps>[] {
+    function makeSettingElement(setting: BaseSetting<any>): React.ReactElement<SortableListItemProps> {
+        return (
+            <LayerSettingComponent key={setting.getId()} setting={setting} onRemove={handleRemoveItem}>
+                {layerSettingFactory.createLayerSetting(setting)}
+            </LayerSettingComponent>
+        );
+    }
+
+    function makeContent(): React.ReactElement<SortableListItemProps>[] {
         const nodes: React.ReactElement<SortableListItemProps>[] = [];
 
         const orderedItems = itemsOrder
@@ -160,8 +163,10 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
 
             if (item instanceof LayerGroup) {
                 nodes.push(makeLayerGroup(item));
-            } else {
+            } else if (item instanceof BaseLayer) {
                 nodes.push(makeLayerElement(item as BaseLayer<any, any>));
+            } else if (item instanceof BaseSetting) {
+                nodes.push(makeSettingElement(item as BaseSetting<any>));
             }
         }
 
@@ -178,38 +183,8 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     return (
         <div className="w-full flex-grow flex flex-col min-h-0">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
-                <div className="flex-grow font-bold text-sm">Layers</div>
-                {props.allowGroups && (
-                    <div
-                        className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2"
-                        onClick={handleAddGroup}
-                    >
-                        <CreateNewFolder fontSize="inherit" />
-                        <span>Add {props.groupDefaultName.toLowerCase()}</span>
-                    </div>
-                )}
-                <Dropdown>
-                    <MenuButton>
-                        <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
-                            <Add fontSize="inherit" />
-                            <span>Add layer</span>
-                            <ArrowDropDown fontSize="inherit" />
-                        </div>
-                    </MenuButton>
-                    <Menu anchorOrigin="bottom-end" className="text-sm p-1">
-                        {Object.keys(props.layerTypeToStringMapping).map((layerType, index) => {
-                            return (
-                                <MenuItem
-                                    key={index}
-                                    className="text-sm p-0.5"
-                                    onClick={() => handleAddLayer(layerType as TLayerType)}
-                                >
-                                    {props.layerTypeToStringMapping[layerType as TLayerType]}
-                                </MenuItem>
-                            );
-                        })}
-                    </Menu>
-                </Dropdown>
+                <div className="flex-grow font-bold text-sm">{props.title}</div>
+                {props.actions}
             </div>
             <div className="w-full flex-grow flex flex-col relative">
                 <SortableList
@@ -221,7 +196,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                     onItemMoved={handleItemMove}
                     isMoveAllowed={isMoveAllowed}
                 >
-                    {makeLayersAndGroupsContent()}
+                    {makeContent()}
                 </SortableList>
             </div>
         </div>

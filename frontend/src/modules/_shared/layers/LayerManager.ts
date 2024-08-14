@@ -4,26 +4,31 @@ import { QueryClient } from "@tanstack/query-core";
 
 import { BaseLayer } from "./BaseLayer";
 import { LayerGroup, LayerGroupTopic } from "./LayerGroup";
+import { BaseSetting, SettingTopic } from "./settings/BaseSetting";
+import { SettingType } from "./settings/SettingTypes";
 
 export enum LayerManagerTopic {
     ITEMS_CHANGED = "items-changed",
     LAYERS_CHANGED = "layers-changed",
     LAYERS_CHANGED_RECURSIVELY = "layers-changed-recursively",
+    SETTINGS_CHANGED = "settings-changed",
 }
 
 export type LayerManagerTopicValueTypes = {
     [LayerManagerTopic.ITEMS_CHANGED]: LayerManagerItem[];
     [LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY]: BaseLayer<any, any>[];
     [LayerManagerTopic.LAYERS_CHANGED]: BaseLayer<any, any>[];
+    [LayerManagerTopic.SETTINGS_CHANGED]: void;
 };
 
-export type LayerManagerItem = BaseLayer<any, any> | LayerGroup;
+export type LayerManagerItem = BaseLayer<any, any> | LayerGroup | BaseSetting<any>;
 
 export class LayerManager {
     private _queryClient: QueryClient | null = null;
     private _subscribers: Map<LayerManagerTopic, Set<() => void>> = new Map();
     private _items: LayerManagerItem[] = [];
     private _allLayers: BaseLayer<any, any>[] = [];
+    private _settingsIteration: number = 0;
 
     setQueryClient(queryClient: QueryClient): void {
         this._queryClient = queryClient;
@@ -72,6 +77,40 @@ export class LayerManager {
     insertGroup(group: LayerGroup, position: number): void {
         this._items = [...this._items.slice(0, position), group, ...this._items.slice(position)];
         this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+    }
+
+    addSetting(setting: BaseSetting<any>): void {
+        this._items = [setting, ...this._items];
+        this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        setting.subscribe(SettingTopic.VALUE, () => {
+            this._settingsIteration++;
+            this.notifySubscribers(LayerManagerTopic.SETTINGS_CHANGED);
+        });
+    }
+
+    getSettings(): BaseSetting<any>[] {
+        return this._items.filter((item) => item instanceof BaseSetting) as BaseSetting<any>[];
+    }
+
+    getSettingOfType(type: SettingType): BaseSetting<any> | undefined {
+        return this.getSettings().find((setting) => setting.getKey() === type);
+    }
+
+    getSettingsOverridesForLayer(layer: BaseLayer<any, any>): BaseSetting<any>[] {
+        const settingsOverrides: BaseSetting<any>[] = [];
+        for (const setting of this.getSettings()) {
+            settingsOverrides.push(setting);
+        }
+
+        for (const group of this.getAllGroups()) {
+            if (group.getLayers().includes(layer)) {
+                for (const setting of this.getSettings()) {
+                    settingsOverrides.push(setting);
+                }
+            }
+        }
+
+        return settingsOverrides;
     }
 
     removeLayer(id: string): void {
@@ -191,6 +230,9 @@ export class LayerManager {
             }
             if (topic === LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY) {
                 return this._allLayers;
+            }
+            if (topic === LayerManagerTopic.SETTINGS_CHANGED) {
+                return this._settingsIteration;
             }
         };
 

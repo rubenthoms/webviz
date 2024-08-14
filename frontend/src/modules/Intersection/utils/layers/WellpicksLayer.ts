@@ -2,6 +2,7 @@ import { transformFormationData } from "@equinor/esv-intersection";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -20,7 +21,7 @@ export type WellpicksLayerSettings = {
 export type WellPicksLayerData = ReturnType<typeof transformFormationData>;
 
 export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellPicksLayerData> {
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             wellboreUuid: null,
@@ -28,7 +29,7 @@ export class WellpicksLayer extends BaseLayer<WellpicksLayerSettings, WellPicksL
             selectedUnitPicks: [],
             selectedNonUnitPicks: [],
         };
-        super(name, defaultSettings);
+        super(name, defaultSettings, layerManager);
     }
 
     protected areSettingsValid(): boolean {

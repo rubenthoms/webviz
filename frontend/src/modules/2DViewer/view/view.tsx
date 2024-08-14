@@ -17,7 +17,7 @@ import { State } from "../state";
 export function View(props: ModuleViewProps<State, SettingsToViewInterface>): React.ReactNode {
     const statusWriter = useViewStatusWriter(props.viewContext);
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
-    const items = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    const allItems = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
     const layerItems = useLayerManagerTopicValue(layerManager, LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY);
 
     const layers = useLayers(layerItems);
@@ -27,6 +27,11 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
 
     const groupLayersMap: Map<string, Layer[]> = new Map();
     const globalLayers: Layer[] = [];
+
+    const items = allItems.filter((item) => item instanceof BaseLayer || item instanceof LayerGroup) as (
+        | BaseLayer<any, any>
+        | LayerGroup
+    )[];
 
     for (const item of items) {
         if (!item.getIsVisible()) {
@@ -41,7 +46,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                             id: item.getId(),
                             meshData: surfData.valuesFloat32Arr,
                             typedArraySupport: true,
-                            
+
                             frame: {
                                 origin: [surfData.surface_def.origin_utm_x, surfData.surface_def.origin_utm_y],
                                 count: [surfData.surface_def.npoints_x, surfData.surface_def.npoints_y],
@@ -93,7 +98,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             groupLayersMap.set(item.getName(), groupLayers);
         }
     }
-    
+
     const numCols = Math.ceil(Math.sqrt(groupLayersMap.size));
     const numRows = Math.ceil(groupLayersMap.size / numCols);
 

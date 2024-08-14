@@ -5,6 +5,7 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { SortableListGroup } from "@lib/components/SortableList";
 import { LayerGroup, LayerGroupTopic, useLayerGroupTopicValue } from "@modules/_shared/layers/LayerGroup";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { Delete, Folder, Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { AddLayerDropdown } from "./addLayerDropdown";
@@ -12,6 +13,7 @@ import { LayerComponent } from "./layerComponents";
 import { LayerFactory, MakeSettingsContainerFunc } from "./layersPanel";
 
 export type LayerGroupComponentProps<TLayerType extends string> = {
+    layerManager: LayerManager;
     group: LayerGroup;
     layerFactory: LayerFactory<TLayerType>;
     layerTypeToStringMapping: Record<string, string>;
@@ -39,6 +41,7 @@ export function LayerGroupComponent<TLayerType extends string>(
             startAdornment={<LayerGroupStartAdornment group={props.group} />}
             endAdornment={
                 <LayerGroundEndAdornment
+                    layerManager={props.layerManager}
                     group={props.group}
                     onRemove={props.onRemove}
                     layerFactory={props.layerFactory}
@@ -88,6 +91,7 @@ export function LayerGroupStartAdornment(props: LayerGroupStartAdornmentProps): 
 }
 
 export type LayerGroundEndAdornmentProps<TLayerType extends string> = {
+    layerManager: LayerManager;
     group: LayerGroup;
     layerTypeToStringMapping: Record<string, string>;
     layerFactory: LayerFactory<TLayerType>;
@@ -104,6 +108,7 @@ export function LayerGroundEndAdornment<TLayerType extends string>(
     return (
         <>
             <AddLayerDropdown
+                layerManager={props.layerManager}
                 parent={props.group}
                 layerFactory={props.layerFactory}
                 layerTypeToStringMapping={props.layerTypeToStringMapping}

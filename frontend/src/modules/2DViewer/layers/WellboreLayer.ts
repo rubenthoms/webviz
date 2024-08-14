@@ -2,14 +2,16 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
-import { FullSurfaceAddress, SurfaceAddressBuilder, useSurfaceDataQueryByAddress } from "@modules/_shared/Surface";
+import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
 import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
 import { encodeSurfAddrStr, peekSurfaceAddressType } from "@modules/_shared/Surface/surfaceAddress";
 import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
 import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
+
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
@@ -20,10 +22,10 @@ export type WellboreLayerSettings = {
     attribute: string | null;
 };
 
-export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceDataFloat_trans|SurfaceDataPng)[]> {
+export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceDataFloat_trans | SurfaceDataPng)[]> {
     private _colorSet: ColorSet;
 
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
@@ -36,7 +38,7 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
             extensionLength: 0,
             resolution: 1,
         };
-        super(name, defaultSettings);
+        super(name, defaultSettings, layerManager);
 
         this._colorSet = new ColorSet(defaultColorPalettes[0]);
     }
@@ -98,8 +100,8 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
         );
     }
 
-    protected async fetchData(queryClient: QueryClient): Promise<(SurfaceDataFloat_trans|SurfaceDataPng)[]> {
-        const promises: Promise<SurfaceDataFloat_trans|SurfaceDataPng>[] = [];
+    protected async fetchData(queryClient: QueryClient): Promise<(SurfaceDataFloat_trans | SurfaceDataPng)[]> {
+        const promises: Promise<SurfaceDataFloat_trans | SurfaceDataPng>[] = [];
 
         super.setBoundingBox(null);
 
@@ -112,9 +114,8 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
                 addrBuilder.withAttribute(this._settings.attribute);
                 surfaceAddress = addrBuilder.buildRealizationAddress();
             }
-            
-            const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;
 
+            const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;
 
             if (surfAddrStr) {
                 const surfAddrType = peekSurfaceAddressType(surfAddrStr);
@@ -122,8 +123,7 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
                     throw new Error("Invalid surface address type for surface data query");
                 }
             }
-            const queryKey = ["getSurfaceData", surfAddrStr, null, "float"]
-
+            const queryKey = ["getSurfaceData", surfAddrStr, null, "float"];
 
             this.registerQueryKey(queryKey);
 

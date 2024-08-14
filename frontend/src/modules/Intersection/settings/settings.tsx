@@ -13,6 +13,8 @@ import { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPo
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Input } from "@lib/components/Input";
 import { Label } from "@lib/components/Label";
+import { Menu } from "@lib/components/Menu";
+import { MenuItem } from "@lib/components/MenuItem";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { RadioGroup } from "@lib/components/RadioGroup";
 import { Select, SelectOption } from "@lib/components/Select";
@@ -20,6 +22,8 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { LayersPanel } from "@modules/_shared/components/Layers";
 import { usePropagateApiErrorToStatusWriter } from "@modules/_shared/hooks/usePropagateApiErrorToStatusWriter";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
+import { Dropdown, MenuButton } from "@mui/base";
+import { Add, ArrowDropDown } from "@mui/icons-material";
 
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
@@ -54,7 +58,7 @@ import { isSeismicLayer } from "../utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "../utils/layers/SurfaceLayer";
 import { isSurfacesUncertaintyLayer } from "../utils/layers/SurfacesUncertaintyLayer";
 import { isWellpicksLayer } from "../utils/layers/WellpicksLayer";
-import { LAYER_TYPE_TO_STRING_MAPPING } from "../utils/layers/types";
+import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "../utils/layers/types";
 import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
 export function Settings(
@@ -143,6 +147,11 @@ export function Settings(
         syncHelper.publishValue(SyncSettingKey.INTERSECTION, "global.syncValue.intersection", intersection);
     }
 
+    function handleAddLayer(layerType: LayerType) {
+        const layer = LayerFactory.makeLayer(layerType, layerManager);
+        layerManager.addLayer(layer);
+    }
+
     return (
         <div className="h-full flex flex-col gap-1">
             <CollapsibleGroup title="Intersection" expanded>
@@ -209,6 +218,7 @@ export function Settings(
             </CollapsibleGroup>
             <div className="flex-grow flex flex-col min-h-0">
                 <LayersPanel
+                    title="Layers"
                     ensembleSet={filteredEnsembleSet}
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}
@@ -216,10 +226,47 @@ export function Settings(
                     layerFactory={LayerFactory}
                     layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
                     makeSettingsContainerFunc={makeSettingsContainer}
-                    groupDefaultName="View"
+                    actions={
+                        <LayersPanelActions
+                            layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
+                            onAddLayer={handleAddLayer}
+                        />
+                    }
                 />
             </div>
         </div>
+    );
+}
+
+type LayersPanelActionsProps<TLayerType extends string> = {
+    layerTypeToStringMapping: Record<TLayerType, string>;
+    onAddLayer: (layerType: TLayerType) => void;
+};
+
+function LayersPanelActions<TLayerType extends string>(props: LayersPanelActionsProps<TLayerType>): React.ReactNode {
+    return (
+        <Dropdown>
+            <MenuButton>
+                <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
+                    <Add fontSize="inherit" />
+                    <span>Add layer</span>
+                    <ArrowDropDown fontSize="inherit" />
+                </div>
+            </MenuButton>
+            <Menu anchorOrigin="bottom-end" className="text-sm p-1">
+                {Object.keys(props.layerTypeToStringMapping).map((layerType, index) => {
+                    return (
+                        <MenuItem
+                            key={index}
+                            className="text-sm p-0.5"
+                            onClick={() => props.onAddLayer(layerType as TLayerType)}
+                        >
+                            {props.layerTypeToStringMapping[layerType as TLayerType]}
+                        </MenuItem>
+                    );
+                })}
+            </Menu>
+        </Dropdown>
     );
 }
 

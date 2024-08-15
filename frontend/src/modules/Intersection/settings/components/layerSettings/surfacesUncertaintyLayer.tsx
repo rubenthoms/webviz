@@ -15,17 +15,16 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Select } from "@lib/components/Select";
 import { ColorPalette } from "@lib/utils/ColorPalette";
 import { ColorSet } from "@lib/utils/ColorSet";
-import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import {
     SurfacesUncertaintyLayer,
     SurfacesUncertaintyLayerSettings,
 } from "@modules/Intersection/utils/layers/SurfacesUncertaintyLayer";
 import { SurfaceDirectory, SurfaceTimeType } from "@modules/_shared/Surface";
+import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
+import { fixupSetting } from "@modules/_shared/layers/utils";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { cloneDeep, isEqual } from "lodash";
-
-import { fixupSetting } from "./utils";
 
 export type SurfacesUncertaintyLayerSettingsComponentProps = {
     layer: SurfacesUncertaintyLayer;

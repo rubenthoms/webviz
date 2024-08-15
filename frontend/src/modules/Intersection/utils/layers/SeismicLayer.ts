@@ -6,13 +6,13 @@ import { defaultContinuousDivergingColorPalettes } from "@framework/utils/colorP
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
 import { b64DecodeFloatArrayToFloat32 } from "@modules/_shared/base64";
+import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "@modules/_shared/layers/BaseLayer";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { QueryClient } from "@tanstack/query-core";
 
 import { Rgb, parse } from "culori";
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerStatus, LayerTopic } from "./BaseLayer";
 
 export type SeismicSliceImageOptions = {
     datapoints: number[][];
@@ -77,7 +77,7 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
     private _colorScalesParameterMap: Map<string, ColorScale> = new Map();
     private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
 
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
@@ -92,7 +92,7 @@ export class SeismicLayer extends BaseLayer<SeismicLayerSettings, SeismicLayerDa
             dateOrInterval: null,
             resolution: 1,
         };
-        super(name, defaultSettings);
+        super(name, defaultSettings, layerManager);
 
         this._defaultColorScale = new ColorScale({
             colorPalette: defaultContinuousDivergingColorPalettes[0],

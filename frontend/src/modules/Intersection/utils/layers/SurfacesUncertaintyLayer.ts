@@ -4,11 +4,11 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
 import { Vec2, normalizeVec2, point2Distance } from "@lib/utils/vec2";
+import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
@@ -48,7 +48,7 @@ function transformData(
 export class SurfacesUncertaintyLayer extends BaseLayer<SurfacesUncertaintyLayerSettings, SurfaceUncertaintyData[]> {
     private _colorSet: ColorSet;
 
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNums: [],
@@ -61,7 +61,7 @@ export class SurfacesUncertaintyLayer extends BaseLayer<SurfacesUncertaintyLayer
             extensionLength: 0,
             resolution: 1,
         };
-        super(name, defaultSettings);
+        super(name, defaultSettings, layerManager);
 
         this._colorSet = new ColorSet(defaultColorPalettes[0]);
     }

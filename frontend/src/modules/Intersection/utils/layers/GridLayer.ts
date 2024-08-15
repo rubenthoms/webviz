@@ -2,6 +2,8 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
+import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import {
     AdjustedPolylineIntersection,
@@ -11,8 +13,6 @@ import {
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
-
-import { BaseLayer, BoundingBox, LayerTopic } from "./BaseLayer";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
@@ -36,7 +36,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, AdjustedPolylineInte
     private _useCustomColorScaleBoundariesParameterMap = new Map<string, boolean>();
     private _defaultColorScale: ColorScale;
 
-    constructor(name: string) {
+    constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             gridModelName: null,
@@ -50,7 +50,7 @@ export class GridLayer extends BaseLayer<GridLayerSettings, AdjustedPolylineInte
             showMesh: false,
             extensionLength: null,
         };
-        super(name, defaultSettings);
+        super(name, defaultSettings, layerManager);
 
         this._defaultColorScale = new ColorScale({
             colorPalette: defaultContinuousSequentialColorPalettes[0],

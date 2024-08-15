@@ -2,7 +2,7 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 import { IntersectionPolylinesAtom } from "@framework/userCreatedItems/IntersectionPolylines";
-import { LayerManager } from "@modules/Intersection/utils/layers/LayerManager";
+import { LayerManager } from "@modules/_shared/layers/LayerManager";
 
 import { atom } from "jotai";
 import { queryClientAtom } from "jotai-tanstack-query";

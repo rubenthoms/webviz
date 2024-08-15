@@ -12,15 +12,14 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Switch } from "@lib/components/Switch";
 import { ColorScale } from "@lib/utils/ColorScale";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { useLayerSettings } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, GridLayerSettings } from "@modules/Intersection/utils/layers/GridLayer";
 import { ColorScaleSelector } from "@modules/_shared/components/ColorScaleSelector/colorScaleSelector";
+import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
+import { fixupSetting } from "@modules/_shared/layers/utils";
 import { isoIntervalStringToDateLabel, isoStringToDateLabel } from "@modules/_shared/utils/isoDatetimeStringFormatting";
 import { useQuery } from "@tanstack/react-query";
 
 import { cloneDeep, isEqual } from "lodash";
-
-import { fixupSetting } from "./utils";
 
 export type GridLayerSettingsComponentProps = {
     layer: GridLayer;

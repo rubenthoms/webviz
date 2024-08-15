@@ -8,6 +8,8 @@ import { QueryClient } from "@tanstack/query-core";
 import { cloneDeep, isEqual } from "lodash";
 import { v4 } from "uuid";
 
+import { LayerManager } from "./LayerManager";
+
 export enum LayerStatus {
     IDLE = "IDLE",
     LOADING = "LOADING",
@@ -22,6 +24,7 @@ export enum LayerTopic {
     DATA = "DATA",
     STATUS = "STATUS",
     VISIBILITY = "VISIBILITY",
+    SETTINGS_OVERRIDES = "SETTINGS_OVERRIDES",
 }
 
 export type BoundingBox = {
@@ -50,20 +53,47 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     private _error: StatusMessage | string | null = null;
     private _refetchRequested: boolean = false;
     private _cancellationPending: boolean = false;
+    private _layerManager: LayerManager;
 
-    constructor(name: string, settings: TSettings) {
+    constructor(name: string, settings: TSettings, layerManager: LayerManager) {
         this._id = v4();
         this._name = name;
         this._settings = settings;
         this._lastDataFetchSettings = cloneDeep(settings);
+        this._layerManager = layerManager;
     }
 
     getId(): string {
         return this._id;
     }
 
+    getLayerManager(): LayerManager {
+        return this._layerManager;
+    }
+
     getSettings(): TSettings {
-        return this._settings;
+        const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
+        const relevantOverrides = settingsOverrides.filter((setting) =>
+            Object.keys(this._settings).includes(setting.getKey())
+        );
+        const overrides: Record<string, any> = {};
+        for (const setting of relevantOverrides) {
+            overrides[setting.getKey()] = setting.getValue();
+        }
+        const settings = { ...this._settings, ...overrides };
+        return settings;
+    }
+
+    getOverridenSettingsKeys(): Partial<keyof TSettings>[] {
+        const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
+        const relevantOverrides = settingsOverrides.filter((setting) =>
+            Object.keys(this._settings).includes(setting.getKey())
+        );
+        const overrides: Partial<keyof TSettings>[] = [];
+        for (const setting of relevantOverrides) {
+            overrides.push(setting.getKey());
+        }
+        return overrides;
     }
 
     getStatus(): LayerStatus {

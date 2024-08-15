@@ -6,7 +6,7 @@ import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { SortableListGroup } from "@lib/components/SortableList";
 import { LayerGroup, LayerGroupTopic, useLayerGroupTopicValue } from "@modules/_shared/layers/LayerGroup";
 import { LayerManager } from "@modules/_shared/layers/LayerManager";
-import { Delete, Folder, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Add, Delete, Folder, Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { AddLayerDropdown } from "./addLayerDropdown";
 import { LayerComponent } from "./layerComponents";
@@ -15,6 +15,7 @@ import { LayerFactory, MakeSettingsContainerFunc } from "./layersPanel";
 export type LayerGroupComponentProps<TLayerType extends string> = {
     layerManager: LayerManager;
     group: LayerGroup;
+    icon?: React.ReactNode;
     layerFactory: LayerFactory<TLayerType>;
     layerTypeToStringMapping: Record<string, string>;
     ensembleSet: EnsembleSet;
@@ -38,7 +39,9 @@ export function LayerGroupComponent<TLayerType extends string>(
             key={props.group.getId()}
             id={props.group.getId()}
             title={<LayerGroupName group={props.group} />}
-            startAdornment={<LayerGroupStartAdornment group={props.group} />}
+            startAdornment={
+                <LayerGroupStartAdornment group={props.group} icon={props.icon ?? <Folder fontSize="inherit" />} />
+            }
             endAdornment={
                 <LayerGroundEndAdornment
                     layerManager={props.layerManager}
@@ -48,7 +51,11 @@ export function LayerGroupComponent<TLayerType extends string>(
                     layerTypeToStringMapping={props.layerTypeToStringMapping}
                 />
             }
-            contentWhenEmpty={<div className="text-sm p-1.5">No layers</div>}
+            contentWhenEmpty={
+                <div className="flex h-16 justify-center text-sm items-center gap-1">
+                    Click on <Add fontSize="inherit" /> to add a layer or drag a layer in.
+                </div>
+            }
         >
             {layers.map((layer) => (
                 <LayerComponent
@@ -67,6 +74,7 @@ export function LayerGroupComponent<TLayerType extends string>(
 
 export type LayerGroupStartAdornmentProps = {
     group: LayerGroup;
+    icon: React.ReactNode;
 };
 
 export function LayerGroupStartAdornment(props: LayerGroupStartAdornmentProps): React.ReactNode {
@@ -78,7 +86,6 @@ export function LayerGroupStartAdornment(props: LayerGroupStartAdornmentProps): 
 
     return (
         <>
-            <Folder fontSize="inherit" />
             <div
                 className="px-0.5 hover:cursor-pointer rounded hover:text-blue-800"
                 onClick={handleToggleLayerVisibility}
@@ -86,6 +93,7 @@ export function LayerGroupStartAdornment(props: LayerGroupStartAdornmentProps): 
             >
                 {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
             </div>
+            {props.icon}
         </>
     );
 }

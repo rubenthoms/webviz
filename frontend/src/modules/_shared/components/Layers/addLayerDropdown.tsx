@@ -1,6 +1,7 @@
 import React from "react";
 
 import { Menu } from "@lib/components/Menu";
+import { MenuHeading } from "@lib/components/MenuHeading";
 import { MenuItem } from "@lib/components/MenuItem";
 import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import { LayerManager } from "@modules/_shared/layers/LayerManager";
@@ -26,11 +27,12 @@ export function AddLayerDropdown<TLayerType extends string>(props: AddLayerDropd
             <MenuButton>
                 <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2 whitespace-nowrap">
                     <Add fontSize="inherit" />
-                    <span>Add layer</span>
+                    <span>Add</span>
                     <ArrowDropDown fontSize="inherit" />
                 </div>
             </MenuButton>
             <Menu anchorOrigin="bottom-end" className="text-sm p-1">
+                <MenuHeading>Layers</MenuHeading>
                 {Object.keys(props.layerTypeToStringMapping).map((layerType, index) => {
                     return (
                         <MenuItem

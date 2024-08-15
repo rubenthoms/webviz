@@ -89,6 +89,7 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
                             onAddSetting={handleAddSetting}
                         />
                     }
+                    groupIcon={<GridView fontSize="inherit" />}
                 />
             </div>
         </div>
@@ -111,14 +112,14 @@ function LayersPanelActions<TLayerType extends string, TSettingType extends stri
             <MenuButton>
                 <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
                     <Add fontSize="inherit" />
-                    <span>Add item</span>
+                    <span>Add</span>
                     <ArrowDropDown fontSize="inherit" />
                 </div>
             </MenuButton>
             <Menu anchorOrigin="bottom-end" className="text-sm p-1">
                 <MenuItem className="text-sm p-0.5 flex gap-2" onClick={props.onAddView}>
                     <GridView fontSize="inherit" className="opacity-50" />
-                    Add view
+                    View
                 </MenuItem>
                 <MenuDivider />
                 <MenuHeading>Layers</MenuHeading>

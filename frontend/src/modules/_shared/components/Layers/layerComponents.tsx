@@ -5,7 +5,7 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { SortableListItem } from "@lib/components/SortableList";
 import { BaseLayer, useIsLayerVisible, useLayerName } from "@modules/_shared/layers/BaseLayer";
-import { Delete, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Delete, ExpandLess, ExpandMore, Settings, Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { MakeSettingsContainerFunc } from "./layersPanel";
 
@@ -19,6 +19,12 @@ export type LayerComponentProps = {
 };
 
 export function LayerComponent(props: LayerComponentProps): React.ReactNode {
+    const [isContentVisible, setIsContentVisible] = React.useState<boolean>(true);
+
+    function handleToggleContentVisibility() {
+        setIsContentVisible(!isContentVisible);
+    }
+
     return (
         <SortableListItem
             key={props.layer.getId()}
@@ -26,21 +32,33 @@ export function LayerComponent(props: LayerComponentProps): React.ReactNode {
             title={<LayerName layer={props.layer} />}
             startAdornment={<LayerStartAdornment layer={props.layer} />}
             endAdornment={
-                <div
-                    className="hover:cursor-pointer rounded hover:text-red-800"
-                    onClick={() => props.onRemove(props.layer.getId())}
-                    title="Remove layer"
-                >
-                    <Delete fontSize="inherit" />
-                </div>
+                <>
+                    <div
+                        className="hover:cursor-pointer rounded hover:text-blue-800"
+                        onClick={handleToggleContentVisibility}
+                        title={isContentVisible ? "Hide settings" : "Show settings"}
+                    >
+                        <Settings fontSize="inherit" />
+                        {isContentVisible ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
+                    </div>
+                    <div
+                        className="hover:cursor-pointer rounded hover:text-red-800"
+                        onClick={() => props.onRemove(props.layer.getId())}
+                        title="Remove layer"
+                    >
+                        <Delete fontSize="inherit" />
+                    </div>
+                </>
             }
         >
-            {props.makeSettingsContainerFunc(
-                props.layer,
-                props.ensembleSet,
-                props.workbenchSession,
-                props.workbenchSettings
-            )}
+            <div className={isContentVisible ? "" : "hidden"}>
+                {props.makeSettingsContainerFunc(
+                    props.layer,
+                    props.ensembleSet,
+                    props.workbenchSession,
+                    props.workbenchSettings
+                )}
+            </div>
         </SortableListItem>
     );
 }

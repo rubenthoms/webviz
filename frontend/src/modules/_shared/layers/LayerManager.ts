@@ -88,6 +88,15 @@ export class LayerManager {
         });
     }
 
+    insertSetting(setting: BaseSetting<any>, position: number): void {
+        this._items = [...this._items.slice(0, position), setting, ...this._items.slice(position)];
+        this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        setting.subscribe(SettingTopic.VALUE, () => {
+            this._settingsIteration++;
+            this.notifySubscribers(LayerManagerTopic.SETTINGS_CHANGED);
+        });
+    }
+
     getSettings(): BaseSetting<any>[] {
         return this._items.filter((item) => item instanceof BaseSetting) as BaseSetting<any>[];
     }

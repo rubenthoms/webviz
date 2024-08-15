@@ -46,6 +46,7 @@ export type LayersPanelProps<TLayerType extends string> = {
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
     actions?: React.ReactNode;
+    groupIcon?: React.ReactNode;
 };
 
 export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<TLayerType>): React.ReactNode {
@@ -87,28 +88,28 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
             return;
         }
 
-        let isLayer: boolean = true;
+        let isLayerOrSetting: boolean = true;
         let item: BaseLayer<any, any> | LayerGroup | undefined = origin.getLayer(itemId);
 
         if (!item && origin instanceof LayerManager) {
             item = origin.getGroup(itemId);
-            isLayer = false;
+            isLayerOrSetting = false;
         }
 
         if (!item) {
             return;
         }
 
-        if (isLayer) {
-            origin.removeLayer(itemId);
+        if (isLayerOrSetting) {
+            if (item instanceof BaseLayer) {
+                origin.removeLayer(itemId);
+                destination.insertLayer(item, position);
+            }
         } else if (origin instanceof LayerManager) {
             origin.removeGroup(itemId);
-        }
-
-        if (isLayer && item instanceof BaseLayer) {
-            destination.insertLayer(item, position);
-        } else if (destination instanceof LayerManager && item instanceof LayerGroup) {
-            destination.insertGroup(item, position);
+            if (destination instanceof LayerManager && item instanceof LayerGroup) {
+                destination.insertGroup(item, position);
+            }
         }
     }
 
@@ -132,6 +133,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                 key={group.getId()}
                 layerManager={props.layerManager}
                 group={group}
+                icon={props.groupIcon}
                 layerFactory={props.layerFactory}
                 layerTypeToStringMapping={props.layerTypeToStringMapping}
                 onRemove={handleRemoveGroup}

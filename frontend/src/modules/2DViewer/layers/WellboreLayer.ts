@@ -1,3 +1,4 @@
+import { WellboreTrajectory_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
@@ -16,27 +17,19 @@ const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export type WellboreLayerSettings = {
+    wellboreUuids: string[];
     ensembleIdent: EnsembleIdent | null;
-    realizationNum: number | null;
-    surfaceNames: string[];
-    attribute: string | null;
+    fieldIdentifier: string | null;
 };
 
-export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceDataFloat_trans | SurfaceDataPng)[]> {
+export class WellboreLayer extends BaseLayer<WellboreLayerSettings, WellboreTrajectory_api[]> {
     private _colorSet: ColorSet;
 
     constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
+            wellboreUuids: [],
             ensembleIdent: null,
-            realizationNum: null,
-            polyline: {
-                polylineUtmXy: [],
-                actualSectionLengths: [],
-            },
-            surfaceNames: [],
-            attribute: null,
-            extensionLength: 0,
-            resolution: 1,
+            fieldIdentifier: null,
         };
         super(name, defaultSettings, layerManager);
 
@@ -57,10 +50,23 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
             return;
         }
 
-        const minX = Number.MAX_VALUE;
-        const maxX = Number.MIN_VALUE;
-        const minY = Number.MAX_VALUE;
-        const maxY = Number.MIN_VALUE;
+        let minX = Number.MAX_VALUE;
+        let maxX = Number.MIN_VALUE;
+        let minY = Number.MAX_VALUE;
+        let maxY = Number.MIN_VALUE;
+
+        this._data.forEach((trajectory) => {
+            minX = Math.min(minX, ...trajectory.eastingArr);
+            maxX = Math.max(maxX, ...trajectory.eastingArr);
+            minY = Math.min(minY, ...trajectory.northingArr);
+            maxY = Math.max(maxY, ...trajectory.northingArr);
+        });
+
+        super.setBoundingBox({
+            x: [minX, maxX],
+            y: [minY, maxY],
+            z: [0, 0],
+        });
 
         super.setBoundingBox({
             x: [minX, maxX],
@@ -80,65 +86,31 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, (SurfaceData
     }
 
     protected areSettingsValid(): boolean {
-        return (
-            this._settings.ensembleIdent !== null &&
-            this._settings.attribute !== null &&
-            this._settings.surfaceNames.length > 0 &&
-            this._settings.realizationNum !== null
-        );
+        return true;
     }
 
     protected doSettingsChangesRequireDataRefetch(
         prevSettings: WellboreLayerSettings,
         newSettings: WellboreLayerSettings
     ): boolean {
-        return (
-            !isEqual(prevSettings.surfaceNames, newSettings.surfaceNames) ||
-            prevSettings.attribute !== newSettings.attribute ||
-            prevSettings.realizationNum !== newSettings.realizationNum ||
-            !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent)
-        );
+        return !isEqual(prevSettings.wellboreUuids, newSettings.wellboreUuids);
     }
 
-    protected async fetchData(queryClient: QueryClient): Promise<(SurfaceDataFloat_trans | SurfaceDataPng)[]> {
+    protected async fetchData(queryClient: QueryClient): Promise<WellboreTrajectory_api[]> {
         const promises: Promise<SurfaceDataFloat_trans | SurfaceDataPng>[] = [];
 
         super.setBoundingBox(null);
 
-        for (const surfaceName of this._settings.surfaceNames) {
-            let surfaceAddress: FullSurfaceAddress | null = null;
-            if (this._settings.ensembleIdent && surfaceName && this._settings.attribute) {
-                const addrBuilder = new SurfaceAddressBuilder();
-                addrBuilder.withEnsembleIdent(this._settings.ensembleIdent);
-                addrBuilder.withName(surfaceName);
-                addrBuilder.withAttribute(this._settings.attribute);
-                surfaceAddress = addrBuilder.buildRealizationAddress();
-            }
+        const queryKey = ["getWellTrajectories", this._settings.fieldIdentifier];
+        this.registerQueryKey(queryKey);
+        const promise = queryClient.fetchQuery({
+            queryKey,
+            queryFn: () => apiService.well.getFieldWellTrajectories(this._settings.fieldIdentifier ?? ""),
+            staleTime: STALE_TIME,
+            gcTime: CACHE_TIME,
+        });
 
-            const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;
-
-            if (surfAddrStr) {
-                const surfAddrType = peekSurfaceAddressType(surfAddrStr);
-                if (surfAddrType !== "OBS" && surfAddrType !== "REAL" && surfAddrType !== "STAT") {
-                    throw new Error("Invalid surface address type for surface data query");
-                }
-            }
-            const queryKey = ["getSurfaceData", surfAddrStr, null, "float"];
-
-            this.registerQueryKey(queryKey);
-
-            const promise = queryClient
-                .fetchQuery({
-                    queryKey,
-                    queryFn: () => apiService.surface.getSurfaceData(surfAddrStr ?? "", "float", null),
-                    staleTime: STALE_TIME,
-                    gcTime: CACHE_TIME,
-                })
-                .then((data) => transformSurfaceData(data));
-            promises.push(promise);
-        }
-
-        return Promise.all(promises);
+        return promise;
     }
 }
 

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { SurfaceAttributeType_api, SurfaceMetaSet_api } from "@api";
+import { SurfaceAttributeType_api, SurfaceMetaSet_api, WellboreHeader_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
@@ -12,6 +12,7 @@ import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { Select } from "@lib/components/Select";
 import { WellboreLayer } from "@modules/2DViewer/layers/WellboreLayer";
 import { WellboreLayerSettings } from "@modules/2DViewer/layers/WellboreLayer";
+import { WellboreSelector } from "@modules/3DViewer/settings/components/wellboreSelector";
 import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
@@ -36,13 +37,13 @@ export function WellboreLayerSettingsComponent(props: WellboreLayerSettingsCompo
         setNewSettings(settings);
     }
 
-    const ensembleFilterFunc = useEnsembleRealizationFilterFunc(props.workbenchSession);
-
-    const surfaceDirectoryQuery = useRealizationSurfacesMetadataQuery(
-        newSettings.ensembleIdent?.getCaseUuid(),
-        newSettings.ensembleIdent?.getEnsembleName()
-    );
-
+    let fieldIdentifier: string | null = null;
+    if (newSettings.ensembleIdent) {
+        const ensemble = props.ensembleSet.findEnsemble(newSettings.ensembleIdent);
+        if (ensemble) {
+            fieldIdentifier = ensemble.getFieldIdentifier();
+        }
+    }
     const fixupEnsembleIdent = fixupSetting(
         "ensembleIdent",
         props.ensembleSet.getEnsembleArr().map((el) => el.getIdent()),
@@ -52,50 +53,19 @@ export function WellboreLayerSettingsComponent(props: WellboreLayerSettingsCompo
         setNewSettings((prev) => ({ ...prev, ensembleIdent: fixupEnsembleIdent }));
     }
 
-    if (fixupEnsembleIdent) {
-        const fixupRealizationNum = fixupSetting("realizationNum", ensembleFilterFunc(fixupEnsembleIdent), newSettings);
-        if (!isEqual(fixupRealizationNum, newSettings.realizationNum)) {
-            setNewSettings((prev) => ({ ...prev, realizationNum: fixupRealizationNum }));
-        }
+    if (fieldIdentifier !== newSettings.fieldIdentifier) {
+        setNewSettings((prev) => ({ ...prev, fieldIdentifier: fieldIdentifier }));
     }
+    const drilledWellboreHeadersDirectoryQuery = useDrilledWellboreHeadersQuery(fieldIdentifier);
 
-    const availableAttributes: string[] = [];
-    const availableSurfaceNames: string[] = [];
+    const availableWellboreHeaders: WellboreHeader_api[] = drilledWellboreHeadersDirectoryQuery.data
+        ? drilledWellboreHeadersDirectoryQuery.data
+        : [];
+    const availableUuids: string[] = availableWellboreHeaders.map((header) => header.wellboreUuid);
 
-    if (surfaceDirectoryQuery.data) {
-        availableAttributes.push(
-            ...Array.from(
-                new Set(
-                    surfaceDirectoryQuery.data.surfaces
-                        .filter((el) => el.attribute_type === SurfaceAttributeType_api.DEPTH)
-                        .map((el) => el.attribute_name)
-                )
-            )
-        );
-
-        const fixupAttribute = fixupSetting("attribute", availableAttributes, newSettings);
-        if (!isEqual(fixupAttribute, newSettings.attribute)) {
-            setNewSettings((prev) => ({ ...prev, attribute: fixupAttribute }));
-        }
-    }
-
-    if (surfaceDirectoryQuery.data && newSettings.attribute) {
-        availableSurfaceNames.push(
-            ...Array.from(
-                new Set(
-                    surfaceDirectoryQuery.data.surfaces
-                        .filter((el) => el.attribute_name === newSettings.attribute)
-                        .map((el) => el.name)
-                )
-            )
-        );
-
-        const fixupSurfaceNames = fixupSurfaceNamesSetting(newSettings.surfaceNames, availableSurfaceNames);
-        if (!isEqual(fixupSurfaceNames, newSettings.surfaceNames)) {
-            setNewSettings((prev) => ({ ...prev, surfaceNames: fixupSurfaceNames }));
-        }
-
-        props.layer.maybeRefetchData();
+    const fixupUuids = fixupWellboreUuids(availableUuids, newSettings.wellboreUuids);
+    if (!isEqual(fixupUuids, newSettings.wellboreUuids)) {
+        setNewSettings((prev) => ({ ...prev, wellboreUuids: fixupUuids }));
     }
 
     React.useEffect(
@@ -107,136 +77,50 @@ export function WellboreLayerSettingsComponent(props: WellboreLayerSettingsCompo
 
     React.useEffect(
         function maybeRefetchData() {
-            props.layer.setIsSuspended(surfaceDirectoryQuery.isFetching);
-            if (!surfaceDirectoryQuery.isFetching) {
+            props.layer.setIsSuspended(drilledWellboreHeadersDirectoryQuery.isFetching);
+            if (!drilledWellboreHeadersDirectoryQuery.isFetching) {
                 props.layer.maybeRefetchData();
             }
         },
-        [surfaceDirectoryQuery.isFetching, props.layer, newSettings]
+        [drilledWellboreHeadersDirectoryQuery.isFetching, props.layer, newSettings]
     );
 
-    function handleEnsembleChange(ensembleIdent: EnsembleIdent | null) {
-        setNewSettings((prev) => ({ ...prev, ensembleIdent }));
-    }
-
-    function handleRealizationChange(realizationNum: string) {
-        setNewSettings((prev) => ({ ...prev, realizationNum: parseInt(realizationNum) }));
-    }
-
-    function handleAttributeChange(attribute: string) {
-        setNewSettings((prev) => ({ ...prev, attribute }));
-    }
-
-    function handleSurfaceNamesChange(surfaceNames: string[]) {
-        setNewSettings((prev) => ({ ...prev, surfaceNames }));
-    }
-
-    const availableRealizations: number[] = [];
-    if (fixupEnsembleIdent) {
-        availableRealizations.push(...ensembleFilterFunc(fixupEnsembleIdent));
+    function handleUiidsChange(wellboreUuids: string[]) {
+        setNewSettings((prev) => ({ ...prev, wellboreUuids }));
     }
 
     return (
-        <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
-            <div className="table-row">
-                <div className="table-cell w-24 align-middle">Ensemble</div>
-                <div className="table-cell">
-                    <EnsembleDropdown
-                        value={props.layer.getSettings().ensembleIdent}
-                        ensembleSet={props.ensembleSet}
-                        onChange={handleEnsembleChange}
-                        debounceTimeMs={600}
-                    />
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-middle">Realization</div>
-                <div className="table-cell">
-                    <Dropdown
-                        options={makeRealizationOptions(availableRealizations)}
-                        value={newSettings.realizationNum?.toString() ?? undefined}
-                        onChange={handleRealizationChange}
-                        showArrows
-                        debounceTimeMs={600}
-                    />
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-middle">Attribute</div>
-                <div className="table-cell">
-                    <PendingWrapper
-                        isPending={surfaceDirectoryQuery.isFetching}
-                        errorMessage={surfaceDirectoryQuery.error?.message}
-                    >
-                        <Dropdown
-                            options={makeAttributeOptions(availableAttributes)}
-                            value={newSettings.attribute ?? undefined}
-                            onChange={handleAttributeChange}
-                            showArrows
-                            debounceTimeMs={600}
-                        />
-                    </PendingWrapper>
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-top">Surface names</div>
-                <div className="table-cell max-w-0">
-                    <PendingWrapper
-                        isPending={surfaceDirectoryQuery.isFetching}
-                        errorMessage={surfaceDirectoryQuery.error?.message}
-                    >
-                        <Select
-                            options={makeSurfaceNameOptions(availableSurfaceNames)}
-                            value={newSettings.surfaceNames ?? undefined}
-                            onChange={handleSurfaceNamesChange}
-                            size={5}
-                            debounceTimeMs={600}
-                        />
-                    </PendingWrapper>
-                </div>
-            </div>
-        </div>
+        <WellboreSelector
+            wellboreHeaders={availableWellboreHeaders}
+            selectedWellboreUuids={newSettings.wellboreUuids}
+            onSelectedWellboreUuidsChange={handleUiidsChange}
+        />
     );
-}
-
-function makeRealizationOptions(realizations: readonly number[]): DropdownOption[] {
-    return realizations.map((realization) => ({ label: realization.toString(), value: realization.toString() }));
-}
-
-function makeAttributeOptions(attributes: string[]): DropdownOption[] {
-    return attributes.map((attr) => ({ label: attr, value: attr }));
-}
-
-function makeSurfaceNameOptions(surfaceNames: string[]): DropdownOption[] {
-    return surfaceNames.map((surfaceName) => ({ label: surfaceName, value: surfaceName }));
 }
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-export function useRealizationSurfacesMetadataQuery(
-    caseUuid: string | undefined,
-    ensembleName: string | undefined
-): UseQueryResult<SurfaceMetaSet_api> {
+export function useDrilledWellboreHeadersQuery(fieldIdentifier: string | null): UseQueryResult<WellboreHeader_api[]> {
     return useQuery({
-        queryKey: ["getRealizationSurfacesMetadata", caseUuid, ensembleName],
-        queryFn: () => apiService.surface.getRealizationSurfacesMetadata(caseUuid ?? "", ensembleName ?? ""),
+        queryKey: ["getDrilledWellboreHeaders", fieldIdentifier],
+        queryFn: () => apiService.well.getDrilledWellboreHeaders(fieldIdentifier || ""),
         staleTime: STALE_TIME,
         gcTime: CACHE_TIME,
-        enabled: Boolean(caseUuid && ensembleName),
+        enabled: Boolean(fieldIdentifier),
     });
 }
 
-function fixupSurfaceNamesSetting(currentSurfaceNames: string[], validSurfaceNames: string[]): string[] {
-    if (validSurfaceNames.length === 0) {
-        return currentSurfaceNames;
+function fixupWellboreUuids(currentUuids: string[], validUuids: string[]): string[] {
+    if (validUuids.length === 0) {
+        return [];
     }
 
-    let adjustedSurfaceNames = currentSurfaceNames.filter((el) => validSurfaceNames.includes(el));
+    let adjustedUuids = currentUuids.filter((el) => validUuids.includes(el));
 
-    if (adjustedSurfaceNames.length === 0) {
-        adjustedSurfaceNames = [validSurfaceNames[0]];
+    if (adjustedUuids.length === 0) {
+        adjustedUuids = [validUuids[0]];
     }
 
-    return adjustedSurfaceNames;
+    return adjustedUuids;
 }

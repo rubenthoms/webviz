@@ -9,8 +9,8 @@ export class LayerFactory {
         switch (layerType) {
             case LayerType.SURFACE:
                 return new SurfaceLayer("Surface", layerManager);
-            case LayerType.WELLBORE:
-                return new WellboreLayer("Wellbore", layerManager);
+            case LayerType.WELLBORE_SMDA:
+                return new WellboreLayer("Wells (Drilled)", layerManager);
             default:
                 throw new Error("Unknown layer type");
         }

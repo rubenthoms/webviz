@@ -1,9 +1,9 @@
 export enum LayerType {
     SURFACE = "surface",
-    WELLBORE = "wellbore",
+    WELLBORE_SMDA = "wellbore_drilled",
 }
 
 export const LAYER_TYPE_TO_STRING_MAPPING = {
     [LayerType.SURFACE]: "Surface",
-    [LayerType.WELLBORE]: "Wellbore",
+    [LayerType.WELLBORE_SMDA]: "Wells (Drilled)",
 };

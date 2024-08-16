@@ -1,3 +1,4 @@
+import { SurfaceStatisticFunction_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
@@ -12,28 +13,34 @@ import { QueryClient } from "@tanstack/query-core";
 import { isEqual } from "lodash";
 import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
+import { EnsembleStage, EnsembleStageType } from "../settings/components/ensembleStageSelect";
+
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
 export type SurfaceLayerSettings = {
     ensembleIdent: EnsembleIdent | null;
+    ensembleStage: EnsembleStageType;
+    statisticFunction: SurfaceStatisticFunction_api;
     realizationNum: number | null;
-    surfaceNames: string[];
+    surfaceName: string | null;
     attribute: string | null;
 };
 
-export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, (SurfaceDataFloat_trans | SurfaceDataPng)[]> {
+export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceDataFloat_trans | SurfaceDataPng> {
     private _colorSet: ColorSet;
 
     constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
+            statisticFunction: SurfaceStatisticFunction_api.MEAN,
             polyline: {
                 polylineUtmXy: [],
                 actualSectionLengths: [],
             },
-            surfaceNames: [],
+            surfaceName: null,
+            ensembleStage: EnsembleStageType.Realization,
             attribute: null,
             extensionLength: 0,
             resolution: 1,
@@ -83,7 +90,7 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, (SurfaceDataFl
         return (
             this._settings.ensembleIdent !== null &&
             this._settings.attribute !== null &&
-            this._settings.surfaceNames.length > 0 &&
+            this._settings.surfaceName !== null &&
             this._settings.realizationNum !== null
         );
     }
@@ -93,52 +100,61 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, (SurfaceDataFl
         newSettings: SurfaceLayerSettings
     ): boolean {
         return (
-            !isEqual(prevSettings.surfaceNames, newSettings.surfaceNames) ||
+            prevSettings.surfaceName !== newSettings.surfaceName ||
             prevSettings.attribute !== newSettings.attribute ||
             prevSettings.realizationNum !== newSettings.realizationNum ||
+            prevSettings.ensembleStage !== newSettings.ensembleStage ||
+            prevSettings.statisticFunction !== newSettings.statisticFunction ||
             !isEqual(prevSettings.ensembleIdent, newSettings.ensembleIdent)
         );
     }
 
-    protected async fetchData(queryClient: QueryClient): Promise<(SurfaceDataFloat_trans | SurfaceDataPng)[]> {
-        const promises: Promise<SurfaceDataFloat_trans | SurfaceDataPng>[] = [];
-
+    protected async fetchData(queryClient: QueryClient): Promise<SurfaceDataFloat_trans | SurfaceDataPng> {
         super.setBoundingBox(null);
 
-        for (const surfaceName of this._settings.surfaceNames) {
-            let surfaceAddress: FullSurfaceAddress | null = null;
+        let surfaceAddress: FullSurfaceAddress | null = null;
+        const addrBuilder = new SurfaceAddressBuilder();
+
+        if (this._settings.ensembleIdent && this._settings.surfaceName && this._settings.attribute) {
+            addrBuilder.withEnsembleIdent(this._settings.ensembleIdent);
+            addrBuilder.withName(this._settings.surfaceName);
+            addrBuilder.withAttribute(this._settings.attribute);
+
             if (
-                this._settings.ensembleIdent &&
-                surfaceName &&
-                this._settings.attribute &&
+                this._settings.ensembleStage === EnsembleStageType.Realization &&
                 this._settings.realizationNum !== null
             ) {
-                const addrBuilder = new SurfaceAddressBuilder();
-                addrBuilder.withEnsembleIdent(this._settings.ensembleIdent);
-                addrBuilder.withName(surfaceName);
-                addrBuilder.withAttribute(this._settings.attribute);
                 addrBuilder.withRealization(this._settings.realizationNum);
                 surfaceAddress = addrBuilder.buildRealizationAddress();
             }
-
-            const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;
-
-            const queryKey = ["getSurfaceData", surfAddrStr, null, "float"];
-
-            this.registerQueryKey(queryKey);
-
-            const promise = queryClient
-                .fetchQuery({
-                    queryKey,
-                    queryFn: () => apiService.surface.getSurfaceData(surfAddrStr ?? "", "float", null),
-                    staleTime: STALE_TIME,
-                    gcTime: CACHE_TIME,
-                })
-                .then((data) => transformSurfaceData(data));
-            promises.push(promise);
+            if (this._settings.ensembleStage === EnsembleStageType.Statistics && this._settings.statisticFunction) {
+                addrBuilder.withStatisticFunction(this._settings.statisticFunction);
+                // TODO: Add realization filter
+                surfaceAddress = addrBuilder.buildStatisticalAddress();
+            }
+            if (this._settings.ensembleStage === EnsembleStageType.Observation) {
+                // addrBuilder.withRealization(this._settings.realizationNum);
+                addrBuilder.withTimeOrInterval("2021-01-01T00:00:00Z");
+                surfaceAddress = addrBuilder.buildObservedAddress();
+            }
         }
 
-        return Promise.all(promises);
+        const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;
+
+        const queryKey = ["getSurfaceData", surfAddrStr, null, "float"];
+
+        this.registerQueryKey(queryKey);
+
+        const promise = queryClient
+            .fetchQuery({
+                queryKey,
+                queryFn: () => apiService.surface.getSurfaceData(surfAddrStr ?? "", "float", null),
+                staleTime: STALE_TIME,
+                gcTime: CACHE_TIME,
+            })
+            .then((data) => transformSurfaceData(data));
+
+        return promise;
     }
 }
 

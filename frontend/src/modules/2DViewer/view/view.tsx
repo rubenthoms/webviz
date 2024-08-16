@@ -51,13 +51,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
             const data = item.getData();
             if (data) {
                 if (item instanceof SurfaceLayer) {
-                    for (const surfData of data) {
-                        if ("valuesFloat32Arr" in surfData) {
-                            const mapLayer = createMapFloatLayer(surfData, item.getId());
-                            globalLayers.push(mapLayer);
-                        }
+                    if ("valuesFloat32Arr" in data) {
+                        const mapLayer = createMapFloatLayer(data, item.getId());
+                        globalLayers.push(mapLayer);
                     }
                 }
+
                 if (item instanceof WellboreLayer) {
                     const uuids = item.getSettings().wellboreUuids;
                     const trajectories = data.filter((wellTrajectory: WellboreTrajectory_api) =>
@@ -85,13 +84,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 const data = layer.getData();
                 if (data) {
                     if (layer instanceof SurfaceLayer) {
-                        for (const surfData of data) {
-                            if ("valuesFloat32Arr" in surfData) {
-                                const mapLayer = createMapFloatLayer(surfData, layer.getId());
-                                groupLayers.push(mapLayer);
-                            }
+                        if ("valuesFloat32Arr" in data) {
+                            const mapLayer = createMapFloatLayer(data, layer.getId());
+                            groupLayers.push(mapLayer);
                         }
                     }
+
                     if (layer instanceof WellboreLayer) {
                         const uuids = layer.getSettings().wellboreUuids;
 
@@ -156,7 +154,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         viewports: viewports,
         showLabel: true,
     };
-
+    console.log(views);
     return (
         <div className="relative w-full h-full flex flex-col">
             <SubsurfaceViewer
@@ -181,6 +179,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
 
 function createMapFloatLayer(layerData: SurfaceDataFloat_trans, id: string): MapLayer {
     return new MapLayer({
+        id: id,
         meshData: layerData.valuesFloat32Arr,
         typedArraySupport: true,
         frame: {

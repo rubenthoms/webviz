@@ -19,6 +19,8 @@ import { cloneDeep, isEqual } from "lodash";
 
 import { fixupSetting } from "./utils";
 
+import { EnsembleStage, EnsembleStageSelect, EnsembleStageType } from "../ensembleStageSelect";
+
 export type SurfaceLayerSettingsComponentProps = {
     layer: SurfaceLayer;
     ensembleSet: EnsembleSet;
@@ -91,10 +93,9 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
                 )
             )
         );
-
-        const fixupSurfaceNames = fixupSurfaceNamesSetting(newSettings.surfaceNames, availableSurfaceNames);
-        if (!isEqual(fixupSurfaceNames, newSettings.surfaceNames)) {
-            setNewSettings((prev) => ({ ...prev, surfaceNames: fixupSurfaceNames }));
+        const fixupSurfaceName = fixupSetting("surfaceName", availableSurfaceNames, newSettings);
+        if (!isEqual(fixupSurfaceName, newSettings.surfaceName)) {
+            setNewSettings((prev) => ({ ...prev, surfaceName: fixupSurfaceName }));
         }
 
         props.layer.maybeRefetchData();
@@ -129,10 +130,32 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
         setNewSettings((prev) => ({ ...prev, attribute }));
     }
 
-    function handleSurfaceNamesChange(surfaceNames: string[]) {
-        setNewSettings((prev) => ({ ...prev, surfaceNames }));
+    function handleSurfaceNameChange(surfaceName: string) {
+        setNewSettings((prev) => ({ ...prev, surfaceName }));
     }
-
+    function handleEnsembleStageChange(ensembleStage: EnsembleStage) {
+        if (ensembleStage.ensembleStage === EnsembleStageType.Statistics) {
+            setNewSettings((prev) => ({
+                ...prev,
+                ensembleStage: ensembleStage.ensembleStage,
+                statisticFunction: ensembleStage.statisticFunction,
+            }));
+        }
+        if (ensembleStage.ensembleStage === EnsembleStageType.Realization) {
+            setNewSettings((prev) => ({
+                ...prev,
+                ensembleStage: ensembleStage.ensembleStage,
+                realizationNum: ensembleStage.realizationNum,
+            }));
+        }
+        if (ensembleStage.ensembleStage === EnsembleStageType.Observation) {
+            setNewSettings((prev) => ({
+                ...prev,
+                ensembleStage: ensembleStage.ensembleStage,
+                realizationNum: ensembleStage.realizationNum,
+            }));
+        }
+    }
     const availableRealizations: number[] = [];
     if (fixupEnsembleIdent) {
         availableRealizations.push(...ensembleFilterFunc(fixupEnsembleIdent));
@@ -152,18 +175,24 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
                     />
                 </div>
             </div>
+
             <div className="table-row">
-                <div className="table-cell align-middle">Realization</div>
+                <div className="table-cell align-middle">Stage</div>
                 <div className="table-cell">
-                    <Dropdown
-                        options={makeRealizationOptions(availableRealizations)}
-                        value={newSettings.realizationNum?.toString() ?? undefined}
-                        onChange={handleRealizationChange}
-                        showArrows
-                        debounceTimeMs={600}
+                    <EnsembleStageSelect
+                        ensemble={
+                            newSettings.ensembleIdent ? props.ensembleSet.findEnsemble(newSettings.ensembleIdent) : null
+                        }
+                        stageType={newSettings.ensembleStage}
+                        statisticFunction={newSettings.statisticFunction}
+                        availableRealizationNums={availableRealizations}
+                        disableRealizationPicker={false}
+                        realizationNum={newSettings.realizationNum}
+                        onChange={handleEnsembleStageChange}
                     />
                 </div>
             </div>
+
             <div className="table-row">
                 <div className="table-cell align-middle">Attribute</div>
                 <div className="table-cell">
@@ -182,17 +211,18 @@ export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsCompone
                 </div>
             </div>
             <div className="table-row">
-                <div className="table-cell align-top">Surface names</div>
+                <div className="table-cell align-top">Surface name</div>
                 <div className="table-cell max-w-0">
                     <PendingWrapper
                         isPending={surfaceDirectoryQuery.isFetching}
                         errorMessage={surfaceDirectoryQuery.error?.message}
                     >
-                        <Select
+                        {" "}
+                        <Dropdown
                             options={makeSurfaceNameOptions(availableSurfaceNames)}
-                            value={newSettings.surfaceNames ?? undefined}
-                            onChange={handleSurfaceNamesChange}
-                            size={5}
+                            value={newSettings.surfaceName ?? undefined}
+                            onChange={handleSurfaceNameChange}
+                            showArrows
                             debounceTimeMs={600}
                         />
                     </PendingWrapper>

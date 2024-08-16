@@ -15,6 +15,9 @@ import { ViewportType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import { Axes2DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
+import { Rgb, parse } from "culori";
+
+import { FaultPolygonLayer } from "../layers/FaultPolygonLayer";
 import { PolygonLayer } from "../layers/PolygonLayer";
 import { SurfaceLayer } from "../layers/SurfaceLayer";
 import { WellboreLayer } from "../layers/WellboreLayer";
@@ -61,10 +64,15 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                         uuids.includes(wellTrajectory.wellboreUuid)
                     );
                     const WellsLayer = createWellsLayer(trajectories, item.getId());
+                    globalLayers.push(WellsLayer);
                 }
-                if (item instanceof PolygonLayer) {
+                if (item instanceof FaultPolygonLayer) {
                     const faultPolygonLayer = createFaultPolygonsLayer(data, item.getId());
                     globalLayers.push(faultPolygonLayer);
+                }
+                if (item instanceof PolygonLayer) {
+                    const polygonLayer = createPolygonsLayer(data, item.getId(), item.getSettings().color);
+                    globalLayers.push(polygonLayer);
                 }
             }
         } else if (item instanceof LayerGroup) {
@@ -94,9 +102,13 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                         groupLayers.push(WellsLayer);
                     }
 
-                    if (layer instanceof PolygonLayer) {
+                    if (layer instanceof FaultPolygonLayer) {
                         const faultPolygonLayer = createFaultPolygonsLayer(data, layer.getId());
                         groupLayers.push(faultPolygonLayer);
+                    }
+                    if (layer instanceof PolygonLayer) {
+                        const polygonLayer = createPolygonsLayer(data, layer.getId(), layer.getSettings().color);
+                        groupLayers.push(polygonLayer);
                     }
                 }
             }
@@ -114,6 +126,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         viewports.push({
             id: group,
             name: group,
+            isSync: true,
             layerIds: [
                 ...layers.map((layer) => (layer as unknown as Layer).id),
                 ...globalLayers.map((layer) => layer.id),
@@ -182,6 +195,10 @@ function createMapFloatLayer(layerData: SurfaceDataFloat_trans, id: string): Map
         material: true,
         smoothShading: true,
         colorMapName: "Physics",
+        parameters: {
+            depthTest: false,
+        },
+        depthTest: false,
     });
 }
 
@@ -215,7 +232,7 @@ function createWellsLayer(wellbores: WellboreTrajectory_api[], id: string): Well
         wellNameSize: 14,
         wellNameColor: [0, 0, 0, 255],
         selectedWell: "@@#editedData.selectedWells", // used to get data from deckgl layer
-        depthTest: true,
+        depthTest: false,
         ZIncreasingDownwards: true,
         simplifiedRendering: false,
     });
@@ -237,10 +254,38 @@ function createFaultPolygonsLayer(polygonsData: PolygonData_api[], id: string): 
         parameters: {
             depthTest: false,
         },
+        depthTest: false,
         pickable: true,
     });
 }
-
+function createPolygonsLayer(polygonsData: PolygonData_api[], id: string, hexColor: string): GeoJsonLayer {
+    const features: Record<string, unknown>[] = polygonsData.map((polygon) => {
+        return surfacePolygonsToGeojson(polygon);
+    });
+    const data: Record<string, unknown> = {
+        type: "FeatureCollection",
+        unit: "m",
+        features: features,
+    };
+    const rgbColor = parse(hexColor) as Rgb;
+    let rgbArr: [number, number, number] | undefined;
+    if (rgbColor && "r" in rgbColor && "g" in rgbColor && "b" in rgbColor) {
+        rgbArr = [rgbColor.r * 255, rgbColor.g * 255, rgbColor.b * 255];
+    }
+    return new GeoJsonLayer({
+        id: id,
+        data: data,
+        opacity: 1,
+        getLineWidth: 40,
+        getLineColor: rgbArr,
+        filled: false,
+        parameters: {
+            depthTest: false,
+        },
+        depthTest: false,
+        pickable: true,
+    });
+}
 function surfacePolygonsToGeojson(surfacePolygon: PolygonData_api): Record<string, unknown> {
     const data: Record<string, unknown> = {
         type: "Feature",

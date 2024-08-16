@@ -21,10 +21,12 @@ import { useAtomValue, useSetAtom } from "jotai";
 
 import { userSelectedFieldIdentifierAtom } from "./atoms/baseAtoms";
 import { filteredEnsembleSetAtom, layerManagerAtom, selectedFieldIdentifierAtom } from "./atoms/derivedAtoms";
+import { FaultPolygonLayerSettingsComponent } from "./components/layerSettings/faultPolygonLayer";
 import { PolygonLayerSettingsComponent } from "./components/layerSettings/polygonLayer";
 import { SurfaceLayerSettingsComponent } from "./components/layerSettings/surfaceLayer";
 import { WellboreLayerSettingsComponent } from "./components/layerSettings/wellboreLayer";
 
+import { isFaultPolygonLayer } from "../layers/FaultPolygonLayer";
 import { LayerFactory } from "../layers/LayerFactory";
 import { isPolygonLayer } from "../layers/PolygonLayer";
 import { isSurfaceLayer } from "../layers/SurfaceLayer";
@@ -171,6 +173,16 @@ function makeSettingsContainer(
     if (isWellboreLayer(layer)) {
         return (
             <WellboreLayerSettingsComponent
+                ensembleSet={ensembleSet}
+                workbenchSession={workbenchSession}
+                workbenchSettings={workbenchSettings}
+                layer={layer}
+            />
+        );
+    }
+    if (isFaultPolygonLayer(layer)) {
+        return (
+            <FaultPolygonLayerSettingsComponent
                 ensembleSet={ensembleSet}
                 workbenchSession={workbenchSession}
                 workbenchSettings={workbenchSettings}

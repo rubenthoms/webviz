@@ -7,10 +7,9 @@ import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession, useEnsembleRealizationFilterFunc } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
-import { ColorSelect } from "@lib/components/ColorSelect";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { PolygonLayer, PolygonLayerSettings } from "@modules/2DViewer/layers/PolygonLayer";
+import { FaultPolygonLayer, FaultPolygonLayerSettings } from "@modules/2DViewer/layers/FaultPolygonLayer";
 import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
@@ -19,19 +18,19 @@ import { cloneDeep, isEqual } from "lodash";
 
 import { fixupSetting } from "./utils";
 
-export type PolygonLayerSettingsComponentProps = {
-    layer: PolygonLayer;
+export type FaultPolygonLayerSettingsComponentProps = {
+    layer: FaultPolygonLayer;
     ensembleSet: EnsembleSet;
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
 };
 const faultPolygonAttributeTypes = [PolygonsAttributeType_api.FAULT_LINES, PolygonsAttributeType_api.DEPTH];
 
-export function PolygonLayerSettingsComponent(props: PolygonLayerSettingsComponentProps): React.ReactNode {
+export function FaultPolygonLayerSettingsComponent(props: FaultPolygonLayerSettingsComponentProps): React.ReactNode {
     useLayerManagerTopicValue(props.layer.getLayerManager(), LayerManagerTopic.SETTINGS_CHANGED);
     const settings = useLayerSettings(props.layer);
-    const [newSettings, setNewSettings] = React.useState<PolygonLayerSettings>(cloneDeep(settings));
-    const [prevSettings, setPrevSettings] = React.useState<PolygonLayerSettings>(cloneDeep(settings));
+    const [newSettings, setNewSettings] = React.useState<FaultPolygonLayerSettings>(cloneDeep(settings));
+    const [prevSettings, setPrevSettings] = React.useState<FaultPolygonLayerSettings>(cloneDeep(settings));
     const overridenSettingsKeys = props.layer.getOverridenSettingsKeys();
 
     if (!isEqual(settings, prevSettings)) {
@@ -70,7 +69,7 @@ export function PolygonLayerSettingsComponent(props: PolygonLayerSettingsCompone
             ...Array.from(
                 new Set(
                     usePolygonsDirectoryQuery.data
-                        .filter((el) => !faultPolygonAttributeTypes.includes(el.attribute_type))
+                        .filter((el) => faultPolygonAttributeTypes.includes(el.attribute_type))
                         .map((el) => el.attribute_name)
                 )
             )
@@ -132,9 +131,6 @@ export function PolygonLayerSettingsComponent(props: PolygonLayerSettingsCompone
 
     function handlePolygonNameChange(polygonName: string) {
         setNewSettings((prev) => ({ ...prev, polygonName }));
-    }
-    function handleColorChange(color: string) {
-        setNewSettings((prev) => ({ ...prev, color }));
     }
 
     const availableRealizations: number[] = [];
@@ -200,12 +196,6 @@ export function PolygonLayerSettingsComponent(props: PolygonLayerSettingsCompone
                             debounceTimeMs={600}
                         />
                     </PendingWrapper>
-                </div>
-            </div>
-            <div className="table-row">
-                <div className="table-cell align-middle">Color set</div>
-                <div className="table-cell">
-                    <ColorSelect value={newSettings.color} onChange={handleColorChange} />
                 </div>
             </div>
         </div>

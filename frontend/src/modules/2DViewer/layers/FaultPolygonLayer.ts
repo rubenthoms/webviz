@@ -12,15 +12,16 @@ import { isEqual } from "lodash";
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
 
-export type PolygonLayerSettings = {
+export type FaultPolygonLayerSettings = {
     ensembleIdent: EnsembleIdent | null;
     realizationNum: number | null;
     polygonName: string | null;
     attribute: string | null;
-    color: string;
 };
 
-export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_api[]> {
+export class FaultPolygonLayer extends BaseLayer<FaultPolygonLayerSettings, PolygonData_api[]> {
+    private _colorSet: ColorSet;
+
     constructor(name: string, layerManager: LayerManager) {
         const defaultSettings = {
             ensembleIdent: null,
@@ -31,9 +32,19 @@ export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_ap
             },
             polygonName: null,
             attribute: null,
-            color: "#FF0000",
         };
         super(name, defaultSettings, layerManager);
+
+        this._colorSet = new ColorSet(defaultColorPalettes[0]);
+    }
+
+    getColorSet(): ColorSet {
+        return this._colorSet;
+    }
+
+    setColorSet(colorSet: ColorSet): void {
+        this._colorSet = colorSet;
+        this.notifySubscribers(LayerTopic.DATA);
     }
 
     private makeBoundingBox(): void {
@@ -73,8 +84,8 @@ export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_ap
     }
 
     protected doSettingsChangesRequireDataRefetch(
-        prevSettings: PolygonLayerSettings,
-        newSettings: PolygonLayerSettings
+        prevSettings: FaultPolygonLayerSettings,
+        newSettings: FaultPolygonLayerSettings
     ): boolean {
         return (
             !isEqual(prevSettings.polygonName, newSettings.polygonName) ||
@@ -113,6 +124,6 @@ export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_ap
     }
 }
 
-export function isPolygonLayer(layer: BaseLayer<any, any>): layer is PolygonLayer {
-    return layer instanceof PolygonLayer;
+export function isFaultPolygonLayer(layer: BaseLayer<any, any>): layer is FaultPolygonLayer {
+    return layer instanceof FaultPolygonLayer;
 }

@@ -154,7 +154,7 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         viewports: viewports,
         showLabel: true,
     };
-    console.log(views);
+
     return (
         <div className="relative w-full h-full flex flex-col">
             <SubsurfaceViewer

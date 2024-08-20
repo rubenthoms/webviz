@@ -90,11 +90,13 @@ export function WellboreLayerSettingsComponent(props: WellboreLayerSettingsCompo
     }
 
     return (
-        <WellboreSelector
-            wellboreHeaders={availableWellboreHeaders}
-            selectedWellboreUuids={newSettings.wellboreUuids}
-            onSelectedWellboreUuidsChange={handleUiidsChange}
-        />
+        <div className="table text-sm border-spacing-y-2 border-spacing-x-3 w-full">
+            <WellboreSelector
+                wellboreHeaders={availableWellboreHeaders}
+                selectedWellboreUuids={newSettings.wellboreUuids}
+                onSelectedWellboreUuidsChange={handleUiidsChange}
+            />
+        </div>
     );
 }
 

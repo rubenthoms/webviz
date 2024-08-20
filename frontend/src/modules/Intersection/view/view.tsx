@@ -6,7 +6,7 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { IntersectionType } from "@framework/types/intersection";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import { BaseLayer, LayerStatus, useLayersStatuses } from "@modules_shared/layers/BaseLayer";
+import { BaseLayer, LayerStatus, useLayersStatuses } from "@modules/_shared/layers/BaseLayer";
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules_shared/layers/LayerManager";
 
 import { useAtomValue } from "jotai";
@@ -17,7 +17,6 @@ import { LayersWrapper } from "./components/layersWrapper";
 import { useWellboreCasingsQuery } from "./queries/wellboreSchematicsQueries";
 
 import { Interfaces } from "../interfaces";
-import { LayerStatus, useLayersStatuses } from "../utils/layers/BaseLayer";
 import { isGridLayer } from "../utils/layers/GridLayer";
 import { isSeismicLayer } from "../utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "../utils/layers/SurfaceLayer";

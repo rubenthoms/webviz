@@ -19,14 +19,13 @@ import { makeSurfaceStatisticalFanchartFromRealizationSurface } from "@framework
 import { IntersectionType } from "@framework/types/intersection";
 import { useElementBoundingRect } from "@lib/hooks/useElementBoundingRect";
 import { Interfaces } from "@modules/Intersection/interfaces";
-import { BaseLayer, LayerStatus, useLayers } from "@modules/Intersection/utils/layers/BaseLayer";
 import { GridLayer, isGridLayer } from "@modules/Intersection/utils/layers/GridLayer";
 import { SeismicLayer, isSeismicLayer } from "@modules/Intersection/utils/layers/SeismicLayer";
 import { isSurfaceLayer } from "@modules/Intersection/utils/layers/SurfaceLayer";
 import { isSurfacesUncertaintyLayer } from "@modules/Intersection/utils/layers/SurfacesUncertaintyLayer";
 import { isWellpicksLayer } from "@modules/Intersection/utils/layers/WellpicksLayer";
+import { BaseLayer, LayerStatus, useLayers } from "@modules/_shared/layers/BaseLayer";
 import { ColorLegendsContainer } from "@modules_shared/components/ColorLegendsContainer";
-import { BaseLayer, LayerStatus, useLayers } from "@modules_shared/layers/BaseLayer";
 
 import { isEqual } from "lodash";
 

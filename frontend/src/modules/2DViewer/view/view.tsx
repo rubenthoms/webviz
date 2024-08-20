@@ -18,14 +18,13 @@ import { Axes2DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dis
 import { Rgb, parse } from "culori";
 import { isEqual } from "lodash";
 
+import { Interfaces } from "../interfaces";
 import { FaultPolygonLayer } from "../layers/FaultPolygonLayer";
 import { PolygonLayer } from "../layers/PolygonLayer";
 import { SurfaceLayer } from "../layers/SurfaceLayer";
 import { WellboreLayer } from "../layers/WellboreLayer";
-import { SettingsToViewInterface } from "../settingsToViewInterface";
-import { State } from "../state";
 
-export function View(props: ModuleViewProps<State, SettingsToViewInterface>): React.ReactNode {
+export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     const statusWriter = useViewStatusWriter(props.viewContext);
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
     const allItems = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);

@@ -19,7 +19,9 @@ export type AddLayerDropdownProps<TLayerType extends string> = {
 
 export function AddLayerDropdown<TLayerType extends string>(props: AddLayerDropdownProps<TLayerType>): React.ReactNode {
     function handleAddLayer(type: TLayerType) {
-        props.parent.prependItem(props.layerFactory.makeLayer(type, props.layerManager));
+        const layer = props.layerFactory.makeLayer(type, props.layerManager);
+        layer.setQueryClient(props.layerManager.getQueryClient());
+        props.parent.prependItem(layer);
     }
 
     return (

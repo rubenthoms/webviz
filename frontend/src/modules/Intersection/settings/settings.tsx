@@ -51,7 +51,6 @@ import { SurfacesUncertaintyLayerSettingsComponent } from "./components/layerSet
 import { WellpicksLayerSettingsComponent } from "./components/layerSettings/wellpicksLayer";
 
 import { Interfaces } from "../interfaces";
-import { State } from "../state";
 import { isGridLayer } from "../utils/layers/GridLayer";
 import { LayerFactory } from "../utils/layers/LayerFactory";
 import { isSeismicLayer } from "../utils/layers/SeismicLayer";
@@ -59,7 +58,6 @@ import { isSurfaceLayer } from "../utils/layers/SurfaceLayer";
 import { isSurfacesUncertaintyLayer } from "../utils/layers/SurfacesUncertaintyLayer";
 import { isWellpicksLayer } from "../utils/layers/WellpicksLayer";
 import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "../utils/layers/types";
-import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
 export function Settings(props: ModuleSettingsProps<Interfaces>): JSX.Element {
     const ensembleSet = useEnsembleSet(props.workbenchSession);

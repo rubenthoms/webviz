@@ -7,7 +7,11 @@ export type SettingsToViewInterface = {
     layerManager: LayerManager;
 };
 
-export const interfaceInitialization: InterfaceInitialization<SettingsToViewInterface> = {
+export type Interfaces = {
+    settingsToView: SettingsToViewInterface;
+};
+
+export const settingsToViewInterfaceInitialization: InterfaceInitialization<SettingsToViewInterface> = {
     layerManager: (get) => {
         return get(layerManagerAtom);
     },

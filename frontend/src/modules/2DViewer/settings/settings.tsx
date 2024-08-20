@@ -27,16 +27,15 @@ import { PolygonLayerSettingsComponent } from "./components/layerSettings/polygo
 import { SurfaceLayerSettingsComponent } from "./components/layerSettings/surfaceLayer";
 import { WellboreLayerSettingsComponent } from "./components/layerSettings/wellboreLayer";
 
+import { Interfaces } from "../interfaces";
 import { isFaultPolygonLayer } from "../layers/FaultPolygonLayer";
 import { LayerFactory } from "../layers/LayerFactory";
 import { isPolygonLayer } from "../layers/PolygonLayer";
 import { isSurfaceLayer } from "../layers/SurfaceLayer";
 import { isWellboreLayer } from "../layers/WellboreLayer";
 import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "../layers/types";
-import { SettingsToViewInterface } from "../settingsToViewInterface";
-import { State } from "../state";
 
-export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterface>): React.ReactNode {
+export function Settings(props: ModuleSettingsProps<Interfaces>): React.ReactNode {
     const ensembleSet = useEnsembleSet(props.workbenchSession);
 
     const selectedFieldIdentifier = useAtomValue(selectedFieldIdentifierAtom);

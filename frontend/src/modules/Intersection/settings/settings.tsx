@@ -50,7 +50,7 @@ import { SurfaceLayerSettingsComponent } from "./components/layerSettings/surfac
 import { SurfacesUncertaintyLayerSettingsComponent } from "./components/layerSettings/surfacesUncertaintyLayer";
 import { WellpicksLayerSettingsComponent } from "./components/layerSettings/wellpicksLayer";
 
-import { SettingsToViewInterface } from "../settingsToViewInterface";
+import { Interfaces } from "../interfaces";
 import { State } from "../state";
 import { isGridLayer } from "../utils/layers/GridLayer";
 import { LayerFactory } from "../utils/layers/LayerFactory";
@@ -61,9 +61,7 @@ import { isWellpicksLayer } from "../utils/layers/WellpicksLayer";
 import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "../utils/layers/types";
 import { ViewAtoms } from "../view/atoms/atomDefinitions";
 
-export function Settings(
-    props: ModuleSettingsProps<State, SettingsToViewInterface, Record<string, never>, ViewAtoms>
-): JSX.Element {
+export function Settings(props: ModuleSettingsProps<Interfaces>): JSX.Element {
     const ensembleSet = useEnsembleSet(props.workbenchSession);
     const filteredEnsembleSet = useAtomValue(filteredEnsembleSetAtom);
     const statusWriter = useSettingsStatusWriter(props.settingsContext);

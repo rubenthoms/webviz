@@ -67,12 +67,6 @@ export class WellboreLayer extends BaseLayer<WellboreLayerSettings, WellboreTraj
             y: [minY, maxY],
             z: [0, 0],
         });
-
-        super.setBoundingBox({
-            x: [minX, maxX],
-            y: [minY, maxY],
-            z: [0, 0],
-        });
     }
 
     getBoundingBox(): BoundingBox | null {

@@ -9,10 +9,8 @@ import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { Select } from "@lib/components/Select";
 import { SurfaceLayer, SurfaceLayerSettings } from "@modules/2DViewer/layers/SurfaceLayer";
 import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
-import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { cloneDeep, isEqual } from "lodash";
@@ -29,7 +27,7 @@ export type SurfaceLayerSettingsComponentProps = {
 };
 
 export function SurfaceLayerSettingsComponent(props: SurfaceLayerSettingsComponentProps): React.ReactNode {
-    useLayerManagerTopicValue(props.layer.getLayerManager(), LayerManagerTopic.SETTINGS_CHANGED);
+    //useLayerManagerTopicValue(props.layer.getLayerManager(), LayerManagerTopic.SETTINGS_CHANGED);
     const settings = useLayerSettings(props.layer);
     const [newSettings, setNewSettings] = React.useState<SurfaceLayerSettings>(cloneDeep(settings));
     const [prevSettings, setPrevSettings] = React.useState<SurfaceLayerSettings>(cloneDeep(settings));

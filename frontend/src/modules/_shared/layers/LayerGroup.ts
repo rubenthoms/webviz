@@ -2,27 +2,28 @@ import React from "react";
 
 import { v4 } from "uuid";
 
-import { BaseLayer } from "./BaseLayer";
-import { LayerManager } from "./LayerManager";
+import { LayerItem, LayerManager } from "./LayerManager";
 
 export enum LayerGroupTopic {
     NAME_CHANGED = "name-changed",
-    LAYERS_CHANGED = "layer-ids-changed",
+    ITEMS_CHANGED = "layer-ids-changed",
     VISIBILITY_CHANGED = "visibility-changed",
 }
 
 export type LayerGroupTopicValueTypes = {
-    [LayerGroupTopic.LAYERS_CHANGED]: BaseLayer<any, any>[];
+    [LayerGroupTopic.ITEMS_CHANGED]: void;
     [LayerGroupTopic.NAME_CHANGED]: string;
     [LayerGroupTopic.VISIBILITY_CHANGED]: boolean;
 };
 
 export class LayerGroup {
-    private _layerManager: LayerManager;
     private _id: string;
     private _name: string;
+    private _layerManager: LayerManager;
+
     private _subscribers: Map<LayerGroupTopic, Set<() => void>> = new Map();
-    private _layers: BaseLayer<any, any>[] = [];
+    private _childrenIds: string[] = [];
+
     private _isVisible: boolean = true;
     private _isExpanded: boolean = true;
 
@@ -62,44 +63,61 @@ export class LayerGroup {
         this.notifySubscribers(LayerGroupTopic.NAME_CHANGED);
     }
 
-    getLayer(id: string): BaseLayer<any, any> | undefined {
-        return this._layers.find((layer) => layer.getId() === id);
+    getItem(id: string): LayerItem | undefined {
+        if (this._childrenIds.includes(id)) {
+            return this._layerManager.getItem(id);
+        }
+        return undefined;
     }
 
-    getLayers(): BaseLayer<any, any>[] {
-        return this._layers;
+    getItems(): LayerItem[] {
+        const items: LayerItem[] = [];
+        for (const id of this._childrenIds) {
+            const item = this._layerManager.getItem(id);
+            if (item) {
+                items.push(item);
+            }
+        }
+        return items;
     }
 
-    addLayer(layer: BaseLayer<any, any>): void {
-        layer.setName(this._layerManager.makeUniqueLayerName(layer.getName()));
-        layer.setQueryClient(this._layerManager.getQueryClient());
-        this._layers = [...this._layers, layer];
-        this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
+    prependItem(item: LayerItem): void {
+        this._childrenIds = [item.getId(), ...this._childrenIds];
+        this._layerManager.addItem(item);
+        this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
-    removeLayer(id: string): void {
-        this._layers = this._layers.filter((layer) => layer.getId() !== id);
-        this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
+    appendItem(item: LayerItem): void {
+        this._childrenIds = [...this._childrenIds, item.getId()];
+        this._layerManager.addItem(item);
+        this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
-    moveLayer(id: string, position: number): void {
-        const layer = this._layers.find((layer) => layer.getId() === id);
-        if (!layer) {
-            throw new Error(`Layer with id ${id} not found`);
+    insertItem(item: LayerItem, position: number): void {
+        const items = [...this._childrenIds];
+        items.splice(position, 0, item.getId());
+        this._childrenIds = items;
+        this._layerManager.addItem(item);
+        this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
+    }
+
+    moveItem(id: string, position: number): void {
+        const item = this._childrenIds.find((childId) => childId === id);
+        if (!item) {
+            throw new Error(`Child with id ${id} not found`);
         }
 
-        const layers = this._layers.filter((layer) => layer.getId() !== id);
-        layers.splice(position, 0, layer);
+        const items = this._childrenIds.filter((childId) => childId !== id);
+        items.splice(position, 0, item);
 
-        this._layers = layers;
-        this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
+        this._childrenIds = items;
+        this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
-    insertLayer(layer: BaseLayer<any, any>, position: number): void {
-        const layers = [...this._layers];
-        layers.splice(position, 0, layer);
-        this._layers = layers;
-        this.notifySubscribers(LayerGroupTopic.LAYERS_CHANGED);
+    removeItem(id: string): void {
+        this._childrenIds = this._childrenIds.filter((childId) => childId !== id);
+        this._layerManager.removeItem(id);
+        this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
     subscribe(topic: LayerGroupTopic, subscriber: () => void): void {
@@ -135,8 +153,8 @@ export class LayerGroup {
             if (topic === LayerGroupTopic.NAME_CHANGED) {
                 return this.getName();
             }
-            if (topic === LayerGroupTopic.LAYERS_CHANGED) {
-                return this.getLayers();
+            if (topic === LayerGroupTopic.ITEMS_CHANGED) {
+                return this._childrenIds;
             }
             if (topic === LayerGroupTopic.VISIBILITY_CHANGED) {
                 return this.getIsVisible();

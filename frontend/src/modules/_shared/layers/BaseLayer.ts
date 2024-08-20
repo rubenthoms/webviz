@@ -72,19 +72,20 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
     }
 
     getSettings(): TSettings {
-        const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
-        const relevantOverrides = settingsOverrides.filter((setting) =>
+        //const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
+        /*const relevantOverrides = settingsOverrides.filter((setting) =>
             Object.keys(this._settings).includes(setting.getKey())
         );
         const overrides: Record<string, any> = {};
         for (const setting of relevantOverrides) {
             overrides[setting.getKey()] = setting.getValue();
-        }
-        const settings = { ...this._settings, ...overrides };
-        return settings;
+        }*/
+        // const settings = { ...this._settings }; //, ...overrides };
+        return this._settings;
     }
 
     getOverridenSettingsKeys(): Partial<keyof TSettings>[] {
+        /*
         const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
         const relevantOverrides = settingsOverrides.filter((setting) =>
             Object.keys(this._settings).includes(setting.getKey())
@@ -94,6 +95,8 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
             overrides.push(setting.getKey());
         }
         return overrides;
+        */
+        return [];
     }
 
     getStatus(): LayerStatus {

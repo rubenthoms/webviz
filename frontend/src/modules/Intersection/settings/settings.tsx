@@ -149,7 +149,7 @@ export function Settings(
 
     function handleAddLayer(layerType: LayerType) {
         const layer = LayerFactory.makeLayer(layerType, layerManager);
-        layerManager.addLayer(layer);
+        layerManager.getMainGroup().prependItem(layer);
     }
 
     return (

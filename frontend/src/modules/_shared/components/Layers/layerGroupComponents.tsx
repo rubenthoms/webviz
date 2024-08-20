@@ -9,8 +9,8 @@ import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { Add, Delete, Folder, Visibility, VisibilityOff } from "@mui/icons-material";
 
 import { AddLayerDropdown } from "./addLayerDropdown";
-import { LayerComponent } from "./layerComponents";
 import { LayerFactory, MakeSettingsContainerFunc } from "./layersPanel";
+import { makeContent } from "./utils";
 
 export type LayerGroupComponentProps<TLayerType extends string> = {
     layerManager: LayerManager;
@@ -28,10 +28,12 @@ export type LayerGroupComponentProps<TLayerType extends string> = {
 export function LayerGroupComponent<TLayerType extends string>(
     props: LayerGroupComponentProps<TLayerType>
 ): React.ReactNode {
-    const layers = useLayerGroupTopicValue(props.group, LayerGroupTopic.LAYERS_CHANGED);
+    useLayerGroupTopicValue(props.group, LayerGroupTopic.ITEMS_CHANGED);
 
-    function handleRemoveLayer(layerId: string) {
-        props.group.removeLayer(layerId);
+    const items = props.group.getItems();
+
+    function handleRemoveItem(layerId: string) {
+        props.group.removeItem(layerId);
     }
 
     return (
@@ -57,17 +59,18 @@ export function LayerGroupComponent<TLayerType extends string>(
                 </div>
             }
         >
-            {layers.map((layer) => (
-                <LayerComponent
-                    key={layer.getId()}
-                    layer={layer}
-                    onRemove={handleRemoveLayer}
-                    makeSettingsContainerFunc={props.makeSettingsContainerFunc}
-                    ensembleSet={props.ensembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                />
-            ))}
+            {makeContent(
+                items,
+                props.layerManager,
+                props.icon,
+                props.layerFactory,
+                props.layerTypeToStringMapping,
+                handleRemoveItem,
+                props.makeSettingsContainerFunc,
+                props.ensembleSet,
+                props.workbenchSession,
+                props.workbenchSettings
+            )}
         </SortableListGroup>
     );
 }

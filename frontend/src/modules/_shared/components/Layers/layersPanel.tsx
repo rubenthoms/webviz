@@ -3,13 +3,12 @@ import React from "react";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
-import { SortableList, SortableListItemProps } from "@lib/components/SortableList";
-import { IsMoveAllowedArgs, ItemType } from "@lib/components/SortableList/sortableList";
+import { IsMoveAllowedArgs, ItemType, SortableList, SortableListItemProps } from "@lib/components/SortableList";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
 import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import {
+    LayerItem,
     LayerManager,
-    LayerManagerItem,
     LayerManagerTopic,
     useLayerManagerTopicValue,
 } from "@modules/_shared/layers/LayerManager";
@@ -50,14 +49,15 @@ export type LayersPanelProps<TLayerType extends string> = {
 };
 
 export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<TLayerType>): React.ReactNode {
-    const items = useLayerManagerTopicValue(props.layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    useLayerManagerTopicValue(props.layerManager, LayerManagerTopic.ITEMS_CHANGED);
+    const items = props.layerManager.getMainGroup().getItems();
     const layerSettingFactory = new LayerSettingContentFactory(
         props.ensembleSet,
         props.workbenchSession,
         props.workbenchSettings
     );
 
-    const [prevItems, setPrevItems] = React.useState<LayerManagerItem[]>(items);
+    const [prevItems, setPrevItems] = React.useState<LayerItem[]>(items);
     const [itemsOrder, setItemsOrder] = React.useState<string[]>(items.map((item) => item.getId()));
 
     if (!isEqual(prevItems, items)) {
@@ -65,52 +65,39 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
         setItemsOrder(items.map((layer) => layer.getId()));
     }
 
-    function handleRemoveGroup(id: string) {
-        props.layerManager.removeGroup(id);
-    }
-
     function handleRemoveItem(id: string) {
-        props.layerManager.removeLayer(id);
+        props.layerManager.getMainGroup().removeItem(id);
     }
 
     function handleItemMove(itemId: string, originId: string | null, destinationId: string | null, position: number) {
-        let origin: LayerGroup | LayerManager | null = props.layerManager;
+        let origin: LayerGroup | null = props.layerManager.getMainGroup();
         if (originId) {
-            origin = props.layerManager.getGroup(originId) ?? null;
+            const candidate = props.layerManager.getItem(originId);
+            if (candidate instanceof LayerGroup) {
+                origin = candidate;
+            }
         }
 
-        let destination: LayerGroup | LayerManager | null = props.layerManager;
+        let destination: LayerGroup | null = props.layerManager.getMainGroup();
         if (destinationId) {
-            destination = props.layerManager.getGroup(destinationId) ?? null;
+            const candidate = props.layerManager.getItem(destinationId);
+            if (candidate instanceof LayerGroup) {
+                destination = candidate;
+            }
         }
 
         if (origin === null || destination === null) {
             return;
         }
 
-        let isLayerOrSetting: boolean = true;
-        let item: BaseLayer<any, any> | LayerGroup | undefined = origin.getLayer(itemId);
-
-        if (!item && origin instanceof LayerManager) {
-            item = origin.getGroup(itemId);
-            isLayerOrSetting = false;
-        }
+        const item: LayerItem | undefined = origin.getItem(itemId);
 
         if (!item) {
             return;
         }
 
-        if (isLayerOrSetting) {
-            if (item instanceof BaseLayer) {
-                origin.removeLayer(itemId);
-                destination.insertLayer(item, position);
-            }
-        } else if (origin instanceof LayerManager) {
-            origin.removeGroup(itemId);
-            if (destination instanceof LayerManager && item instanceof LayerGroup) {
-                destination.insertGroup(item, position);
-            }
-        }
+        origin.removeItem(itemId);
+        destination.insertItem(item, position);
     }
 
     function makeLayerElement(layer: BaseLayer<any, any>): React.ReactElement<SortableListItemProps> {
@@ -136,7 +123,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
                 icon={props.groupIcon}
                 layerFactory={props.layerFactory}
                 layerTypeToStringMapping={props.layerTypeToStringMapping}
-                onRemove={handleRemoveGroup}
+                onRemove={handleRemoveItem}
                 makeSettingsContainerFunc={props.makeSettingsContainerFunc}
                 ensembleSet={props.ensembleSet}
                 workbenchSession={props.workbenchSession}
@@ -158,7 +145,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
 
         const orderedItems = itemsOrder
             .map((id) => items.find((el) => el.getId() === id))
-            .filter((el) => el) as LayerManagerItem[];
+            .filter((el) => el) as LayerItem[];
 
         for (let i = 0; i < orderedItems.length; i++) {
             const item = orderedItems[i];

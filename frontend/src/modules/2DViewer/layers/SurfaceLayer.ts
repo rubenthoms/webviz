@@ -13,7 +13,7 @@ import { QueryClient } from "@tanstack/query-core";
 import { isEqual } from "lodash";
 import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
-import { EnsembleStage, EnsembleStageType } from "../settings/components/ensembleStageSelect";
+import { EnsembleStageType } from "../settings/components/ensembleStageSelect";
 
 const STALE_TIME = 60 * 1000;
 const CACHE_TIME = 60 * 1000;
@@ -35,10 +35,6 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceDataFlo
             ensembleIdent: null,
             realizationNum: null,
             statisticFunction: SurfaceStatisticFunction_api.MEAN,
-            polyline: {
-                polylineUtmXy: [],
-                actualSectionLengths: [],
-            },
             surfaceName: null,
             ensembleStage: EnsembleStageType.Realization,
             attribute: null,

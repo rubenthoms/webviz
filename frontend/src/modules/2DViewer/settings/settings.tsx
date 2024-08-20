@@ -12,6 +12,7 @@ import { MenuHeading } from "@lib/components/MenuHeading";
 import { MenuItem } from "@lib/components/MenuItem";
 import { LayersPanel } from "@modules/_shared/components/Layers";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
+import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import { LayerSettingFactory } from "@modules/_shared/layers/settings/LayerSettingFactory";
 import { SETTING_TYPE_TO_STRING_MAPPING, SettingType } from "@modules/_shared/layers/settings/SettingTypes";
 import { Dropdown, MenuButton } from "@mui/base";
@@ -51,16 +52,17 @@ export function Settings(props: ModuleSettingsProps<State, SettingsToViewInterfa
 
     function handleAddLayer(layerType: LayerType) {
         const layer = LayerFactory.makeLayer(layerType, layerManager);
-        layerManager.addLayer(layer);
+        layer.setQueryClient(layerManager.getQueryClient());
+        layerManager.getMainGroup().prependItem(layer);
     }
 
     function handleAddView() {
-        layerManager.addGroup("View");
+        layerManager.getMainGroup().prependItem(new LayerGroup("View", layerManager));
     }
 
     function handleAddSetting(settingType: SettingType) {
         const setting = LayerSettingFactory.makeSetting(settingType);
-        layerManager.addSetting(setting);
+        layerManager.getMainGroup().prependItem(setting);
     }
 
     return (

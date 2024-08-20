@@ -16,6 +16,7 @@ import SubsurfaceViewer, { ViewsType } from "@webviz/subsurface-viewer/dist/Subs
 import { Axes2DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Rgb, parse } from "culori";
+import { isEqual } from "lodash";
 
 import { FaultPolygonLayer } from "../layers/FaultPolygonLayer";
 import { PolygonLayer } from "../layers/PolygonLayer";
@@ -28,9 +29,15 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
     const statusWriter = useViewStatusWriter(props.viewContext);
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
     const allItems = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
-    const layerItems = useLayerManagerTopicValue(layerManager, LayerManagerTopic.LAYERS_CHANGED_RECURSIVELY);
 
-    const layers = useLayers(layerItems);
+    const [prevLayerItems, setPrevLayerItems] = React.useState<BaseLayer<any, any>[]>([]);
+
+    const currentLayerItems = allItems.filter((item) => item instanceof BaseLayer) as BaseLayer<any, any>[];
+    if (!isEqual(currentLayerItems, prevLayerItems)) {
+        setPrevLayerItems(currentLayerItems);
+    }
+
+    const layers = useLayers(prevLayerItems);
     const layersStatuses = useLayersStatuses(layers);
 
     statusWriter.setLoading(layersStatuses.some((status) => status.status === LayerStatus.LOADING));
@@ -75,9 +82,12 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
                 }
             }
         } else if (item instanceof LayerGroup) {
-            const layers = item.getLayers();
+            const layers = item.getItems();
             const groupLayers: Layer[] = [];
             for (const layer of layers) {
+                if (!(layer instanceof BaseLayer)) {
+                    continue;
+                }
                 if (!layer.getIsVisible()) {
                     continue;
                 }
@@ -154,7 +164,6 @@ export function View(props: ModuleViewProps<State, SettingsToViewInterface>): Re
         viewports: viewports,
         showLabel: true,
     };
-    console.log(views);
     return (
         <div className="relative w-full h-full flex flex-col">
             <SubsurfaceViewer

@@ -36,9 +36,8 @@ export function View(
     const wellbore = props.viewContext.useSettingsToViewInterfaceValue("wellboreHeader");
 
     const layerManager = props.viewContext.useSettingsToViewInterfaceValue("layerManager");
-    const items = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED);
-    const layers = items.filter((item) => item instanceof BaseLayer) as BaseLayer<any, any>[];
-    const layersStatuses = useLayersStatuses(layers.filter((el) => el instanceof BaseLayer) as BaseLayer<any, any>[]);
+    const layers = useLayerManagerTopicValue(layerManager, LayerManagerTopic.ITEMS_CHANGED) as BaseLayer<any, any>[];
+    const layersStatuses = useLayersStatuses(layers);
 
     const intersectionExtensionLength =
         props.viewContext.useSettingsToViewInterfaceValue("intersectionExtensionLength");

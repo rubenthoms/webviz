@@ -1,6 +1,6 @@
 import React from "react";
 
-import { PolygonsAttributeType_api, PolygonsMeta_api, SurfaceAttributeType_api, SurfaceMetaSet_api } from "@api";
+import { PolygonsAttributeType_api, PolygonsMeta_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { EnsembleSet } from "@framework/EnsembleSet";
@@ -12,7 +12,6 @@ import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { PolygonLayer, PolygonLayerSettings } from "@modules/2DViewer/layers/PolygonLayer";
 import { useLayerSettings } from "@modules/_shared/layers/BaseLayer";
-import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
 import { UseQueryResult, useQuery } from "@tanstack/react-query";
 
 import { cloneDeep, isEqual } from "lodash";
@@ -28,7 +27,7 @@ export type PolygonLayerSettingsComponentProps = {
 const faultPolygonAttributeTypes = [PolygonsAttributeType_api.FAULT_LINES, PolygonsAttributeType_api.DEPTH];
 
 export function PolygonLayerSettingsComponent(props: PolygonLayerSettingsComponentProps): React.ReactNode {
-    useLayerManagerTopicValue(props.layer.getLayerManager(), LayerManagerTopic.SETTINGS_CHANGED);
+    //useLayerManagerTopicValue(props.layer.getLayerManager(), LayerManagerTopic.SETTINGS_CHANGED);
     const settings = useLayerSettings(props.layer);
     const [newSettings, setNewSettings] = React.useState<PolygonLayerSettings>(cloneDeep(settings));
     const [prevSettings, setPrevSettings] = React.useState<PolygonLayerSettings>(cloneDeep(settings));

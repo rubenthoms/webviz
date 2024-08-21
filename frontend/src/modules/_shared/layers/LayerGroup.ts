@@ -6,7 +6,7 @@ import { LayerItem, LayerManager } from "./LayerManager";
 
 export enum LayerGroupTopic {
     NAME_CHANGED = "name-changed",
-    ITEMS_CHANGED = "layer-ids-changed",
+    ITEMS_CHANGED = "items-changed",
     VISIBILITY_CHANGED = "visibility-changed",
 }
 

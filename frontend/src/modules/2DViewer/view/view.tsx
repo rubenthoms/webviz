@@ -11,7 +11,6 @@ import { SurfaceDataFloat_trans } from "@modules/_shared/Surface/queryDataTransf
 import { BaseLayer, LayerStatus, useLayers, useLayersStatuses } from "@modules/_shared/layers/BaseLayer";
 import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import { LayerManagerTopic, useLayerManagerTopicValue } from "@modules/_shared/layers/LayerManager";
-import { BaseSetting } from "@modules/_shared/layers/settings/BaseSetting";
 import { ViewportType } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer, { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 import { Axes2DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
@@ -52,7 +51,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     )[];
 
     for (const item of mainGroup.getItems()) {
-        if (item instanceof BaseSetting) {
+        if (!(item instanceof BaseLayer) && !(item instanceof LayerGroup)) {
             continue;
         }
         if (!item.getIsVisible()) {

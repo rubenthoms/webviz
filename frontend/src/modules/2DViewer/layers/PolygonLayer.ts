@@ -1,10 +1,8 @@
 import { PolygonData_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-import { defaultColorPalettes } from "@framework/utils/colorPalettes";
-import { ColorSet } from "@lib/utils/ColorSet";
-import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
-import { LayerManager } from "@modules/_shared/layers/LayerManager";
+import { BaseItem } from "@modules/_shared/layers/BaseItem";
+import { BaseLayer, BoundingBox } from "@modules/_shared/layers/BaseLayer";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -21,7 +19,7 @@ export type PolygonLayerSettings = {
 };
 
 export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_api[]> {
-    constructor(name: string, layerManager: LayerManager) {
+    constructor(name: string, parent: BaseItem) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
@@ -33,7 +31,7 @@ export class PolygonLayer extends BaseLayer<PolygonLayerSettings, PolygonData_ap
             attribute: null,
             color: "#FF0000",
         };
-        super(name, defaultSettings, layerManager);
+        super(name, defaultSettings, parent);
     }
 
     private makeBoundingBox(): void {

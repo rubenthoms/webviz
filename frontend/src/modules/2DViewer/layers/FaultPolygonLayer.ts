@@ -3,8 +3,8 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
+import { BaseItem } from "@modules/_shared/layers/BaseItem";
 import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
-import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -22,7 +22,7 @@ export type FaultPolygonLayerSettings = {
 export class FaultPolygonLayer extends BaseLayer<FaultPolygonLayerSettings, PolygonData_api[]> {
     private _colorSet: ColorSet;
 
-    constructor(name: string, layerManager: LayerManager) {
+    constructor(name: string, parent: BaseItem) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
@@ -33,7 +33,7 @@ export class FaultPolygonLayer extends BaseLayer<FaultPolygonLayerSettings, Poly
             polygonName: null,
             attribute: null,
         };
-        super(name, defaultSettings, layerManager);
+        super(name, defaultSettings, parent);
 
         this._colorSet = new ColorSet(defaultColorPalettes[0]);
     }

@@ -224,13 +224,6 @@ export function SortableList(props: SortableListProps): React.ReactNode {
                         return { element, area: getHoveredAreaOfItem(element, e) };
                     }
                 }
-                const directChildren = elements.filter((el) => el.parentElement === currentListDivRef);
-                if (
-                    mainDivRef.current &&
-                    rectContainsPoint(mainDivRef.current.getBoundingClientRect(), vec2FromPointerEvent(e))
-                ) {
-                    return { element: directChildren[directChildren.length - 1], area: HoveredArea.BOTTOM };
-                }
 
                 // If no element was found, check if the pointer is in the bottom area of the main list
                 const directChildren = elements.filter((el) => el.parentElement === currentListDivRef);

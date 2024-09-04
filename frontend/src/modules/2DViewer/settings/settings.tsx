@@ -56,7 +56,7 @@ export function Settings(props: ModuleSettingsProps<Interfaces>): React.ReactNod
     }
 
     function handleAddView() {
-        layerManager.getMainGroup().prependItem(new LayerGroup("View", layerManager));
+        layerManager.getMainGroup().prependItem(new LayerGroup("View", layerManager.getMainGroup()));
     }
 
     function handleAddSetting(settingType: SettingType) {

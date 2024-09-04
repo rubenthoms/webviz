@@ -6,9 +6,10 @@ import { isDevMode } from "@lib/utils/devMode";
 import { QueryClient } from "@tanstack/query-core";
 
 import { cloneDeep, isEqual } from "lodash";
-import { v4 } from "uuid";
 
-import { LayerManager } from "./LayerManager";
+import { BaseItem, Message } from "./BaseItem";
+import { BaseSetting } from "./settings/BaseSetting";
+import { SettingType } from "./settings/SettingTypes";
 
 export enum LayerStatus {
     IDLE = "IDLE",
@@ -37,66 +38,84 @@ export type LayerSettings = {
     [key: string]: any;
 };
 
-export class BaseLayer<TSettings extends LayerSettings, TData> {
+export class BaseLayer<TSettings extends LayerSettings, TData> extends BaseItem {
     private _subscribers: Map<LayerTopic, Set<() => void>> = new Map();
     protected _queryClient: QueryClient | null = null;
     protected _status: LayerStatus = LayerStatus.IDLE;
-    private _id: string;
-    private _name: string;
     private _isVisible: boolean = true;
     private _isSuspended: boolean = false;
     private _boundingBox: BoundingBox | null = null;
     protected _data: TData | null = null;
     protected _settings: TSettings = {} as TSettings;
+    private _settingsOverrides: TSettings = {} as TSettings;
     private _lastDataFetchSettings: TSettings;
     private _queryKeys: unknown[][] = [];
     private _error: StatusMessage | string | null = null;
     private _refetchRequested: boolean = false;
     private _cancellationPending: boolean = false;
-    private _layerManager: LayerManager;
 
-    constructor(name: string, settings: TSettings, layerManager: LayerManager) {
-        this._id = v4();
-        this._name = name;
+    constructor(name: string, settings: TSettings, parent: BaseItem) {
+        super(name, parent);
         this._settings = settings;
         this._lastDataFetchSettings = cloneDeep(settings);
-        this._layerManager = layerManager;
     }
 
-    getId(): string {
-        return this._id;
+    getAllEffectiveSettingOverrides() {
+        const settings: BaseSetting<any>[] = [];
+        const visitedSettingTypes: SettingType[] = [];
+
+        const items = this.getAncestorsAndSiblings();
+        for (const item of items) {
+            if (item instanceof BaseSetting) {
+                const setting = item as BaseSetting<any>;
+                if (visitedSettingTypes.includes(setting.getType())) {
+                    continue;
+                }
+                visitedSettingTypes.push(setting.getType());
+                settings.push(item);
+            }
+        }
+
+        const overrides: Record<string, any> = { ...this._settingsOverrides };
+        let numPatches = 0;
+
+        for (const setting of settings) {
+            if (!Object.keys(this._settings).includes(setting.getKey())) {
+                continue;
+            }
+
+            if (!isEqual(this._settingsOverrides[setting.getKey()], setting.getValue())) {
+                overrides[setting.getKey()] = setting.getValue();
+                numPatches++;
+            }
+        }
+
+        if (numPatches === 0) {
+            return;
+        }
+
+        this.maybeCancelQuery().then(() => {
+            this._settingsOverrides = overrides as TSettings;
+            this.notifySubscribers(LayerTopic.SETTINGS);
+            if (this._refetchRequested) {
+                this.maybeRefetchData();
+            }
+        });
     }
 
-    getLayerManager(): LayerManager {
-        return this._layerManager;
+    handleMessage(message: Message): void {
+        if (message.origin instanceof BaseSetting) {
+            this.getAllEffectiveSettingOverrides();
+        }
     }
 
     getSettings(): TSettings {
-        //const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
-        /*const relevantOverrides = settingsOverrides.filter((setting) =>
-            Object.keys(this._settings).includes(setting.getKey())
-        );
-        const overrides: Record<string, any> = {};
-        for (const setting of relevantOverrides) {
-            overrides[setting.getKey()] = setting.getValue();
-        }*/
-        // const settings = { ...this._settings }; //, ...overrides };
-        return this._settings;
+        const settings = { ...this._settings, ...this._settingsOverrides };
+        return settings;
     }
 
     getOverridenSettingsKeys(): Partial<keyof TSettings>[] {
-        /*
-        const settingsOverrides = this._layerManager.getSettingsOverridesForLayer(this);
-        const relevantOverrides = settingsOverrides.filter((setting) =>
-            Object.keys(this._settings).includes(setting.getKey())
-        );
-        const overrides: Partial<keyof TSettings>[] = [];
-        for (const setting of relevantOverrides) {
-            overrides.push(setting.getKey());
-        }
-        return overrides;
-        */
-        return [];
+        return Object.keys(this._settingsOverrides);
     }
 
     getStatus(): LayerStatus {
@@ -106,12 +125,8 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
         return this._status;
     }
 
-    getName(): string {
-        return this._name;
-    }
-
     setName(name: string): void {
-        this._name = name;
+        super.setName(name);
         this.notifySubscribers(LayerTopic.NAME);
     }
 
@@ -224,12 +239,12 @@ export class BaseLayer<TSettings extends LayerSettings, TData> {
         }
 
         if (typeof this._error === "string") {
-            return `${this._name}: ${this._error}`;
+            return `${this.getName()}: ${this._error}`;
         }
 
         return {
             ...this._error,
-            message: `${this._name}: ${this._error.message}`,
+            message: `${this.getName()}: ${this._error.message}`,
         };
     }
 

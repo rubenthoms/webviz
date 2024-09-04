@@ -1,39 +1,74 @@
 import React from "react";
 
-import { v4 } from "uuid";
-
 import { SettingType } from "./SettingTypes";
+
+import { BaseItem, Message, MessageDirection, MessageType } from "../BaseItem";
 
 export enum SettingTopic {
     VALUE = "value",
 }
 
-export class BaseSetting<TValue> {
-    private _id: string;
+export class BaseSetting<TValue> extends BaseItem {
     private _key: string;
-    private _name: string;
+    private _type: SettingType;
     private _value: TValue;
+    private _appliedSettings: Partial<Record<SettingType, any>> = {};
     private _requiredSettings: SettingType[];
     private _subscribers: Map<SettingTopic, Set<() => void>> = new Map();
 
-    constructor(key: string, name: string, initialValue: TValue, requiredSettings: SettingType[] = []) {
-        this._id = v4();
+    constructor(
+        key: string,
+        name: string,
+        initialValue: TValue,
+        type: SettingType,
+        requiredSettings: SettingType[] = []
+    ) {
+        super(name);
         this._key = key;
-        this._name = name;
+        this._type = type;
         this._value = initialValue;
         this._requiredSettings = requiredSettings;
     }
 
-    getId(): string {
-        return this._id;
+    getAllAppliedSettings() {
+        const settings: BaseSetting<any>[] = [];
+        const visitedSettingTypes: SettingType[] = [];
+
+        const items = this.getAncestorsAndSiblings();
+        for (const item of items) {
+            if (item instanceof BaseSetting) {
+                const setting = item as BaseSetting<any>;
+                if (visitedSettingTypes.includes(setting.getType())) {
+                    continue;
+                }
+                visitedSettingTypes.push(setting.getType());
+                settings.push(item);
+            }
+        }
+
+        const appliedSettings: Partial<Record<SettingType, any>> = {};
+
+        for (const setting of settings) {
+            if (!this._requiredSettings.includes(setting.getType())) {
+                continue;
+            }
+
+            appliedSettings[setting.getType()] = setting.getValue();
+        }
+
+        this._appliedSettings = appliedSettings;
+    }
+
+    getHasAllRequiredSettings(): boolean {
+        return this._requiredSettings.every((settingType) => settingType in this._appliedSettings);
     }
 
     getKey(): string {
         return this._key;
     }
 
-    getName(): string {
-        return this._name;
+    getType(): SettingType {
+        return this._type;
     }
 
     getValue(): TValue {
@@ -43,6 +78,8 @@ export class BaseSetting<TValue> {
     setValue(value: TValue): void {
         this._value = value;
         this.notifySubscribers(SettingTopic.VALUE);
+        const message = new Message(MessageType.CHANGED, null, this, MessageDirection.UP);
+        this.emitMessage(message);
     }
 
     subscribe(topic: SettingTopic, callback: () => void): () => void {

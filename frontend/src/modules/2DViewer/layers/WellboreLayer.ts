@@ -3,11 +3,9 @@ import { apiService } from "@framework/ApiService";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { defaultColorPalettes } from "@framework/utils/colorPalettes";
 import { ColorSet } from "@lib/utils/ColorSet";
-import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
-import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
-import { encodeSurfAddrStr, peekSurfaceAddressType } from "@modules/_shared/Surface/surfaceAddress";
+import { SurfaceDataFloat_trans } from "@modules/_shared/Surface/queryDataTransforms";
+import { BaseItem } from "@modules/_shared/layers/BaseItem";
 import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
-import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -25,13 +23,13 @@ export type WellboreLayerSettings = {
 export class WellboreLayer extends BaseLayer<WellboreLayerSettings, WellboreTrajectory_api[]> {
     private _colorSet: ColorSet;
 
-    constructor(name: string, layerManager: LayerManager) {
+    constructor(name: string, parent: BaseItem) {
         const defaultSettings = {
             wellboreUuids: [],
             ensembleIdent: null,
             fieldIdentifier: null,
         };
-        super(name, defaultSettings, layerManager);
+        super(name, defaultSettings, parent);
 
         this._colorSet = new ColorSet(defaultColorPalettes[0]);
     }

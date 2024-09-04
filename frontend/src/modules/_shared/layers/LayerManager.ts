@@ -2,8 +2,9 @@ import React from "react";
 
 import { QueryClient } from "@tanstack/query-core";
 
+import { BaseItem } from "./BaseItem";
 import { BaseLayer } from "./BaseLayer";
-import { LayerGroup } from "./LayerGroup";
+import { LayerGroup, LayerGroupTopic } from "./LayerGroup";
 import { BaseSetting } from "./settings/BaseSetting";
 
 export enum LayerManagerTopic {
@@ -11,7 +12,7 @@ export enum LayerManagerTopic {
 }
 
 export type LayerManagerTopicValueTypes = {
-    [LayerManagerTopic.ITEMS_CHANGED]: LayerItem[];
+    [LayerManagerTopic.ITEMS_CHANGED]: BaseItem[];
 };
 
 export type LayerItem = BaseLayer<any, any> | LayerGroup | BaseSetting<any>;
@@ -19,9 +20,13 @@ export type LayerItem = BaseLayer<any, any> | LayerGroup | BaseSetting<any>;
 export class LayerManager {
     private _queryClient: QueryClient | null = null;
     private _subscribers: Map<LayerManagerTopic, Set<() => void>> = new Map();
-    private _items: LayerItem[] = [];
+    private _mainGroup: LayerGroup = new LayerGroup("Main");
 
-    private _mainGroup: LayerGroup = new LayerGroup("Main", this);
+    constructor() {
+        this._mainGroup.subscribe(LayerGroupTopic.ITEMS_CHANGED, () => {
+            this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
+        });
+    }
 
     setQueryClient(queryClient: QueryClient): void {
         this._queryClient = queryClient;
@@ -36,23 +41,6 @@ export class LayerManager {
 
     getMainGroup(): LayerGroup {
         return this._mainGroup;
-    }
-
-    addItem(item: LayerItem) {
-        if (item instanceof LayerGroup || item instanceof BaseLayer) {
-            item.setName(this.makeUniqueName(item.getName()));
-        }
-        this._items = [...this._items, item];
-        this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
-    }
-
-    getItem(id: string): LayerItem | undefined {
-        return this._items.find((item) => item.getId() === id);
-    }
-
-    removeItem(id: string): void {
-        this._items = this._items.filter((item) => item.getId() !== id);
-        this.notifySubscribers(LayerManagerTopic.ITEMS_CHANGED);
     }
 
     subscribe(topic: LayerManagerTopic, subscriber: () => void): void {
@@ -71,7 +59,7 @@ export class LayerManager {
     makeUniqueName(name: string): string {
         let potentialName = name;
         let i = 1;
-        while (this._items.some((item) => item.getName() === potentialName)) {
+        while (this._mainGroup.getAllDescendantsRecursively().some((item) => item.getName() === potentialName)) {
             potentialName = `${name} (${i})`;
             i++;
         }
@@ -96,7 +84,7 @@ export class LayerManager {
     makeSnapshotGetter<T extends LayerManagerTopic>(topic: T): () => LayerManagerTopicValueTypes[T] {
         const snapshotGetter = (): any => {
             if (topic === LayerManagerTopic.ITEMS_CHANGED) {
-                return this._items;
+                return this._mainGroup.getSnapshot();
             }
         };
 

@@ -4,6 +4,7 @@ import { EnsembleSet } from "@framework/EnsembleSet";
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { IsMoveAllowedArgs, ItemType, SortableList, SortableListItemProps } from "@lib/components/SortableList";
+import { BaseItem } from "@modules/_shared/layers/BaseItem";
 import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
 import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
 import {
@@ -49,15 +50,14 @@ export type LayersPanelProps<TLayerType extends string> = {
 };
 
 export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<TLayerType>): React.ReactNode {
-    useLayerManagerTopicValue(props.layerManager, LayerManagerTopic.ITEMS_CHANGED);
-    const items = props.layerManager.getMainGroup().getItems();
+    const items = useLayerManagerTopicValue(props.layerManager, LayerManagerTopic.ITEMS_CHANGED);
     const layerSettingFactory = new LayerSettingContentFactory(
         props.ensembleSet,
         props.workbenchSession,
         props.workbenchSettings
     );
 
-    const [prevItems, setPrevItems] = React.useState<LayerItem[]>(items);
+    const [prevItems, setPrevItems] = React.useState<BaseItem[]>(items);
     const [itemsOrder, setItemsOrder] = React.useState<string[]>(items.map((item) => item.getId()));
 
     if (!isEqual(prevItems, items)) {
@@ -72,7 +72,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     function handleItemMove(itemId: string, originId: string | null, destinationId: string | null, position: number) {
         let origin: LayerGroup | null = props.layerManager.getMainGroup();
         if (originId) {
-            const candidate = props.layerManager.getItem(originId);
+            const candidate = props.layerManager.getMainGroup().getSubGroup(originId);
             if (candidate instanceof LayerGroup) {
                 origin = candidate;
             }
@@ -80,7 +80,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
 
         let destination: LayerGroup | null = props.layerManager.getMainGroup();
         if (destinationId) {
-            const candidate = props.layerManager.getItem(destinationId);
+            const candidate = props.layerManager.getMainGroup().getItem(destinationId);
             if (candidate instanceof LayerGroup) {
                 destination = candidate;
             }
@@ -90,7 +90,7 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
             return;
         }
 
-        const item: LayerItem | undefined = origin.getItem(itemId);
+        const item = origin.getItem(itemId);
 
         if (!item) {
             return;

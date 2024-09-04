@@ -10,13 +10,13 @@ export class LayerFactory {
     static makeLayer(layerType: LayerType, layerManager: LayerManager) {
         switch (layerType) {
             case LayerType.SURFACE:
-                return new SurfaceLayer("Surface", layerManager);
+                return new SurfaceLayer("Surface", layerManager.getMainGroup());
             case LayerType.WELLBORE_SMDA:
-                return new WellboreLayer("Wells (Drilled)", layerManager);
+                return new WellboreLayer("Wells (Drilled)", layerManager.getMainGroup());
             case LayerType.FAULT_POLYGON:
-                return new FaultPolygonLayer("FaultPolygons", layerManager);
+                return new FaultPolygonLayer("FaultPolygons", layerManager.getMainGroup());
             case LayerType.POLYGON:
-                return new PolygonLayer("Field Outline", layerManager);
+                return new PolygonLayer("Field Outline", layerManager.getMainGroup());
             default:
                 throw new Error("Unknown layer type");
         }

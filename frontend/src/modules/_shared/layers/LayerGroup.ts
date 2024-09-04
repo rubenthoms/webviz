@@ -1,8 +1,8 @@
 import React from "react";
 
-import { v4 } from "uuid";
-
-import { LayerItem, LayerManager } from "./LayerManager";
+import { BaseItem, Message, MessageDirection, MessageType } from "./BaseItem";
+import { BaseSetting } from "./settings/BaseSetting";
+import { SettingType } from "./settings/SettingTypes";
 
 export enum LayerGroupTopic {
     NAME_CHANGED = "name-changed",
@@ -16,25 +16,50 @@ export type LayerGroupTopicValueTypes = {
     [LayerGroupTopic.VISIBILITY_CHANGED]: boolean;
 };
 
-export class LayerGroup {
-    private _id: string;
-    private _name: string;
-    private _layerManager: LayerManager;
-
+export class LayerGroup extends BaseItem {
     private _subscribers: Map<LayerGroupTopic, Set<() => void>> = new Map();
-    private _childrenIds: string[] = [];
-
+    private _snapshot: BaseItem[] = [];
     private _isVisible: boolean = true;
     private _isExpanded: boolean = true;
 
-    constructor(name: string, layerManager: LayerManager) {
-        this._id = v4();
-        this._name = name;
-        this._layerManager = layerManager;
+    constructor(name: string, parent?: BaseItem) {
+        super(name, parent);
     }
 
-    getId(): string {
-        return this._id;
+    getAllDescendantsRecursively(): BaseItem[] {
+        return this.getAllDescendants();
+    }
+
+    getAllEffectiveSettings(): BaseSetting<any>[] {
+        const settings: BaseSetting<any>[] = [];
+        const visitedSettings: SettingType[] = [];
+
+        const items = this.getAncestorsAndSiblings();
+        for (const item of items) {
+            if (item instanceof BaseSetting) {
+                const setting = item as BaseSetting<any>;
+                if (visitedSettings.includes(setting.getType())) {
+                    continue;
+                }
+                visitedSettings.push(setting.getType());
+                settings.push(item);
+            }
+        }
+
+        return settings;
+    }
+
+    handleMessage(message: Message): void {
+        if (
+            message.type === MessageType.CHANGED &&
+            message.origin instanceof BaseSetting &&
+            message.direction === MessageDirection.UP
+        ) {
+            message.stopPropagation();
+            const newMessage = message.clone();
+            newMessage.direction = MessageDirection.DOWN;
+            this.emitMessage(newMessage);
+        }
     }
 
     getIsVisible(): boolean {
@@ -54,69 +79,68 @@ export class LayerGroup {
         this._isExpanded = isExpanded;
     }
 
-    getName(): string {
-        return this._name;
-    }
-
     setName(name: string): void {
-        this._name = name;
+        super.setName(name);
         this.notifySubscribers(LayerGroupTopic.NAME_CHANGED);
     }
 
-    getItem(id: string): LayerItem | undefined {
-        if (this._childrenIds.includes(id)) {
-            return this._layerManager.getItem(id);
+    getSubGroup(id: string): LayerGroup | null {
+        const descendant = this.getDescendant(id);
+        if (descendant instanceof LayerGroup) {
+            return descendant;
         }
-        return undefined;
+        return null;
     }
 
-    getItems(): LayerItem[] {
-        const items: LayerItem[] = [];
-        for (const id of this._childrenIds) {
-            const item = this._layerManager.getItem(id);
-            if (item) {
-                items.push(item);
-            }
-        }
-        return items;
+    getItem(id: string): BaseItem | null {
+        return this.getDescendant(id) ?? null;
     }
 
-    prependItem(item: LayerItem): void {
-        this._childrenIds = [item.getId(), ...this._childrenIds];
-        this._layerManager.addItem(item);
+    getItems(): BaseItem[] {
+        return this.getChildren();
+    }
+
+    private makeSnapshot() {
+        this._snapshot = this.getAllDescendants();
+    }
+
+    getSnapshot(): BaseItem[] {
+        return this._snapshot;
+    }
+
+    prependItem(item: BaseItem): void {
+        this.prependChild(item);
+        this.makeSnapshot();
         this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
-    appendItem(item: LayerItem): void {
-        this._childrenIds = [...this._childrenIds, item.getId()];
-        this._layerManager.addItem(item);
+    appendItem(item: BaseItem): void {
+        this.appendChild(item);
+        this.makeSnapshot();
         this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
-    insertItem(item: LayerItem, position: number): void {
-        const items = [...this._childrenIds];
-        items.splice(position, 0, item.getId());
-        this._childrenIds = items;
-        this._layerManager.addItem(item);
+    insertItem(item: BaseItem, position: number): void {
+        this.insertChild(item, position);
+        this.makeSnapshot();
         this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
     moveItem(id: string, position: number): void {
-        const item = this._childrenIds.find((childId) => childId === id);
+        const item = this.getChild(id);
         if (!item) {
             throw new Error(`Child with id ${id} not found`);
         }
 
-        const items = this._childrenIds.filter((childId) => childId !== id);
+        const items = this.getChildren().filter((child) => child.getId() !== id);
         items.splice(position, 0, item);
 
-        this._childrenIds = items;
+        this.setChildren(items);
         this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
     removeItem(id: string): void {
-        this._childrenIds = this._childrenIds.filter((childId) => childId !== id);
-        this._layerManager.removeItem(id);
+        this.removeChild(id);
         this.notifySubscribers(LayerGroupTopic.ITEMS_CHANGED);
     }
 
@@ -154,7 +178,7 @@ export class LayerGroup {
                 return this.getName();
             }
             if (topic === LayerGroupTopic.ITEMS_CHANGED) {
-                return this._childrenIds;
+                return this._snapshot;
             }
             if (topic === LayerGroupTopic.VISIBILITY_CHANGED) {
                 return this.getIsVisible();

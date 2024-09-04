@@ -6,8 +6,8 @@ import { ColorSet } from "@lib/utils/ColorSet";
 import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
 import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
 import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
+import { BaseItem } from "@modules/_shared/layers/BaseItem";
 import { BaseLayer, BoundingBox, LayerTopic } from "@modules/_shared/layers/BaseLayer";
-import { LayerManager } from "@modules/_shared/layers/LayerManager";
 import { QueryClient } from "@tanstack/query-core";
 
 import { isEqual } from "lodash";
@@ -30,7 +30,7 @@ export type SurfaceLayerSettings = {
 export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceDataFloat_trans | SurfaceDataPng> {
     private _colorSet: ColorSet;
 
-    constructor(name: string, layerManager: LayerManager) {
+    constructor(name: string, parent: BaseItem) {
         const defaultSettings = {
             ensembleIdent: null,
             realizationNum: null,
@@ -41,7 +41,7 @@ export class SurfaceLayer extends BaseLayer<SurfaceLayerSettings, SurfaceDataFlo
             extensionLength: 0,
             resolution: 1,
         };
-        super(name, defaultSettings, layerManager);
+        super(name, defaultSettings, parent);
 
         this._colorSet = new ColorSet(defaultColorPalettes[0]);
     }

@@ -21,4 +21,5 @@ if (isDevMode()) {
     await import("./MyModule/registerModule");
     await import("./MyModule2/registerModule");
     await import("./DbgWorkbenchSpy/registerModule");
+    await import("./LayerSpike/registerModule");
 }

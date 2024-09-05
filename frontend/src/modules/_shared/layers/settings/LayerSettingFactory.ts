@@ -6,6 +6,7 @@ export class LayerSettingFactory {
         switch (settingType) {
             case SettingType.ENSEMBLE:
                 return new EnsembleSetting();
+            case SettingType.SURFACE_NAME:
             default:
                 throw new Error("Unknown setting type");
         }

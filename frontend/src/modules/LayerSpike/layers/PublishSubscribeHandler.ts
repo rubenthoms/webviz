@@ -1,3 +1,5 @@
+import React from "react";
+
 export type TopicPayloads<TTopic extends string> = Record<TTopic, any>;
 
 export interface PublishSubscribe<TTopic extends string, TTopicPayloads extends TopicPayloads<TTopic>> {
@@ -35,4 +37,16 @@ export class PublishSubscribeHandler<TTopic extends string> {
 
         return subscriber;
     }
+}
+
+export function usePublishSubscribeTopicValue<TTopic extends string, TTopicPayloads extends TopicPayloads<TTopic>>(
+    publishSubscribe: PublishSubscribe<TTopic, TTopicPayloads>,
+    topic: TTopic
+): TTopicPayloads[TTopic] {
+    const value = React.useSyncExternalStore<TTopicPayloads[TTopic]>(
+        publishSubscribe.makeSubscriberFunction(topic),
+        publishSubscribe.makeSnapshotGetter(topic)
+    );
+
+    return value;
 }

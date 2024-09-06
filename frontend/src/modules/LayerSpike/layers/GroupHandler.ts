@@ -2,22 +2,8 @@ import React from "react";
 
 import { v4 } from "uuid";
 
-import { Item } from "./ItemBase";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-
-export interface Group extends Item {
-    getName(): string;
-    setName(name: string): void;
-    getGroupHandler(): GroupHandler;
-}
-
-export function instanceofGroup(item: Item): item is Group {
-    return (
-        (item as Group).getName !== undefined &&
-        (item as Group).setName !== undefined &&
-        (item as Group).getGroupHandler !== undefined
-    );
-}
+import { Item, instanceofGroup } from "./interfaces";
 
 export enum GroupBaseTopic {
     CHILDREN_CHANGED = "CHILDREN_CHANGED",
@@ -82,8 +68,8 @@ export class GroupHandler implements Item, PublishSubscribe<GroupBaseTopic, Grou
                 return child;
             }
 
-            if (child instanceof GroupHandler) {
-                const descendant = child.findDescendantById(id);
+            if (instanceofGroup(child)) {
+                const descendant = child.getGroupHandler().findDescendantById(id);
                 if (descendant) {
                     return descendant;
                 }

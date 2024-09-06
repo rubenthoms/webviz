@@ -4,12 +4,14 @@ import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
 import { GroupAdd, Layers } from "@mui/icons-material";
 
-import { GroupBaseTopic, GroupHandler, instanceofGroup, useGroupBaseTopicValue } from "./layers/GroupHandler";
+import { GroupBaseTopic, GroupHandler, useGroupBaseTopicValue } from "./layers/GroupHandler";
+import { View } from "./layers/View";
 import { makeComponent } from "./layers/components/utils";
 import { SurfaceLayer } from "./layers/implementations/SurfaceLayer";
+import { instanceofGroup } from "./layers/interfaces";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
-    const mainGroup = React.useRef<GroupHandler>(new GroupHandler("main"));
+    const mainGroup = React.useRef<GroupHandler>(new GroupHandler());
 
     const items = useGroupBaseTopicValue(mainGroup.current, GroupBaseTopic.CHILDREN_CHANGED);
 
@@ -18,7 +20,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     }
 
     function handleAddGroup() {
-        mainGroup.current.appendChild(new GroupHandler("Group"));
+        mainGroup.current.appendChild(new View("View"));
     }
 
     function handleItemMoved(
@@ -53,8 +55,8 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
             return;
         }
 
-        origin.removeChild(movedItem);
         destination.insertChild(movedItem, position);
+        origin.removeChild(movedItem);
     }
 
     return (
@@ -69,7 +71,9 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                 </button>
             </div>
             <div className="w-full flex-grow flex flex-col relative">
-                <SortableList onItemMoved={handleItemMoved}>{items.map((item) => makeComponent(item))}</SortableList>
+                <SortableList onItemMoved={handleItemMoved}>
+                    {items.map((item) => makeComponent(item, props.workbenchSettings, props.workbenchSession))}
+                </SortableList>
             </div>
         </div>
     );

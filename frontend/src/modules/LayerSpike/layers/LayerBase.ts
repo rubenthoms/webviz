@@ -1,7 +1,6 @@
 import { v4 } from "uuid";
 
-import { Item } from "./ItemBase";
-import { SettingsContext } from "./SettingsContext";
+import { Item, SettingsContext } from "./interfaces";
 
 export class LayerBase implements Item {
     private _name: string;

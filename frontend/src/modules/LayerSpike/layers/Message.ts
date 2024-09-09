@@ -6,6 +6,7 @@ export enum MessageDirection {
 export enum MessageType {
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
     AVAILABLE_SETTINGS_CHANGED = "AVAILABLE_SETTINGS_CHANGED",
+    DESCENDANTS_CHANGED = "DESCENDANTS_CHANGED",
 }
 
 export class Message {

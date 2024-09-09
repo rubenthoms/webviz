@@ -48,6 +48,10 @@ export class SharedSetting implements Item {
             }
         }
 
+        if (message.getType() === MessageType.DESCENDANTS_CHANGED) {
+            this.makeIntersectionOfAvailableValues();
+        }
+
         message.stopPropagation();
         return;
     }

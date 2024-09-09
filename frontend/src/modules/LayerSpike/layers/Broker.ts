@@ -25,7 +25,7 @@ export class Broker {
         this._childrenBrokers = this._childrenBrokers.filter((broker) => broker !== child);
     }
 
-    handleAndMaybeFowardMessage(message: Message) {
+    handleAndMaybeForwardMessage(message: Message) {
         this.callCallback(message);
 
         if (message.isPropagationStopped()) {
@@ -37,13 +37,13 @@ export class Broker {
 
     emit(message: Message) {
         if (message.getDirection() === MessageDirection.UP && this._parentBroker) {
-            this._parentBroker.handleAndMaybeFowardMessage(message);
+            this._parentBroker.handleAndMaybeForwardMessage(message);
             return;
         }
 
         if (message.getDirection() === MessageDirection.DOWN) {
             for (const child of this._childrenBrokers) {
-                child.handleAndMaybeFowardMessage(message);
+                child.handleAndMaybeForwardMessage(message);
             }
         }
     }

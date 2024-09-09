@@ -41,6 +41,15 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
 
             this._broker.emit(new Message(MessageType.AVAILABLE_SETTINGS_CHANGED, MessageDirection.DOWN));
         }
+
+        if (message.getType() === MessageType.DESCENDANTS_CHANGED) {
+            if (message.getDirection() === MessageDirection.DOWN) {
+                message.stopPropagation();
+                return;
+            }
+
+            this._broker.emit(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.DOWN));
+        }
     }
 
     getId() {
@@ -75,24 +84,28 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         this.setBrokerAndManagerOfChild(child);
         this._children = [child, ...this._children];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
     }
 
     appendChild(child: Item) {
         this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children, child];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
     }
 
     insertChild(child: Item, index: number) {
         this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children.slice(0, index), child, ...this._children.slice(index)];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
     }
 
     removeChild(child: Item) {
         this.removeBrokerAndManagerOfChild(child);
         this._children = this._children.filter((c) => c !== child);
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
     }
 
     moveChild(child: Item, index: number) {

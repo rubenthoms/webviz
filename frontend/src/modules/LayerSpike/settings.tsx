@@ -4,23 +4,23 @@ import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
 import { GroupAdd, Layers } from "@mui/icons-material";
 
-import { GroupBaseTopic, GroupHandler, useGroupBaseTopicValue } from "./layers/GroupHandler";
-import { View } from "./layers/View";
+import { GroupBaseTopic, useGroupBaseTopicValue } from "./layers/GroupDelegate";
+import { LayerManager } from "./layers/LayerManager";
 import { makeComponent } from "./layers/components/utils";
-import { SurfaceLayer } from "./layers/implementations/SurfaceLayer";
+import { SurfaceLayer } from "./layers/implementations/SurfaceLayer/SurfaceLayer";
 import { instanceofGroup } from "./layers/interfaces";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
-    const mainGroup = React.useRef<GroupHandler>(new GroupHandler());
-
-    const items = useGroupBaseTopicValue(mainGroup.current, GroupBaseTopic.CHILDREN_CHANGED);
+    const layerManager = React.useRef<LayerManager>(new LayerManager(props.workbenchSession, props.workbenchSettings));
+    const groupDelegate = layerManager.current.getGroupDelegate();
+    const items = useGroupBaseTopicValue(groupDelegate, GroupBaseTopic.CHILDREN_CHANGED);
 
     function handleAddLayer() {
-        mainGroup.current.appendChild(new SurfaceLayer());
+        groupDelegate.appendChild(new SurfaceLayer());
     }
 
     function handleAddGroup() {
-        mainGroup.current.appendChild(new View("View"));
+        groupDelegate.appendChild(layerManager.current.makeView("New Group"));
     }
 
     function handleItemMoved(
@@ -29,24 +29,24 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         destinationId: string | null,
         position: number
     ) {
-        const movedItem = mainGroup.current.findDescendantById(movedItemId);
+        const movedItem = groupDelegate.findDescendantById(movedItemId);
         if (!movedItem) {
             return;
         }
 
-        let origin = mainGroup.current;
+        let origin = layerManager.current.getGroupDelegate();
         if (originId) {
-            const candidate = mainGroup.current.findDescendantById(originId);
+            const candidate = groupDelegate.findDescendantById(originId);
             if (candidate && instanceofGroup(candidate)) {
-                origin = candidate.getGroupHandler();
+                origin = candidate.getGroupDelegate();
             }
         }
 
-        let destination = mainGroup.current;
+        let destination = layerManager.current.getGroupDelegate();
         if (destinationId) {
-            const candidate = mainGroup.current.findDescendantById(destinationId);
+            const candidate = groupDelegate.findDescendantById(destinationId);
             if (candidate && instanceofGroup(candidate)) {
-                destination = candidate.getGroupHandler();
+                destination = candidate.getGroupDelegate();
             }
         }
 
@@ -55,8 +55,8 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
             return;
         }
 
-        destination.insertChild(movedItem, position);
         origin.removeChild(movedItem);
+        destination.insertChild(movedItem, position);
     }
 
     return (
@@ -71,9 +71,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                 </button>
             </div>
             <div className="w-full flex-grow flex flex-col relative">
-                <SortableList onItemMoved={handleItemMoved}>
-                    {items.map((item) => makeComponent(item, props.workbenchSettings, props.workbenchSession))}
-                </SortableList>
+                <SortableList onItemMoved={handleItemMoved}>{items.map((item) => makeComponent(item))}</SortableList>
             </div>
         </div>
     );

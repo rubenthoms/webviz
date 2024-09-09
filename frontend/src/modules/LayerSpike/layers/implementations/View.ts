@@ -1,14 +1,16 @@
-import { GroupHandler } from "../GroupHandler";
+import { GroupDelegate } from "../GroupDelegate";
+import { LayerManager } from "../LayerManager";
 import { Group } from "../interfaces";
 
 export class View implements Group {
     private _name: string;
     private _id: string;
-    private _groupHandler: GroupHandler = new GroupHandler();
+    private _groupHandler: GroupDelegate;
 
-    constructor(name: string) {
+    constructor(layerManager: LayerManager, name: string) {
         this._id = "view";
         this._name = name;
+        this._groupHandler = new GroupDelegate(layerManager);
     }
 
     getId(): string {
@@ -23,7 +25,11 @@ export class View implements Group {
         this._name = name;
     }
 
-    getGroupHandler(): GroupHandler {
+    getGroupDelegate(): GroupDelegate {
         return this._groupHandler;
+    }
+
+    getBroker() {
+        return this._groupHandler.getBroker();
     }
 }

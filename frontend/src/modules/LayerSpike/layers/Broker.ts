@@ -1,20 +1,57 @@
-import { WorkbenchServices } from "@framework/WorkbenchServices";
-import { WorkbenchSession } from "@framework/WorkbenchSession";
+import { Message, MessageDirection } from "./Message";
 
 export class Broker {
-    private _workbenchServices: WorkbenchServices;
-    private _workbenchSession: WorkbenchSession;
+    private _parentBroker: Broker | null = null;
+    private _childrenBrokers: Broker[] = [];
+    private _messageCallback: ((message: Message) => void) | null = null;
 
-    constructor(workbenchServices: WorkbenchServices, workbenchSession: WorkbenchSession) {
-        this._workbenchServices = workbenchServices;
-        this._workbenchSession = workbenchSession;
+    constructor(parent: Broker | null) {
+        this._parentBroker = parent;
     }
 
-    getWorkbenchServices(): WorkbenchServices {
-        return this._workbenchServices;
+    setParent(parent: Broker | null) {
+        this._parentBroker = parent;
     }
 
-    getWorkbenchSession(): WorkbenchSession {
-        return this._workbenchSession;
+    setChildren(children: Broker[]) {
+        this._childrenBrokers = children;
+    }
+
+    addChild(child: Broker) {
+        this._childrenBrokers.push(child);
+    }
+
+    removeChild(child: Broker) {
+        this._childrenBrokers = this._childrenBrokers.filter((broker) => broker !== child);
+    }
+
+    emit(message: Message) {
+        this.callCallback(message);
+
+        if (message.isPropagationStopped()) {
+            return;
+        }
+
+        if (message.getDirection() === MessageDirection.UP && this._parentBroker) {
+            this._parentBroker.emit(message);
+            return;
+        }
+
+        if (message.getDirection() === MessageDirection.DOWN) {
+            for (const child of this._childrenBrokers) {
+                child.emit(message);
+            }
+        }
+    }
+
+    onMessage(callback: (message: Message) => void) {
+        this._messageCallback = callback;
+    }
+
+    callCallback(message: Message): void {
+        const callback = this._messageCallback;
+        if (callback) {
+            callback(message);
+        }
     }
 }

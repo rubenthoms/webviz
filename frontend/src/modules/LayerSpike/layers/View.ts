@@ -1,15 +1,23 @@
 import { v4 } from "uuid";
 
-import { Group, GroupHandler } from "./GroupHandler";
+import { Broker } from "./Broker";
+import { GroupDelegate } from "./GroupDelegate";
+import { LayerManager } from "./LayerManager";
+import { Group } from "./interfaces";
 
 export class View implements Group {
-    private _groupHandler: GroupHandler = new GroupHandler();
+    private _groupHandler: GroupDelegate;
     private _name: string;
     private _id: string;
 
-    constructor(name: string) {
+    constructor(layerManager: LayerManager, name: string) {
         this._id = v4();
         this._name = name;
+        this._groupHandler = new GroupDelegate(layerManager);
+    }
+
+    getBroker(): Broker {
+        return this._groupHandler.getBroker();
     }
 
     getId() {
@@ -20,7 +28,7 @@ export class View implements Group {
         return this._name;
     }
 
-    getGroupHandler(): GroupHandler {
+    getGroupDelegate(): GroupDelegate {
         return this._groupHandler;
     }
 

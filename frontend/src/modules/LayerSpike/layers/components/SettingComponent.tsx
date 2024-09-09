@@ -6,8 +6,8 @@ import { Setting, SettingTopic } from "../interfaces";
 
 export type SettingComponentProps<TValue> = {
     setting: Setting<TValue>;
-    workbenchSettings: WorkbenchSettings;
     workbenchSession: WorkbenchSession;
+    workbenchSettings: WorkbenchSettings;
 };
 
 export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): React.ReactNode {
@@ -26,8 +26,8 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
                     onValueChange={handleValueChanged}
                     value={value}
                     availableValues={props.setting.getAvailableValues()}
-                    workbenchSettings={props.workbenchSettings}
                     workbenchSession={props.workbenchSession}
+                    workbenchSettings={props.workbenchSettings}
                 />
             </div>
         </div>

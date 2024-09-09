@@ -2,8 +2,11 @@ import React from "react";
 
 import { v4 } from "uuid";
 
+import { Broker } from "./Broker";
+import { LayerManager } from "./LayerManager";
+import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { Item, instanceofGroup } from "./interfaces";
+import { Item, instanceofGroup, instanceofLayer } from "./interfaces";
 
 export enum GroupBaseTopic {
     CHILDREN_CHANGED = "CHILDREN_CHANGED",
@@ -13,35 +16,76 @@ export type GroupBaseTopicPayloads = {
     [GroupBaseTopic.CHILDREN_CHANGED]: Item[];
 };
 
-export class GroupHandler implements Item, PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
+export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
     private _children: Item[] = [];
     private _id: string;
+    private _manager: LayerManager;
+    private _broker: Broker;
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
-    constructor() {
+    constructor(manager: LayerManager) {
         this._id = v4();
+        this._broker = new Broker(null);
+        this._manager = manager;
+
+        this._broker.onMessage(this.handleAvailableSettingsChanged.bind(this));
+    }
+
+    private handleAvailableSettingsChanged(message: Message) {
+        if (message.getType() === MessageType.AVAILABLE_SETTINGS_CHANGED) {
+            if (message.getDirection() === MessageDirection.DOWN) {
+                message.stopPropagation();
+                return;
+            }
+
+            this._broker.emit(new Message(MessageType.AVAILABLE_SETTINGS_CHANGED, MessageDirection.DOWN));
+        }
     }
 
     getId() {
         return this._id;
     }
 
+    getBroker() {
+        return this._broker;
+    }
+
+    private setBrokerAndManagerOfChild(child: Item) {
+        child.getBroker().setParent(this._broker);
+        this._broker.addChild(child.getBroker());
+        if (instanceofLayer(child)) {
+            child.getLayerDelegate().setLayerManager(this._manager);
+        }
+    }
+
+    private removeBrokerAndManagerOfChild(child: Item) {
+        child.getBroker().setParent(null);
+        this._broker.removeChild(child.getBroker());
+        if (instanceofLayer(child)) {
+            child.getLayerDelegate().setLayerManager(null);
+        }
+    }
+
     prependChild(child: Item) {
+        this.setBrokerAndManagerOfChild(child);
         this._children = [child, ...this._children];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
     }
 
     appendChild(child: Item) {
+        this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children, child];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
     }
 
     insertChild(child: Item, index: number) {
+        this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children.slice(0, index), child, ...this._children.slice(index)];
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
     }
 
     removeChild(child: Item) {
+        this.removeBrokerAndManagerOfChild(child);
         this._children = this._children.filter((c) => c !== child);
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
     }
@@ -69,7 +113,7 @@ export class GroupHandler implements Item, PublishSubscribe<GroupBaseTopic, Grou
             }
 
             if (instanceofGroup(child)) {
-                const descendant = child.getGroupHandler().findDescendantById(id);
+                const descendant = child.getGroupDelegate().findDescendantById(id);
                 if (descendant) {
                     return descendant;
                 }
@@ -95,7 +139,7 @@ export class GroupHandler implements Item, PublishSubscribe<GroupBaseTopic, Grou
 }
 
 export function useGroupBaseTopicValue<T extends GroupBaseTopic>(
-    layerGroup: GroupHandler,
+    layerGroup: GroupDelegate,
     topic: T
 ): GroupBaseTopicPayloads[T] {
     const value = React.useSyncExternalStore<GroupBaseTopicPayloads[T]>(

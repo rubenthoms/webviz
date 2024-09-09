@@ -5,7 +5,7 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 
 import { PublishSubscribeHandler } from "../PublishSubscribeHandler";
-import { Setting, SettingComponentProps, SettingTopic, SettingTopicPayloads, SettingsContext } from "../interfaces";
+import { Setting, SettingComponentProps, SettingTopic, SettingTopicPayloads } from "../interfaces";
 
 export class Ensemble implements Setting<EnsembleIdent | null> {
     private _value: EnsembleIdent | null = null;
@@ -15,6 +15,10 @@ export class Ensemble implements Setting<EnsembleIdent | null> {
 
     getLabel(): string {
         return "Ensemble";
+    }
+
+    getValue(): EnsembleIdent | null {
+        return this._value;
     }
 
     setValue(value: EnsembleIdent | null) {

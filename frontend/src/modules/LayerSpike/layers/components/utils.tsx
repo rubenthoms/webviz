@@ -1,39 +1,16 @@
-import { WorkbenchSession } from "@framework/WorkbenchSession";
-import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { SortableListItemProps } from "@lib/components/SortableList";
 
-import { GroupComponent } from "./Group";
-import { Layer } from "./Layer";
+import { GroupComponent } from "./GroupComponent";
+import { LayerComponent } from "./LayerComponent";
 
-import { GroupHandler } from "../GroupHandler";
-import { LayerBase } from "../LayerBase";
-import { Item, instanceofGroup } from "../interfaces";
+import { Item, instanceofGroup, instanceofLayer } from "../interfaces";
 
-export function makeComponent(
-    item: Item,
-    workbenchSettings: WorkbenchSettings,
-    workbenchSession: WorkbenchSession
-): React.ReactElement<SortableListItemProps> {
-    if (item instanceof LayerBase) {
-        return (
-            <Layer
-                key={item.getId()}
-                layer={item}
-                onRemove={() => {}}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-            />
-        );
+export function makeComponent(item: Item): React.ReactElement<SortableListItemProps> {
+    if (instanceofLayer(item)) {
+        return <LayerComponent key={item.getId()} layer={item} onRemove={() => {}} />;
     }
     if (instanceofGroup(item)) {
-        return (
-            <GroupComponent
-                key={item.getId()}
-                group={item}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-            />
-        );
+        return <GroupComponent key={item.getId()} group={item} />;
     }
     throw new Error("Not implemented");
 }

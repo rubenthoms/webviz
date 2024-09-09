@@ -12,6 +12,7 @@ export type SettingComponentProps<TValue> = {
 
 export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): React.ReactNode {
     const value = usePublishSubscribeTopicValue(props.setting, SettingTopic.VALUE_CHANGED);
+    const availableValues = usePublishSubscribeTopicValue(props.setting, SettingTopic.AVAILABLE_VALUES_CHANGED);
 
     function handleValueChanged(newValue: TValue) {
         props.setting.setValue(newValue);
@@ -20,12 +21,12 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
     const Component = props.setting.makeComponent();
     return (
         <div key={props.setting.toString()} className="table-row">
-            <div className="table-cell align-middle p-1 text-sm">{props.setting.getLabel()}:</div>
+            <div className="table-cell align-middle p-1 text-sm">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
                 <Component
                     onValueChange={handleValueChanged}
                     value={value}
-                    availableValues={props.setting.getAvailableValues()}
+                    availableValues={availableValues}
                     workbenchSession={props.workbenchSession}
                     workbenchSettings={props.workbenchSettings}
                 />

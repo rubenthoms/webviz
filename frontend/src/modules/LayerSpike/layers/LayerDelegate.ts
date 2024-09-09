@@ -22,6 +22,11 @@ export class LayerDelegate<TSettings extends Settings> implements Item {
                 this._broker.emit(new Message(MessageType.SETTINGS_CHANGED, MessageDirection.UP));
             }
         );
+        this._settingsContext
+            .getDelegate()
+            .makeSubscriberFunction(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED)(() => {
+            this._broker.emit(new Message(MessageType.AVAILABLE_SETTINGS_CHANGED, MessageDirection.UP));
+        });
     }
 
     getBroker(): Broker {
@@ -42,6 +47,7 @@ export class LayerDelegate<TSettings extends Settings> implements Item {
 
     setLayerManager(layerManager: LayerManager | null): void {
         this._layerManager = layerManager;
+        this._settingsContext.getDelegate().setLayerManager(layerManager);
     }
 
     getLayerManager(): LayerManager {

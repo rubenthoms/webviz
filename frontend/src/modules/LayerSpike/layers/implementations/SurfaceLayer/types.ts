@@ -1,5 +1,8 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
 
+import { SettingType } from "../../Settings";
+
 export type SurfaceSettings = {
-    ensemble: EnsembleIdent | null;
+    [SettingType.ENSEMBLE]: EnsembleIdent | null;
+    [SettingType.REALIZATION]: number | null;
 };

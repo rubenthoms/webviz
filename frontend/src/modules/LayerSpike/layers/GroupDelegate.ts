@@ -6,6 +6,7 @@ import { Broker } from "./Broker";
 import { LayerManager } from "./LayerManager";
 import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
+import { SharedSetting } from "./SharedSetting";
 import { Item, instanceofGroup, instanceofLayer } from "./interfaces";
 
 export enum GroupBaseTopic {
@@ -28,10 +29,10 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         this._broker = new Broker(null);
         this._manager = manager;
 
-        this._broker.onMessage(this.handleAvailableSettingsChanged.bind(this));
+        this._broker.onMessage(this.handleBrokerMessage.bind(this));
     }
 
-    private handleAvailableSettingsChanged(message: Message) {
+    private handleBrokerMessage(message: Message) {
         if (message.getType() === MessageType.AVAILABLE_SETTINGS_CHANGED) {
             if (message.getDirection() === MessageDirection.DOWN) {
                 message.stopPropagation();
@@ -55,6 +56,10 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         this._broker.addChild(child.getBroker());
         if (instanceofLayer(child)) {
             child.getLayerDelegate().setLayerManager(this._manager);
+        }
+        if (child instanceof SharedSetting) {
+            child.setLayerManager(this._manager);
+            child.setParentGroup(this);
         }
     }
 
@@ -121,6 +126,21 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         }
 
         return undefined;
+    }
+
+    getDescendantItems(checkFunc: (item: Item) => boolean): Item[] {
+        const items: Item[] = [];
+        for (const child of this._children) {
+            if (checkFunc(child)) {
+                items.push(child);
+            }
+
+            if (instanceofGroup(child)) {
+                items.push(...child.getGroupDelegate().getDescendantItems(checkFunc));
+            }
+        }
+
+        return items;
     }
 
     makeSnapshotGetter<T extends GroupBaseTopic>(topic: T): () => GroupBaseTopicPayloads[T] {

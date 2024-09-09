@@ -5,13 +5,17 @@ import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 
 import { PublishSubscribeHandler } from "../PublishSubscribeHandler";
+import { SettingType } from "../Settings";
 import { Setting, SettingComponentProps, SettingTopic, SettingTopicPayloads } from "../interfaces";
 
 export class Ensemble implements Setting<EnsembleIdent | null> {
     private _value: EnsembleIdent | null = null;
     private _publishSubscribeHandler = new PublishSubscribeHandler<SettingTopic>();
+    private _availableValues: EnsembleIdent[] = [];
 
-    constructor() {}
+    getType(): SettingType {
+        return SettingType.ENSEMBLE;
+    }
 
     getLabel(): string {
         return "Ensemble";
@@ -39,6 +43,9 @@ export class Ensemble implements Setting<EnsembleIdent | null> {
             if (topic === SettingTopic.VALUE_CHANGED) {
                 return this._value;
             }
+            if (topic === SettingTopic.AVAILABLE_VALUES_CHANGED) {
+                return this._availableValues;
+            }
         };
 
         return snapshotGetter;
@@ -48,7 +55,12 @@ export class Ensemble implements Setting<EnsembleIdent | null> {
         return this._publishSubscribeHandler.makeSubscriberFunction(topic);
     }
 
-    getAvailableValues(): (EnsembleIdent | null)[] {
-        return [];
+    getAvailableValues(): EnsembleIdent[] {
+        return this._availableValues;
+    }
+
+    setAvailableValues(availableValues: EnsembleIdent[]): void {
+        this._availableValues = availableValues;
+        this._publishSubscribeHandler.notifySubscribers(SettingTopic.AVAILABLE_VALUES_CHANGED);
     }
 }

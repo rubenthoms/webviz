@@ -2,11 +2,13 @@ import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
-import { GroupAdd, Layers } from "@mui/icons-material";
+import { GroupAdd, Layers, Share } from "@mui/icons-material";
 
 import { GroupBaseTopic, useGroupBaseTopicValue } from "./layers/GroupDelegate";
 import { LayerManager } from "./layers/LayerManager";
+import { SharedSetting } from "./layers/SharedSetting";
 import { makeComponent } from "./layers/components/utils";
+import { Realization } from "./layers/implementations/Realization";
 import { SurfaceLayer } from "./layers/implementations/SurfaceLayer/SurfaceLayer";
 import { instanceofGroup } from "./layers/interfaces";
 
@@ -21,6 +23,10 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
 
     function handleAddGroup() {
         groupDelegate.appendChild(layerManager.current.makeView("New Group"));
+    }
+
+    function handleAddSharedSetting() {
+        groupDelegate.appendChild(new SharedSetting(new Realization()));
     }
 
     function handleItemMoved(
@@ -68,6 +74,9 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                 </button>
                 <button className="bg-black text-white p-1 rounded" onClick={handleAddGroup}>
                     <GroupAdd />
+                </button>
+                <button className="bg-black text-white p-1 rounded" onClick={handleAddSharedSetting}>
+                    <Share />
                 </button>
             </div>
             <div className="w-full flex-grow flex flex-col relative">

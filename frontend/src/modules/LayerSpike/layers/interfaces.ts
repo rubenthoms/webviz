@@ -5,6 +5,7 @@ import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
 import { LayerDelegate } from "./LayerDelegate";
 import { PublishSubscribe } from "./PublishSubscribeHandler";
+import { SettingType } from "./Settings";
 import { SettingsContextDelegate } from "./SettingsContextDelegate";
 
 export interface Item {
@@ -45,32 +46,36 @@ export function instanceofLayer(item: Item): item is Layer<Settings> {
 }
 
 export interface SettingsContext<TSettings extends Settings> {
-    getSettings(): Record<keyof TSettings, Setting<TSettings[keyof TSettings]>>;
+    getSettings(): { [K in keyof TSettings]: Setting<TSettings[K]> };
     getDelegate(): SettingsContextDelegate<TSettings>;
 }
 
 export type SettingComponentProps<TValue> = {
     onValueChange: (newValue: TValue) => void;
     value: TValue;
-    availableValues: TValue[];
+    availableValues: Exclude<TValue, null>[];
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
 };
 
 export interface Setting<TValue> extends PublishSubscribe<SettingTopic, SettingTopicPayloads<TValue>> {
+    getType(): SettingType;
     getLabel(): string;
     setValue(value: TValue): void;
     getValue(): TValue;
-    getAvailableValues(): TValue[];
+    getAvailableValues(): Exclude<TValue, null>[];
+    setAvailableValues(availableValues: Exclude<TValue, null>[]): void;
     makeComponent(): (props: SettingComponentProps<TValue>) => React.ReactNode;
 }
 
 export enum SettingTopic {
     VALUE_CHANGED = "VALUE_CHANGED",
+    AVAILABLE_VALUES_CHANGED = "AVAILABLE_VALUES_CHANGED",
 }
 
 export type SettingTopicPayloads<TValue> = {
     [SettingTopic.VALUE_CHANGED]: TValue;
+    [SettingTopic.AVAILABLE_VALUES_CHANGED]: Exclude<TValue, null>[];
 };
 
 export type Settings = {

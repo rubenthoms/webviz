@@ -1,5 +1,6 @@
 import { isEqual } from "lodash";
 
+import { LayerManager } from "./LayerManager";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
 import { Setting, SettingTopic, Settings } from "./interfaces";
 
@@ -15,36 +16,28 @@ export type SettingsContextDelegatePayloads = {
     [SettingsContextDelegateTopic.REFETCH_REQUIRED]: void;
 };
 
-export interface MaybeFetchDatFunction<TSettings extends Settings> {
-    (
-        oldValues: Record<keyof TSettings, TSettings[keyof TSettings]>,
-        newValues: Record<keyof TSettings, TSettings[keyof TSettings]>
-    ): boolean;
+export interface MaybeFetchDataFunction<TSettings extends Settings, TKey extends keyof TSettings> {
+    (oldValues: { [K in TKey]: TSettings[K] }, newValues: { [K in TKey]: TSettings[K] }): boolean;
 }
 
-export interface FetchDataFunction<TSettings extends Settings> {
-    (values: Record<keyof TSettings, TSettings[keyof TSettings]>): void;
+export interface FetchDataFunction<TSettings extends Settings, TKey extends keyof TSettings> {
+    (values: { [K in TKey]: TSettings[K] }): void;
 }
 
-export class SettingsContextDelegate<TSettings extends Settings>
+export class SettingsContextDelegate<TSettings extends Settings, TKey extends keyof TSettings = keyof TSettings>
     implements PublishSubscribe<SettingsContextDelegateTopic, SettingsContextDelegatePayloads>
 {
-    private _settings: Record<keyof TSettings, Setting<TSettings[keyof TSettings]>>;
-    private _cachedValues: Record<keyof TSettings, TSettings[keyof TSettings]> = {} as Record<
-        keyof TSettings,
-        TSettings[keyof TSettings]
-    >;
-    private _values: Record<keyof TSettings, TSettings[keyof TSettings]> = {} as Record<
-        keyof TSettings,
-        TSettings[keyof TSettings]
-    >;
-    private _availableSettingsValues: Partial<Record<keyof TSettings, TSettings[keyof TSettings][]>> = {};
+    private _settings: { [K in TKey]: Setting<TSettings[K]> } = {} as { [K in TKey]: Setting<TSettings[K]> };
+    private _cachedValues: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
+    private _values: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
+    private _availableSettingsValues: Partial<{ [K in TKey]: Exclude<TSettings[K], null>[] }> = {};
     private _publishSubscribeHandler = new PublishSubscribeHandler<SettingsContextDelegateTopic>();
-    private _refetchRequired: MaybeFetchDatFunction<TSettings>;
+    private _refetchRequired: MaybeFetchDataFunction<TSettings, TKey>;
+    private _layerManager: LayerManager | null = null;
 
     constructor(
-        settings: Record<keyof TSettings, Setting<TSettings[keyof TSettings]>>,
-        refetchRequiredFunc: MaybeFetchDatFunction<TSettings>
+        settings: { [K in TKey]: Setting<TSettings[K]> },
+        refetchRequiredFunc: MaybeFetchDataFunction<TSettings, TKey>
     ) {
         for (const key in settings) {
             this._values[key] = settings[key].getValue();
@@ -52,6 +45,7 @@ export class SettingsContextDelegate<TSettings extends Settings>
                 this._values[key] = settings[key].getValue();
                 this.handleSettingsChanged();
             });
+            this._availableSettingsValues[key] = [];
         }
 
         this._settings = settings;
@@ -69,6 +63,30 @@ export class SettingsContextDelegate<TSettings extends Settings>
         }
     }
 
+    setLayerManager(layerManager: LayerManager | null) {
+        this._layerManager = layerManager;
+    }
+
+    getLayerManager(): LayerManager {
+        if (this._layerManager === null) {
+            throw new Error("LayerManager not set");
+        }
+        return this._layerManager;
+    }
+
+    setAvailableValues<K extends TKey>(key: K, availableValues: Exclude<TSettings[K], null>[]): void {
+        this._availableSettingsValues[key] = availableValues;
+        this._settings[key].setAvailableValues(availableValues);
+        this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED);
+    }
+
+    getAvailableValues<K extends TKey>(key: K): Exclude<TSettings[K], null>[] {
+        if (!this._availableSettingsValues[key]) {
+            throw new Error(`No available values for key: ${key.toString()}`);
+        }
+        return this._availableSettingsValues[key];
+    }
+
     getSettings() {
         return this._settings;
     }
@@ -82,7 +100,7 @@ export class SettingsContextDelegate<TSettings extends Settings>
                 return;
             }
             if (topic === SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED) {
-                return;
+                return this._availableSettingsValues;
             }
         };
 

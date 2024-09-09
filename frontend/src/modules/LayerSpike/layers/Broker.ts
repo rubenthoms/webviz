@@ -25,21 +25,25 @@ export class Broker {
         this._childrenBrokers = this._childrenBrokers.filter((broker) => broker !== child);
     }
 
-    emit(message: Message) {
+    handleAndMaybeFowardMessage(message: Message) {
         this.callCallback(message);
 
         if (message.isPropagationStopped()) {
             return;
         }
 
+        this.emit(message);
+    }
+
+    emit(message: Message) {
         if (message.getDirection() === MessageDirection.UP && this._parentBroker) {
-            this._parentBroker.emit(message);
+            this._parentBroker.handleAndMaybeFowardMessage(message);
             return;
         }
 
         if (message.getDirection() === MessageDirection.DOWN) {
             for (const child of this._childrenBrokers) {
-                child.emit(message);
+                child.handleAndMaybeFowardMessage(message);
             }
         }
     }

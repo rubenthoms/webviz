@@ -2,7 +2,6 @@ import { v4 } from "uuid";
 
 import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
-import { LayerManager } from "./LayerManager";
 import { Group } from "./interfaces";
 
 export class View implements Group {
@@ -10,10 +9,10 @@ export class View implements Group {
     private _name: string;
     private _id: string;
 
-    constructor(layerManager: LayerManager, name: string) {
+    constructor(name: string) {
         this._id = v4();
         this._name = name;
-        this._groupHandler = new GroupDelegate(layerManager);
+        this._groupHandler = new GroupDelegate(null);
     }
 
     getBroker(): Broker {

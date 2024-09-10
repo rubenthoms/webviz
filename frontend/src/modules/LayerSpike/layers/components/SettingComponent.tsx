@@ -1,5 +1,6 @@
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
+import { PendingWrapper } from "@lib/components/PendingWrapper";
 
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
 import { Setting, SettingTopic } from "../interfaces";
@@ -11,11 +12,16 @@ export type SettingComponentProps<TValue> = {
 };
 
 export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): React.ReactNode {
-    const value = usePublishSubscribeTopicValue(props.setting, SettingTopic.VALUE_CHANGED);
-    const availableValues = usePublishSubscribeTopicValue(props.setting, SettingTopic.AVAILABLE_VALUES_CHANGED);
+    const value = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.VALUE_CHANGED);
+    const availableValues = usePublishSubscribeTopicValue(
+        props.setting.getDelegate(),
+        SettingTopic.AVAILABLE_VALUES_CHANGED
+    );
+    const overriddenValue = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.OVERRIDDEN_CHANGED);
+    const isLoading = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.LOADING_STATE_CHANGED);
 
     function handleValueChanged(newValue: TValue) {
-        props.setting.setValue(newValue);
+        props.setting.getDelegate().setValue(newValue);
     }
 
     const Component = props.setting.makeComponent();
@@ -23,13 +29,17 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
         <div key={props.setting.toString()} className="table-row">
             <div className="table-cell align-middle p-1 text-sm">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
-                <Component
-                    onValueChange={handleValueChanged}
-                    value={value}
-                    availableValues={availableValues}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                />
+                <PendingWrapper isPending={isLoading}>
+                    <Component
+                        onValueChange={handleValueChanged}
+                        value={value}
+                        isOverridden={overriddenValue !== undefined}
+                        overriddenValue={overriddenValue}
+                        availableValues={availableValues}
+                        workbenchSession={props.workbenchSession}
+                        workbenchSettings={props.workbenchSettings}
+                    />
+                </PendingWrapper>
             </div>
         </div>
     );

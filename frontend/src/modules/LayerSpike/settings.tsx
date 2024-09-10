@@ -3,17 +3,22 @@ import React from "react";
 import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
 import { GroupAdd, Layers, Share } from "@mui/icons-material";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { GroupBaseTopic, useGroupBaseTopicValue } from "./layers/GroupDelegate";
 import { LayerManager } from "./layers/LayerManager";
 import { SharedSetting } from "./layers/SharedSetting";
+import { View } from "./layers/View";
 import { makeComponent } from "./layers/components/utils";
-import { Realization } from "./layers/implementations/Realization";
-import { SurfaceLayer } from "./layers/implementations/SurfaceLayer/SurfaceLayer";
+import { SurfaceLayer } from "./layers/implementations/layers/SurfaceLayer/SurfaceLayer";
+import { Realization } from "./layers/implementations/settings/Realization";
 import { instanceofGroup } from "./layers/interfaces";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
-    const layerManager = React.useRef<LayerManager>(new LayerManager(props.workbenchSession, props.workbenchSettings));
+    const queryClient = useQueryClient();
+    const layerManager = React.useRef<LayerManager>(
+        new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient)
+    );
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = useGroupBaseTopicValue(groupDelegate, GroupBaseTopic.CHILDREN_CHANGED);
 
@@ -22,7 +27,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     }
 
     function handleAddGroup() {
-        groupDelegate.appendChild(layerManager.current.makeView("New Group"));
+        groupDelegate.appendChild(new View("New Group"));
     }
 
     function handleAddSharedSetting() {

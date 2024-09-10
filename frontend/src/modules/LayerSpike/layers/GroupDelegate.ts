@@ -3,7 +3,7 @@ import React from "react";
 import { v4 } from "uuid";
 
 import { Broker } from "./Broker";
-import { LayerManager } from "./LayerManager";
+import { LayerManager, LayerManagerTopic } from "./LayerManager";
 import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
 import { SharedSetting } from "./SharedSetting";
@@ -18,13 +18,14 @@ export type GroupBaseTopicPayloads = {
 };
 
 export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
+    private _parentGroup: GroupDelegate | null = null;
     private _children: Item[] = [];
     private _id: string;
-    private _manager: LayerManager;
+    private _manager: LayerManager | null = null;
     private _broker: Broker;
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
-    constructor(manager: LayerManager) {
+    constructor(manager: LayerManager | null) {
         this._id = v4();
         this._broker = new Broker(null);
         this._manager = manager;
@@ -60,52 +61,80 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         return this._broker;
     }
 
-    private setBrokerAndManagerOfChild(child: Item) {
+    setParentGroup(parentGroup: GroupDelegate | null) {
+        this._parentGroup = parentGroup;
+    }
+
+    setLayerManager(manager: LayerManager | null) {
+        this._manager = manager;
+    }
+
+    private takeOwnershipOfChild(child: Item) {
         child.getBroker().setParent(this._broker);
         this._broker.addChild(child.getBroker());
         if (instanceofLayer(child)) {
-            child.getLayerDelegate().setLayerManager(this._manager);
+            child.getDelegate().setParentGroup(this);
+            child.getDelegate().setLayerManager(this._manager);
         }
         if (child instanceof SharedSetting) {
             child.setLayerManager(this._manager);
             child.setParentGroup(this);
         }
+        if (instanceofGroup(child)) {
+            child.getGroupDelegate().setParentGroup(this);
+            child.getGroupDelegate().setLayerManager(this._manager);
+        }
+
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.notifyManagerOfItemChange();
     }
 
-    private removeBrokerAndManagerOfChild(child: Item) {
+    private disposeOwnershipOfChild(child: Item) {
         child.getBroker().setParent(null);
         this._broker.removeChild(child.getBroker());
         if (instanceofLayer(child)) {
-            child.getLayerDelegate().setLayerManager(null);
+            child.getDelegate().setParentGroup(null);
+            child.getDelegate().setLayerManager(null);
         }
+        if (child instanceof SharedSetting) {
+            child.setLayerManager(null);
+            child.setParentGroup(null);
+        }
+        if (instanceofGroup(child)) {
+            child.getGroupDelegate().setParentGroup(this);
+            child.getGroupDelegate().setLayerManager(this._manager);
+        }
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.notifyManagerOfItemChange();
+    }
+
+    private notifyManagerOfItemChange() {
+        if (!this._manager) {
+            return;
+        }
+        this._manager.publishTopic(LayerManagerTopic.ITEMS_CHANGED);
     }
 
     prependChild(child: Item) {
-        this.setBrokerAndManagerOfChild(child);
         this._children = [child, ...this._children];
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.takeOwnershipOfChild(child);
     }
 
     appendChild(child: Item) {
-        this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children, child];
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.takeOwnershipOfChild(child);
     }
 
     insertChild(child: Item, index: number) {
-        this.setBrokerAndManagerOfChild(child);
         this._children = [...this._children.slice(0, index), child, ...this._children.slice(index)];
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.takeOwnershipOfChild(child);
     }
 
     removeChild(child: Item) {
-        this.removeBrokerAndManagerOfChild(child);
         this._children = this._children.filter((c) => c !== child);
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
+        this.disposeOwnershipOfChild(child);
     }
 
     moveChild(child: Item, index: number) {
@@ -141,6 +170,21 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         return undefined;
     }
 
+    getAncestorAndSiblingItems(checkFunc: (item: Item) => boolean): Item[] {
+        const items: Item[] = [];
+        for (const child of this._children) {
+            if (checkFunc(child)) {
+                items.push(child);
+            }
+
+            if (this._parentGroup) {
+                items.push(...this._parentGroup.getAncestorAndSiblingItems(checkFunc));
+            }
+        }
+
+        return items;
+    }
+
     getDescendantItems(checkFunc: (item: Item) => boolean): Item[] {
         const items: Item[] = [];
         for (const child of this._children) {
@@ -166,8 +210,8 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         return snapshotGetter;
     }
 
-    makeSubscriberFunction(topic: GroupBaseTopic): (onStoreChangeCallback: () => void) => () => void {
-        return this._publishSubscribeHandler.makeSubscriberFunction(topic);
+    getPublishSubscribeHandler(): PublishSubscribeHandler<GroupBaseTopic> {
+        return this._publishSubscribeHandler;
     }
 }
 
@@ -176,7 +220,7 @@ export function useGroupBaseTopicValue<T extends GroupBaseTopic>(
     topic: T
 ): GroupBaseTopicPayloads[T] {
     const value = React.useSyncExternalStore<GroupBaseTopicPayloads[T]>(
-        layerGroup.makeSubscriberFunction(topic),
+        layerGroup.getPublishSubscribeHandler().makeSubscriberFunction(topic),
         layerGroup.makeSnapshotGetter(topic)
     );
 

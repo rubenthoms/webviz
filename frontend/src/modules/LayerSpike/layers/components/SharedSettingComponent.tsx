@@ -1,6 +1,7 @@
 import React from "react";
 
 import { SortableListItem } from "@lib/components/SortableList";
+import { Settings } from "@mui/icons-material";
 
 import { SettingComponent } from "./SettingComponent";
 
@@ -19,6 +20,7 @@ export function SharedSettingComponent(props: SharedSettingComponentProps): Reac
             key={props.sharedSetting.getId()}
             id={props.sharedSetting.getId()}
             title={props.sharedSetting.getName()}
+            startAdornment={<Settings fontSize="inherit" />}
         >
             <SettingComponent
                 setting={props.sharedSetting.getWrappedSetting()}

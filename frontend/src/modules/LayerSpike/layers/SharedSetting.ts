@@ -1,14 +1,11 @@
 import { v4 } from "uuid";
 
-import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
 import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { Message, MessageDirection, MessageType } from "./Message";
 import { Item, Layer, Setting, SettingTopic, instanceofLayer } from "./interfaces";
 
 export class SharedSetting implements Item {
     private _id: string;
-    private _broker: Broker = new Broker(null);
     private _wrappedSetting: Setting<any>;
     private _parentGroup: GroupDelegate | null = null;
     private _layerManager: LayerManager | null = null;
@@ -17,7 +14,6 @@ export class SharedSetting implements Item {
     constructor(wrappedSetting: Setting<any>) {
         this._id = v4();
         this._wrappedSetting = wrappedSetting;
-        this._broker.onMessage(this.handleBrokerMessage.bind(this));
         this._wrappedSetting
             .getDelegate()
             .getPublishSubscribeHandler()
@@ -43,6 +39,13 @@ export class SharedSetting implements Item {
                         this.makeIntersectionOfAvailableValues();
                     }
                 )
+            );
+            this._unsubscribeFuncs.push(
+                layerManager
+                    .getPublishSubscribeHandler()
+                    .makeSubscriberFunction(LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED)(() => {
+                    this.makeIntersectionOfAvailableValues();
+                })
             );
         } else {
             this._unsubscribeFuncs.forEach((unsubscribeFunc) => {
@@ -71,23 +74,6 @@ export class SharedSetting implements Item {
 
     setParentGroup(parentGroup: GroupDelegate | null): void {
         this._parentGroup = parentGroup;
-    }
-
-    handleBrokerMessage(message: Message): void {
-        if (!this._parentGroup) {
-            throw new Error("Parent group not set");
-        }
-        if (message.getType() === MessageType.AVAILABLE_SETTINGS_CHANGED) {
-            if (message.getDirection() === MessageDirection.DOWN) {
-                this.makeIntersectionOfAvailableValues();
-            }
-        }
-
-        if (message.getType() === MessageType.DESCENDANTS_CHANGED) {
-            this.makeIntersectionOfAvailableValues();
-        }
-
-        message.stopPropagation();
     }
 
     private makeIntersectionOfAvailableValues(): void {
@@ -123,10 +109,6 @@ export class SharedSetting implements Item {
         }, [] as any[]);
 
         this._wrappedSetting.getDelegate().setAvailableValues(availableValues);
-    }
-
-    getBroker(): Broker {
-        return this._broker;
     }
 
     getId(): string {

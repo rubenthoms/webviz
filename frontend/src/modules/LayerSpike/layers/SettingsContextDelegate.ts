@@ -92,13 +92,18 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
         this._availableSettingsValues[key] = availableValues;
         this._settings[key].getDelegate().setAvailableValues(availableValues);
         this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED);
+
+        if (this._layerManager) {
+            this._layerManager.publishTopic(LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED);
+        }
     }
 
     getAvailableValues<K extends TKey>(key: K): Exclude<TSettings[K], null>[] {
-        if (!this._availableSettingsValues[key]) {
+        const availableValues = this._availableSettingsValues[key];
+        if (!availableValues) {
             throw new Error(`No available values for key: ${key.toString()}`);
         }
-        return this._availableSettingsValues[key];
+        return availableValues;
     }
 
     getSettings() {

@@ -2,7 +2,6 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { QueryClient } from "@tanstack/react-query";
 
-import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
 import { LayerDelegate } from "./LayerDelegate";
 import { SettingDelegate } from "./SettingDelegate";
@@ -11,7 +10,6 @@ import { SettingsContextDelegate } from "./SettingsContextDelegate";
 
 export interface Item {
     getId(): string;
-    getBroker(): Broker;
 }
 
 export function instanceofItem(item: any): item is Item {

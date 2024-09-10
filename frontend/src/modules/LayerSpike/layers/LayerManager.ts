@@ -8,11 +8,13 @@ import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHan
 export enum LayerManagerTopic {
     ITEMS_CHANGED = "items-changed",
     SETTINGS_CHANGED = "settings-changed",
+    AVAILABLE_SETTINGS_CHANGED = "available-settings-changed",
 }
 
 export type LayerManagerTopicPayload = {
     [LayerManagerTopic.ITEMS_CHANGED]: void;
     [LayerManagerTopic.SETTINGS_CHANGED]: void;
+    [LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED]: void;
 };
 export class LayerManager implements PublishSubscribe<LayerManagerTopic, LayerManagerTopicPayload> {
     private _workbenchSession: WorkbenchSession;
@@ -54,6 +56,9 @@ export class LayerManager implements PublishSubscribe<LayerManagerTopic, LayerMa
                 return;
             }
             if (topic === LayerManagerTopic.SETTINGS_CHANGED) {
+                return;
+            }
+            if (topic === LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED) {
                 return;
             }
         };

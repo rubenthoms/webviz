@@ -2,7 +2,6 @@ import React from "react";
 
 import { v4 } from "uuid";
 
-import { Broker } from "./Broker";
 import { LayerManager, LayerManagerTopic } from "./LayerManager";
 import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
@@ -22,43 +21,15 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
     private _children: Item[] = [];
     private _id: string;
     private _manager: LayerManager | null = null;
-    private _broker: Broker;
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
     constructor(manager: LayerManager | null) {
         this._id = v4();
-        this._broker = new Broker(null);
         this._manager = manager;
-
-        this._broker.onMessage(this.handleBrokerMessage.bind(this));
-    }
-
-    private handleBrokerMessage(message: Message) {
-        if (message.getType() === MessageType.AVAILABLE_SETTINGS_CHANGED) {
-            if (message.getDirection() === MessageDirection.DOWN) {
-                message.stopPropagation();
-                return;
-            }
-
-            this._broker.emit(new Message(MessageType.AVAILABLE_SETTINGS_CHANGED, MessageDirection.DOWN));
-        }
-
-        if (message.getType() === MessageType.DESCENDANTS_CHANGED) {
-            if (message.getDirection() === MessageDirection.DOWN) {
-                message.stopPropagation();
-                return;
-            }
-
-            this._broker.emit(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.DOWN));
-        }
     }
 
     getId() {
         return this._id;
-    }
-
-    getBroker() {
-        return this._broker;
     }
 
     setParentGroup(parentGroup: GroupDelegate | null) {
@@ -70,8 +41,6 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
     }
 
     private takeOwnershipOfChild(child: Item) {
-        child.getBroker().setParent(this._broker);
-        this._broker.addChild(child.getBroker());
         if (instanceofLayer(child)) {
             child.getDelegate().setParentGroup(this);
             child.getDelegate().setLayerManager(this._manager);
@@ -86,13 +55,10 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         }
 
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
         this.notifyManagerOfItemChange();
     }
 
     private disposeOwnershipOfChild(child: Item) {
-        child.getBroker().setParent(null);
-        this._broker.removeChild(child.getBroker());
         if (instanceofLayer(child)) {
             child.getDelegate().setParentGroup(null);
             child.getDelegate().setLayerManager(null);
@@ -106,7 +72,6 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
             child.getGroupDelegate().setLayerManager(this._manager);
         }
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
-        this._broker.handleAndMaybeForwardMessage(new Message(MessageType.DESCENDANTS_CHANGED, MessageDirection.UP));
         this.notifyManagerOfItemChange();
     }
 

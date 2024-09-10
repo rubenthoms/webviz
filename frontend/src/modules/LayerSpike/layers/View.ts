@@ -1,6 +1,5 @@
 import { v4 } from "uuid";
 
-import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
 import { Group } from "./interfaces";
 
@@ -13,10 +12,6 @@ export class View implements Group {
         this._id = v4();
         this._name = name;
         this._groupHandler = new GroupDelegate(null);
-    }
-
-    getBroker(): Broker {
-        return this._groupHandler.getBroker();
     }
 
     getId() {

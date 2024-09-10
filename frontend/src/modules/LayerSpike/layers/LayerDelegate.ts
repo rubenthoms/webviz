@@ -5,12 +5,9 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { v4 } from "uuid";
 
-import { Broker } from "./Broker";
 import { GroupDelegate } from "./GroupDelegate";
 import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { SettingsContextDelegateTopic } from "./SettingsContextDelegate";
 import { SharedSetting } from "./SharedSetting";
 import { Item, Layer, LayerStatus, Settings, SettingsContext } from "./interfaces";
 
@@ -33,7 +30,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
     private _id: string;
     private _isVisible: boolean = true;
     private _parentGroup: GroupDelegate | null = null;
-    private _broker: Broker = new Broker(null);
     private _settingsContext: SettingsContext<TSettings>;
     private _layerManager: LayerManager | null = null;
     private _unsubscribeFuncs: (() => void)[] = [];
@@ -50,23 +46,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
         this._parent = layer;
         this._name = name;
         this._settingsContext = settingsContext;
-        this._settingsContext
-            .getDelegate()
-            .getPublishSubscribeHandler()
-            .makeSubscriberFunction(SettingsContextDelegateTopic.SETTINGS_CHANGED)(() => {
-            this._broker.emit(new Message(MessageType.SETTINGS_CHANGED, MessageDirection.UP));
-            this.handleSettingsChange();
-        });
-        this._settingsContext
-            .getDelegate()
-            .getPublishSubscribeHandler()
-            .makeSubscriberFunction(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED)(() => {
-            this._broker.emit(new Message(MessageType.AVAILABLE_SETTINGS_CHANGED, MessageDirection.UP));
-        });
-    }
-
-    getBroker(): Broker {
-        return this._broker;
     }
 
     handleSettingsChange(): void {

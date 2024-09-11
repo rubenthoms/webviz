@@ -161,6 +161,7 @@ export class LayerDelegate<TSettings extends Settings, TData>
 
     private setStatus(status: LayerStatus): void {
         this._status = status;
+        this._layerManager?.publishTopic(LayerManagerTopic.LAYER_DATA_REVISION);
         this._publishSubscribeHandler.notifySubscribers(LayerDelegateTopic.STATUS);
     }
 
@@ -234,6 +235,5 @@ export class LayerDelegate<TSettings extends Settings, TData>
             }
             this.setStatus(LayerStatus.ERROR);
         }
-        this._layerManager?.publishTopic(LayerManagerTopic.LAYER_DATA_REVISION);
     }
 }

@@ -2,6 +2,7 @@ import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
+import { Add } from "@mui/icons-material";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useSetAtom } from "jotai";
@@ -107,21 +108,32 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     }
 
     return (
-        <div className="w-full h-full flex-grow flex flex-col min-h-0">
-            <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
-                <div className="flex-grow font-bold text-sm">Layers</div>
-                <LayersPanelActions
-                    layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
-                    settingTypeToStringMapping={SHARED_SETTING_TYPE_TO_STRING_MAPPING}
-                    onAddLayer={handleAddLayer}
-                    onAddView={handleAddView}
-                    onAddSharedSetting={handleAddSharedSetting}
-                />
-            </div>
-            <div className="w-full flex-grow flex flex-col relative bg-slate-300">
-                <SortableList onItemMoved={handleItemMoved}>
-                    {items.map((item: Item) => makeComponent(item))}
-                </SortableList>
+        <div className="h-full flex flex-col gap-1">
+            <div className="flex-grow flex flex-col min-h-0">
+                <div className="w-full flex-grow flex flex-col min-h-0">
+                    <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
+                        <div className="flex-grow font-bold text-sm">Layers</div>
+                        <LayersPanelActions
+                            layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
+                            settingTypeToStringMapping={SHARED_SETTING_TYPE_TO_STRING_MAPPING}
+                            onAddLayer={handleAddLayer}
+                            onAddView={handleAddView}
+                            onAddSharedSetting={handleAddSharedSetting}
+                        />
+                    </div>
+                    <div className="w-full flex-grow flex flex-col relative max-h-full">
+                        <SortableList
+                            onItemMoved={handleItemMoved}
+                            contentWhenEmpty={
+                                <div className="flex h-full -mt-1 justify-center text-sm items-center gap-1">
+                                    Click on <Add fontSize="inherit" /> to add a layer.
+                                </div>
+                            }
+                        >
+                            {items.map((item: Item) => makeComponent(item))}
+                        </SortableList>
+                    </div>
+                </div>
             </div>
         </div>
     );

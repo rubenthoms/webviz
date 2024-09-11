@@ -14,7 +14,7 @@ import { LayerManager, LayerManagerTopic } from "../layers/LayerManager";
 import { usePublishSubscribeTopicValue } from "../layers/PublishSubscribeHandler";
 import { View as ViewGroup } from "../layers/View";
 import { GroupBaseTopic, GroupDelegate } from "../layers/delegates/GroupDelegate";
-import { Item, instanceofGroup, instanceofLayer } from "../layers/interfaces";
+import { Item, LayerStatus, instanceofGroup, instanceofLayer } from "../layers/interfaces";
 
 export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     const queryClient = useQueryClient();
@@ -109,6 +109,10 @@ function extractGroupsAndLayers(items: Item[]): {
         }
 
         if (instanceofLayer(item)) {
+            if (item.getLayerDelegate().getStatus() !== LayerStatus.SUCCESS) {
+                continue;
+            }
+
             const layer = makeLayer(item);
             if (!layer) {
                 continue;

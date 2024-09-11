@@ -1,11 +1,13 @@
 import { SortableListGroup } from "@lib/components/SortableList";
-import { Delete, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Panorama } from "@mui/icons-material";
 
+import { EditNameComponent } from "./editNameComponent";
+import { RemoveButtonComponent } from "./removeButtonComponent";
 import { makeComponent } from "./utils";
+import { VisibilityToggleComponent } from "./visibilityToggleComponent";
 
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
 import { GroupBaseTopic } from "../delegates/GroupDelegate";
-import { ItemDelegateTopic } from "../delegates/ItemDelegate";
 import { Group, Item } from "../interfaces";
 
 export type GroupComponentProps = {
@@ -19,60 +21,21 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
         <SortableListGroup
             key={props.group.getItemDelegate().getId()}
             id={props.group.getItemDelegate().getId()}
-            title={props.group.getItemDelegate().getName()}
-            startAdornment={<StartActions group={props.group} />}
-            endAdornment={<Actions group={props.group} />}
+            title={
+                <div className="flex gap-2 items-center">
+                    <Panorama fontSize="inherit" />
+                    <EditNameComponent item={props.group} />
+                </div>
+            }
+            startAdornment={<VisibilityToggleComponent item={props.group} />}
+            endAdornment={<RemoveButtonComponent item={props.group} />}
+            contentWhenEmpty={
+                <div className="flex h-16 justify-center text-sm items-center gap-1">
+                    Drag a layer inside to add it to this group.
+                </div>
+            }
         >
             {children.map((child: Item) => makeComponent(child))}
         </SortableListGroup>
-    );
-}
-
-type StartActionsProps = {
-    group: Group;
-};
-
-function StartActions(props: StartActionsProps): React.ReactNode {
-    const visible = usePublishSubscribeTopicValue(props.group.getItemDelegate(), ItemDelegateTopic.VISIBILITY);
-
-    function handleToggleVisibility() {
-        props.group.getItemDelegate().setIsVisible(!visible);
-    }
-
-    return (
-        <div className="flex items-center">
-            <button onClick={handleToggleVisibility}>
-                {props.group.getItemDelegate().isVisible() ? (
-                    <Visibility fontSize="inherit" />
-                ) : (
-                    <VisibilityOff fontSize="inherit" />
-                )}
-            </button>
-        </div>
-    );
-}
-
-type ActionProps = {
-    group: Group;
-};
-
-function Actions(props: ActionProps): React.ReactNode {
-    function handleRemove() {
-        const parentGroup = props.group.getItemDelegate().getParentGroup();
-        if (parentGroup) {
-            parentGroup.removeChild(props.group);
-        }
-    }
-
-    return (
-        <>
-            <div
-                className="hover:cursor-pointer rounded hover:text-red-800"
-                onClick={handleRemove}
-                title="Remove layer group"
-            >
-                <Delete fontSize="inherit" />
-            </div>
-        </>
     );
 }

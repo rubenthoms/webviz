@@ -2,7 +2,7 @@ import { v4 } from "uuid";
 
 import { GroupDelegate } from "./GroupDelegate";
 
-import { LayerManager } from "../LayerManager";
+import { LayerManager, LayerManagerTopic } from "../LayerManager";
 import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
 
 export enum ItemDelegateTopic {
@@ -41,6 +41,9 @@ export class ItemDelegate implements PublishSubscribe<ItemDelegateTopic, ItemDel
     setName(name: string): void {
         this._name = name;
         this._publishSubscribeHandler.notifySubscribers(ItemDelegateTopic.NAME);
+        if (this._layerManager) {
+            this._layerManager.publishTopic(LayerManagerTopic.LAYER_DATA_REVISION);
+        }
     }
 
     getParentGroup(): GroupDelegate | null {
@@ -67,6 +70,9 @@ export class ItemDelegate implements PublishSubscribe<ItemDelegateTopic, ItemDel
     setIsVisible(visible: boolean): void {
         this._visible = visible;
         this._publishSubscribeHandler.notifySubscribers(ItemDelegateTopic.VISIBILITY);
+        if (this._layerManager) {
+            this._layerManager.publishTopic(LayerManagerTopic.LAYER_DATA_REVISION);
+        }
     }
 
     makeSnapshotGetter<T extends ItemDelegateTopic>(topic: T): () => ItemDelegatePayloads[T] {

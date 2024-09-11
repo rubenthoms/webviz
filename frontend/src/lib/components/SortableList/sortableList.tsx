@@ -501,6 +501,10 @@ export function SortableList(props: SortableListProps): React.ReactNode {
     }
 
     function makeChildren(): React.ReactNode[] {
+        if (props.children.length === 0 && props.contentWhenEmpty) {
+            return [props.contentWhenEmpty];
+        }
+
         const children: React.ReactNode[] = [];
         for (const child of props.children) {
             if (typeof child.type === "string") {
@@ -524,7 +528,7 @@ export function SortableList(props: SortableListProps): React.ReactNode {
     }
 
     return (
-        <div className="w-full h-full flex flex-col relative" ref={mainDivRef}>
+        <div className="w-full h-full flex flex-col relative min-h-0 max-h-full" ref={mainDivRef}>
             <SortableListContext.Provider
                 value={{
                     draggedElementId: draggedItemId,
@@ -546,7 +550,7 @@ export function SortableList(props: SortableListProps): React.ReactNode {
                     ref={scrollDivRef}
                     onScroll={handleScroll}
                 >
-                    <div className="flex flex-col relative" ref={listDivRef}>
+                    <div className="flex flex-col relative min-h-0" ref={listDivRef}>
                         {makeChildren()}
                         <div className="h-2 min-h-2">
                             <div className="h-2" />

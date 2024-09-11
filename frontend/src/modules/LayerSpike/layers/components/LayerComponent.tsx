@@ -3,12 +3,14 @@ import React from "react";
 import { StatusMessage } from "@framework/ModuleInstanceStatusController";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { SortableListItem } from "@lib/components/SortableList";
-import { Check, Delete, Error, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Check, Error } from "@mui/icons-material";
 
 import { SettingComponent } from "./SettingComponent";
+import { EditNameComponent } from "./editNameComponent";
+import { RemoveButtonComponent } from "./removeButtonComponent";
+import { VisibilityToggleComponent } from "./visibilityToggleComponent";
 
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
-import { ItemDelegateTopic } from "../delegates/ItemDelegate";
 import { LayerDelegateTopic } from "../delegates/LayerDelegate";
 import { Layer, LayerStatus, Setting } from "../interfaces";
 
@@ -45,8 +47,8 @@ export function LayerComponent(props: LayerComponentProps): React.ReactNode {
         <SortableListItem
             key={props.layer.getItemDelegate().getId()}
             id={props.layer.getItemDelegate().getId()}
-            title={props.layer.getItemDelegate().getName()}
-            startAdornment={<StartActions layer={props.layer} />}
+            title={<EditNameComponent item={props.layer} />}
+            startAdornment={<VisibilityToggleComponent item={props.layer} />}
             endAdornment={<Actions layer={props.layer} />}
         >
             <div className="table">
@@ -62,10 +64,6 @@ type ActionProps = {
 
 function Actions(props: ActionProps): React.ReactNode {
     const status = usePublishSubscribeTopicValue(props.layer.getLayerDelegate(), LayerDelegateTopic.STATUS);
-
-    function handleRemove() {
-        props.layer.getItemDelegate().getParentGroup()?.removeChild(props.layer);
-    }
 
     function makeStatus(): React.ReactNode {
         if (status === LayerStatus.LOADING) {
@@ -105,35 +103,7 @@ function Actions(props: ActionProps): React.ReactNode {
     return (
         <>
             {makeStatus()}
-            <div
-                className="hover:cursor-pointer rounded hover:text-red-800"
-                onClick={handleRemove}
-                title="Remove layer group"
-            >
-                <Delete fontSize="inherit" />
-            </div>
+            <RemoveButtonComponent item={props.layer} />
         </>
-    );
-}
-
-type StartActionsProps = {
-    layer: Layer<any, any>;
-};
-
-function StartActions(props: StartActionsProps): React.ReactNode {
-    const isVisible = usePublishSubscribeTopicValue(props.layer.getItemDelegate(), ItemDelegateTopic.VISIBILITY);
-
-    function handleToggleLayerVisibility() {
-        props.layer.getItemDelegate().setIsVisible(!isVisible);
-    }
-
-    return (
-        <div
-            className="hover:cursor-pointer rounded hover:text-blue-800"
-            onClick={handleToggleLayerVisibility}
-            title="Toggle visibility"
-        >
-            {isVisible ? <Visibility fontSize="inherit" /> : <VisibilityOff fontSize="inherit" />}
-        </div>
     );
 }

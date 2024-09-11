@@ -1,5 +1,7 @@
+import { SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
+import { SurfaceDirectory } from "@modules/_shared/Surface";
 
 import { isEqual } from "lodash";
 import { SurfaceMetaSet } from "src/api/models/SurfaceMetaSet";
@@ -13,6 +15,7 @@ import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
 import { SurfaceName } from "../../settings/SurfaceName";
+import { TimeOrInterval } from "../../settings/TimeOrInterval";
 
 export class SurfaceContext implements SettingsContext<SurfaceSettings> {
     private _contextDelegate: SettingsContextDelegate<SurfaceSettings>;
@@ -24,6 +27,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
             [SettingType.REALIZATION]: new Realization(),
             [SettingType.SURFACE_ATTRIBUTE]: new SurfaceAttribute(),
             [SettingType.SURFACE_NAME]: new SurfaceName(),
+            [SettingType.TIME_OR_INTERVAL]: new TimeOrInterval(),
         });
     }
 
@@ -39,6 +43,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
         const settings = this.getDelegate().getSettings();
         settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(false);
         settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(false);
+        settings[SettingType.TIME_OR_INTERVAL].getDelegate().setLoadingState(false);
 
         if (!this._fetchDataCache) {
             return;
@@ -59,6 +64,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
         }
 
         const availableSurfaceNames: string[] = [];
+
         if (currentAttribute) {
             availableSurfaceNames.push(
                 ...Array.from(
@@ -77,6 +83,41 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
             if (availableSurfaceNames.length > 0) {
                 currentSurfaceName = availableSurfaceNames[0];
                 settings[SettingType.SURFACE_NAME].getDelegate().setValue(currentSurfaceName);
+            }
+        }
+
+        const availableTimeOrIntervals: string[] = [];
+        if (currentAttribute && currentSurfaceName) {
+            const availableTimeTypes: SurfaceTimeType_api[] = [];
+            availableTimeTypes.push(
+                ...Array.from(
+                    new Set(
+                        this._fetchDataCache.surfaces
+                            .filter(
+                                (surface) =>
+                                    surface.attribute_name === currentAttribute && surface.name === currentSurfaceName
+                            )
+                            .map((el) => el.time_type)
+                    )
+                )
+            );
+            if (availableTimeTypes.includes(SurfaceTimeType_api.NO_TIME)) {
+                availableTimeOrIntervals.push(SurfaceTimeType_api.NO_TIME);
+            }
+            if (availableTimeTypes.includes(SurfaceTimeType_api.TIME_POINT)) {
+                availableTimeOrIntervals.push(...this._fetchDataCache.time_points_iso_str);
+            }
+            if (availableTimeTypes.includes(SurfaceTimeType_api.INTERVAL)) {
+                availableTimeOrIntervals.push(...this._fetchDataCache.time_intervals_iso_str);
+            }
+        }
+        this._contextDelegate.setAvailableValues(SettingType.TIME_OR_INTERVAL, availableTimeOrIntervals);
+
+        let currentTimeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
+        if (!currentTimeOrInterval || !availableTimeOrIntervals.includes(currentTimeOrInterval)) {
+            if (availableTimeOrIntervals.length > 0) {
+                currentTimeOrInterval = availableTimeOrIntervals[0];
+                settings[SettingType.TIME_OR_INTERVAL].getDelegate().setValue(currentTimeOrInterval);
             }
         }
     }
@@ -125,6 +166,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
 
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(true);
             settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(true);
+            settings[SettingType.TIME_OR_INTERVAL].getDelegate().setValue(null);
 
             queryClient
                 .fetchQuery({
@@ -156,7 +198,8 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue() !== null &&
             settings[SettingType.SURFACE_NAME].getDelegate().getValue() !== null &&
             settings[SettingType.REALIZATION].getDelegate().getValue() !== null &&
-            settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null
+            settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null &&
+            settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue() !== null
         );
     }
 }

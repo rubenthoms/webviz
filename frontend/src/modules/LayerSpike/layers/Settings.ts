@@ -3,4 +3,5 @@ export enum SettingType {
     REALIZATION = "realization",
     SURFACE_NAME = "surfaceName",
     SURFACE_ATTRIBUTE = "surfaceAttribute",
+    TIME_OR_INTERVAL = "timeOrInterval",
 }

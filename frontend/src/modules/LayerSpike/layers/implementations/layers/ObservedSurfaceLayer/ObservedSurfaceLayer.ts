@@ -1,4 +1,4 @@
-import { SurfaceDataPng_api } from "@api";
+import { SurfaceDataPng_api, SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { SettingType } from "@modules/LayerSpike/layers/Settings";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
@@ -9,17 +9,19 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
 
-import { SurfaceContext } from "./SurfaceContext";
-import { SurfaceSettings } from "./types";
+import { ObservedSurfaceContext } from "./ObservedSurfaceContext";
+import { ObservedSurfaceSettings } from "./types";
 
 import { LayerDelegate } from "../../../LayerDelegate";
 import { Layer } from "../../../interfaces";
 
-export class SurfaceLayer implements Layer<SurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
-    private _layerDelegate: LayerDelegate<SurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>;
+export class ObservedSurfaceLayer
+    implements Layer<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>
+{
+    private _layerDelegate: LayerDelegate<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>;
 
     constructor() {
-        this._layerDelegate = new LayerDelegate(this, "Surface", new SurfaceContext());
+        this._layerDelegate = new LayerDelegate(this, "ObservedSurface", new ObservedSurfaceContext());
     }
 
     getId() {
@@ -34,11 +36,14 @@ export class SurfaceLayer implements Layer<SurfaceSettings, SurfaceDataFloat_tra
         return this._layerDelegate.getSettingsContext();
     }
 
-    getDelegate(): LayerDelegate<SurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
+    getDelegate(): LayerDelegate<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
         return this._layerDelegate;
     }
 
-    doSettingsChangesRequireDataRefetch(prevSettings: SurfaceSettings, newSettings: SurfaceSettings): boolean {
+    doSettingsChangesRequireDataRefetch(
+        prevSettings: ObservedSurfaceSettings,
+        newSettings: ObservedSurfaceSettings
+    ): boolean {
         return !isEqual(prevSettings, newSettings);
     }
 
@@ -48,17 +53,17 @@ export class SurfaceLayer implements Layer<SurfaceSettings, SurfaceDataFloat_tra
 
         const settings = this.getSettingsContext().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
-        const realizationNum = settings[SettingType.REALIZATION].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();
+        const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
 
-        if (ensembleIdent && surfaceName && attribute && realizationNum) {
+        if (ensembleIdent && surfaceName && attribute && timeOrInterval) {
             addrBuilder.withEnsembleIdent(ensembleIdent);
             addrBuilder.withName(surfaceName);
             addrBuilder.withAttribute(attribute);
-            addrBuilder.withRealization(realizationNum);
+            addrBuilder.withTimeOrInterval(timeOrInterval);
 
-            surfaceAddress = addrBuilder.buildRealizationAddress();
+            surfaceAddress = addrBuilder.buildObservedAddress();
         }
 
         const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;

@@ -1,37 +1,40 @@
-import { SurfaceTimeType_api } from "@api";
+import { SurfaceStatisticFunction_api, SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
-import { SurfaceDirectory } from "@modules/_shared/Surface";
 
 import { isEqual } from "lodash";
 import { SurfaceMetaSet } from "src/api/models/SurfaceMetaSet";
 
-import { SurfaceSettings } from "./types";
+import { StatisticalSurfaceSettings } from "./types";
 
 import { SettingType } from "../../../Settings";
 import { SettingsContextDelegate } from "../../../SettingsContextDelegate";
 import { SettingsContext } from "../../../interfaces";
 import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";
+import { StatisticFunction } from "../../settings/StatisticFunction";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
 import { SurfaceName } from "../../settings/SurfaceName";
 import { TimeOrInterval } from "../../settings/TimeOrInterval";
 
-export class SurfaceContext implements SettingsContext<SurfaceSettings> {
-    private _contextDelegate: SettingsContextDelegate<SurfaceSettings>;
+export class StatisticalSurfaceContext implements SettingsContext<StatisticalSurfaceSettings> {
+    private _contextDelegate: SettingsContextDelegate<StatisticalSurfaceSettings>;
     private _fetchDataCache: SurfaceMetaSet | null = null;
 
     constructor() {
-        this._contextDelegate = new SettingsContextDelegate<SurfaceSettings, keyof SurfaceSettings>(this, {
+        this._contextDelegate = new SettingsContextDelegate<
+            StatisticalSurfaceSettings,
+            keyof StatisticalSurfaceSettings
+        >(this, {
             [SettingType.ENSEMBLE]: new Ensemble(),
-            [SettingType.REALIZATION]: new Realization(),
+            [SettingType.STATISTIC_FUNCTION]: new StatisticFunction(),
             [SettingType.SURFACE_ATTRIBUTE]: new SurfaceAttribute(),
             [SettingType.SURFACE_NAME]: new SurfaceName(),
             [SettingType.TIME_OR_INTERVAL]: new TimeOrInterval(),
         });
     }
 
-    getDelegate(): SettingsContextDelegate<SurfaceSettings> {
+    getDelegate(): SettingsContextDelegate<StatisticalSurfaceSettings> {
         return this._contextDelegate;
     }
 
@@ -122,7 +125,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
         }
     }
 
-    fetchData(oldValues: SurfaceSettings, newValues: SurfaceSettings): void {
+    fetchData(oldValues: StatisticalSurfaceSettings, newValues: StatisticalSurfaceSettings): void {
         const queryClient = this.getDelegate().getLayerManager().getQueryClient();
 
         const settings = this.getDelegate().getSettings();
@@ -146,21 +149,6 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
             }
         }
 
-        if (currentEnsembleIdent !== null) {
-            const realizations = workbenchSession
-                .getRealizationFilterSet()
-                .getRealizationFilterForEnsembleIdent(currentEnsembleIdent)
-                .getFilteredRealizations();
-            this.getDelegate().setAvailableValues(SettingType.REALIZATION, [...realizations]);
-
-            const currentRealization = newValues[SettingType.REALIZATION];
-            if (currentRealization === null || !realizations.includes(currentRealization)) {
-                if (realizations.length > 0) {
-                    settings[SettingType.REALIZATION].getDelegate().setValue(realizations[0]);
-                }
-            }
-        }
-
         if (!isEqual(oldValues[SettingType.ENSEMBLE], currentEnsembleIdent)) {
             this._fetchDataCache = null;
 
@@ -170,11 +158,7 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
 
             queryClient
                 .fetchQuery({
-                    queryKey: [
-                        "getRealizationSurfacesMetadata",
-                        newValues[SettingType.ENSEMBLE],
-                        newValues[SettingType.REALIZATION],
-                    ],
+                    queryKey: ["getRealizationSurfacesMetadata", newValues[SettingType.ENSEMBLE]],
                     queryFn: () =>
                         apiService.surface.getRealizationSurfacesMetadata(
                             newValues[SettingType.ENSEMBLE]?.getCaseUuid() ?? "",
@@ -197,7 +181,6 @@ export class SurfaceContext implements SettingsContext<SurfaceSettings> {
         return (
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue() !== null &&
             settings[SettingType.SURFACE_NAME].getDelegate().getValue() !== null &&
-            settings[SettingType.REALIZATION].getDelegate().getValue() !== null &&
             settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null &&
             settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue() !== null
         );

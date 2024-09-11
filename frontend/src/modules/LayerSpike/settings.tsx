@@ -11,7 +11,9 @@ import { usePublishSubscribeTopicValue } from "./layers/PublishSubscribeHandler"
 import { SharedSetting } from "./layers/SharedSetting";
 import { View } from "./layers/View";
 import { makeComponent } from "./layers/components/utils";
-import { SurfaceLayer } from "./layers/implementations/layers/SurfaceLayer/SurfaceLayer";
+import { ObservedSurfaceLayer } from "./layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
+import { RealizationSurfaceLayer } from "./layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
+import { StatisticalSurfaceLayer } from "./layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Realization } from "./layers/implementations/settings/Realization";
 import { instanceofGroup } from "./layers/interfaces";
 
@@ -23,10 +25,15 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
-    function handleAddLayer() {
-        groupDelegate.appendChild(new SurfaceLayer());
+    function handleAddRealLayer() {
+        groupDelegate.appendChild(new RealizationSurfaceLayer());
     }
-
+    function handleAddStatLayer() {
+        groupDelegate.appendChild(new StatisticalSurfaceLayer());
+    }
+    function handleAddObsLayer() {
+        groupDelegate.appendChild(new ObservedSurfaceLayer());
+    }
     function handleAddGroup() {
         groupDelegate.appendChild(new View("New Group"));
     }
@@ -75,7 +82,13 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         <div className="w-full flex-grow flex flex-col min-h-0">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
                 <div className="flex-grow font-bold text-sm">Layers</div>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddLayer}>
+                <button className="bg-black text-white p-1 rounded" onClick={handleAddRealLayer}>
+                    <Layers />
+                </button>
+                <button className="bg-black text-white p-1 rounded" onClick={handleAddStatLayer}>
+                    <Layers />
+                </button>
+                <button className="bg-black text-white p-1 rounded" onClick={handleAddObsLayer}>
                     <Layers />
                 </button>
                 <button className="bg-black text-white p-1 rounded" onClick={handleAddGroup}>

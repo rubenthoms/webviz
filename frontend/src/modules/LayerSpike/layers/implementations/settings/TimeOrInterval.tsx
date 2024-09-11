@@ -1,5 +1,6 @@
 import React from "react";
 
+import { SurfaceTimeType_api } from "@api";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 
 import { SettingDelegate } from "../../SettingDelegate";
@@ -16,7 +17,7 @@ export class TimeOrInterval implements Setting<ValueType> {
     }
 
     getLabel(): string {
-        return "Time";
+        return "Date";
     }
 
     getDelegate(): SettingDelegate<ValueType> {
@@ -28,7 +29,7 @@ export class TimeOrInterval implements Setting<ValueType> {
             const options: DropdownOption[] = props.availableValues.map((value) => {
                 return {
                     value: value.toString(),
-                    label: value === null ? "None" : value.toString(),
+                    label: timeTypeToLabel(value),
                 };
             });
 
@@ -43,4 +44,25 @@ export class TimeOrInterval implements Setting<ValueType> {
             );
         };
     }
+}
+
+function timeTypeToLabel(input: string): string {
+    if (input === SurfaceTimeType_api.NO_TIME) {
+        return "Initial / No date";
+    }
+    const [start, end] = input.split("/");
+    if (end) {
+        return isoIntervalStringToDateLabel(start, end);
+    }
+    return isoStringToDateLabel(start);
+}
+function isoStringToDateLabel(isoDatestring: string): string {
+    const date = isoDatestring.split("T")[0];
+    return `${date}`;
+}
+
+function isoIntervalStringToDateLabel(startIsoDateString: string, endIsoDateString: string): string {
+    const startDate = startIsoDateString.split("T")[0];
+    const endDate = endIsoDateString.split("T")[0];
+    return `${startDate}/${endDate}`;
 }

@@ -57,7 +57,7 @@ export class RealizationSurfaceLayer
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
 
-        if (ensembleIdent && surfaceName && attribute && realizationNum) {
+        if (ensembleIdent && surfaceName && attribute && realizationNum !== null) {
             addrBuilder.withEnsembleIdent(ensembleIdent);
             addrBuilder.withName(surfaceName);
             addrBuilder.withAttribute(attribute);

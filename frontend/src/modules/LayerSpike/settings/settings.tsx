@@ -15,10 +15,12 @@ import { View } from "../layers/View";
 import { makeComponent } from "../layers/components/utils";
 import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
 import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
+import { RealizationFaultPolygonsLayer } from "../layers/implementations/layers/RealizationFaultPolygonsLayer/RealizationFaultPolygonsLayer";
 import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
 import { StatisticalSurfaceLayer } from "../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Ensemble } from "../layers/implementations/settings/Ensemble";
 import { Realization } from "../layers/implementations/settings/Realization";
+import { SurfaceName } from "../layers/implementations/settings/SurfaceName";
 import { Item, instanceofGroup } from "../layers/interfaces";
 import { LayersPanelActions } from "../layersActions";
 import {
@@ -33,6 +35,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const layerManager = React.useRef<LayerManager>(
         new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient)
     );
+
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
@@ -55,6 +58,9 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         if (layerType === LayerType.REALIZATION_SURFACE) {
             groupDelegate.appendChild(new RealizationSurfaceLayer());
         }
+        if (layerType === LayerType.REALIZATION_FAULT_POLYGONS) {
+            groupDelegate.appendChild(new RealizationFaultPolygonsLayer());
+        }
     }
 
     function handleAddView() {
@@ -67,6 +73,9 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         }
         if (settingType === SharedSettingType.REALIZATION) {
             groupDelegate.appendChild(new SharedSetting(new Realization()));
+        }
+        if (settingType === SharedSettingType.SURFACE_NAME) {
+            groupDelegate.appendChild(new SharedSetting(new SurfaceName()));
         }
     }
 

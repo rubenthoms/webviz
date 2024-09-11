@@ -55,7 +55,7 @@ export class StatisticalSurfaceLayer
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
-
+        const statisticFunction = settings[SettingType.STATISTIC_FUNCTION].getDelegate().getValue();
         if (ensembleIdent && surfaceName && attribute) {
             addrBuilder.withEnsembleIdent(ensembleIdent);
             addrBuilder.withName(surfaceName);
@@ -64,8 +64,8 @@ export class StatisticalSurfaceLayer
             if (timeOrInterval !== SurfaceTimeType_api.NO_TIME) {
                 addrBuilder.withTimeOrInterval(timeOrInterval);
             }
-
-            surfaceAddress = addrBuilder.buildRealizationAddress();
+            addrBuilder.withStatisticFunction(statisticFunction);
+            surfaceAddress = addrBuilder.buildStatisticalAddress();
         }
 
         const surfAddrStr = surfaceAddress ? encodeSurfAddrStr(surfaceAddress) : null;

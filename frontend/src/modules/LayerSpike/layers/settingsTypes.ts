@@ -5,4 +5,5 @@ export enum SettingType {
     SURFACE_NAME = "surfaceName",
     SURFACE_ATTRIBUTE = "surfaceAttribute",
     TIME_OR_INTERVAL = "timeOrInterval",
+    FAULT_POLYGONS_ATTRIBUTE = "faultPolygonsAttribute",
 }

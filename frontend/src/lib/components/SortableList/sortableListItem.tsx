@@ -11,6 +11,7 @@ import { SortableListDropIndicator } from "./sortableListDropIndicator";
 export type SortableListItemProps = {
     id: string;
     title: React.ReactNode;
+    headerClassNames?: string;
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
     children?: React.ReactNode;
@@ -78,11 +79,17 @@ type HeaderProps = {
     title: React.ReactNode;
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
+    headerClassNames?: string;
 };
 
 function Header(props: HeaderProps): React.ReactNode {
     return (
-        <div className="flex gap-1 h-8 bg-slate-100 text-sm items-center border-b border-b-gray-300 px-2">
+        <div
+            className={resolveClassNames(
+                "flex gap-1 h-8 bg-slate-100 text-sm items-center border-b border-b-gray-300 px-2",
+                props.headerClassNames ?? ""
+            )}
+        >
             <div className={resolveClassNames("sortable-list-element-indicator hover:cursor-grab")}>
                 <DragIndicator fontSize="inherit" className="pointer-events-none" />
             </div>

@@ -1,7 +1,9 @@
 import { SurfaceDataPng_api, SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { SettingType } from "@modules/LayerSpike/layers/Settings";
+import { ItemDelegate } from "@modules/LayerSpike/layers/delegates/ItemDelegate";
+import { LayerDelegate } from "@modules/LayerSpike/layers/delegates/LayerDelegate";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
 import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
 import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
@@ -12,31 +14,28 @@ import { isEqual } from "lodash";
 import { StatisticalSurfaceContext } from "./StatisticalSurfaceContext";
 import { StatisticalSurfaceSettings } from "./types";
 
-import { LayerDelegate } from "../../../LayerDelegate";
 import { Layer } from "../../../interfaces";
 
 export class StatisticalSurfaceLayer
     implements Layer<StatisticalSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>
 {
+    private _itemDelegate: ItemDelegate;
     private _layerDelegate: LayerDelegate<StatisticalSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>;
 
     constructor() {
-        this._layerDelegate = new LayerDelegate(this, "StatisticalSurface", new StatisticalSurfaceContext());
-    }
-
-    getId() {
-        return this._layerDelegate.getId();
-    }
-
-    getName() {
-        return this._layerDelegate.getName();
+        this._itemDelegate = new ItemDelegate("StatisticalSurfaceLayer");
+        this._layerDelegate = new LayerDelegate(this, new StatisticalSurfaceContext());
     }
 
     getSettingsContext() {
         return this._layerDelegate.getSettingsContext();
     }
 
-    getDelegate(): LayerDelegate<StatisticalSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
+
+    getLayerDelegate(): LayerDelegate<StatisticalSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
         return this._layerDelegate;
     }
 
@@ -51,7 +50,7 @@ export class StatisticalSurfaceLayer
         let surfaceAddress: FullSurfaceAddress | null = null;
         const addrBuilder = new SurfaceAddressBuilder();
 
-        const settings = this.getSettingsContext().getSettings();
+        const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();

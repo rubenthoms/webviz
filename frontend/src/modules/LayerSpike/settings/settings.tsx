@@ -4,23 +4,29 @@ import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { LayerManager } from "./layers/LayerManager";
-import { usePublishSubscribeTopicValue } from "./layers/PublishSubscribeHandler";
-import { SharedSetting } from "./layers/SharedSetting";
-import { View } from "./layers/View";
-import { makeComponent } from "./layers/components/utils";
-import { GroupBaseTopic } from "./layers/delegates/GroupDelegate";
-import { SurfaceLayer } from "./layers/implementations/layers/SurfaceLayer/SurfaceLayer";
-import { Ensemble } from "./layers/implementations/settings/Ensemble";
-import { Realization } from "./layers/implementations/settings/Realization";
-import { Item, instanceofGroup } from "./layers/interfaces";
-import { LayersPanelActions } from "./layersActions";
+import { useSetAtom } from "jotai";
+
+import { layerManagerAtom } from "./atoms/baseAtoms";
+
+import { LayerManager } from "../layers/LayerManager";
+import { usePublishSubscribeTopicValue } from "../layers/PublishSubscribeHandler";
+import { SharedSetting } from "../layers/SharedSetting";
+import { View } from "../layers/View";
+import { makeComponent } from "../layers/components/utils";
+import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
+import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
+import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
+import { StatisticalSurfaceLayer } from "../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
+import { Ensemble } from "../layers/implementations/settings/Ensemble";
+import { Realization } from "../layers/implementations/settings/Realization";
+import { Item, instanceofGroup } from "../layers/interfaces";
+import { LayersPanelActions } from "../layersActions";
 import {
     LAYER_TYPE_TO_STRING_MAPPING,
     LayerType,
     SHARED_SETTING_TYPE_TO_STRING_MAPPING,
     SharedSettingType,
-} from "./types";
+} from "../types";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const queryClient = useQueryClient();
@@ -30,9 +36,24 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
+    const setLayerManager = useSetAtom(layerManagerAtom);
+
+    React.useEffect(
+        function onMountEffect() {
+            setLayerManager(layerManager.current);
+        },
+        [setLayerManager]
+    );
+
     function handleAddLayer(layerType: LayerType) {
-        if (layerType === LayerType.SURFACE) {
-            groupDelegate.appendChild(new SurfaceLayer());
+        if (layerType === LayerType.OBSERVED_SURFACE) {
+            groupDelegate.appendChild(new ObservedSurfaceLayer());
+        }
+        if (layerType === LayerType.STATISTICAL_SURFACE) {
+            groupDelegate.appendChild(new StatisticalSurfaceLayer());
+        }
+        if (layerType === LayerType.REALIZATION_SURFACE) {
+            groupDelegate.appendChild(new RealizationSurfaceLayer());
         }
     }
 

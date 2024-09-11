@@ -1,9 +1,13 @@
 export enum LayerType {
-    SURFACE = "surface",
+    OBSERVED_SURFACE = "observedSurface",
+    STATISTICAL_SURFACE = "statisticalSurface",
+    REALIZATION_SURFACE = "realizationSurface",
 }
 
 export const LAYER_TYPE_TO_STRING_MAPPING: Record<LayerType, string> = {
-    [LayerType.SURFACE]: "Surface",
+    [LayerType.OBSERVED_SURFACE]: "Observed Surface",
+    [LayerType.STATISTICAL_SURFACE]: "Statistical Surface",
+    [LayerType.REALIZATION_SURFACE]: "Realization Surface",
 };
 
 export enum SharedSettingType {

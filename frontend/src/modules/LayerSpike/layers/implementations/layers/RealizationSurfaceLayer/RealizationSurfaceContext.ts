@@ -1,14 +1,14 @@
 import { SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
+import { SettingsContextDelegate } from "@modules/LayerSpike/layers/delegates/SettingsContextDelegate";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 import { isEqual } from "lodash";
 import { SurfaceMetaSet } from "src/api/models/SurfaceMetaSet";
 
 import { RealizationSurfaceSettings } from "./types";
 
-import { SettingType } from "../../../Settings";
-import { SettingsContextDelegate } from "../../../SettingsContextDelegate";
 import { SettingsContext } from "../../../interfaces";
 import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";

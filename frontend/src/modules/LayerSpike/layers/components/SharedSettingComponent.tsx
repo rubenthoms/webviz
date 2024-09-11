@@ -1,7 +1,7 @@
 import React from "react";
 
 import { SortableListItem } from "@lib/components/SortableList";
-import { Delete, Settings } from "@mui/icons-material";
+import { Delete, Link } from "@mui/icons-material";
 
 import { SettingComponent } from "./SettingComponent";
 
@@ -14,14 +14,17 @@ export type SharedSettingComponentProps = {
 
 export function SharedSettingComponent(props: SharedSettingComponentProps): React.ReactNode {
     const manager = props.sharedSetting.getItemDelegate().getLayerManager();
-
+    if (!manager) {
+        return null;
+    }
     return (
         <SortableListItem
             key={props.sharedSetting.getItemDelegate().getId()}
             id={props.sharedSetting.getItemDelegate().getId()}
             title={props.sharedSetting.getItemDelegate().getName()}
-            startAdornment={<Settings fontSize="inherit" />}
+            startAdornment={<Link fontSize="inherit" />}
             endAdornment={<Actions sharedSetting={props.sharedSetting} />}
+            headerClassNames="!bg-green-200"
         >
             <SettingComponent
                 setting={props.sharedSetting.getWrappedSetting()}

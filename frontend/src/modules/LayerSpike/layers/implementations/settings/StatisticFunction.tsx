@@ -3,9 +3,9 @@ import React from "react";
 import { SurfaceStatisticFunction_api } from "@api";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 
-import { SettingDelegate } from "../../SettingDelegate";
-import { SettingType } from "../../Settings";
+import { SettingDelegate } from "../../delegates/SettingDelegate";
 import { Setting, SettingComponentProps } from "../../interfaces";
+import { SettingType } from "../../settingsTypes";
 
 export class StatisticFunction implements Setting<SurfaceStatisticFunction_api> {
     private _delegate: SettingDelegate<SurfaceStatisticFunction_api> =

@@ -20,6 +20,9 @@ export type LayerComponentProps = {
 export function LayerComponent(props: LayerComponentProps): React.ReactNode {
     function makeSetting(setting: Setting<any>) {
         const manager = props.layer.getItemDelegate().getLayerManager();
+        if (!manager) {
+            return null;
+        }
         return (
             <SettingComponent
                 key={setting.getDelegate().getId()}

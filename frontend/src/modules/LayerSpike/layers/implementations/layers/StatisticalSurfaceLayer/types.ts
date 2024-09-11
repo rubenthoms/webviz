@@ -1,7 +1,6 @@
 import { SurfaceStatisticFunction_api } from "@api";
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-
-import { SettingType } from "../../../Settings";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 export type StatisticalSurfaceSettings = {
     [SettingType.ENSEMBLE]: EnsembleIdent | null;

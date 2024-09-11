@@ -1,6 +1,5 @@
 import { EnsembleIdent } from "@framework/EnsembleIdent";
-
-import { SettingType } from "../../../Settings";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 export type ObservedSurfaceSettings = {
     [SettingType.ENSEMBLE]: EnsembleIdent | null;

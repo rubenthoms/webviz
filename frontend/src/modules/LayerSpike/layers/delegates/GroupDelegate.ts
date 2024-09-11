@@ -12,7 +12,6 @@ export type GroupBaseTopicPayloads = {
 
 export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
     private _owner: Item | null;
-    private _parentGroup: GroupDelegate | null = null;
     private _children: Item[] = [];
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
@@ -114,10 +113,10 @@ export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBase
             if (checkFunc(child)) {
                 items.push(child);
             }
-
-            if (this._parentGroup) {
-                items.push(...this._parentGroup.getAncestorAndSiblingItems(checkFunc));
-            }
+        }
+        const parentGroup = this._owner?.getItemDelegate().getParentGroup();
+        if (parentGroup) {
+            items.push(...parentGroup.getAncestorAndSiblingItems(checkFunc));
         }
 
         return items;

@@ -234,5 +234,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
             }
             this.setStatus(LayerStatus.ERROR);
         }
+        this._layerManager?.publishTopic(LayerManagerTopic.LAYER_DATA_REVISION);
     }
 }

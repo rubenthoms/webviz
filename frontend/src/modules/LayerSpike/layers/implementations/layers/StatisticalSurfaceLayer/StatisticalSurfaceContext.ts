@@ -1,4 +1,4 @@
-import { SurfaceStatisticFunction_api, SurfaceTimeType_api } from "@api";
+import { SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
 
@@ -11,7 +11,6 @@ import { SettingsContextDelegate } from "../../../delegates/SettingsContextDeleg
 import { SettingsContext } from "../../../interfaces";
 import { SettingType } from "../../../settingsTypes";
 import { Ensemble } from "../../settings/Ensemble";
-import { Realization } from "../../settings/Realization";
 import { StatisticFunction } from "../../settings/StatisticFunction";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
 import { SurfaceName } from "../../settings/SurfaceName";

@@ -1,7 +1,8 @@
-import { SurfaceDataPng_api, SurfaceTimeType_api } from "@api";
+import { SurfaceDataPng_api } from "@api";
 import { apiService } from "@framework/ApiService";
-import { SettingType } from "@modules/LayerSpike/layers/Settings";
+import { ItemDelegate } from "@modules/LayerSpike/layers/delegates/ItemDelegate";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
 import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
 import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
@@ -12,31 +13,29 @@ import { isEqual } from "lodash";
 import { ObservedSurfaceContext } from "./ObservedSurfaceContext";
 import { ObservedSurfaceSettings } from "./types";
 
-import { LayerDelegate } from "../../../LayerDelegate";
+import { LayerDelegate } from "../../../delegates/LayerDelegate";
 import { Layer } from "../../../interfaces";
 
 export class ObservedSurfaceLayer
     implements Layer<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>
 {
     private _layerDelegate: LayerDelegate<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>;
+    private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._layerDelegate = new LayerDelegate(this, "ObservedSurface", new ObservedSurfaceContext());
-    }
-
-    getId() {
-        return this._layerDelegate.getId();
-    }
-
-    getName() {
-        return this._layerDelegate.getName();
+        this._itemDelegate = new ItemDelegate("ObservedSurfaceLayer");
+        this._layerDelegate = new LayerDelegate(this, new ObservedSurfaceContext());
     }
 
     getSettingsContext() {
         return this._layerDelegate.getSettingsContext();
     }
 
-    getDelegate(): LayerDelegate<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
+
+    getLayerDelegate(): LayerDelegate<ObservedSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api> {
         return this._layerDelegate;
     }
 
@@ -51,7 +50,7 @@ export class ObservedSurfaceLayer
         let surfaceAddress: FullSurfaceAddress | null = null;
         const addrBuilder = new SurfaceAddressBuilder();
 
-        const settings = this.getSettingsContext().getSettings();
+        const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();

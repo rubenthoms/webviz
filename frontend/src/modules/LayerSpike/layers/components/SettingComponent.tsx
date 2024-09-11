@@ -1,6 +1,7 @@
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
+import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
 import { Setting, SettingTopic } from "../interfaces";
@@ -21,13 +22,16 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
     const isLoading = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.LOADING_STATE_CHANGED);
 
     function handleValueChanged(newValue: TValue) {
-        props.setting.getDelegate().setValue(newValue, true);
+        props.setting.getDelegate().setValue(newValue);
     }
 
     const Component = props.setting.makeComponent();
     return (
-        <div key={props.setting.getDelegate().getId()} className="table-row">
-            <div className="table-cell align-middle p-1 text-sm">{props.setting.getLabel()}</div>
+        <div
+            key={props.setting.getDelegate().getId()}
+            className={resolveClassNames("table-row", { hidden: overriddenValue !== undefined })}
+        >
+            <div className="table-cell align-middle p-1 text-xs whitespace-nowrap">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
                 <PendingWrapper isPending={isLoading}>
                     <Component

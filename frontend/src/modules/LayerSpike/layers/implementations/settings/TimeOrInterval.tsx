@@ -3,9 +3,9 @@ import React from "react";
 import { SurfaceTimeType_api } from "@api";
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 
-import { SettingDelegate } from "../../SettingDelegate";
-import { SettingType } from "../../Settings";
+import { SettingDelegate } from "../../delegates/SettingDelegate";
 import { Setting, SettingComponentProps } from "../../interfaces";
+import { SettingType } from "../../settingsTypes";
 
 type ValueType = string | null;
 

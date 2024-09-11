@@ -1,3 +1,4 @@
+import { isEqual } from "lodash";
 import { v4 } from "uuid";
 
 import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
@@ -27,9 +28,11 @@ export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, S
         return this._value;
     }
 
-    setValue(value: TValue, userChanged: boolean = false): void {
+    setValue(value: TValue): void {
+        if (isEqual(this._value, value)) {
+            return;
+        }
         this._value = value;
-
         this._publishSubscribeHandler.notifySubscribers(SettingTopic.VALUE_CHANGED);
     }
 

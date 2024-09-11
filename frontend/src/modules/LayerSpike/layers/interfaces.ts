@@ -86,6 +86,7 @@ export interface Setting<TValue> {
 
 export enum SettingTopic {
     VALUE_CHANGED = "VALUE_CHANGED",
+    VALUE_CHANGED_BY_USER = "VALUE_CHANGED_BY_USER",
     AVAILABLE_VALUES_CHANGED = "AVAILABLE_VALUES_CHANGED",
     OVERRIDDEN_CHANGED = "OVERRIDDEN_CHANGED",
     LOADING_STATE_CHANGED = "LOADING_STATE_CHANGED",
@@ -93,6 +94,7 @@ export enum SettingTopic {
 
 export type SettingTopicPayloads<TValue> = {
     [SettingTopic.VALUE_CHANGED]: TValue;
+    [SettingTopic.VALUE_CHANGED_BY_USER]: TValue;
     [SettingTopic.AVAILABLE_VALUES_CHANGED]: Exclude<TValue, null>[];
     [SettingTopic.OVERRIDDEN_CHANGED]: TValue | undefined;
     [SettingTopic.LOADING_STATE_CHANGED]: boolean;

@@ -21,12 +21,12 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
     const isLoading = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.LOADING_STATE_CHANGED);
 
     function handleValueChanged(newValue: TValue) {
-        props.setting.getDelegate().setValue(newValue);
+        props.setting.getDelegate().setValue(newValue, true);
     }
 
     const Component = props.setting.makeComponent();
     return (
-        <div key={props.setting.toString()} className="table-row">
+        <div key={props.setting.getDelegate().getId()} className="table-row">
             <div className="table-cell align-middle p-1 text-sm">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
                 <PendingWrapper isPending={isLoading}>

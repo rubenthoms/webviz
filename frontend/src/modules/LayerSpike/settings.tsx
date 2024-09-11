@@ -5,8 +5,9 @@ import { SortableList } from "@lib/components/SortableList";
 import { GroupAdd, Layers, Share } from "@mui/icons-material";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { GroupBaseTopic, useGroupBaseTopicValue } from "./layers/GroupDelegate";
+import { GroupBaseTopic } from "./layers/GroupDelegate";
 import { LayerManager } from "./layers/LayerManager";
+import { usePublishSubscribeTopicValue } from "./layers/PublishSubscribeHandler";
 import { SharedSetting } from "./layers/SharedSetting";
 import { View } from "./layers/View";
 import { makeComponent } from "./layers/components/utils";
@@ -20,7 +21,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient)
     );
     const groupDelegate = layerManager.current.getGroupDelegate();
-    const items = useGroupBaseTopicValue(groupDelegate, GroupBaseTopic.CHILDREN_CHANGED);
+    const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
     function handleAddLayer() {
         groupDelegate.appendChild(new SurfaceLayer());

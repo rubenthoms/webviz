@@ -21,7 +21,7 @@ export function LayerComponent(props: LayerComponentProps): React.ReactNode {
         const manager = props.layer.getDelegate().getLayerManager();
         return (
             <SettingComponent
-                key={setting.toString()}
+                key={setting.getDelegate().getId()}
                 setting={setting}
                 workbenchSession={manager.getWorkbenchSession()}
                 workbenchSettings={manager.getWorkbenchSettings()}
@@ -39,8 +39,8 @@ export function LayerComponent(props: LayerComponentProps): React.ReactNode {
 
     return (
         <SortableListItem
-            key={props.layer.getId()}
-            id={props.layer.getId()}
+            key={props.layer.getDelegate().getId()}
+            id={props.layer.getDelegate().getId()}
             title={props.layer.getName()}
             startAdornment={<StartActions layer={props.layer} />}
             endAdornment={<Actions layer={props.layer} />}

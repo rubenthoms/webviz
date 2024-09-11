@@ -38,12 +38,13 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
 
         for (const key in settings) {
             this._values[key] = settings[key].getDelegate().getValue();
-            settings[key].getDelegate().getPublishSubscribeHandler().makeSubscriberFunction(SettingTopic.VALUE_CHANGED)(
-                () => {
-                    this._values[key] = settings[key].getDelegate().getValue();
-                    this.handleSettingsChanged();
-                }
-            );
+            settings[key]
+                .getDelegate()
+                .getPublishSubscribeHandler()
+                .makeSubscriberFunction(SettingTopic.VALUE_CHANGED_BY_USER)(() => {
+                this._values[key] = settings[key].getDelegate().getValue();
+                this.handleSettingsChanged();
+            });
             this._availableSettingsValues[key] = [];
         }
 
@@ -81,10 +82,10 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
             }
             this._cachedValues = { ...this._values };
             this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.SETTINGS_CHANGED);
-        }
 
-        if (this._layerManager) {
-            this._layerManager.publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
+            if (this._layerManager) {
+                this._layerManager.publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
+            }
         }
     }
 

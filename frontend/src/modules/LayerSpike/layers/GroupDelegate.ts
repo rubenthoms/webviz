@@ -1,25 +1,25 @@
-import React from "react";
-
 import { v4 } from "uuid";
 
 import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { Message, MessageDirection, MessageType } from "./Message";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
 import { SharedSetting } from "./SharedSetting";
 import { Item, instanceofGroup, instanceofLayer } from "./interfaces";
 
 export enum GroupBaseTopic {
-    CHILDREN_CHANGED = "CHILDREN_CHANGED",
+    CHILDREN = "CHILDREN",
+    VISIBILITY = "VISIBILITY",
 }
 
 export type GroupBaseTopicPayloads = {
-    [GroupBaseTopic.CHILDREN_CHANGED]: Item[];
+    [GroupBaseTopic.CHILDREN]: Item[];
+    [GroupBaseTopic.VISIBILITY]: boolean;
 };
 
 export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
     private _parentGroup: GroupDelegate | null = null;
     private _children: Item[] = [];
     private _id: string;
+    private _visible: boolean = true;
     private _manager: LayerManager | null = null;
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
@@ -30,6 +30,15 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
 
     getId() {
         return this._id;
+    }
+
+    isVisible() {
+        return this._visible;
+    }
+
+    setVisibility(visible: boolean) {
+        this._visible = visible;
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.VISIBILITY);
     }
 
     setParentGroup(parentGroup: GroupDelegate | null) {
@@ -54,7 +63,7 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
             child.getGroupDelegate().setLayerManager(this._manager);
         }
 
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN);
         this.notifyManagerOfItemChange();
     }
 
@@ -71,7 +80,7 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
             child.getGroupDelegate().setParentGroup(this);
             child.getGroupDelegate().setLayerManager(this._manager);
         }
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN);
         this.notifyManagerOfItemChange();
     }
 
@@ -111,7 +120,7 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         this._children = [...this._children.slice(0, currentIndex), ...this._children.slice(currentIndex + 1)];
 
         this._children = [...this._children.slice(0, index), child, ...this._children.slice(index)];
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN_CHANGED);
+        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN);
     }
 
     getChildren() {
@@ -167,8 +176,11 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
 
     makeSnapshotGetter<T extends GroupBaseTopic>(topic: T): () => GroupBaseTopicPayloads[T] {
         const snapshotGetter = (): any => {
-            if (topic === GroupBaseTopic.CHILDREN_CHANGED) {
+            if (topic === GroupBaseTopic.CHILDREN) {
                 return this._children;
+            }
+            if (topic === GroupBaseTopic.VISIBILITY) {
+                return this._visible;
             }
         };
 
@@ -178,16 +190,4 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
     getPublishSubscribeHandler(): PublishSubscribeHandler<GroupBaseTopic> {
         return this._publishSubscribeHandler;
     }
-}
-
-export function useGroupBaseTopicValue<T extends GroupBaseTopic>(
-    layerGroup: GroupDelegate,
-    topic: T
-): GroupBaseTopicPayloads[T] {
-    const value = React.useSyncExternalStore<GroupBaseTopicPayloads[T]>(
-        layerGroup.getPublishSubscribeHandler().makeSubscriberFunction(topic),
-        layerGroup.makeSnapshotGetter(topic)
-    );
-
-    return value;
 }

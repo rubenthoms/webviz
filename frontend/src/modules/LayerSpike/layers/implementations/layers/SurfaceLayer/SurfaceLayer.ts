@@ -30,10 +30,6 @@ export class SurfaceLayer implements Layer<SurfaceSettings, SurfaceDataFloat_tra
         return this._layerDelegate.getName();
     }
 
-    getBroker() {
-        return this._layerDelegate.getBroker();
-    }
-
     getSettingsContext() {
         return this._layerDelegate.getSettingsContext();
     }

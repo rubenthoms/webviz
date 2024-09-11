@@ -1,18 +1,13 @@
-import { v4 } from "uuid";
-
-import { GroupDelegate } from "./GroupDelegate";
 import { LayerManager, LayerManagerTopic } from "./LayerManager";
+import { ItemDelegate, ItemDelegateTopic } from "./delegates/ItemDelegate";
 import { Item, Layer, Setting, SettingTopic, instanceofLayer } from "./interfaces";
 
 export class SharedSetting implements Item {
-    private _id: string;
     private _wrappedSetting: Setting<any>;
-    private _parentGroup: GroupDelegate | null = null;
-    private _layerManager: LayerManager | null = null;
     private _unsubscribeFuncs: (() => void)[] = [];
+    private _itemDelegate: ItemDelegate;
 
     constructor(wrappedSetting: Setting<any>) {
-        this._id = v4();
         this._wrappedSetting = wrappedSetting;
         this._wrappedSetting
             .getDelegate()
@@ -20,11 +15,17 @@ export class SharedSetting implements Item {
             .makeSubscriberFunction(SettingTopic.VALUE_CHANGED)(() => {
             this.publishValueChange();
         });
+        this._itemDelegate = new ItemDelegate(wrappedSetting.getLabel());
+        this._itemDelegate.getPublishSubscribeHandler().makeSubscriberFunction(ItemDelegateTopic.LAYER_MANAGER)(() => {
+            this.handleLayerManagerChange(this._itemDelegate.getLayerManager());
+        });
     }
 
-    setLayerManager(layerManager: LayerManager | null): void {
-        this._layerManager = layerManager;
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
 
+    handleLayerManagerChange(layerManager: LayerManager | null): void {
         if (layerManager) {
             this._unsubscribeFuncs.push(
                 layerManager.getPublishSubscribeHandler().makeSubscriberFunction(LayerManagerTopic.ITEMS_CHANGED)(
@@ -56,8 +57,9 @@ export class SharedSetting implements Item {
     }
 
     publishValueChange(): void {
-        if (this._layerManager) {
-            this._layerManager.publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
+        const layerManager = this._itemDelegate.getLayerManager();
+        if (layerManager) {
+            layerManager.publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
         }
     }
 
@@ -65,28 +67,20 @@ export class SharedSetting implements Item {
         return this._wrappedSetting;
     }
 
-    getLayerManager(): LayerManager {
-        if (!this._layerManager) {
-            throw new Error("Layer manager not set");
-        }
-        return this._layerManager;
-    }
-
-    setParentGroup(parentGroup: GroupDelegate | null): void {
-        this._parentGroup = parentGroup;
-    }
-
     private makeIntersectionOfAvailableValues(): void {
-        if (!this._parentGroup) {
+        const parentGroup = this._itemDelegate.getParentGroup();
+        if (!parentGroup) {
             throw new Error("Parent group not set");
         }
 
-        const layersAndSharedSettings = this._parentGroup.getDescendantItems(
+        const layersAndSharedSettings = parentGroup.getDescendantItems(
             (item) => instanceofLayer(item) || item instanceof SharedSetting
         ) as Layer<any, any>[];
         const availableValues = layersAndSharedSettings.reduce((acc, item) => {
             if (instanceofLayer(item)) {
-                const setting = item.getSettingsContext().getSettings()[this._wrappedSetting.getType()];
+                const setting = item.getLayerDelegate().getSettingsContext().getDelegate().getSettings()[
+                    this._wrappedSetting.getType()
+                ];
                 if (setting) {
                     if (acc.length === 0) {
                         acc.push(...setting.getDelegate().getAvailableValues());
@@ -95,7 +89,11 @@ export class SharedSetting implements Item {
                     }
                 }
             }
-            if (item instanceof SharedSetting && item.getId() !== this.getId()) {
+            if (
+                item instanceof SharedSetting &&
+                item.getItemDelegate().getId() !== this._itemDelegate.getId() &&
+                item.getWrappedSetting().getType() === this._wrappedSetting.getType()
+            ) {
                 const setting = item.getWrappedSetting();
                 if (setting) {
                     if (acc.length === 0) {
@@ -109,13 +107,5 @@ export class SharedSetting implements Item {
         }, [] as any[]);
 
         this._wrappedSetting.getDelegate().setAvailableValues(availableValues);
-    }
-
-    getId(): string {
-        return this._id;
-    }
-
-    getName(): string {
-        return this._wrappedSetting.getLabel();
     }
 }

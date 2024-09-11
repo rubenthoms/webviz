@@ -1,35 +1,22 @@
-import { GroupDelegate } from "../GroupDelegate";
 import { LayerManager } from "../LayerManager";
+import { GroupDelegate } from "../delegates/GroupDelegate";
+import { ItemDelegate } from "../delegates/ItemDelegate";
 import { Group } from "../interfaces";
 
 export class View implements Group {
-    private _name: string;
-    private _id: string;
-    private _groupHandler: GroupDelegate;
+    private _groupDelegate: GroupDelegate;
+    private _itemDelegate: ItemDelegate;
 
     constructor(layerManager: LayerManager, name: string) {
-        this._id = "view";
-        this._name = name;
-        this._groupHandler = new GroupDelegate(layerManager);
+        this._itemDelegate = new ItemDelegate(name);
+        this._groupDelegate = new GroupDelegate(layerManager);
     }
 
-    getId(): string {
-        return this._id;
-    }
-
-    getName(): string {
-        return this._name;
-    }
-
-    setName(name: string) {
-        this._name = name;
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
     }
 
     getGroupDelegate(): GroupDelegate {
-        return this._groupHandler;
-    }
-
-    getBroker() {
-        return this._groupHandler.getBroker();
+        return this._groupDelegate;
     }
 }

@@ -4,9 +4,9 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 import { useEnsembleSet } from "@framework/WorkbenchSession";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
 
-import { SettingDelegate } from "../../SettingDelegate";
-import { SettingType } from "../../Settings";
+import { SettingDelegate } from "../../delegates/SettingDelegate";
 import { Setting, SettingComponentProps } from "../../interfaces";
+import { SettingType } from "../../settingsTypes";
 
 export class Ensemble implements Setting<EnsembleIdent | null> {
     private _delegate: SettingDelegate<EnsembleIdent | null> = new SettingDelegate<EnsembleIdent | null>(null);

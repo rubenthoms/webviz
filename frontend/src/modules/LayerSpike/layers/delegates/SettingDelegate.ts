@@ -1,7 +1,7 @@
 import { v4 } from "uuid";
 
-import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { SettingTopic, SettingTopicPayloads } from "./interfaces";
+import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
+import { SettingTopic, SettingTopicPayloads } from "../interfaces";
 
 export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, SettingTopicPayloads<TValue>> {
     private _id: string;
@@ -29,11 +29,8 @@ export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, S
 
     setValue(value: TValue, userChanged: boolean = false): void {
         this._value = value;
-        if (userChanged) {
-            this._publishSubscribeHandler.notifySubscribers(SettingTopic.VALUE_CHANGED_BY_USER);
-        } else {
-            this._publishSubscribeHandler.notifySubscribers(SettingTopic.VALUE_CHANGED);
-        }
+
+        this._publishSubscribeHandler.notifySubscribers(SettingTopic.VALUE_CHANGED);
     }
 
     setLoadingState(loading: boolean): void {
@@ -44,6 +41,7 @@ export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, S
     setOverriddenValue(overriddenValue: TValue | undefined): void {
         this._overriddenValue = overriddenValue;
         this._publishSubscribeHandler.notifySubscribers(SettingTopic.OVERRIDDEN_CHANGED);
+        this._publishSubscribeHandler.notifySubscribers(SettingTopic.VALUE_CHANGED);
     }
 
     makeSnapshotGetter<T extends SettingTopic>(topic: T): () => SettingTopicPayloads<TValue>[T] {

@@ -3,33 +3,26 @@ import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
 import { isDevMode } from "@lib/utils/devMode";
 import { QueryClient } from "@tanstack/react-query";
 
-import { v4 } from "uuid";
+import { SettingsContextDelegateTopic } from "./SettingsContextDelegate";
 
-import { GroupDelegate } from "./GroupDelegate";
-import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { SharedSetting } from "./SharedSetting";
-import { Item, Layer, LayerStatus, Settings, SettingsContext } from "./interfaces";
+import { LayerManager, LayerManagerTopic } from "../LayerManager";
+import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
+import { SharedSetting } from "../SharedSetting";
+import { Layer, LayerStatus, Settings, SettingsContext } from "../interfaces";
 
 export enum LayerDelegateTopic {
-    VISIBILITY = "VISIBILITY",
     STATUS = "STATUS",
     DATA = "DATA",
 }
 
 export type LayerDelegatePayloads<TData> = {
-    [LayerDelegateTopic.VISIBILITY]: boolean;
     [LayerDelegateTopic.STATUS]: LayerStatus;
     [LayerDelegateTopic.DATA]: TData;
 };
 export class LayerDelegate<TSettings extends Settings, TData>
-    implements Item, PublishSubscribe<LayerDelegateTopic, LayerDelegatePayloads<TData>>
+    implements PublishSubscribe<LayerDelegateTopic, LayerDelegatePayloads<TData>>
 {
-    private _parent: Layer<TSettings, TData>;
-    private _name: string;
-    private _id: string;
-    private _isVisible: boolean = true;
-    private _parentGroup: GroupDelegate | null = null;
+    private _owner: Layer<TSettings, TData>;
     private _settingsContext: SettingsContext<TSettings>;
     private _layerManager: LayerManager | null = null;
     private _unsubscribeFuncs: (() => void)[] = [];
@@ -41,11 +34,15 @@ export class LayerDelegate<TSettings extends Settings, TData>
     private _data: TData | null = null;
     private _error: StatusMessage | string | null = null;
 
-    constructor(layer: Layer<TSettings, TData>, name: string, settingsContext: SettingsContext<TSettings>) {
-        this._id = v4();
-        this._parent = layer;
-        this._name = name;
+    constructor(owner: Layer<TSettings, TData>, settingsContext: SettingsContext<TSettings>) {
+        this._owner = owner;
         this._settingsContext = settingsContext;
+        this._settingsContext
+            .getDelegate()
+            .getPublishSubscribeHandler()
+            .makeSubscriberFunction(SettingsContextDelegateTopic.SETTINGS_CHANGED)(() => {
+            this.handleSettingsChange();
+        });
     }
 
     handleSettingsChange(): void {
@@ -63,33 +60,8 @@ export class LayerDelegate<TSettings extends Settings, TData>
         this._queryKeys.push(queryKey);
     }
 
-    setVisible(isVisible: boolean): void {
-        this._isVisible = isVisible;
-        this._publishSubscribeHandler.notifySubscribers(LayerDelegateTopic.VISIBILITY);
-    }
-
     getStatus(): LayerStatus {
         return this._status;
-    }
-
-    isVisible(): boolean {
-        return this._isVisible;
-    }
-
-    setParentGroup(parentGroup: GroupDelegate | null): void {
-        this._parentGroup = parentGroup;
-    }
-
-    getParentGroup(): GroupDelegate | null {
-        return this._parentGroup;
-    }
-
-    getId(): string {
-        return this._id;
-    }
-
-    getName(): string {
-        return this._name;
     }
 
     getData(): TData | null {
@@ -128,8 +100,9 @@ export class LayerDelegate<TSettings extends Settings, TData>
     }
 
     handleSharedSettingsChanged(): void {
-        if (this._parentGroup) {
-            const sharedSettings: SharedSetting[] = this._parentGroup.getAncestorAndSiblingItems(
+        const parentGroup = this._owner.getItemDelegate().getParentGroup();
+        if (parentGroup) {
+            const sharedSettings: SharedSetting[] = parentGroup.getAncestorAndSiblingItems(
                 (item) => item instanceof SharedSetting
             ) as SharedSetting[];
             const overriddenSettings: { [K in keyof TSettings]: TSettings[K] } = {} as {
@@ -137,7 +110,7 @@ export class LayerDelegate<TSettings extends Settings, TData>
             };
             for (const setting of sharedSettings) {
                 const type = setting.getWrappedSetting().getType();
-                if (this._settingsContext.getSettings()[type] && overriddenSettings[type] === undefined) {
+                if (this._settingsContext.getDelegate().getSettings()[type] && overriddenSettings[type] === undefined) {
                     overriddenSettings[type] = setting.getWrappedSetting().getDelegate().getValue();
                 }
             }
@@ -154,9 +127,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
 
     makeSnapshotGetter<T extends LayerDelegateTopic>(topic: T): () => LayerDelegatePayloads<TData>[T] {
         const snapshotGetter = (): any => {
-            if (topic === LayerDelegateTopic.VISIBILITY) {
-                return this._isVisible;
-            }
             if (topic === LayerDelegateTopic.STATUS) {
                 return this._status;
             }
@@ -177,13 +147,15 @@ export class LayerDelegate<TSettings extends Settings, TData>
             return null;
         }
 
+        const name = this._owner.getItemDelegate().getName();
+
         if (typeof this._error === "string") {
-            return `${this.getName()}: ${this._error}`;
+            return `${name}: ${this._error}`;
         }
 
         return {
             ...this._error,
-            message: `${this.getName()}: ${this._error.message}`,
+            message: `${name}: ${this._error.message}`,
         };
     }
 
@@ -241,7 +213,7 @@ export class LayerDelegate<TSettings extends Settings, TData>
         this.setStatus(LayerStatus.LOADING);
 
         try {
-            this._data = await this._parent.fechData(queryClient);
+            this._data = await this._owner.fechData(queryClient);
             if (this._queryKeys.length === null && isDevMode()) {
                 console.warn(
                     "Did you forget to use 'setQueryKeys' in your layer implementation of 'fetchData'? This will cause the queries to not be cancelled when settings change and might lead to undesired behaviour."

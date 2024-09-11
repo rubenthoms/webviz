@@ -7,9 +7,9 @@ import { SurfaceMetaSet } from "src/api/models/SurfaceMetaSet";
 
 import { StatisticalSurfaceSettings } from "./types";
 
-import { SettingType } from "../../../Settings";
-import { SettingsContextDelegate } from "../../../SettingsContextDelegate";
+import { SettingsContextDelegate } from "../../../delegates/SettingsContextDelegate";
 import { SettingsContext } from "../../../interfaces";
+import { SettingType } from "../../../settingsTypes";
 import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";
 import { StatisticFunction } from "../../settings/StatisticFunction";

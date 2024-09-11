@@ -1,66 +1,33 @@
-import { v4 } from "uuid";
-
-import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { SharedSetting } from "./SharedSetting";
-import { Item, instanceofGroup, instanceofLayer } from "./interfaces";
+import { LayerManagerTopic } from "../LayerManager";
+import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
+import { Item, instanceofGroup, instanceofLayer } from "../interfaces";
 
 export enum GroupBaseTopic {
     CHILDREN = "CHILDREN",
-    VISIBILITY = "VISIBILITY",
 }
 
 export type GroupBaseTopicPayloads = {
     [GroupBaseTopic.CHILDREN]: Item[];
-    [GroupBaseTopic.VISIBILITY]: boolean;
 };
 
-export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
+export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
+    private _owner: Item | null;
     private _parentGroup: GroupDelegate | null = null;
     private _children: Item[] = [];
-    private _id: string;
-    private _visible: boolean = true;
-    private _manager: LayerManager | null = null;
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
-    constructor(manager: LayerManager | null) {
-        this._id = v4();
-        this._manager = manager;
-    }
-
-    getId() {
-        return this._id;
-    }
-
-    isVisible() {
-        return this._visible;
-    }
-
-    setVisibility(visible: boolean) {
-        this._visible = visible;
-        this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.VISIBILITY);
-    }
-
-    setParentGroup(parentGroup: GroupDelegate | null) {
-        this._parentGroup = parentGroup;
-    }
-
-    setLayerManager(manager: LayerManager | null) {
-        this._manager = manager;
+    constructor(owner: Item | null) {
+        this._owner = owner;
     }
 
     private takeOwnershipOfChild(child: Item) {
+        const layerManager = this._owner?.getItemDelegate().getLayerManager() ?? null;
+
+        child.getItemDelegate().setParentGroup(this);
+        child.getItemDelegate().setLayerManager(layerManager);
+
         if (instanceofLayer(child)) {
-            child.getDelegate().setParentGroup(this);
-            child.getDelegate().setLayerManager(this._manager);
-        }
-        if (child instanceof SharedSetting) {
-            child.setLayerManager(this._manager);
-            child.setParentGroup(this);
-        }
-        if (instanceofGroup(child)) {
-            child.getGroupDelegate().setParentGroup(this);
-            child.getGroupDelegate().setLayerManager(this._manager);
+            child.getLayerDelegate().setLayerManager(layerManager);
         }
 
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN);
@@ -68,27 +35,24 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
     }
 
     private disposeOwnershipOfChild(child: Item) {
+        child.getItemDelegate().setParentGroup(null);
+        child.getItemDelegate().setLayerManager(null);
+
         if (instanceofLayer(child)) {
-            child.getDelegate().setParentGroup(null);
-            child.getDelegate().setLayerManager(null);
+            child.getLayerDelegate().setLayerManager(null);
         }
-        if (child instanceof SharedSetting) {
-            child.setLayerManager(null);
-            child.setParentGroup(null);
-        }
-        if (instanceofGroup(child)) {
-            child.getGroupDelegate().setParentGroup(this);
-            child.getGroupDelegate().setLayerManager(this._manager);
-        }
+
         this._publishSubscribeHandler.notifySubscribers(GroupBaseTopic.CHILDREN);
         this.notifyManagerOfItemChange();
     }
 
     private notifyManagerOfItemChange() {
-        if (!this._manager) {
+        const layerManager = this._owner?.getItemDelegate().getLayerManager();
+
+        if (!layerManager) {
             return;
         }
-        this._manager.publishTopic(LayerManagerTopic.ITEMS_CHANGED);
+        layerManager.publishTopic(LayerManagerTopic.ITEMS_CHANGED);
     }
 
     prependChild(child: Item) {
@@ -129,7 +93,7 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
 
     findDescendantById(id: string): Item | undefined {
         for (const child of this._children) {
-            if (child.getId() === id) {
+            if (child.getItemDelegate().getId() === id) {
                 return child;
             }
 
@@ -178,9 +142,6 @@ export class GroupDelegate implements Item, PublishSubscribe<GroupBaseTopic, Gro
         const snapshotGetter = (): any => {
             if (topic === GroupBaseTopic.CHILDREN) {
                 return this._children;
-            }
-            if (topic === GroupBaseTopic.VISIBILITY) {
-                return this._visible;
             }
         };
 

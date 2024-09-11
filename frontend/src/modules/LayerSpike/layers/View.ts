@@ -1,17 +1,20 @@
 import { v4 } from "uuid";
 
-import { GroupDelegate } from "./GroupDelegate";
+import { GroupDelegate } from "./delegates/GroupDelegate";
+import { ItemDelegate } from "./delegates/ItemDelegate";
 import { Group } from "./interfaces";
 
 export class View implements Group {
-    private _groupHandler: GroupDelegate;
+    private _itemDelegate: ItemDelegate;
+    private _groupDelegate: GroupDelegate;
     private _name: string;
     private _id: string;
 
     constructor(name: string) {
         this._id = v4();
         this._name = name;
-        this._groupHandler = new GroupDelegate(null);
+        this._groupDelegate = new GroupDelegate(this);
+        this._itemDelegate = new ItemDelegate(name);
     }
 
     getId() {
@@ -22,8 +25,12 @@ export class View implements Group {
         return this._name;
     }
 
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
+
     getGroupDelegate(): GroupDelegate {
-        return this._groupHandler;
+        return this._groupDelegate;
     }
 
     setName(name: string) {

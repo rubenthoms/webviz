@@ -2,8 +2,10 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { QueryClient } from "@tanstack/react-query";
 
-import { GroupDelegate } from "./GroupDelegate";
 import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
+import { GroupDelegate } from "./delegates/GroupDelegate";
+import { ItemDelegate } from "./delegates/ItemDelegate";
+import { Group } from "./interfaces";
 
 export enum LayerManagerTopic {
     ITEMS_CHANGED = "items-changed",
@@ -16,18 +18,29 @@ export type LayerManagerTopicPayload = {
     [LayerManagerTopic.SETTINGS_CHANGED]: void;
     [LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED]: void;
 };
-export class LayerManager implements PublishSubscribe<LayerManagerTopic, LayerManagerTopicPayload> {
+export class LayerManager implements Group, PublishSubscribe<LayerManagerTopic, LayerManagerTopicPayload> {
     private _workbenchSession: WorkbenchSession;
     private _workbenchSettings: WorkbenchSettings;
     private _groupDelegate: GroupDelegate;
     private _queryClient: QueryClient;
     private _publishSubscribeHandler = new PublishSubscribeHandler<LayerManagerTopic>();
+    private _itemDelegate: ItemDelegate;
 
     constructor(workbenchSession: WorkbenchSession, workbenchSettings: WorkbenchSettings, queryClient: QueryClient) {
         this._workbenchSession = workbenchSession;
         this._workbenchSettings = workbenchSettings;
-        this._groupDelegate = new GroupDelegate(this);
         this._queryClient = queryClient;
+        this._itemDelegate = new ItemDelegate("LayerManager");
+        this._itemDelegate.setLayerManager(this);
+        this._groupDelegate = new GroupDelegate(this);
+    }
+
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
+
+    getGroupDelegate(): GroupDelegate {
+        return this._groupDelegate;
     }
 
     publishTopic(topic: LayerManagerTopic): void {
@@ -44,10 +57,6 @@ export class LayerManager implements PublishSubscribe<LayerManagerTopic, LayerMa
 
     getWorkbenchSettings(): WorkbenchSettings {
         return this._workbenchSettings;
-    }
-
-    getGroupDelegate(): GroupDelegate {
-        return this._groupDelegate;
     }
 
     makeSnapshotGetter<T extends LayerManagerTopic>(topic: T): () => LayerManagerTopicPayload[T] {

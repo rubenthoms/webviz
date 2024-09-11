@@ -7,8 +7,9 @@ import { Check, Delete, Error, Visibility, VisibilityOff } from "@mui/icons-mate
 
 import { SettingComponent } from "./SettingComponent";
 
-import { LayerDelegateTopic } from "../LayerDelegate";
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
+import { ItemDelegateTopic } from "../delegates/ItemDelegate";
+import { LayerDelegateTopic } from "../delegates/LayerDelegate";
 import { Layer, LayerStatus, Setting } from "../interfaces";
 
 export type LayerComponentProps = {
@@ -18,7 +19,7 @@ export type LayerComponentProps = {
 
 export function LayerComponent(props: LayerComponentProps): React.ReactNode {
     function makeSetting(setting: Setting<any>) {
-        const manager = props.layer.getDelegate().getLayerManager();
+        const manager = props.layer.getItemDelegate().getLayerManager();
         return (
             <SettingComponent
                 key={setting.getDelegate().getId()}
@@ -39,13 +40,15 @@ export function LayerComponent(props: LayerComponentProps): React.ReactNode {
 
     return (
         <SortableListItem
-            key={props.layer.getDelegate().getId()}
-            id={props.layer.getDelegate().getId()}
-            title={props.layer.getName()}
+            key={props.layer.getItemDelegate().getId()}
+            id={props.layer.getItemDelegate().getId()}
+            title={props.layer.getItemDelegate().getName()}
             startAdornment={<StartActions layer={props.layer} />}
             endAdornment={<Actions layer={props.layer} />}
         >
-            <div className="table">{makeSettings(props.layer.getSettingsContext().getSettings())}</div>
+            <div className="table">
+                {makeSettings(props.layer.getLayerDelegate().getSettingsContext().getDelegate().getSettings())}
+            </div>
         </SortableListItem>
     );
 }
@@ -55,10 +58,10 @@ type ActionProps = {
 };
 
 function Actions(props: ActionProps): React.ReactNode {
-    const status = usePublishSubscribeTopicValue(props.layer.getDelegate(), LayerDelegateTopic.STATUS);
+    const status = usePublishSubscribeTopicValue(props.layer.getLayerDelegate(), LayerDelegateTopic.STATUS);
 
     function handleRemove() {
-        props.layer.getDelegate().getParentGroup()?.removeChild(props.layer);
+        props.layer.getItemDelegate().getParentGroup()?.removeChild(props.layer);
     }
 
     function makeStatus(): React.ReactNode {
@@ -70,7 +73,7 @@ function Actions(props: ActionProps): React.ReactNode {
             );
         }
         if (status === LayerStatus.ERROR) {
-            const error = props.layer.getDelegate().getError();
+            const error = props.layer.getLayerDelegate().getError();
             if (typeof error === "string") {
                 return (
                     <div title={error}>
@@ -115,10 +118,10 @@ type StartActionsProps = {
 };
 
 function StartActions(props: StartActionsProps): React.ReactNode {
-    const isVisible = usePublishSubscribeTopicValue(props.layer.getDelegate(), LayerDelegateTopic.VISIBILITY);
+    const isVisible = usePublishSubscribeTopicValue(props.layer.getItemDelegate(), ItemDelegateTopic.VISIBILITY);
 
     function handleToggleLayerVisibility() {
-        props.layer.getDelegate().setVisible(!isVisible);
+        props.layer.getItemDelegate().setIsVisible(!isVisible);
     }
 
     return (

@@ -2,20 +2,25 @@ import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
 import { SortableList } from "@lib/components/SortableList";
-import { GroupAdd, Layers, Share } from "@mui/icons-material";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { GroupBaseTopic } from "./layers/GroupDelegate";
 import { LayerManager } from "./layers/LayerManager";
 import { usePublishSubscribeTopicValue } from "./layers/PublishSubscribeHandler";
 import { SharedSetting } from "./layers/SharedSetting";
 import { View } from "./layers/View";
 import { makeComponent } from "./layers/components/utils";
-import { ObservedSurfaceLayer } from "./layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
-import { RealizationSurfaceLayer } from "./layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
-import { StatisticalSurfaceLayer } from "./layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
+import { GroupBaseTopic } from "./layers/delegates/GroupDelegate";
+import { SurfaceLayer } from "./layers/implementations/layers/SurfaceLayer/SurfaceLayer";
+import { Ensemble } from "./layers/implementations/settings/Ensemble";
 import { Realization } from "./layers/implementations/settings/Realization";
-import { instanceofGroup } from "./layers/interfaces";
+import { Item, instanceofGroup } from "./layers/interfaces";
+import { LayersPanelActions } from "./layersActions";
+import {
+    LAYER_TYPE_TO_STRING_MAPPING,
+    LayerType,
+    SHARED_SETTING_TYPE_TO_STRING_MAPPING,
+    SharedSettingType,
+} from "./types";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const queryClient = useQueryClient();
@@ -25,21 +30,23 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
-    function handleAddRealLayer() {
-        groupDelegate.appendChild(new RealizationSurfaceLayer());
-    }
-    function handleAddStatLayer() {
-        groupDelegate.appendChild(new StatisticalSurfaceLayer());
-    }
-    function handleAddObsLayer() {
-        groupDelegate.appendChild(new ObservedSurfaceLayer());
-    }
-    function handleAddGroup() {
-        groupDelegate.appendChild(new View("New Group"));
+    function handleAddLayer(layerType: LayerType) {
+        if (layerType === LayerType.SURFACE) {
+            groupDelegate.appendChild(new SurfaceLayer());
+        }
     }
 
-    function handleAddSharedSetting() {
-        groupDelegate.appendChild(new SharedSetting(new Realization()));
+    function handleAddView() {
+        groupDelegate.appendChild(new View("New View"));
+    }
+
+    function handleAddSharedSetting(settingType: SharedSettingType) {
+        if (settingType === SharedSettingType.ENSEMBLE) {
+            groupDelegate.appendChild(new SharedSetting(new Ensemble()));
+        }
+        if (settingType === SharedSettingType.REALIZATION) {
+            groupDelegate.appendChild(new SharedSetting(new Realization()));
+        }
     }
 
     function handleItemMoved(
@@ -79,27 +86,21 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     }
 
     return (
-        <div className="w-full flex-grow flex flex-col min-h-0">
+        <div className="w-full h-full flex-grow flex flex-col min-h-0">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
                 <div className="flex-grow font-bold text-sm">Layers</div>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddRealLayer}>
-                    <Layers />
-                </button>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddStatLayer}>
-                    <Layers />
-                </button>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddObsLayer}>
-                    <Layers />
-                </button>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddGroup}>
-                    <GroupAdd />
-                </button>
-                <button className="bg-black text-white p-1 rounded" onClick={handleAddSharedSetting}>
-                    <Share />
-                </button>
+                <LayersPanelActions
+                    layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
+                    settingTypeToStringMapping={SHARED_SETTING_TYPE_TO_STRING_MAPPING}
+                    onAddLayer={handleAddLayer}
+                    onAddView={handleAddView}
+                    onAddSharedSetting={handleAddSharedSetting}
+                />
             </div>
-            <div className="w-full flex-grow flex flex-col relative">
-                <SortableList onItemMoved={handleItemMoved}>{items.map((item) => makeComponent(item))}</SortableList>
+            <div className="w-full flex-grow flex flex-col relative bg-slate-300">
+                <SortableList onItemMoved={handleItemMoved}>
+                    {items.map((item: Item) => makeComponent(item))}
+                </SortableList>
             </div>
         </div>
     );

@@ -2,32 +2,27 @@ import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { QueryClient } from "@tanstack/react-query";
 
-import { GroupDelegate } from "./GroupDelegate";
-import { LayerDelegate } from "./LayerDelegate";
-import { SettingDelegate } from "./SettingDelegate";
-import { SettingType } from "./Settings";
-import { SettingsContextDelegate } from "./SettingsContextDelegate";
+import { GroupDelegate } from "./delegates/GroupDelegate";
+import { ItemDelegate } from "./delegates/ItemDelegate";
+import { LayerDelegate } from "./delegates/LayerDelegate";
+import { SettingDelegate } from "./delegates/SettingDelegate";
+import { SettingsContextDelegate } from "./delegates/SettingsContextDelegate";
+import { SettingType } from "./settingsTypes";
 
 export interface Item {
-    getId(): string;
+    getItemDelegate(): ItemDelegate;
 }
 
 export function instanceofItem(item: any): item is Item {
-    return (item as Item).getId !== undefined;
+    return (item as Item).getItemDelegate !== undefined;
 }
 
 export interface Group extends Item {
-    getName(): string;
-    setName(name: string): void;
     getGroupDelegate(): GroupDelegate;
 }
 
 export function instanceofGroup(item: Item): item is Group {
-    return (
-        (item as Group).getName !== undefined &&
-        (item as Group).setName !== undefined &&
-        (item as Group).getGroupDelegate !== undefined
-    );
+    return (item as Group).getItemDelegate !== undefined && (item as Group).getGroupDelegate !== undefined;
 }
 
 export enum LayerStatus {
@@ -43,25 +38,20 @@ export interface FetchDataFunction<TSettings extends Settings, TKey extends keyo
 }
 
 export interface Layer<TSettings extends Settings, TData> extends Item {
-    getName(): string;
-    getSettingsContext(): SettingsContext<TSettings>;
-    getDelegate(): LayerDelegate<TSettings, TData>;
+    getLayerDelegate(): LayerDelegate<TSettings, TData>;
     doSettingsChangesRequireDataRefetch(prevSettings: TSettings, newSettings: TSettings): boolean;
     fechData(queryClient: QueryClient): Promise<TData>;
 }
 
 export function instanceofLayer(item: Item): item is Layer<Settings, any> {
     return (
-        (item as Layer<Settings, any>).getSettingsContext !== undefined &&
-        (item as Layer<Settings, any>).getDelegate !== undefined &&
-        (item as Layer<Settings, any>).getName !== undefined &&
+        (item as Layer<Settings, any>).getItemDelegate !== undefined &&
         (item as Layer<Settings, any>).doSettingsChangesRequireDataRefetch !== undefined &&
         (item as Layer<Settings, any>).fechData !== undefined
     );
 }
 
 export interface SettingsContext<TSettings extends Settings, TKey extends keyof TSettings = keyof TSettings> {
-    getSettings(): { [K in TKey]: Setting<TSettings[K]> };
     getDelegate(): SettingsContextDelegate<TSettings, TKey>;
     fetchData: FetchDataFunction<TSettings, TKey>;
     isValid(): boolean;

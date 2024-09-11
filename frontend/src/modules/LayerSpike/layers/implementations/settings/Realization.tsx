@@ -2,9 +2,9 @@ import React from "react";
 
 import { Dropdown, DropdownOption } from "@lib/components/Dropdown";
 
-import { SettingDelegate } from "../../SettingDelegate";
-import { SettingType } from "../../Settings";
+import { SettingDelegate } from "../../delegates/SettingDelegate";
 import { Setting, SettingComponentProps } from "../../interfaces";
+import { SettingType } from "../../settingsTypes";
 
 export class Realization implements Setting<number | null> {
     private _delegate: SettingDelegate<number | null> = new SettingDelegate<number | null>(null);

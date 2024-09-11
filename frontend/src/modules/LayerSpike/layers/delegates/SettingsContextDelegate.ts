@@ -1,8 +1,8 @@
 import { isEqual } from "lodash";
 
-import { LayerManager, LayerManagerTopic } from "./LayerManager";
-import { PublishSubscribe, PublishSubscribeHandler } from "./PublishSubscribeHandler";
-import { Setting, SettingTopic, Settings, SettingsContext } from "./interfaces";
+import { LayerManager, LayerManagerTopic } from "../LayerManager";
+import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
+import { Setting, SettingTopic, Settings, SettingsContext } from "../interfaces";
 
 export enum SettingsContextDelegateTopic {
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
@@ -24,13 +24,13 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
     implements PublishSubscribe<SettingsContextDelegateTopic, SettingsContextDelegatePayloads>
 {
     private _parentContext: SettingsContext<TSettings, TKey>;
+    private _layerManager: LayerManager | null = null;
     private _settings: { [K in TKey]: Setting<TSettings[K]> } = {} as { [K in TKey]: Setting<TSettings[K]> };
     private _cachedValues: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
     private _values: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
     private _overriddenSettings: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
     private _availableSettingsValues: Partial<{ [K in TKey]: Exclude<TSettings[K], null>[] }> = {};
     private _publishSubscribeHandler = new PublishSubscribeHandler<SettingsContextDelegateTopic>();
-    private _layerManager: LayerManager | null = null;
     private _onSettingsChanged: FetchDataFunction<TSettings, TKey> | null = null;
 
     constructor(context: SettingsContext<TSettings, TKey>, settings: { [K in TKey]: Setting<TSettings[K]> }) {
@@ -38,13 +38,12 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
 
         for (const key in settings) {
             this._values[key] = settings[key].getDelegate().getValue();
-            settings[key]
-                .getDelegate()
-                .getPublishSubscribeHandler()
-                .makeSubscriberFunction(SettingTopic.VALUE_CHANGED_BY_USER)(() => {
-                this._values[key] = settings[key].getDelegate().getValue();
-                this.handleSettingsChanged();
-            });
+            settings[key].getDelegate().getPublishSubscribeHandler().makeSubscriberFunction(SettingTopic.VALUE_CHANGED)(
+                () => {
+                    this._values[key] = settings[key].getDelegate().getValue();
+                    this.handleSettingsChanged();
+                }
+            );
             this._availableSettingsValues[key] = [];
         }
 
@@ -83,9 +82,7 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
             this._cachedValues = { ...this._values };
             this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.SETTINGS_CHANGED);
 
-            if (this._layerManager) {
-                this._layerManager.publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
-            }
+            this.getLayerManager().publishTopic(LayerManagerTopic.SETTINGS_CHANGED);
         }
     }
 
@@ -94,9 +91,7 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
         this._settings[key].getDelegate().setAvailableValues(availableValues);
         this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED);
 
-        if (this._layerManager) {
-            this._layerManager.publishTopic(LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED);
-        }
+        this.getLayerManager().publishTopic(LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED);
     }
 
     getAvailableValues<K extends TKey>(key: K): Exclude<TSettings[K], null>[] {

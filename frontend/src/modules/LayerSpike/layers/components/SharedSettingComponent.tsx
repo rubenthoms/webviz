@@ -1,7 +1,7 @@
 import React from "react";
 
 import { SortableListItem } from "@lib/components/SortableList";
-import { Settings } from "@mui/icons-material";
+import { Delete, Settings } from "@mui/icons-material";
 
 import { SettingComponent } from "./SettingComponent";
 
@@ -13,14 +13,15 @@ export type SharedSettingComponentProps = {
 };
 
 export function SharedSettingComponent(props: SharedSettingComponentProps): React.ReactNode {
-    const manager = props.sharedSetting.getLayerManager();
+    const manager = props.sharedSetting.getItemDelegate().getLayerManager();
 
     return (
         <SortableListItem
-            key={props.sharedSetting.getId()}
-            id={props.sharedSetting.getId()}
-            title={props.sharedSetting.getName()}
+            key={props.sharedSetting.getItemDelegate().getId()}
+            id={props.sharedSetting.getItemDelegate().getId()}
+            title={props.sharedSetting.getItemDelegate().getName()}
             startAdornment={<Settings fontSize="inherit" />}
+            endAdornment={<Actions sharedSetting={props.sharedSetting} />}
         >
             <SettingComponent
                 setting={props.sharedSetting.getWrappedSetting()}
@@ -28,5 +29,30 @@ export function SharedSettingComponent(props: SharedSettingComponentProps): Reac
                 workbenchSettings={manager.getWorkbenchSettings()}
             />
         </SortableListItem>
+    );
+}
+
+type ActionProps = {
+    sharedSetting: SharedSetting;
+};
+
+function Actions(props: ActionProps): React.ReactNode {
+    function handleRemove() {
+        const parentGroup = props.sharedSetting.getItemDelegate().getParentGroup();
+        if (parentGroup) {
+            parentGroup.removeChild(props.sharedSetting);
+        }
+    }
+
+    return (
+        <>
+            <div
+                className="hover:cursor-pointer rounded hover:text-red-800"
+                onClick={handleRemove}
+                title="Remove layer group"
+            >
+                <Delete fontSize="inherit" />
+            </div>
+        </>
     );
 }

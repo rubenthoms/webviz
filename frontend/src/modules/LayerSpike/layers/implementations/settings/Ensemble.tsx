@@ -25,7 +25,17 @@ export class Ensemble implements Setting<EnsembleIdent | null> {
 
     makeComponent(): (props: SettingComponentProps<EnsembleIdent | null>) => React.ReactNode {
         return function Ensemble(props: SettingComponentProps<EnsembleIdent | null>) {
+            const { onValueChange } = props;
             const ensembleSet = useEnsembleSet(props.workbenchSession);
+
+            React.useEffect(
+                function onMountEffect() {
+                    if (props.value === null) {
+                        onValueChange(ensembleSet.getEnsembleArr()[0]?.getIdent() ?? null);
+                    }
+                },
+                [onValueChange, ensembleSet, props.value]
+            );
 
             return (
                 <EnsembleDropdown

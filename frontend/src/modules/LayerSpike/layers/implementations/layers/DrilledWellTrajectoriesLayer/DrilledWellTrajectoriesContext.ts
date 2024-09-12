@@ -36,6 +36,7 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
 
     private setAvailableSettingsValues() {
         const settings = this.getDelegate().getSettings();
+        settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().setLoadingState(false);
 
         if (!this._fetchDataCache) {
             return;
@@ -43,7 +44,7 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
         const availableWellboreHeaders: WellboreHeader_api[] = this._fetchDataCache;
         this._contextDelegate.setAvailableValues(SettingType.SMDA_WELLBORE_HEADERS, availableWellboreHeaders);
 
-        let currentWellboreHeaders = settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().getValue();
+        const currentWellboreHeaders = settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().getValue();
         let newWellboreHeaders = currentWellboreHeaders.filter((header) =>
             availableWellboreHeaders.some((availableHeader) => availableHeader.wellboreUuid === header.wellboreUuid)
         );
@@ -56,9 +57,15 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
     }
 
     fetchData(oldValues: DrilledWellTrajectoriesSettings, newValues: DrilledWellTrajectoriesSettings): void {
+        if (oldValues[SettingType.ENSEMBLE] === newValues[SettingType.ENSEMBLE]) {
+            return;
+        }
+
         const queryClient = this.getDelegate().getLayerManager().getQueryClient();
 
         const settings = this.getDelegate().getSettings();
+
+        settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().setLoadingState(true);
 
         const workbenchSession = this.getDelegate().getLayerManager().getWorkbenchSession();
         const ensembleSet = workbenchSession.getEnsembleSet();

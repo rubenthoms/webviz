@@ -11,7 +11,7 @@ export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
     private _delegate: SettingDelegate<WellboreHeader_api[]> = new SettingDelegate<WellboreHeader_api[]>([]);
 
     getType(): SettingType {
-        return SettingType.SMDA_WELLBORE_UUIDS;
+        return SettingType.SMDA_WELLBORE_HEADERS;
     }
 
     getLabel(): string {
@@ -29,14 +29,14 @@ export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
                 label: ident.uniqueWellboreIdentifier,
             }));
 
-            const selectedValues = props.value.map((ident) => ident.wellboreUuid);
-
             const handleChange = (selectedUuids: string[]) => {
                 const selectedWellbores = props.availableValues.filter((ident) =>
                     selectedUuids.includes(ident.wellboreUuid)
                 );
                 props.onValueChange(selectedWellbores);
             };
+
+            const selectedValues = props.value.map((ident) => ident.wellboreUuid);
 
             return (
                 <Select
@@ -50,4 +50,31 @@ export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
             );
         };
     }
+}
+
+type WellboreHeaderSelectorProps = {
+    wellboreHeaders: WellboreHeader_api[];
+    selectedWellboreUuids: string[];
+    onChange: (selectedWellboreUuids: string[]) => void;
+};
+
+export function WellboreHeaderSelector(props: WellboreHeaderSelectorProps): React.ReactNode {
+    const options: SelectOption[] = props.wellboreHeaders.map((ident) => ({
+        value: ident.wellboreUuid,
+        label: ident.uniqueWellboreIdentifier,
+    }));
+
+    const handleChange = (selectedUuids: string[]) => {
+        props.onChange(selectedUuids);
+    };
+
+    return (
+        <Select
+            options={options}
+            value={props.selectedWellboreUuids}
+            onChange={handleChange}
+            multiple={true}
+            size={10}
+        />
+    );
 }

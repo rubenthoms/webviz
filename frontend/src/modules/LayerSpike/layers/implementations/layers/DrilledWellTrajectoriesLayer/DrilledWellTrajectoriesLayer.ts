@@ -3,9 +3,6 @@ import { apiService } from "@framework/ApiService";
 import { ItemDelegate } from "@modules/LayerSpike/layers/delegates/ItemDelegate";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
 import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
-import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
-import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
-import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
 import { QueryClient } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
@@ -21,7 +18,7 @@ export class DrilledWellTrajectoriesLayer implements Layer<DrilledWellTrajectori
     private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("DrilledWellTrajectoriesLayer");
+        this._itemDelegate = new ItemDelegate("Drilled Well Trajectories");
         this._layerDelegate = new LayerDelegate(this, new DrilledWellTrajectoriesContext());
     }
 

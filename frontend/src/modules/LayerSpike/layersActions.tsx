@@ -44,7 +44,7 @@ export function LayersPanelActions<TLayerType extends string, TSettingType exten
                     );
                 })}
                 <MenuDivider />
-                <MenuHeading>Settings</MenuHeading>
+                <MenuHeading>Shared settings</MenuHeading>
                 {Object.keys(props.settingTypeToStringMapping).map((settingType, index) => {
                     return (
                         <MenuItem

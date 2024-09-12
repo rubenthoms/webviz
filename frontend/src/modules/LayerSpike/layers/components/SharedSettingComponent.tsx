@@ -21,10 +21,10 @@ export function SharedSettingComponent(props: SharedSettingComponentProps): Reac
         <SortableListItem
             key={props.sharedSetting.getItemDelegate().getId()}
             id={props.sharedSetting.getItemDelegate().getId()}
-            title={props.sharedSetting.getItemDelegate().getName()}
+            title={<span className="font-bold">{props.sharedSetting.getItemDelegate().getName()}</span>}
             startAdornment={<Link fontSize="inherit" />}
             endAdornment={<Actions sharedSetting={props.sharedSetting} />}
-            headerClassNames="!bg-green-200"
+            headerClassNames="!bg-slate-300"
         >
             <SettingComponent
                 setting={props.sharedSetting.getWrappedSetting()}

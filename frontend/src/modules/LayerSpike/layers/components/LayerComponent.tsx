@@ -77,15 +77,15 @@ function Actions(props: ActionProps): React.ReactNode {
             const error = props.layer.getLayerDelegate().getError();
             if (typeof error === "string") {
                 return (
-                    <div title={error}>
-                        <Error fontSize="inherit" className="text-red-700" />
+                    <div title={error} className="rounded-full bg-red-700 text-white p-0.5">
+                        <Error fontSize="inherit" />
                     </div>
                 );
             } else {
                 const statusMessage = error as StatusMessage;
                 return (
                     <div title={statusMessage.message}>
-                        <Error fontSize="inherit" className="text-red-700" />
+                        <Error fontSize="inherit" className="rounded-full bg-red-700 text-white p-0.5" />
                     </div>
                 );
             }
@@ -93,7 +93,7 @@ function Actions(props: ActionProps): React.ReactNode {
         if (status === LayerStatus.SUCCESS) {
             return (
                 <div title="Successfully loaded">
-                    <Check fontSize="inherit" className="text-green-700" />
+                    <Check fontSize="inherit" className="rounded-full bg-green-700 text-white p-0.5" />
                 </div>
             );
         }

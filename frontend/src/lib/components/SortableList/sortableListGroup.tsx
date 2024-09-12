@@ -15,6 +15,8 @@ export type SortableListGroupProps = {
     initiallyExpanded?: boolean;
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
+    headerStyle?: React.CSSProperties;
+    contentStyle?: React.CSSProperties;
     contentWhenEmpty?: React.ReactNode;
     children?: React.ReactElement<SortableListItemProps>[];
 };
@@ -96,11 +98,12 @@ export function SortableListGroup(props: SortableListGroupProps): React.ReactNod
                     )}
                 <div
                     className={resolveClassNames(
-                        "sortable-list-group-content ml-4 bg-white shadow-inner border-b border-b-gray-300",
+                        "sortable-list-group-content pl-1 bg-white shadow-inner border-b border-b-gray-300",
                         {
                             hidden: !isExpanded,
                         }
                     )}
+                    style={props.contentStyle}
                 >
                     {hasContent ? props.children : props.contentWhenEmpty}
                 </div>
@@ -119,6 +122,7 @@ type HeaderProps = {
     icon?: React.ReactNode;
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
+    headerStyle?: React.CSSProperties;
 };
 
 function Header(props: HeaderProps): React.ReactNode {
@@ -127,10 +131,11 @@ function Header(props: HeaderProps): React.ReactNode {
             className={resolveClassNames(
                 "sortable-list-item-header flex w-full items-center gap-1 h-8 text-sm border-b border-b-gray-400 px-2",
                 {
-                    "bg-blue-300": props.hovered,
+                    "!bg-blue-300": props.hovered,
                     "bg-slate-300": !props.hovered,
                 }
             )}
+            style={props.headerStyle}
         >
             <div className={resolveClassNames("sortable-list-element-indicator hover:cursor-grab")}>
                 <DragIndicator fontSize="inherit" className="pointer-events-none" />

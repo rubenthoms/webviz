@@ -12,11 +12,20 @@ export type GroupBaseTopicPayloads = {
 
 export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBaseTopicPayloads> {
     private _owner: Item | null;
+    private _color: string | null = null;
     private _children: Item[] = [];
     private _publishSubscribeHandler = new PublishSubscribeHandler<GroupBaseTopic>();
 
     constructor(owner: Item | null) {
         this._owner = owner;
+    }
+
+    getColor(): string | null {
+        return this._color;
+    }
+
+    setColor(color: string | null) {
+        this._color = color;
     }
 
     private takeOwnershipOfChild(child: Item) {

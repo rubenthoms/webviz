@@ -18,7 +18,7 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
     private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("RealizationFaultPolygonsLayer");
+        this._itemDelegate = new ItemDelegate("Realization Fault Polygons");
         this._layerDelegate = new LayerDelegate(this, new RealizationFaultPolygonsContext());
     }
 
@@ -47,9 +47,6 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
         const realizationNum = settings[SettingType.REALIZATION].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue();
-
-        if (ensembleIdent && surfaceName && attribute && realizationNum) {
-        }
 
         const queryKey = [
             "getPolygonsData",

@@ -3,6 +3,7 @@ export enum LayerType {
     STATISTICAL_SURFACE = "statisticalSurface",
     REALIZATION_SURFACE = "realizationSurface",
     REALIZATION_FAULT_POLYGONS = "realizationFaultPolygons",
+    DRILLED_WELLBORE_TRAJECTORIES = "drilledWellTrajectories",
 }
 
 export const LAYER_TYPE_TO_STRING_MAPPING: Record<LayerType, string> = {
@@ -10,6 +11,7 @@ export const LAYER_TYPE_TO_STRING_MAPPING: Record<LayerType, string> = {
     [LayerType.STATISTICAL_SURFACE]: "Statistical Surface",
     [LayerType.REALIZATION_SURFACE]: "Realization Surface",
     [LayerType.REALIZATION_FAULT_POLYGONS]: "Fault Polygons",
+    [LayerType.DRILLED_WELLBORE_TRAJECTORIES]: "Drilled Well Trajectories",
 };
 
 export enum SharedSettingType {

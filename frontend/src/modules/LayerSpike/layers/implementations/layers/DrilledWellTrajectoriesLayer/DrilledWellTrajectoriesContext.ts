@@ -44,6 +44,9 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
         if (!this._fetchDataCache) {
             return;
         }
+        const availableWellboreHeaders: WellboreHeader_api[] = this._fetchDataCache;
+        this._contextDelegate.setAvailableValues(SettingType.SMDA_WELLBORE_UUIDS, availableWellboreHeaders);
+        const availableUuids: string[] = availableWellboreHeaders.map((header) => header.wellboreUuid);
     }
 
     fetchData(oldValues: DrilledWellTrajectoriesSettings, newValues: DrilledWellTrajectoriesSettings): void {

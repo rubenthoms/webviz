@@ -1,19 +1,14 @@
 import React from "react";
 
+import { WellboreHeader_api } from "@api";
 import { Select, SelectOption } from "@lib/components/Select";
 
 import { SettingDelegate } from "../../delegates/SettingDelegate";
 import { Setting, SettingComponentProps } from "../../interfaces";
 import { SettingType } from "../../settingsTypes";
 
-type ValueType = string[];
-
-export type DrilledWellboreIdent = {
-    uwi: string;
-    uuid: string;
-};
-export class DrilledWellbores implements Setting<ValueType> {
-    private _delegate: SettingDelegate<ValueType> = new SettingDelegate<ValueType>([]);
+export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
+    private _delegate: SettingDelegate<WellboreHeader_api[]> = new SettingDelegate<WellboreHeader_api[]>([]);
 
     getType(): SettingType {
         return SettingType.SMDA_WELLBORE_UUIDS;
@@ -23,25 +18,34 @@ export class DrilledWellbores implements Setting<ValueType> {
         return "Drilled wellbore trajectories";
     }
 
-    getDelegate(): SettingDelegate<ValueType> {
+    getDelegate(): SettingDelegate<WellboreHeader_api[]> {
         return this._delegate;
     }
 
-    makeComponent(): (props: SettingComponentProps<ValueType>) => React.ReactNode {
-        return function Ensemble(props: SettingComponentProps<ValueType>) {
-            const options: SelectOption[] = props.availableValues.map((value) => {
-                return {
-                    value: value.toString(),
-                    label: value === null ? "None" : value.toString(),
-                };
-            });
+    makeComponent(): (props: SettingComponentProps<WellboreHeader_api[]>) => React.ReactNode {
+        return function DrilledWellbores(props: SettingComponentProps<WellboreHeader_api[]>) {
+            const options: SelectOption[] = props.availableValues.map((ident) => ({
+                value: ident.wellboreUuid,
+                label: ident.uniqueWellboreIdentifier,
+            }));
+
+            const selectedValues = props.value.map((ident) => ident.wellboreUuid);
+
+            const handleChange = (selectedUuids: string[]) => {
+                const selectedWellbores = props.availableValues.filter((ident) =>
+                    selectedUuids.includes(ident.wellboreUuid)
+                );
+                props.onValueChange(selectedWellbores);
+            };
 
             return (
                 <Select
                     options={options}
-                    value={props.value}
-                    onChange={props.onValueChange}
+                    value={selectedValues}
+                    onChange={handleChange}
                     disabled={props.isOverridden}
+                    multiple={true}
+                    size={10}
                 />
             );
         };

@@ -15,6 +15,7 @@ import { SharedSetting } from "../layers/SharedSetting";
 import { View } from "../layers/View";
 import { makeComponent } from "../layers/components/utils";
 import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
+import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
 import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
 import { RealizationFaultPolygonsLayer } from "../layers/implementations/layers/RealizationFaultPolygonsLayer/RealizationFaultPolygonsLayer";
 import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
@@ -61,6 +62,9 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         }
         if (layerType === LayerType.REALIZATION_FAULT_POLYGONS) {
             groupDelegate.appendChild(new RealizationFaultPolygonsLayer());
+        }
+        if (layerType === LayerType.DRILLED_WELLBORE_TRAJECTORIES) {
+            groupDelegate.appendChild(new DrilledWellTrajectoriesLayer());
         }
     }
 

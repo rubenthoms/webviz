@@ -1,0 +1,73 @@
+import { WellboreTrajectory_api } from "@api";
+import { apiService } from "@framework/ApiService";
+import { ItemDelegate } from "@modules/LayerSpike/layers/delegates/ItemDelegate";
+import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
+import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
+import { FullSurfaceAddress, SurfaceAddressBuilder } from "@modules/_shared/Surface";
+import { SurfaceDataFloat_trans, transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
+import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
+import { QueryClient } from "@tanstack/react-query";
+
+import { isEqual } from "lodash";
+
+import { DrilledWellTrajectoriesContext } from "./DrilledWellTrajectoriesContext";
+import { DrilledWellTrajectoriesSettings } from "./types";
+
+import { LayerDelegate } from "../../../delegates/LayerDelegate";
+import { Layer } from "../../../interfaces";
+
+export class DrilledWellTrajectoriesLayer implements Layer<DrilledWellTrajectoriesSettings, WellboreTrajectory_api[]> {
+    private _layerDelegate: LayerDelegate<DrilledWellTrajectoriesSettings, WellboreTrajectory_api[]>;
+    private _itemDelegate: ItemDelegate;
+
+    constructor() {
+        this._itemDelegate = new ItemDelegate("DrilledWellTrajectoriesLayer");
+        this._layerDelegate = new LayerDelegate(this, new DrilledWellTrajectoriesContext());
+    }
+
+    getSettingsContext() {
+        return this._layerDelegate.getSettingsContext();
+    }
+
+    getItemDelegate(): ItemDelegate {
+        return this._itemDelegate;
+    }
+
+    getLayerDelegate(): LayerDelegate<DrilledWellTrajectoriesSettings, WellboreTrajectory_api[]> {
+        return this._layerDelegate;
+    }
+
+    doSettingsChangesRequireDataRefetch(
+        prevSettings: DrilledWellTrajectoriesSettings,
+        newSettings: DrilledWellTrajectoriesSettings
+    ): boolean {
+        return !isEqual(prevSettings, newSettings);
+    }
+
+    fechData(queryClient: QueryClient): Promise<WellboreTrajectory_api[]> {
+        const workbenchSession = this.getSettingsContext().getDelegate().getLayerManager().getWorkbenchSession();
+        const ensembleSet = workbenchSession.getEnsembleSet();
+        const settings = this.getSettingsContext().getDelegate().getSettings();
+        const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
+
+        let fieldIdentifier: string | null = null;
+        if (ensembleIdent) {
+            const ensemble = ensembleSet.findEnsemble(ensembleIdent);
+            if (ensemble) {
+                fieldIdentifier = ensemble.getFieldIdentifier();
+            }
+        }
+
+        const queryKey = ["getWellTrajectories", fieldIdentifier];
+        this._layerDelegate.registerQueryKey(queryKey);
+
+        const promise = queryClient.fetchQuery({
+            queryKey,
+            queryFn: () => apiService.well.getFieldWellTrajectories(fieldIdentifier ?? ""),
+            staleTime: STALE_TIME,
+            gcTime: CACHE_TIME,
+        });
+
+        return promise;
+    }
+}

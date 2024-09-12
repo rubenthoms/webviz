@@ -11,7 +11,7 @@ export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
     private _delegate: SettingDelegate<WellboreHeader_api[]> = new SettingDelegate<WellboreHeader_api[]>([]);
 
     getType(): SettingType {
-        return SettingType.SMDA_WELLBORE_UUIDS;
+        return SettingType.SMDA_WELLBORE_HEADERS;
     }
 
     getLabel(): string {

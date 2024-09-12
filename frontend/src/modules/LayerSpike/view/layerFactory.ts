@@ -1,10 +1,12 @@
-import { PolygonData_api, WellboreTrajectory_api } from "@api";
+import { PolygonData_api, SurfaceDef_api, WellboreTrajectory_api } from "@api";
 import { Layer } from "@deck.gl/core/typed";
 import { GeoJsonLayer } from "@deck.gl/layers/typed";
+import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 import { SurfaceDataFloat_trans } from "@modules/_shared/Surface/queryDataTransforms";
-import { MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
+import { ColormapLayer, Hillshading2DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Feature } from "geojson";
+import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
 import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
 import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
@@ -15,14 +17,15 @@ import { Layer as LayerInterface } from "../layers/interfaces";
 
 export function makeLayer(layer: LayerInterface<any, any>): Layer | null {
     const data = layer.getLayerDelegate().getData();
+
     if (!data) {
         return null;
     }
     if (layer instanceof ObservedSurfaceLayer) {
-        return createMapFloatLayer(data, layer.getItemDelegate().getId());
+        return createMapImageLayer(data, layer.getItemDelegate().getId());
     }
     if (layer instanceof RealizationSurfaceLayer) {
-        return createMapFloatLayer(data, layer.getItemDelegate().getId());
+        return createMapImageLayer(data, layer.getItemDelegate().getId());
     }
     if (layer instanceof StatisticalSurfaceLayer) {
         return createMapFloatLayer(data, layer.getItemDelegate().getId());
@@ -59,6 +62,38 @@ function createMapFloatLayer(layerData: SurfaceDataFloat_trans, id: string): Map
         depthTest: false,
     });
 }
+
+function createMapImageLayer(layerData: SurfaceDataPng, id: string): ColormapLayer {
+    return new ColormapLayer({
+        id: id,
+        image: `data:image/png;base64,${layerData.png_image_base64}`,
+        bounds: _calcBoundsForRotationAroundUpperLeftCorner(layerData.surface_def),
+        rotDeg: layerData.surface_def.rot_deg,
+        valueRange: [layerData.value_min, layerData.value_max],
+        colorMapRange: [layerData.value_min, layerData.value_max],
+        colorMapName: "Physics",
+        parameters: {
+            depthTest: false,
+        },
+    });
+}
+function _calcBoundsForRotationAroundUpperLeftCorner(surfDef: SurfaceDef_api): [number, number, number, number] {
+    const width = (surfDef.npoints_x - 1) * surfDef.inc_x;
+    const height = (surfDef.npoints_y - 1) * surfDef.inc_y;
+    const orgRotPoint: Vec2 = { x: surfDef.origin_utm_x, y: surfDef.origin_utm_y };
+    const orgTopLeft: Vec2 = { x: surfDef.origin_utm_x, y: surfDef.origin_utm_y + height };
+
+    const transTopLeft: Vec2 = rotatePoint2Around(orgTopLeft, orgRotPoint, (surfDef.rot_deg * Math.PI) / 180);
+    const tLeft = transTopLeft.x;
+    const tBottom = transTopLeft.y - height;
+    const tRight = transTopLeft.x + width;
+    const tTop = transTopLeft.y;
+
+    const bounds: [number, number, number, number] = [tLeft, tBottom, tRight, tTop];
+
+    return bounds;
+}
+
 function createFaultPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {
     const features: Record<string, unknown>[] = polygonsData.map((polygon) => {
         return surfacePolygonsToGeojson(polygon);
@@ -71,7 +106,7 @@ function createFaultPolygonsLayer(polygonsData: PolygonData_api[], id: string): 
     return new GeoJsonLayer({
         id: id,
         data: data,
-        opacity: 0.5,
+        // opacity: 0.5,
         parameters: {
             depthTest: false,
         },

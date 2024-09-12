@@ -153,6 +153,7 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
 
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(true);
             settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(true);
+            settings[SettingType.TIME_OR_INTERVAL].getDelegate().setLoadingState(true);
             settings[SettingType.TIME_OR_INTERVAL].getDelegate().setValue(null);
 
             queryClient

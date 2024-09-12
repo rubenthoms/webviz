@@ -23,7 +23,7 @@ export class StatisticalSurfaceLayer
     private _layerDelegate: LayerDelegate<StatisticalSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("StatisticalSurfaceLayer");
+        this._itemDelegate = new ItemDelegate("Statistical Surface");
         this._layerDelegate = new LayerDelegate(this, new StatisticalSurfaceContext());
     }
 

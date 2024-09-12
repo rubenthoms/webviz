@@ -57,12 +57,14 @@ export interface SettingsContext<TSettings extends Settings, TKey extends keyof 
     isValid(): boolean;
 }
 
+export type AvailableValuesType<TValue> = TValue extends Array<unknown> ? TValue : Array<TValue>;
+
 export type SettingComponentProps<TValue> = {
     onValueChange: (newValue: TValue) => void;
     value: TValue;
     overriddenValue: TValue | null;
     isOverridden: boolean;
-    availableValues: Exclude<TValue, null>[];
+    availableValues: AvailableValuesType<Exclude<TValue, null>>;
     workbenchSession: WorkbenchSession;
     workbenchSettings: WorkbenchSettings;
 };

@@ -2,7 +2,7 @@ import { isEqual } from "lodash";
 
 import { LayerManager, LayerManagerTopic } from "../LayerManager";
 import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
-import { Setting, SettingTopic, Settings, SettingsContext } from "../interfaces";
+import { AvailableValuesType, Setting, SettingTopic, Settings, SettingsContext } from "../interfaces";
 
 export enum SettingsContextDelegateTopic {
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
@@ -29,7 +29,7 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
     private _cachedValues: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
     private _values: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
     private _overriddenSettings: { [K in TKey]: TSettings[K] } = {} as { [K in TKey]: TSettings[K] };
-    private _availableSettingsValues: Partial<{ [K in TKey]: Exclude<TSettings[K], null>[] }> = {};
+    private _availableSettingsValues: Partial<{ [K in TKey]: AvailableValuesType<Exclude<TSettings[K], null>> }> = {};
     private _publishSubscribeHandler = new PublishSubscribeHandler<SettingsContextDelegateTopic>();
     private _onSettingsChanged: FetchDataFunction<TSettings, TKey> | null = null;
 
@@ -44,7 +44,9 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
                     this.handleSettingsChanged();
                 }
             );
-            this._availableSettingsValues[key] = [];
+            this._availableSettingsValues[key] = [] as AvailableValuesType<
+                Exclude<TSettings[Extract<TKey, string>], null>
+            >;
         }
 
         this._settings = settings;
@@ -86,7 +88,10 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
         }
     }
 
-    setAvailableValues<K extends TKey>(key: K, availableValues: Exclude<TSettings[K], null>[]): void {
+    setAvailableValues<K extends TKey>(
+        key: K,
+        availableValues: AvailableValuesType<Exclude<TSettings[K], null>>
+    ): void {
         this._availableSettingsValues[key] = availableValues;
         this._settings[key].getDelegate().setAvailableValues(availableValues);
         this._publishSubscribeHandler.notifySubscribers(SettingsContextDelegateTopic.AVAILABLE_SETTINGS_CHANGED);
@@ -94,7 +99,7 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
         this.getLayerManager().publishTopic(LayerManagerTopic.AVAILABLE_SETTINGS_CHANGED);
     }
 
-    getAvailableValues<K extends TKey>(key: K): Exclude<TSettings[K], null>[] {
+    getAvailableValues<K extends TKey>(key: K): AvailableValuesType<Exclude<TSettings[K], null>> {
         const availableValues = this._availableSettingsValues[key];
         if (!availableValues) {
             throw new Error(`No available values for key: ${key.toString()}`);

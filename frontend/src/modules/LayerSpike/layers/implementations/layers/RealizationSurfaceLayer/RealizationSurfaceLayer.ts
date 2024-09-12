@@ -23,7 +23,7 @@ export class RealizationSurfaceLayer
     private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("RealizationSurfaceLayer");
+        this._itemDelegate = new ItemDelegate("Realization Surface");
         this._layerDelegate = new LayerDelegate(this, new RealizationSurfaceContext());
     }
 

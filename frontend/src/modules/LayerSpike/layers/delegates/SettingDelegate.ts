@@ -2,13 +2,13 @@ import { isEqual } from "lodash";
 import { v4 } from "uuid";
 
 import { PublishSubscribe, PublishSubscribeHandler } from "../PublishSubscribeHandler";
-import { SettingTopic, SettingTopicPayloads } from "../interfaces";
+import { AvailableValuesType, SettingTopic, SettingTopicPayloads } from "../interfaces";
 
 export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, SettingTopicPayloads<TValue>> {
     private _id: string;
     private _value: TValue;
     private _publishSubscribeHandler = new PublishSubscribeHandler<SettingTopic>();
-    private _availableValues: TValue[] = [];
+    private _availableValues: AvailableValuesType<TValue> = [] as AvailableValuesType<TValue>;
     private _overriddenValue: TValue | undefined = undefined;
     private _loading: boolean = false;
 
@@ -70,11 +70,11 @@ export class SettingDelegate<TValue> implements PublishSubscribe<SettingTopic, S
         return this._publishSubscribeHandler;
     }
 
-    getAvailableValues(): TValue[] {
+    getAvailableValues(): AvailableValuesType<TValue> {
         return this._availableValues;
     }
 
-    setAvailableValues(availableValues: TValue[]): void {
+    setAvailableValues(availableValues: AvailableValuesType<TValue>): void {
         this._availableValues = availableValues;
         this._publishSubscribeHandler.notifySubscribers(SettingTopic.AVAILABLE_VALUES_CHANGED);
     }

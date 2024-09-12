@@ -16,11 +16,7 @@ export function RemoveButtonComponent(props: RemoveButtonComponentProps): React.
 
     return (
         <>
-            <div
-                className="hover:cursor-pointer rounded text-red-800 hover:text-red-600"
-                onClick={handleRemove}
-                title="Remove item"
-            >
+            <div className="hover:cursor-pointer rounded hover:text-red-600" onClick={handleRemove} title="Remove item">
                 <Delete fontSize="inherit" />
             </div>
         </>

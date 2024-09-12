@@ -1,7 +1,7 @@
 import React from "react";
 
 import { ModuleSettingsProps } from "@framework/Module";
-import { SortableList } from "@lib/components/SortableList";
+import { IsMoveAllowedArgs, SortableList } from "@lib/components/SortableList";
 import { Add } from "@mui/icons-material";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -64,11 +64,49 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
 
     function handleAddSharedSetting(settingType: SharedSettingType) {
         if (settingType === SharedSettingType.ENSEMBLE) {
-            groupDelegate.appendChild(new SharedSetting(new Ensemble()));
+            groupDelegate.prependChild(new SharedSetting(new Ensemble()));
         }
         if (settingType === SharedSettingType.REALIZATION) {
-            groupDelegate.appendChild(new SharedSetting(new Realization()));
+            groupDelegate.prependChild(new SharedSetting(new Realization()));
         }
+    }
+
+    function checkIfItemMoveAllowed(args: IsMoveAllowedArgs): boolean {
+        const movedItem = groupDelegate.findDescendantById(args.movedItemId);
+        if (!movedItem) {
+            return false;
+        }
+
+        const destinationItem = args.destinationId
+            ? groupDelegate.findDescendantById(args.destinationId)
+            : layerManager.current;
+
+        if (!destinationItem || !instanceofGroup(destinationItem)) {
+            return false;
+        }
+
+        const numSharedSettings =
+            destinationItem.getGroupDelegate().findChildren((item) => {
+                return item instanceof SharedSetting;
+            }).length ?? 0;
+
+        if (!(movedItem instanceof SharedSetting)) {
+            if (args.position < numSharedSettings) {
+                return false;
+            }
+        } else {
+            if (args.originId === args.destinationId) {
+                if (args.position >= numSharedSettings) {
+                    return false;
+                }
+            } else {
+                if (args.position > numSharedSettings) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     function handleItemMoved(
@@ -80,6 +118,12 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         const movedItem = groupDelegate.findDescendantById(movedItemId);
         if (!movedItem) {
             return;
+        }
+
+        if (movedItem instanceof SharedSetting) {
+            if (originId === destinationId) {
+                return;
+            }
         }
 
         let origin = layerManager.current.getGroupDelegate();
@@ -121,11 +165,12 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                             onAddSharedSetting={handleAddSharedSetting}
                         />
                     </div>
-                    <div className="w-full flex-grow flex flex-col relative max-h-full">
+                    <div className="w-full flex-grow flex flex-col relative h-full">
                         <SortableList
                             onItemMoved={handleItemMoved}
+                            isMoveAllowed={checkIfItemMoveAllowed}
                             contentWhenEmpty={
-                                <div className="flex h-full -mt-1 justify-center text-sm items-center gap-1">
+                                <div className="flex -mt-1 justify-center text-sm items-center gap-1 h-40">
                                     Click on <Add fontSize="inherit" /> to add a layer.
                                 </div>
                             }

@@ -17,7 +17,7 @@ export function VisibilityToggleComponent(props: VisibilityToggleComponentProps)
 
     return (
         <div
-            className="hover:cursor-pointer rounded text-blue-800 hover:text-blue-600"
+            className="hover:cursor-pointer rounded hover:text-blue-600"
             onClick={handleToggleLayerVisibility}
             title="Toggle visibility"
         >

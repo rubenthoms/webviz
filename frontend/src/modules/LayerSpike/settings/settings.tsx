@@ -82,7 +82,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
             groupDelegate.prependChild(new SharedSetting(new Realization()));
         }
         if (settingType === SharedSettingType.SURFACE_NAME) {
-            groupDelegate.appendChild(new SharedSetting(new SurfaceName()));
+            groupDelegate.prependChild(new SharedSetting(new SurfaceName()));
         }
     }
 

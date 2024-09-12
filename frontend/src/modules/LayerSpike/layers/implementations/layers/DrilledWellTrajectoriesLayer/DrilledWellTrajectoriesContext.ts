@@ -57,10 +57,9 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
     }
 
     fetchData(oldValues: DrilledWellTrajectoriesSettings, newValues: DrilledWellTrajectoriesSettings): void {
-        if (oldValues[SettingType.ENSEMBLE] === newValues[SettingType.ENSEMBLE]) {
+        if (isEqual(oldValues[SettingType.ENSEMBLE], newValues[SettingType.ENSEMBLE])) {
             return;
         }
-
         const queryClient = this.getDelegate().getLayerManager().getQueryClient();
 
         const settings = this.getDelegate().getSettings();

@@ -6,5 +6,5 @@ export enum SettingType {
     SURFACE_ATTRIBUTE = "surfaceAttribute",
     TIME_OR_INTERVAL = "timeOrInterval",
     FAULT_POLYGONS_ATTRIBUTE = "faultPolygonsAttribute",
-    SMDA_WELLBORE_UUIDS = "smdaWellboreUuids",
+    SMDA_WELLBORE_HEADERS = "smdaWellboreHeaders",
 }

@@ -49,7 +49,8 @@ export class DrilledWellTrajectoriesLayer implements Layer<DrilledWellTrajectori
         const ensembleSet = workbenchSession.getEnsembleSet();
         const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
-
+        const selectedWellboreHeaders = settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().getValue();
+        const selectedWellboreUuids = selectedWellboreHeaders.map((header) => header.wellboreUuid);
         let fieldIdentifier: string | null = null;
         if (ensembleIdent) {
             const ensemble = ensembleSet.findEnsemble(ensembleIdent);
@@ -61,12 +62,16 @@ export class DrilledWellTrajectoriesLayer implements Layer<DrilledWellTrajectori
         const queryKey = ["getWellTrajectories", fieldIdentifier];
         this._layerDelegate.registerQueryKey(queryKey);
 
-        const promise = queryClient.fetchQuery({
-            queryKey,
-            queryFn: () => apiService.well.getFieldWellTrajectories(fieldIdentifier ?? ""),
-            staleTime: STALE_TIME,
-            gcTime: CACHE_TIME,
-        });
+        const promise = queryClient
+            .fetchQuery({
+                queryKey,
+                queryFn: () => apiService.well.getFieldWellTrajectories(fieldIdentifier ?? ""),
+                staleTime: STALE_TIME,
+                gcTime: CACHE_TIME,
+            })
+            .then((response: WellboreTrajectory_api[]) => {
+                return response.filter((trajectory) => selectedWellboreUuids.includes(trajectory.wellboreUuid));
+            });
 
         return promise;
     }

@@ -1,20 +1,16 @@
-import { SurfaceTimeType_api, WellboreHeader_api } from "@api";
+import { WellboreHeader_api } from "@api";
 import { apiService } from "@framework/ApiService";
 import { SettingsContextDelegate } from "@modules/LayerSpike/layers/delegates/SettingsContextDelegate";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
 import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 import { isEqual } from "lodash";
-import { SurfaceMetaSet } from "src/api/models/SurfaceMetaSet";
 
 import { DrilledWellTrajectoriesSettings } from "./types";
 
 import { SettingsContext } from "../../../interfaces";
 import { DrilledWellbores } from "../../settings/DrilledWellbores";
 import { Ensemble } from "../../settings/Ensemble";
-import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
-import { SurfaceName } from "../../settings/SurfaceName";
-import { TimeOrInterval } from "../../settings/TimeOrInterval";
 
 export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWellTrajectoriesSettings> {
     private _contextDelegate: SettingsContextDelegate<DrilledWellTrajectoriesSettings>;
@@ -26,7 +22,7 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
             keyof DrilledWellTrajectoriesSettings
         >(this, {
             [SettingType.ENSEMBLE]: new Ensemble(),
-            [SettingType.SMDA_WELLBORE_UUIDS]: new DrilledWellbores(),
+            [SettingType.SMDA_WELLBORE_HEADERS]: new DrilledWellbores(),
         });
     }
 
@@ -45,8 +41,18 @@ export class DrilledWellTrajectoriesContext implements SettingsContext<DrilledWe
             return;
         }
         const availableWellboreHeaders: WellboreHeader_api[] = this._fetchDataCache;
-        this._contextDelegate.setAvailableValues(SettingType.SMDA_WELLBORE_UUIDS, availableWellboreHeaders);
-        const availableUuids: string[] = availableWellboreHeaders.map((header) => header.wellboreUuid);
+        this._contextDelegate.setAvailableValues(SettingType.SMDA_WELLBORE_HEADERS, availableWellboreHeaders);
+
+        let currentWellboreHeaders = settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().getValue();
+        let newWellboreHeaders = currentWellboreHeaders.filter((header) =>
+            availableWellboreHeaders.some((availableHeader) => availableHeader.wellboreUuid === header.wellboreUuid)
+        );
+        if (newWellboreHeaders.length === 0) {
+            newWellboreHeaders = availableWellboreHeaders;
+        }
+        if (!isEqual(currentWellboreHeaders, newWellboreHeaders)) {
+            settings[SettingType.SMDA_WELLBORE_HEADERS].getDelegate().setValue(newWellboreHeaders);
+        }
     }
 
     fetchData(oldValues: DrilledWellTrajectoriesSettings, newValues: DrilledWellTrajectoriesSettings): void {

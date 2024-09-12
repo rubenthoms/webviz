@@ -4,5 +4,5 @@ import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 export type DrilledWellTrajectoriesSettings = {
     [SettingType.ENSEMBLE]: EnsembleIdent | null;
-    [SettingType.SMDA_WELLBORE_UUIDS]: WellboreHeader_api[];
+    [SettingType.SMDA_WELLBORE_HEADERS]: WellboreHeader_api[];
 };

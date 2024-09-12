@@ -170,12 +170,12 @@ export function LayersPanel<TLayerType extends string>(props: LayersPanelProps<T
     }
 
     return (
-        <div className="w-full flex-grow flex flex-col min-h-0">
+        <div className="w-full flex-grow flex flex-col min-h-0 max-h-full">
             <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
                 <div className="flex-grow font-bold text-sm">{props.title}</div>
                 {props.actions}
             </div>
-            <div className="w-full flex-grow flex flex-col relative">
+            <div className="w-full flex-grow flex flex-col relative min-h-0">
                 <SortableList
                     contentWhenEmpty={
                         <div className="flex h-full -mt-1 justify-center text-sm items-center gap-1">

@@ -27,10 +27,7 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
 
     const Component = props.setting.makeComponent();
     return (
-        <div
-            key={props.setting.getDelegate().getId()}
-            className={resolveClassNames("table-row", { hidden: overriddenValue !== undefined })}
-        >
+        <div key={props.setting.getDelegate().getId()} className={resolveClassNames("table-row", { hidden: false })}>
             <div className="table-cell align-middle p-1 text-xs whitespace-nowrap">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
                 <PendingWrapper isPending={isLoading}>

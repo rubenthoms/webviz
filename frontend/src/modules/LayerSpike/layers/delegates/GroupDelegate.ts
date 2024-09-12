@@ -90,6 +90,10 @@ export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBase
         return this._children;
     }
 
+    findChildren(predicate: (item: Item) => boolean): Item[] {
+        return this._children.filter(predicate);
+    }
+
     findDescendantById(id: string): Item | undefined {
         for (const child of this._children) {
             if (child.getItemDelegate().getId() === id) {
@@ -107,30 +111,30 @@ export class GroupDelegate implements PublishSubscribe<GroupBaseTopic, GroupBase
         return undefined;
     }
 
-    getAncestorAndSiblingItems(checkFunc: (item: Item) => boolean): Item[] {
+    getAncestorAndSiblingItems(predicate: (item: Item) => boolean): Item[] {
         const items: Item[] = [];
         for (const child of this._children) {
-            if (checkFunc(child)) {
+            if (predicate(child)) {
                 items.push(child);
             }
         }
         const parentGroup = this._owner?.getItemDelegate().getParentGroup();
         if (parentGroup) {
-            items.push(...parentGroup.getAncestorAndSiblingItems(checkFunc));
+            items.push(...parentGroup.getAncestorAndSiblingItems(predicate));
         }
 
         return items;
     }
 
-    getDescendantItems(checkFunc: (item: Item) => boolean): Item[] {
+    getDescendantItems(predicate: (item: Item) => boolean): Item[] {
         const items: Item[] = [];
         for (const child of this._children) {
-            if (checkFunc(child)) {
+            if (predicate(child)) {
                 items.push(child);
             }
 
             if (instanceofGroup(child)) {
-                items.push(...child.getGroupDelegate().getDescendantItems(checkFunc));
+                items.push(...child.getGroupDelegate().getDescendantItems(predicate));
             }
         }
 

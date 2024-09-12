@@ -96,7 +96,7 @@ export function SortableListGroup(props: SortableListGroupProps): React.ReactNod
                     )}
                 <div
                     className={resolveClassNames(
-                        "sortable-list-group-content ml-1 bg-white shadow-inner border-b border-b-gray-300",
+                        "sortable-list-group-content ml-4 bg-white shadow-inner border-b border-b-gray-300",
                         {
                             hidden: !isExpanded,
                         }

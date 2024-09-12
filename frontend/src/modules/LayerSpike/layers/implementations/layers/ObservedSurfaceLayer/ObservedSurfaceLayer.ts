@@ -23,7 +23,7 @@ export class ObservedSurfaceLayer
     private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("ObservedSurfaceLayer");
+        this._itemDelegate = new ItemDelegate("Observed Surface");
         this._layerDelegate = new LayerDelegate(this, new ObservedSurfaceContext());
     }
 

@@ -225,6 +225,7 @@ export class LayerDelegate<TSettings extends Settings, TData>
             this.setStatus(LayerStatus.SUCCESS);
         } catch (error: any) {
             if (error.constructor?.name === "CancelledError") {
+                this.setStatus(LayerStatus.IDLE);
                 return;
             }
             const apiError = ApiErrorHelper.fromError(error);

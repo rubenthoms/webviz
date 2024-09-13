@@ -40,7 +40,7 @@ export const SortableListContext = React.createContext<SortableListContextType>(
 });
 
 export type SortableListProps = {
-    contentWhenEmpty?: React.ReactNode;
+    contentWhenEmpty?: React.ReactElement;
     children: React.ReactElement<SortableListItemProps | SortableListGroupProps>[];
     isMoveAllowed?: (args: IsMoveAllowedArgs) => boolean;
     onItemMoved?: (
@@ -505,11 +505,16 @@ export function SortableList(props: SortableListProps): React.ReactNode {
     }
 
     function makeChildren(): React.ReactNode[] {
+        const children: React.ReactNode[] = [];
         if (props.children.length === 0 && props.contentWhenEmpty) {
-            return [props.contentWhenEmpty];
+            children.push(
+                React.cloneElement(props.contentWhenEmpty, {
+                    key: "contentWhenEmpty",
+                })
+            );
+            return children;
         }
 
-        const children: React.ReactNode[] = [];
         for (const child of props.children) {
             if (typeof child.type === "string") {
                 continue;

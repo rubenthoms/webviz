@@ -1,5 +1,6 @@
 import { SurfaceTimeType_api } from "@api";
 import { apiService } from "@framework/ApiService";
+import { Ensemble as FrameworkEnsemble } from "@framework/Ensemble";
 import { CACHE_TIME, STALE_TIME } from "@modules/LayerSpike/layers/queryConstants";
 
 import { isEqual } from "lodash";
@@ -11,6 +12,7 @@ import { SettingsContextDelegate } from "../../../delegates/SettingsContextDeleg
 import { SettingsContext } from "../../../interfaces";
 import { SettingType } from "../../../settingsTypes";
 import { Ensemble } from "../../settings/Ensemble";
+import { Sensitivity, SensitivityNameCasePair } from "../../settings/Sensitivity";
 import { StatisticFunction } from "../../settings/StatisticFunction";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
 import { SurfaceName } from "../../settings/SurfaceName";
@@ -27,6 +29,7 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
         >(this, {
             [SettingType.ENSEMBLE]: new Ensemble(),
             [SettingType.STATISTIC_FUNCTION]: new StatisticFunction(),
+            [SettingType.SENSITIVITY]: new Sensitivity(),
             [SettingType.SURFACE_ATTRIBUTE]: new SurfaceAttribute(),
             [SettingType.SURFACE_NAME]: new SurfaceName(),
             [SettingType.TIME_OR_INTERVAL]: new TimeOrInterval(),
@@ -43,6 +46,7 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
 
     private setAvailableSettingsValues() {
         const settings = this.getDelegate().getSettings();
+        settings[SettingType.SENSITIVITY].getDelegate().setLoadingState(false);
         settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(false);
         settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(false);
         settings[SettingType.TIME_OR_INTERVAL].getDelegate().setLoadingState(false);
@@ -50,6 +54,25 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
         if (!this._fetchDataCache) {
             return;
         }
+        const workbenchSession = this.getDelegate().getLayerManager().getWorkbenchSession();
+        const ensembleSet = workbenchSession.getEnsembleSet();
+        const currentEnsembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
+        let currentEnsemble: FrameworkEnsemble | null = null;
+        if (currentEnsembleIdent) {
+            currentEnsemble = ensembleSet.findEnsemble(currentEnsembleIdent);
+        }
+        const sensitivities = currentEnsemble?.getSensitivities()?.getSensitivityArr() ?? [];
+
+        const availableSensitivityPairs: SensitivityNameCasePair[] = [];
+        sensitivities.map((sensitivity) =>
+            sensitivity.cases.map((sensitivityCase) => {
+                availableSensitivityPairs.push({
+                    sensitivityName: sensitivity.name,
+                    sensitivityCase: sensitivityCase.name,
+                });
+            })
+        );
+        this._contextDelegate.setAvailableValues(SettingType.SENSITIVITY, availableSensitivityPairs);
 
         const availableAttributes: string[] = [];
         availableAttributes.push(

@@ -38,6 +38,8 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient)
     );
 
+    const colorSet = props.workbenchSettings.useColorSet();
+
     const groupDelegate = layerManager.current.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
@@ -69,7 +71,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     }
 
     function handleAddView() {
-        groupDelegate.appendChild(new View("New View"));
+        groupDelegate.appendChild(new View("New View", colorSet.getNextColor()));
     }
 
     function handleAddSharedSetting(settingType: SharedSettingType) {
@@ -131,12 +133,6 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         const movedItem = groupDelegate.findDescendantById(movedItemId);
         if (!movedItem) {
             return;
-        }
-
-        if (movedItem instanceof SharedSetting) {
-            if (originId === destinationId) {
-                return;
-            }
         }
 
         let origin = layerManager.current.getGroupDelegate();

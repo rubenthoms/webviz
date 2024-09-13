@@ -199,7 +199,7 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
         this.setAvailableSettingsValues();
     }
 
-    isValid(): boolean {
+    areCurrentSettingsValid(): boolean {
         const settings = this.getDelegate().getSettings();
         return (
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue() !== null &&

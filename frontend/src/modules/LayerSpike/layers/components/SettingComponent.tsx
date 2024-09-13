@@ -1,10 +1,12 @@
+import React from "react";
+
 import { WorkbenchSession } from "@framework/WorkbenchSession";
 import { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { usePublishSubscribeTopicValue } from "../PublishSubscribeHandler";
-import { Setting, SettingTopic } from "../interfaces";
+import { Setting, SettingComponentProps as SettingComponentPropsInterface, SettingTopic } from "../interfaces";
 
 export type SettingComponentProps<TValue> = {
     setting: Setting<TValue>;
@@ -13,6 +15,9 @@ export type SettingComponentProps<TValue> = {
 };
 
 export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): React.ReactNode {
+    const componentRef = React.useRef<(props: SettingComponentPropsInterface<TValue>) => React.ReactNode>(
+        props.setting.makeComponent()
+    );
     const value = usePublishSubscribeTopicValue(props.setting.getDelegate(), SettingTopic.VALUE_CHANGED);
     const availableValues = usePublishSubscribeTopicValue(
         props.setting.getDelegate(),
@@ -25,13 +30,12 @@ export function SettingComponent<TValue>(props: SettingComponentProps<TValue>): 
         props.setting.getDelegate().setValue(newValue);
     }
 
-    const Component = props.setting.makeComponent();
     return (
         <div key={props.setting.getDelegate().getId()} className={resolveClassNames("table-row", { hidden: false })}>
-            <div className="table-cell align-middle p-1 text-xs whitespace-nowrap">{props.setting.getLabel()}</div>
+            <div className="table-cell align-middle p-1 text-xs">{props.setting.getLabel()}</div>
             <div className="table-cell align-middle p-1 text-sm w-full">
                 <PendingWrapper isPending={isLoading}>
-                    <Component
+                    <componentRef.current
                         onValueChange={handleValueChanged}
                         value={value}
                         isOverridden={overriddenValue !== undefined}

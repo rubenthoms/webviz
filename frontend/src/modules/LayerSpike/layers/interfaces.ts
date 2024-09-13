@@ -54,7 +54,7 @@ export function instanceofLayer(item: Item): item is Layer<Settings, any> {
 export interface SettingsContext<TSettings extends Settings, TKey extends keyof TSettings = keyof TSettings> {
     getDelegate(): SettingsContextDelegate<TSettings, TKey>;
     fetchData: FetchDataFunction<TSettings, TKey>;
-    isValid(): boolean;
+    areCurrentSettingsValid(): boolean;
 }
 
 export type AvailableValuesType<TValue> = TValue extends Array<unknown> ? TValue : Array<TValue>;

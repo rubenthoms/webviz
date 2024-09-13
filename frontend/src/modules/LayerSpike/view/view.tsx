@@ -23,6 +23,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         layerManager?.getGroupDelegate() || new GroupDelegate(null),
         GroupBaseTopic.CHILDREN
     );
+
     usePublishSubscribeTopicValue(
         layerManager ?? new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient),
         LayerManagerTopic.LAYER_DATA_REVISION
@@ -46,7 +47,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     for (const [group, layers] of results.groupLayersMap) {
         viewports.push({
             id: group,
-            name: results.groupNames.get(group) ?? group,
+            name: results.groupMeta.get(group)?.name ?? group,
             isSync: true,
             layerIds: [
                 ...layers.map((layer) => (layer as unknown as Layer).id),
@@ -59,7 +60,13 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             /* @ts-expect-error */
             <DeckGlView key={group} id={group}>
-                <div className="w-full text-center font-bold text-lg">{results.groupNames.get(group) ?? group}</div>
+                <div className="w-full font-bold text-lg flex gap-2 justify-center items-center">
+                    <div
+                        className="rounded-full h-3 w-3"
+                        style={{ backgroundColor: results.groupMeta.get(group)?.color ?? undefined }}
+                    />
+                    <div className="">{results.groupMeta.get(group)?.name ?? group}</div>
+                </div>
             </DeckGlView>
         );
     }
@@ -94,13 +101,18 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     );
 }
 
+export type GroupMeta = {
+    name: string;
+    color: string | null;
+};
+
 function extractGroupsAndLayers(items: Item[]): {
     groupLayersMap: Map<string, Layer[]>;
-    groupNames: Map<string, string>;
+    groupMeta: Map<string, GroupMeta>;
     globalLayers: Layer[];
 } {
     const groupLayersMap: Map<string, Layer[]> = new Map();
-    const groupNames: Map<string, string> = new Map();
+    const groupMeta: Map<string, GroupMeta> = new Map();
     const globalLayers: Layer[] = [];
 
     for (const item of items) {
@@ -122,7 +134,10 @@ function extractGroupsAndLayers(items: Item[]): {
         }
         if (instanceofGroup(item)) {
             if (item instanceof ViewGroup) {
-                groupNames.set(item.getItemDelegate().getId(), item.getItemDelegate().getName());
+                groupMeta.set(item.getItemDelegate().getId(), {
+                    name: item.getItemDelegate().getName(),
+                    color: item.getGroupDelegate().getColor(),
+                });
 
                 const children = recursivelyExtractLayers(item.getGroupDelegate().getChildren());
                 groupLayersMap.set(item.getItemDelegate().getId(), children);
@@ -130,7 +145,7 @@ function extractGroupsAndLayers(items: Item[]): {
         }
     }
 
-    return { groupLayersMap, groupNames, globalLayers };
+    return { groupLayersMap, groupMeta, globalLayers };
 }
 
 function recursivelyExtractLayers(items: Item[]): Layer[] {
@@ -157,5 +172,5 @@ function recursivelyExtractLayers(items: Item[]): Layer[] {
         }
     }
 
-    return layers;
+    return layers.reverse();
 }

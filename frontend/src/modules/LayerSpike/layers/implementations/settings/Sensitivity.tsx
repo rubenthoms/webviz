@@ -83,8 +83,11 @@ export class Sensitivity implements Setting<SensitivityNameCasePair | null> {
                     sensitivityCase: selectedValue,
                 });
             }
+            if (!props.value) {
+                return "No sensitivities available";
+            }
             return (
-                <>
+                <div className="flex">
                     <Dropdown
                         options={sensitivityNameOptions}
                         value={props.value?.sensitivityName ?? ""}
@@ -95,7 +98,7 @@ export class Sensitivity implements Setting<SensitivityNameCasePair | null> {
                         value={currentSensitivityCase ?? ""}
                         onChange={handleSensitivityCaseChange}
                     />
-                </>
+                </div>
             );
         };
     }

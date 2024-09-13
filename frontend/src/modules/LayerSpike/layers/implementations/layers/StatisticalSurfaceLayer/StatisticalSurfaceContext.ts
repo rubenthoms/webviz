@@ -73,6 +73,19 @@ export class StatisticalSurfaceContext implements SettingsContext<StatisticalSur
             })
         );
         this._contextDelegate.setAvailableValues(SettingType.SENSITIVITY, availableSensitivityPairs);
+        const currentSensitivityPair = settings[SettingType.SENSITIVITY].getDelegate().getValue();
+        if (
+            !currentSensitivityPair ||
+            !availableSensitivityPairs.some(
+                (pair) =>
+                    pair.sensitivityName === currentSensitivityPair.sensitivityName &&
+                    pair.sensitivityCase === currentSensitivityPair.sensitivityCase
+            )
+        ) {
+            if (availableSensitivityPairs.length > 0) {
+                settings[SettingType.SENSITIVITY].getDelegate().setValue(availableSensitivityPairs[0]);
+            }
+        }
 
         const availableAttributes: string[] = [];
         availableAttributes.push(

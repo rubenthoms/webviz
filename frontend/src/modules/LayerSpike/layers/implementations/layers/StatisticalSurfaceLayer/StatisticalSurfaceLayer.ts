@@ -49,17 +49,41 @@ export class StatisticalSurfaceLayer
     fechData(queryClient: QueryClient): Promise<SurfaceDataFloat_trans | SurfaceDataPng_api> {
         let surfaceAddress: FullSurfaceAddress | null = null;
         const addrBuilder = new SurfaceAddressBuilder();
-
+        const workbenchSession = this.getLayerDelegate().getLayerManager().getWorkbenchSession();
         const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
         const statisticFunction = settings[SettingType.STATISTIC_FUNCTION].getDelegate().getValue();
+        const sensitivityNameCasePair = settings[SettingType.SENSITIVITY].getDelegate().getValue();
+
         if (ensembleIdent && surfaceName && attribute) {
             addrBuilder.withEnsembleIdent(ensembleIdent);
             addrBuilder.withName(surfaceName);
             addrBuilder.withAttribute(attribute);
+
+            // Get filtered realizations from workbench
+            let filteredRealizations = workbenchSession
+                .getRealizationFilterSet()
+                .getRealizationFilterForEnsembleIdent(ensembleIdent)
+                .getFilteredRealizations();
+
+            // If sensitivity is set, filter realizations further to only include the realizations that are in the sensitivity
+            if (sensitivityNameCasePair) {
+                const currentEnsemble = workbenchSession.getEnsembleSet().findEnsemble(ensembleIdent);
+
+                const sensitivity = currentEnsemble
+                    ?.getSensitivities()
+                    ?.getCaseByName(sensitivityNameCasePair.sensitivityName, sensitivityNameCasePair.sensitivityCase);
+
+                const sensitivityRealizations = sensitivity?.realizations ?? [];
+
+                filteredRealizations = filteredRealizations.filter((realization) =>
+                    sensitivityRealizations.includes(realization)
+                );
+            }
+            addrBuilder.withStatisticRealizations(filteredRealizations.map((realization) => realization));
 
             if (timeOrInterval !== SurfaceTimeType_api.NO_TIME) {
                 addrBuilder.withTimeOrInterval(timeOrInterval);

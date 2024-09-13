@@ -8,4 +8,7 @@ export enum SettingType {
     TIME_OR_INTERVAL = "timeOrInterval",
     FAULT_POLYGONS_ATTRIBUTE = "faultPolygonsAttribute",
     SMDA_WELLBORE_HEADERS = "smdaWellboreHeaders",
+    GRID_NAME = "gridName",
+    GRID_ATTRIBUTE = "gridAttribute",
+    GRID_LAYER = "gridLayer",
 }

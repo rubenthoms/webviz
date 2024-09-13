@@ -70,7 +70,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
             </DeckGlView>
         );
     }
-    viewerLayers.push(...results.globalLayers);
+    viewerLayers.push(...results.globalLayers.toReversed());
     viewerLayers.push(
         new Axes2DLayer({
             id: "axes",

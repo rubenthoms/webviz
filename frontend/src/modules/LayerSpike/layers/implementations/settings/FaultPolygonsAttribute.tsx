@@ -24,7 +24,7 @@ export class FaultPolygonsAttribute implements Setting<ValueType> {
     }
 
     makeComponent(): (props: SettingComponentProps<ValueType>) => React.ReactNode {
-        return function Ensemble(props: SettingComponentProps<ValueType>) {
+        return function FaultPolygons(props: SettingComponentProps<ValueType>) {
             const options: DropdownOption[] = props.availableValues.map((value) => {
                 return {
                     value: value.toString(),

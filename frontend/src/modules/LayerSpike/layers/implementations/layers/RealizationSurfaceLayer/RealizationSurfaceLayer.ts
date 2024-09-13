@@ -15,6 +15,7 @@ import { RealizationSurfaceContext } from "./RealizationSurfaceContext";
 import { RealizationSurfaceSettings } from "./types";
 
 import { Layer } from "../../../interfaces";
+import { combineSurfaceNameAndLayer } from "../../utils/surfaceNamesAndLayers";
 
 export class RealizationSurfaceLayer
     implements Layer<RealizationSurfaceSettings, SurfaceDataFloat_trans | SurfaceDataPng_api>
@@ -54,12 +55,14 @@ export class RealizationSurfaceLayer
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const realizationNum = settings[SettingType.REALIZATION].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
+        const surfaceLayer = settings[SettingType.SURFACE_LAYER].getDelegate().getValue();
+        const combinedSurfaceName = combineSurfaceNameAndLayer(surfaceName, surfaceLayer);
         const attribute = settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue();
         const timeOrInterval = settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue();
 
-        if (ensembleIdent && surfaceName && attribute && realizationNum !== null) {
+        if (ensembleIdent && combinedSurfaceName && attribute && realizationNum !== null) {
             addrBuilder.withEnsembleIdent(ensembleIdent);
-            addrBuilder.withName(surfaceName);
+            addrBuilder.withName(combinedSurfaceName);
             addrBuilder.withAttribute(attribute);
             addrBuilder.withRealization(realizationNum);
 

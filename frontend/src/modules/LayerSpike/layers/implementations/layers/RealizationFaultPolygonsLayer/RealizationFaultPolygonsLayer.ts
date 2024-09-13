@@ -12,6 +12,7 @@ import { RealizationFaultPolygonsContext } from "./RealizationFaultPolygonsConte
 import { RealizationFaultPolygonsSettings } from "./types";
 
 import { Layer } from "../../../interfaces";
+import { combineSurfaceNameAndLayer } from "../../utils/surfaceNamesAndLayers";
 
 export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPolygonsSettings, PolygonData_api[]> {
     private _layerDelegate: LayerDelegate<RealizationFaultPolygonsSettings, PolygonData_api[]>;
@@ -46,6 +47,8 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const realizationNum = settings[SettingType.REALIZATION].getDelegate().getValue();
         const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
+        const surfaceLayer = settings[SettingType.SURFACE_LAYER].getDelegate().getValue();
+        const combinedSurfaceName = combineSurfaceNameAndLayer(surfaceName, surfaceLayer);
         const attribute = settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue();
 
         const queryKey = [
@@ -53,7 +56,7 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
             ensembleIdent?.getCaseUuid() ?? "",
             ensembleIdent?.getEnsembleName() ?? "",
             realizationNum ?? 0,
-            surfaceName ?? "",
+            combinedSurfaceName ?? "",
             attribute ?? "",
         ];
         this._layerDelegate.registerQueryKey(queryKey);
@@ -65,7 +68,7 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
                     ensembleIdent?.getCaseUuid() ?? "",
                     ensembleIdent?.getEnsembleName() ?? "",
                     realizationNum ?? 0,
-                    surfaceName ?? "",
+                    combinedSurfaceName ?? "",
                     attribute ?? ""
                 ),
             staleTime: STALE_TIME,

@@ -7,4 +7,5 @@ export type RealizationFaultPolygonsSettings = {
     [SettingType.REALIZATION]: number | null;
     [SettingType.FAULT_POLYGONS_ATTRIBUTE]: string | null;
     [SettingType.SURFACE_NAME]: string | null;
+    [SettingType.SURFACE_LAYER]: string | null;
 };

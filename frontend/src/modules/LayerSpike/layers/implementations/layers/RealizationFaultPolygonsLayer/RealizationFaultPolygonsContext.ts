@@ -12,7 +12,9 @@ import { SettingsContext } from "../../../interfaces";
 import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
+import { SurfaceLayer } from "../../settings/SurfaceLayer";
 import { SurfaceName } from "../../settings/SurfaceName";
+import { extractSurfaceNamesAndLayers } from "../../utils/surfaceNamesAndLayers";
 
 export class RealizationFaultPolygonsContext implements SettingsContext<RealizationFaultPolygonsSettings> {
     private _contextDelegate: SettingsContextDelegate<RealizationFaultPolygonsSettings>;
@@ -27,6 +29,7 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
             [SettingType.REALIZATION]: new Realization(),
             [SettingType.FAULT_POLYGONS_ATTRIBUTE]: new SurfaceAttribute(),
             [SettingType.SURFACE_NAME]: new SurfaceName(),
+            [SettingType.SURFACE_LAYER]: new SurfaceLayer(),
         });
     }
 
@@ -42,6 +45,7 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
         const settings = this.getDelegate().getSettings();
         settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(false);
         settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(false);
+        settings[SettingType.SURFACE_LAYER].getDelegate().setLoadingState(false);
 
         if (!this._fetchDataCache) {
             return;
@@ -81,15 +85,33 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
                 )
             );
         }
-        this._contextDelegate.setAvailableValues(SettingType.SURFACE_NAME, availableSurfaceNames);
+
+        const surfaceNamesAndLayers = extractSurfaceNamesAndLayers(availableSurfaceNames);
+        const surfaceNames = surfaceNamesAndLayers.map((el) => el.surfaceName);
 
         let currentSurfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
-        if (!currentSurfaceName || !availableSurfaceNames.includes(currentSurfaceName)) {
-            if (availableSurfaceNames.length > 0) {
-                currentSurfaceName = availableSurfaceNames[0];
+        if (!currentSurfaceName || !surfaceNames.includes(currentSurfaceName)) {
+            if (surfaceNames.length > 0) {
+                currentSurfaceName = surfaceNames[0];
                 settings[SettingType.SURFACE_NAME].getDelegate().setValue(currentSurfaceName);
             }
         }
+        this._contextDelegate.setAvailableValues(SettingType.SURFACE_NAME, surfaceNames);
+
+        const surfaceLayers =
+            surfaceNamesAndLayers.find((el) => el.surfaceName === currentSurfaceName)?.surfaceLayers ?? [];
+        let currentSurfaceLayer = settings[SettingType.SURFACE_LAYER].getDelegate().getValue();
+        if (!currentSurfaceLayer || !surfaceLayers.includes(currentSurfaceLayer)) {
+            if (surfaceLayers.length > 0) {
+                currentSurfaceLayer = surfaceLayers[0];
+                settings[SettingType.SURFACE_LAYER].getDelegate().setValue(currentSurfaceLayer);
+            }
+        }
+        if (surfaceLayers.length === 0) {
+            surfaceLayers.push("DEFAULT");
+            settings[SettingType.SURFACE_LAYER].getDelegate().setValue("DEFAULT");
+        }
+        this._contextDelegate.setAvailableValues(SettingType.SURFACE_LAYER, surfaceLayers);
     }
 
     fetchData(oldValues: RealizationFaultPolygonsSettings, newValues: RealizationFaultPolygonsSettings): void {
@@ -136,6 +158,7 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
 
             settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(true);
             settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(true);
+            settings[SettingType.SURFACE_LAYER].getDelegate().setLoadingState(true);
 
             queryClient
                 .fetchQuery({
@@ -163,7 +186,8 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
             settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue() !== null &&
             settings[SettingType.SURFACE_NAME].getDelegate().getValue() !== null &&
             settings[SettingType.REALIZATION].getDelegate().getValue() !== null &&
-            settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null
+            settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null &&
+            settings[SettingType.SURFACE_LAYER].getDelegate().getValue() !== null
         );
     }
 }

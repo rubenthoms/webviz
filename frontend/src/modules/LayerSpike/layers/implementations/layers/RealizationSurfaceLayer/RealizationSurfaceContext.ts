@@ -13,8 +13,10 @@ import { SettingsContext } from "../../../interfaces";
 import { Ensemble } from "../../settings/Ensemble";
 import { Realization } from "../../settings/Realization";
 import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
+import { SurfaceLayer } from "../../settings/SurfaceLayer";
 import { SurfaceName } from "../../settings/SurfaceName";
 import { TimeOrInterval } from "../../settings/TimeOrInterval";
+import { combineSurfaceNameAndLayer, extractSurfaceNamesAndLayers } from "../../utils/surfaceNamesAndLayers";
 
 export class RealizationSurfaceContext implements SettingsContext<RealizationSurfaceSettings> {
     private _contextDelegate: SettingsContextDelegate<RealizationSurfaceSettings>;
@@ -29,6 +31,7 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
             [SettingType.REALIZATION]: new Realization(),
             [SettingType.SURFACE_ATTRIBUTE]: new SurfaceAttribute(),
             [SettingType.SURFACE_NAME]: new SurfaceName(),
+            [SettingType.SURFACE_LAYER]: new SurfaceLayer(),
             [SettingType.TIME_OR_INTERVAL]: new TimeOrInterval(),
         });
     }
@@ -46,6 +49,7 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
         settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(false);
         settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(false);
         settings[SettingType.TIME_OR_INTERVAL].getDelegate().setLoadingState(false);
+        settings[SettingType.SURFACE_LAYER].getDelegate().setLoadingState(false);
 
         if (!this._fetchDataCache) {
             return;
@@ -78,18 +82,37 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
                 )
             );
         }
-        this._contextDelegate.setAvailableValues(SettingType.SURFACE_NAME, availableSurfaceNames);
+
+        const surfaceNamesAndLayers = extractSurfaceNamesAndLayers(availableSurfaceNames);
+        const surfaceNames = surfaceNamesAndLayers.map((el) => el.surfaceName);
 
         let currentSurfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
-        if (!currentSurfaceName || !availableSurfaceNames.includes(currentSurfaceName)) {
-            if (availableSurfaceNames.length > 0) {
-                currentSurfaceName = availableSurfaceNames[0];
+        if (!currentSurfaceName || !surfaceNames.includes(currentSurfaceName)) {
+            if (surfaceNames.length > 0) {
+                currentSurfaceName = surfaceNames[0];
                 settings[SettingType.SURFACE_NAME].getDelegate().setValue(currentSurfaceName);
             }
         }
+        this._contextDelegate.setAvailableValues(SettingType.SURFACE_NAME, surfaceNames);
+
+        const surfaceLayers =
+            surfaceNamesAndLayers.find((el) => el.surfaceName === currentSurfaceName)?.surfaceLayers ?? [];
+        let currentSurfaceLayer = settings[SettingType.SURFACE_LAYER].getDelegate().getValue();
+        if (!currentSurfaceLayer || !surfaceLayers.includes(currentSurfaceLayer)) {
+            if (surfaceLayers.length > 0) {
+                currentSurfaceLayer = surfaceLayers[0];
+                settings[SettingType.SURFACE_LAYER].getDelegate().setValue(currentSurfaceLayer);
+            }
+        }
+        if (surfaceLayers.length === 0) {
+            surfaceLayers.push("DEFAULT");
+            settings[SettingType.SURFACE_LAYER].getDelegate().setValue("DEFAULT");
+        }
+        this._contextDelegate.setAvailableValues(SettingType.SURFACE_LAYER, surfaceLayers);
 
         const availableTimeOrIntervals: string[] = [];
         if (currentAttribute && currentSurfaceName) {
+            const combinedSurfaceName = combineSurfaceNameAndLayer(currentSurfaceName, currentSurfaceLayer);
             const availableTimeTypes: SurfaceTimeType_api[] = [];
             availableTimeTypes.push(
                 ...Array.from(
@@ -97,7 +120,7 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
                         this._fetchDataCache.surfaces
                             .filter(
                                 (surface) =>
-                                    surface.attribute_name === currentAttribute && surface.name === currentSurfaceName
+                                    surface.attribute_name === currentAttribute && surface.name === combinedSurfaceName
                             )
                             .map((el) => el.time_type)
                     )
@@ -168,7 +191,9 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
 
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().setLoadingState(true);
             settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(true);
+            settings[SettingType.SURFACE_LAYER].getDelegate().setLoadingState(true);
             settings[SettingType.TIME_OR_INTERVAL].getDelegate().setLoadingState(true);
+
             settings[SettingType.TIME_OR_INTERVAL].getDelegate().setValue(null);
 
             queryClient
@@ -200,6 +225,7 @@ export class RealizationSurfaceContext implements SettingsContext<RealizationSur
         return (
             settings[SettingType.SURFACE_ATTRIBUTE].getDelegate().getValue() !== null &&
             settings[SettingType.SURFACE_NAME].getDelegate().getValue() !== null &&
+            settings[SettingType.SURFACE_LAYER].getDelegate().getValue() !== null &&
             settings[SettingType.REALIZATION].getDelegate().getValue() !== null &&
             settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null &&
             settings[SettingType.TIME_OR_INTERVAL].getDelegate().getValue() !== null

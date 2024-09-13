@@ -157,7 +157,7 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
         this.setAvailableSettingsValues();
     }
 
-    isValid(): boolean {
+    areCurrentSettingsValid(): boolean {
         const settings = this.getDelegate().getSettings();
         return (
             settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue() !== null &&

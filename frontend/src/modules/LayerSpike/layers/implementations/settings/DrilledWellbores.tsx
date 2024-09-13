@@ -40,12 +40,13 @@ export class DrilledWellbores implements Setting<WellboreHeader_api[]> {
 
             return (
                 <Select
+                    filter
                     options={options}
                     value={selectedValues}
                     onChange={handleChange}
                     disabled={props.isOverridden}
                     multiple={true}
-                    size={10}
+                    size={5}
                 />
             );
         };

@@ -29,7 +29,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
     private _cancellationPending: boolean = false;
     private _publishSubscribeHandler = new PublishSubscribeHandler<LayerDelegateTopic>();
     private _queryKeys: unknown[][] = [];
-    private _refetchRequested: boolean = false;
     private _status: LayerStatus = LayerStatus.IDLE;
     private _data: TData | null = null;
     private _error: StatusMessage | string | null = null;
@@ -47,7 +46,7 @@ export class LayerDelegate<TSettings extends Settings, TData>
 
     handleSettingsChange(): void {
         this._cancellationPending = true;
-        if (this._settingsContext.isValid()) {
+        if (this._settingsContext.areCurrentSettingsValid()) {
             this.maybeCancelQuery().then(() => {
                 this.maybeRefetchData();
             });
@@ -207,7 +206,6 @@ export class LayerDelegate<TSettings extends Settings, TData>
         }
 
         if (this._cancellationPending) {
-            this._refetchRequested = true;
             return;
         }
 

@@ -23,6 +23,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         layerManager?.getGroupDelegate() || new GroupDelegate(null),
         GroupBaseTopic.CHILDREN
     );
+
     usePublishSubscribeTopicValue(
         layerManager ?? new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient),
         LayerManagerTopic.LAYER_DATA_REVISION

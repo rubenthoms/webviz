@@ -8,18 +8,18 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { isEqual } from "lodash";
 
-import { RealizationFaultPolygonsContext } from "./RealizationFaultPolygonsContext";
-import { RealizationFaultPolygonsSettings } from "./types";
+import { RealizationPolygonsContext } from "./RealizationPolygonsContext";
+import { RealizationPolygonsSettings } from "./types";
 
 import { Layer } from "../../../interfaces";
 
-export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPolygonsSettings, PolygonData_api[]> {
-    private _layerDelegate: LayerDelegate<RealizationFaultPolygonsSettings, PolygonData_api[]>;
+export class RealizationPolygonsLayer implements Layer<RealizationPolygonsSettings, PolygonData_api[]> {
+    private _layerDelegate: LayerDelegate<RealizationPolygonsSettings, PolygonData_api[]>;
     private _itemDelegate: ItemDelegate;
 
     constructor() {
-        this._itemDelegate = new ItemDelegate("Realization Fault Polygons");
-        this._layerDelegate = new LayerDelegate(this, new RealizationFaultPolygonsContext());
+        this._itemDelegate = new ItemDelegate("Realization Polygons");
+        this._layerDelegate = new LayerDelegate(this, new RealizationPolygonsContext());
     }
 
     getSettingsContext() {
@@ -30,13 +30,13 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
         return this._itemDelegate;
     }
 
-    getLayerDelegate(): LayerDelegate<RealizationFaultPolygonsSettings, PolygonData_api[]> {
+    getLayerDelegate(): LayerDelegate<RealizationPolygonsSettings, PolygonData_api[]> {
         return this._layerDelegate;
     }
 
     doSettingsChangesRequireDataRefetch(
-        prevSettings: RealizationFaultPolygonsSettings,
-        newSettings: RealizationFaultPolygonsSettings
+        prevSettings: RealizationPolygonsSettings,
+        newSettings: RealizationPolygonsSettings
     ): boolean {
         return !isEqual(prevSettings, newSettings);
     }
@@ -45,16 +45,16 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
         const settings = this.getSettingsContext().getDelegate().getSettings();
         const ensembleIdent = settings[SettingType.ENSEMBLE].getDelegate().getValue();
         const realizationNum = settings[SettingType.REALIZATION].getDelegate().getValue();
-        const surfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
-        const attribute = settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue();
+        const polygonsName = settings[SettingType.POLYGONS_NAME].getDelegate().getValue();
+        const polygonsAttribute = settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().getValue();
 
         const queryKey = [
             "getPolygonsData",
             ensembleIdent?.getCaseUuid() ?? "",
             ensembleIdent?.getEnsembleName() ?? "",
             realizationNum ?? 0,
-            surfaceName ?? "",
-            attribute ?? "",
+            polygonsName ?? "",
+            polygonsAttribute ?? "",
         ];
         this._layerDelegate.registerQueryKey(queryKey);
 
@@ -65,8 +65,8 @@ export class RealizationFaultPolygonsLayer implements Layer<RealizationFaultPoly
                     ensembleIdent?.getCaseUuid() ?? "",
                     ensembleIdent?.getEnsembleName() ?? "",
                     realizationNum ?? 0,
-                    surfaceName ?? "",
-                    attribute ?? ""
+                    polygonsName ?? "",
+                    polygonsAttribute ?? ""
                 ),
             staleTime: STALE_TIME,
             gcTime: CACHE_TIME,

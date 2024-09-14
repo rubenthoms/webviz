@@ -2,8 +2,8 @@ export enum LayerType {
     OBSERVED_SURFACE = "observedSurface",
     STATISTICAL_SURFACE = "statisticalSurface",
     REALIZATION_SURFACE = "realizationSurface",
-    REALIZATION_FAULT_POLYGONS = "realizationFaultPolygons",
     REALIZATION_GRID = "realizationGrid",
+    REALIZATION_POLYGONS = "realizationPolygons",
     DRILLED_WELLBORE_TRAJECTORIES = "drilledWellTrajectories",
 }
 
@@ -12,7 +12,7 @@ export const LAYER_TYPE_TO_STRING_MAPPING: Record<LayerType, string> = {
     [LayerType.STATISTICAL_SURFACE]: "Statistical Surface",
     [LayerType.REALIZATION_SURFACE]: "Realization Surface",
     [LayerType.REALIZATION_GRID]: "Realization Grid Layer",
-    [LayerType.REALIZATION_FAULT_POLYGONS]: "Fault Polygons",
+    [LayerType.REALIZATION_POLYGONS]: "Realization Polygons",
     [LayerType.DRILLED_WELLBORE_TRAJECTORIES]: "Drilled Well Trajectories",
 };
 

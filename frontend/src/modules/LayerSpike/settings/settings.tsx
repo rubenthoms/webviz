@@ -17,8 +17,8 @@ import { makeComponent } from "../layers/components/utils";
 import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
 import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
 import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
-import { RealizationFaultPolygonsLayer } from "../layers/implementations/layers/RealizationFaultPolygonsLayer/RealizationFaultPolygonsLayer";
 import { RealizationGridLayer } from "../layers/implementations/layers/RealizationGridLayer/RealizationGridLayer";
+import { RealizationPolygonsLayer } from "../layers/implementations/layers/RealizationPolygonsLayer/RealizationPolygonsLayer";
 import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
 import { StatisticalSurfaceLayer } from "../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Ensemble } from "../layers/implementations/settings/Ensemble";
@@ -63,8 +63,8 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         if (layerType === LayerType.REALIZATION_SURFACE) {
             groupDelegate.appendChild(new RealizationSurfaceLayer());
         }
-        if (layerType === LayerType.REALIZATION_FAULT_POLYGONS) {
-            groupDelegate.appendChild(new RealizationFaultPolygonsLayer());
+        if (layerType === LayerType.REALIZATION_POLYGONS) {
+            groupDelegate.appendChild(new RealizationPolygonsLayer());
         }
         if (layerType === LayerType.DRILLED_WELLBORE_TRAJECTORIES) {
             groupDelegate.appendChild(new DrilledWellTrajectoriesLayer());

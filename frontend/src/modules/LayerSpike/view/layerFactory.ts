@@ -18,8 +18,8 @@ import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
 import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
 import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
-import { RealizationFaultPolygonsLayer } from "../layers/implementations/layers/RealizationFaultPolygonsLayer/RealizationFaultPolygonsLayer";
 import { RealizationGridLayer } from "../layers/implementations/layers/RealizationGridLayer/RealizationGridLayer";
+import { RealizationPolygonsLayer } from "../layers/implementations/layers/RealizationPolygonsLayer/RealizationPolygonsLayer";
 import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
 import { StatisticalSurfaceLayer } from "../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Layer as LayerInterface } from "../layers/interfaces";
@@ -39,8 +39,8 @@ export function makeLayer(layer: LayerInterface<any, any>): Layer | null {
     if (layer instanceof StatisticalSurfaceLayer) {
         return createMapFloatLayer(data, layer.getItemDelegate().getId());
     }
-    if (layer instanceof RealizationFaultPolygonsLayer) {
-        return createFaultPolygonsLayer(data, layer.getItemDelegate().getId());
+    if (layer instanceof RealizationPolygonsLayer) {
+        return createPolygonsLayer(data, layer.getItemDelegate().getId());
     }
     if (layer instanceof DrilledWellTrajectoriesLayer) {
         return makeWellsLayer(data, layer.getItemDelegate().getId(), null);
@@ -106,9 +106,9 @@ function _calcBoundsForRotationAroundUpperLeftCorner(surfDef: SurfaceDef_api): [
     return bounds;
 }
 
-function createFaultPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {
+function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {
     const features: Record<string, unknown>[] = polygonsData.map((polygon) => {
-        return surfacePolygonsToGeojson(polygon);
+        return polygonsToGeojson(polygon);
     });
     const data: Record<string, unknown> = {
         type: "FeatureCollection",
@@ -119,21 +119,23 @@ function createFaultPolygonsLayer(polygonsData: PolygonData_api[], id: string): 
         id: id,
         data: data,
         // opacity: 0.5,
+        filled: false,
+        lineWidthMinPixels: 2,
         parameters: {
             depthTest: false,
         },
-        depthTest: false,
+
         pickable: true,
     });
 }
-function surfacePolygonsToGeojson(surfacePolygon: PolygonData_api): Record<string, unknown> {
+function polygonsToGeojson(polygons: PolygonData_api): Record<string, unknown> {
     const data: Record<string, unknown> = {
         type: "Feature",
         geometry: {
             type: "Polygon",
-            coordinates: [zipCoords(surfacePolygon.x_arr, surfacePolygon.y_arr, surfacePolygon.z_arr)],
+            coordinates: [zipCoords(polygons.x_arr, polygons.y_arr, polygons.z_arr)],
         },
-        properties: { name: surfacePolygon.poly_id, color: [0, 0, 0, 255] },
+        properties: { name: polygons.poly_id, color: [0, 0, 0, 255] },
     };
     return data;
 }

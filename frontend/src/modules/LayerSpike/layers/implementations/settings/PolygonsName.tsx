@@ -8,15 +8,15 @@ import { SettingType } from "../../settingsTypes";
 
 type ValueType = string | null;
 
-export class FaultPolygonsAttribute implements Setting<ValueType> {
+export class PolygonsName implements Setting<ValueType> {
     private _delegate: SettingDelegate<ValueType> = new SettingDelegate<ValueType>(null);
 
     getType(): SettingType {
-        return SettingType.FAULT_POLYGONS_ATTRIBUTE;
+        return SettingType.POLYGONS_NAME;
     }
 
     getLabel(): string {
-        return "Fault polygons attribute";
+        return "Polygons name";
     }
 
     getDelegate(): SettingDelegate<ValueType> {

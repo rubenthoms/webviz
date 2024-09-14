@@ -2,9 +2,9 @@ import { EnsembleIdent } from "@framework/EnsembleIdent";
 
 import { SettingType } from "../../../settingsTypes";
 
-export type RealizationFaultPolygonsSettings = {
+export type RealizationPolygonsSettings = {
     [SettingType.ENSEMBLE]: EnsembleIdent | null;
     [SettingType.REALIZATION]: number | null;
-    [SettingType.FAULT_POLYGONS_ATTRIBUTE]: string | null;
-    [SettingType.SURFACE_NAME]: string | null;
+    [SettingType.POLYGONS_ATTRIBUTE]: string | null;
+    [SettingType.POLYGONS_NAME]: string | null;
 };

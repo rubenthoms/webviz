@@ -6,31 +6,31 @@ import { SettingType } from "@modules/LayerSpike/layers/settingsTypes";
 
 import { isEqual } from "lodash";
 
-import { RealizationFaultPolygonsSettings } from "./types";
+import { RealizationPolygonsSettings } from "./types";
 
 import { SettingsContext } from "../../../interfaces";
 import { Ensemble } from "../../settings/Ensemble";
+import { PolygonsAttribute } from "../../settings/PolygonsAttribute";
+import { PolygonsName } from "../../settings/PolygonsName";
 import { Realization } from "../../settings/Realization";
-import { SurfaceAttribute } from "../../settings/SurfaceAttribute";
-import { SurfaceName } from "../../settings/SurfaceName";
 
-export class RealizationFaultPolygonsContext implements SettingsContext<RealizationFaultPolygonsSettings> {
-    private _contextDelegate: SettingsContextDelegate<RealizationFaultPolygonsSettings>;
+export class RealizationPolygonsContext implements SettingsContext<RealizationPolygonsSettings> {
+    private _contextDelegate: SettingsContextDelegate<RealizationPolygonsSettings>;
     private _fetchDataCache: PolygonsMeta_api[] | null = null;
 
     constructor() {
         this._contextDelegate = new SettingsContextDelegate<
-            RealizationFaultPolygonsSettings,
-            keyof RealizationFaultPolygonsSettings
+            RealizationPolygonsSettings,
+            keyof RealizationPolygonsSettings
         >(this, {
             [SettingType.ENSEMBLE]: new Ensemble(),
             [SettingType.REALIZATION]: new Realization(),
-            [SettingType.FAULT_POLYGONS_ATTRIBUTE]: new SurfaceAttribute(),
-            [SettingType.SURFACE_NAME]: new SurfaceName(),
+            [SettingType.POLYGONS_ATTRIBUTE]: new PolygonsAttribute(),
+            [SettingType.POLYGONS_NAME]: new PolygonsName(),
         });
     }
 
-    getDelegate(): SettingsContextDelegate<RealizationFaultPolygonsSettings> {
+    getDelegate(): SettingsContextDelegate<RealizationPolygonsSettings> {
         return this._contextDelegate;
     }
 
@@ -40,38 +40,31 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
 
     private setAvailableSettingsValues() {
         const settings = this.getDelegate().getSettings();
-        settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(false);
-        settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(false);
+        settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(false);
+        settings[SettingType.POLYGONS_NAME].getDelegate().setLoadingState(false);
 
         if (!this._fetchDataCache) {
             return;
         }
-        const faultPolygonAttributeTypes = [PolygonsAttributeType_api.FAULT_LINES, PolygonsAttributeType_api.DEPTH];
 
         const availableAttributes: string[] = [];
         availableAttributes.push(
-            ...Array.from(
-                new Set(
-                    this._fetchDataCache
-                        .filter((polygonsMeta) => faultPolygonAttributeTypes.includes(polygonsMeta.attribute_type))
-                        .map((polygonsMeta) => polygonsMeta.attribute_name)
-                )
-            )
+            ...Array.from(new Set(this._fetchDataCache.map((polygonsMeta) => polygonsMeta.attribute_name)))
         );
-        this._contextDelegate.setAvailableValues(SettingType.FAULT_POLYGONS_ATTRIBUTE, availableAttributes);
+        this._contextDelegate.setAvailableValues(SettingType.POLYGONS_ATTRIBUTE, availableAttributes);
 
-        let currentAttribute = settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue();
+        let currentAttribute = settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().getValue();
         if (!currentAttribute || !availableAttributes.includes(currentAttribute)) {
             if (availableAttributes.length > 0) {
                 currentAttribute = availableAttributes[0];
-                settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().setValue(currentAttribute);
+                settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().setValue(currentAttribute);
             }
         }
 
-        const availableSurfaceNames: string[] = [];
+        const availablePolygonsName: string[] = [];
 
         if (currentAttribute) {
-            availableSurfaceNames.push(
+            availablePolygonsName.push(
                 ...Array.from(
                     new Set(
                         this._fetchDataCache
@@ -81,18 +74,18 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
                 )
             );
         }
-        this._contextDelegate.setAvailableValues(SettingType.SURFACE_NAME, availableSurfaceNames);
+        this._contextDelegate.setAvailableValues(SettingType.POLYGONS_NAME, availablePolygonsName);
 
-        let currentSurfaceName = settings[SettingType.SURFACE_NAME].getDelegate().getValue();
-        if (!currentSurfaceName || !availableSurfaceNames.includes(currentSurfaceName)) {
-            if (availableSurfaceNames.length > 0) {
-                currentSurfaceName = availableSurfaceNames[0];
-                settings[SettingType.SURFACE_NAME].getDelegate().setValue(currentSurfaceName);
+        let currentPolygonsName = settings[SettingType.POLYGONS_NAME].getDelegate().getValue();
+        if (!currentPolygonsName || !availablePolygonsName.includes(currentPolygonsName)) {
+            if (availablePolygonsName.length > 0) {
+                currentPolygonsName = availablePolygonsName[0];
+                settings[SettingType.POLYGONS_NAME].getDelegate().setValue(currentPolygonsName);
             }
         }
     }
 
-    fetchData(oldValues: RealizationFaultPolygonsSettings, newValues: RealizationFaultPolygonsSettings): void {
+    fetchData(oldValues: RealizationPolygonsSettings, newValues: RealizationPolygonsSettings): void {
         const queryClient = this.getDelegate().getLayerManager().getQueryClient();
 
         const settings = this.getDelegate().getSettings();
@@ -134,8 +127,8 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
         if (!isEqual(oldValues[SettingType.ENSEMBLE], currentEnsembleIdent)) {
             this._fetchDataCache = null;
 
-            settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(true);
-            settings[SettingType.SURFACE_NAME].getDelegate().setLoadingState(true);
+            settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().setLoadingState(true);
+            settings[SettingType.POLYGONS_NAME].getDelegate().setLoadingState(true);
 
             queryClient
                 .fetchQuery({
@@ -160,8 +153,8 @@ export class RealizationFaultPolygonsContext implements SettingsContext<Realizat
     areCurrentSettingsValid(): boolean {
         const settings = this.getDelegate().getSettings();
         return (
-            settings[SettingType.FAULT_POLYGONS_ATTRIBUTE].getDelegate().getValue() !== null &&
-            settings[SettingType.SURFACE_NAME].getDelegate().getValue() !== null &&
+            settings[SettingType.POLYGONS_ATTRIBUTE].getDelegate().getValue() !== null &&
+            settings[SettingType.POLYGONS_NAME].getDelegate().getValue() !== null &&
             settings[SettingType.REALIZATION].getDelegate().getValue() !== null &&
             settings[SettingType.ENSEMBLE].getDelegate().getValue() !== null
         );

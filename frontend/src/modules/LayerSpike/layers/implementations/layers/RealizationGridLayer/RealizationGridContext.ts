@@ -65,23 +65,20 @@ export class RealizationGridContext implements SettingsContext<RealizationGridSe
                 settings[SettingType.GRID_NAME].getDelegate().setValue(currentGridName);
             }
         }
-        const gridLayerCount =
-            this._fetchDataCache.find((gridModel) => gridModel.grid_name === currentGridName)?.dimensions.k_count ??
-            null;
+        const gridDimensions =
+            this._fetchDataCache.find((gridModel) => gridModel.grid_name === currentGridName)?.dimensions ?? null;
         const availableGridLayers: number[] = [];
-        if (gridLayerCount) {
-            for (let i = 0; i < gridLayerCount; i++) {
-                availableGridLayers.push(i);
-            }
+        if (gridDimensions) {
+            availableGridLayers.push(gridDimensions.i_count);
+            availableGridLayers.push(gridDimensions.j_count);
+            availableGridLayers.push(gridDimensions.k_count);
         }
         this._contextDelegate.setAvailableValues(SettingType.GRID_LAYER, availableGridLayers);
 
         let currentGridLayer = settings[SettingType.GRID_LAYER].getDelegate().getValue();
-        if (currentGridLayer === null || !availableGridLayers.includes(currentGridLayer)) {
-            if (availableGridLayers.length > 0) {
-                currentGridLayer = availableGridLayers[0];
-                settings[SettingType.GRID_LAYER].getDelegate().setValue(currentGridLayer);
-            }
+        if (currentGridLayer === null || !availableGridLayers.length || availableGridLayers[2] < currentGridLayer) {
+            currentGridLayer = availableGridLayers[2];
+            settings[SettingType.GRID_LAYER].getDelegate().setValue(currentGridLayer);
         }
 
         const availableGridAttributes: string[] = [];

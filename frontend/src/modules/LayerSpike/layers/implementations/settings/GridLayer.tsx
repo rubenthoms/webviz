@@ -25,7 +25,9 @@ export class GridLayer implements Setting<ValueType> {
 
     makeComponent(): (props: SettingComponentProps<ValueType>) => React.ReactNode {
         return function Ensemble(props: SettingComponentProps<ValueType>) {
-            const options: DropdownOption[] = props.availableValues.map((value) => {
+            const kRange = props.availableValues ? Array.from({ length: props.availableValues[2] }, (_, i) => i) : [];
+
+            const options: DropdownOption[] = kRange.map((value) => {
                 return {
                     value: value.toString(),
                     label: value === null ? "None" : value.toString(),

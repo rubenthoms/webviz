@@ -15,13 +15,11 @@ import "./SimulationTimeSeries/registerModule";
 import "./SimulationTimeSeriesSensitivity/registerModule";
 import "./SubsurfaceMap/registerModule";
 import "./TornadoChart/registerModule";
-import "./WellCompletions/registerModule";
 import "./Vfp/registerModule";
-
+import "./WellCompletions/registerModule";
 
 if (isDevMode()) {
     await import("./MyModule/registerModule");
     await import("./MyModule2/registerModule");
     await import("./DbgWorkbenchSpy/registerModule");
-    await import("./LayerSpike/registerModule");
 }

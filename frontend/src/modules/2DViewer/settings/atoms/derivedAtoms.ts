@@ -1,9 +1,7 @@
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
-import { LayerManager } from "@modules/_shared/layers/LayerManager";
 
 import { atom } from "jotai";
-import { queryClientAtom } from "jotai-tanstack-query";
 
 import { userSelectedFieldIdentifierAtom } from "./baseAtoms";
 
@@ -30,12 +28,4 @@ export const filteredEnsembleSetAtom = atom((get) => {
     }
 
     return new EnsembleSet(ensembleSet.getEnsembleArr().filter((el) => el.getFieldIdentifier() === fieldIdentifier));
-});
-
-export const layerManagerAtom = atom((get) => {
-    const layerManager = new LayerManager();
-    const queryClient = get(queryClientAtom);
-    layerManager.setQueryClient(queryClient);
-
-    return layerManager;
 });

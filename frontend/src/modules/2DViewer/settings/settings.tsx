@@ -1,205 +1,259 @@
 import React from "react";
 
-import { EnsembleSet } from "@framework/EnsembleSet";
 import { ModuleSettingsProps } from "@framework/Module";
-import { WorkbenchSession, useEnsembleSet } from "@framework/WorkbenchSession";
-import { WorkbenchSettings } from "@framework/WorkbenchSettings";
-import { FieldDropdown } from "@framework/components/FieldDropdown";
-import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
-import { Menu } from "@lib/components/Menu";
-import { MenuDivider } from "@lib/components/MenuDivider";
-import { MenuHeading } from "@lib/components/MenuHeading";
-import { MenuItem } from "@lib/components/MenuItem";
-import { LayersPanel } from "@modules/_shared/components/Layers";
-import { BaseLayer } from "@modules/_shared/layers/BaseLayer";
-import { LayerGroup } from "@modules/_shared/layers/LayerGroup";
-import { LayerSettingFactory } from "@modules/_shared/layers/settings/LayerSettingFactory";
-import { SETTING_TYPE_TO_STRING_MAPPING, SettingType } from "@modules/_shared/layers/settings/SettingTypes";
-import { Dropdown, MenuButton } from "@mui/base";
-import { Add, ArrowDropDown, GridView } from "@mui/icons-material";
+import { IsMoveAllowedArgs, SortableList } from "@lib/components/SortableList";
+import { Add } from "@mui/icons-material";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 
-import { userSelectedFieldIdentifierAtom } from "./atoms/baseAtoms";
-import { filteredEnsembleSetAtom, layerManagerAtom, selectedFieldIdentifierAtom } from "./atoms/derivedAtoms";
-import { FaultPolygonLayerSettingsComponent } from "./components/layerSettings/faultPolygonLayer";
-import { PolygonLayerSettingsComponent } from "./components/layerSettings/polygonLayer";
-import { SurfaceLayerSettingsComponent } from "./components/layerSettings/surfaceLayer";
-import { WellboreLayerSettingsComponent } from "./components/layerSettings/wellboreLayer";
+import { layerManagerAtom } from "./atoms/baseAtoms";
 
-import { Interfaces } from "../interfaces";
-import { isFaultPolygonLayer } from "../layers/FaultPolygonLayer";
-import { LayerFactory } from "../layers/LayerFactory";
-import { isPolygonLayer } from "../layers/PolygonLayer";
-import { isSurfaceLayer } from "../layers/SurfaceLayer";
-import { isWellboreLayer } from "../layers/WellboreLayer";
-import { LAYER_TYPE_TO_STRING_MAPPING, LayerType } from "../layers/types";
+import { LayerManager } from "../layers/LayerManager";
+import { usePublishSubscribeTopicValue } from "../layers/PublishSubscribeHandler";
+import { SharedSetting } from "../layers/SharedSetting";
+import { View } from "../layers/View";
+import { LayersActionGroup, LayersActions } from "../layers/components/layersActions";
+import { makeComponent } from "../layers/components/utils";
+import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
+import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
+import { ObservedSurfaceLayer } from "../layers/implementations/layers/ObservedSurfaceLayer/ObservedSurfaceLayer";
+import { RealizationGridLayer } from "../layers/implementations/layers/RealizationGridLayer/RealizationGridLayer";
+import { RealizationPolygonsLayer } from "../layers/implementations/layers/RealizationPolygonsLayer/RealizationPolygonsLayer";
+import { RealizationSurfaceLayer } from "../layers/implementations/layers/RealizationSurfaceLayer/RealizationSurfaceLayer";
+import { StatisticalSurfaceLayer } from "../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
+import { Ensemble } from "../layers/implementations/settings/Ensemble";
+import { Realization } from "../layers/implementations/settings/Realization";
+import { SurfaceName } from "../layers/implementations/settings/SurfaceName";
+import { Group, Item, instanceofGroup } from "../layers/interfaces";
 
-export function Settings(props: ModuleSettingsProps<Interfaces>): React.ReactNode {
-    const ensembleSet = useEnsembleSet(props.workbenchSession);
+export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
+    const queryClient = useQueryClient();
+    const layerManager = React.useRef<LayerManager>(
+        new LayerManager(props.workbenchSession, props.workbenchSettings, queryClient)
+    );
 
-    const selectedFieldIdentifier = useAtomValue(selectedFieldIdentifierAtom);
-    const setSelectedFieldIdentifier = useSetAtom(userSelectedFieldIdentifierAtom);
+    const colorSet = props.workbenchSettings.useColorSet();
 
-    const filteredEnsembleSet = useAtomValue(filteredEnsembleSetAtom);
+    const groupDelegate = layerManager.current.getGroupDelegate();
+    const items = usePublishSubscribeTopicValue(groupDelegate, GroupBaseTopic.CHILDREN);
 
-    const layerManager = useAtomValue(layerManagerAtom);
+    const setLayerManager = useSetAtom(layerManagerAtom);
 
-    function handleFieldIdentifierChange(fieldIdentifier: string | null) {
-        setSelectedFieldIdentifier(fieldIdentifier);
+    React.useEffect(
+        function onMountEffect() {
+            setLayerManager(layerManager.current);
+        },
+        [setLayerManager]
+    );
+
+    function handleLayerAction(identifier: string, group?: Group) {
+        let groupDelegate = layerManager.current.getGroupDelegate();
+        if (group) {
+            groupDelegate = group.getGroupDelegate();
+        }
+
+        switch (identifier) {
+            case "view":
+                groupDelegate.appendChild(new View("New View", colorSet.getNextColor()));
+                return;
+            case "observed_surface":
+                groupDelegate.appendChild(new ObservedSurfaceLayer());
+                return;
+            case "statistical_surface":
+                groupDelegate.appendChild(new StatisticalSurfaceLayer());
+                return;
+            case "realization_surface":
+                groupDelegate.appendChild(new RealizationSurfaceLayer());
+                return;
+            case "realization_polygons":
+                groupDelegate.appendChild(new RealizationPolygonsLayer());
+                return;
+            case "drilled_wellbores":
+                groupDelegate.appendChild(new DrilledWellTrajectoriesLayer());
+                return;
+            case "realization_grid":
+                groupDelegate.appendChild(new RealizationGridLayer());
+                return;
+            case "ensemble":
+                groupDelegate.prependChild(new SharedSetting(new Ensemble()));
+                return;
+            case "realization":
+                groupDelegate.prependChild(new SharedSetting(new Realization()));
+                return;
+            case "surface_name":
+                groupDelegate.prependChild(new SharedSetting(new SurfaceName()));
+                return;
+        }
     }
 
-    function handleAddLayer(layerType: LayerType) {
-        const layer = LayerFactory.makeLayer(layerType, layerManager);
-        layer.setQueryClient(layerManager.getQueryClient());
-        layerManager.getMainGroup().prependItem(layer);
+    function checkIfItemMoveAllowed(args: IsMoveAllowedArgs): boolean {
+        const movedItem = groupDelegate.findDescendantById(args.movedItemId);
+        if (!movedItem) {
+            return false;
+        }
+
+        const destinationItem = args.destinationId
+            ? groupDelegate.findDescendantById(args.destinationId)
+            : layerManager.current;
+
+        if (!destinationItem || !instanceofGroup(destinationItem)) {
+            return false;
+        }
+
+        const numSharedSettings =
+            destinationItem.getGroupDelegate().findChildren((item) => {
+                return item instanceof SharedSetting;
+            }).length ?? 0;
+
+        if (!(movedItem instanceof SharedSetting)) {
+            if (args.position < numSharedSettings) {
+                return false;
+            }
+        } else {
+            if (args.originId === args.destinationId) {
+                if (args.position >= numSharedSettings) {
+                    return false;
+                }
+            } else {
+                if (args.position > numSharedSettings) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
-    function handleAddView() {
-        layerManager.getMainGroup().prependItem(new LayerGroup("View", layerManager.getMainGroup()));
-    }
+    function handleItemMoved(
+        movedItemId: string,
+        originId: string | null,
+        destinationId: string | null,
+        position: number
+    ) {
+        const movedItem = groupDelegate.findDescendantById(movedItemId);
+        if (!movedItem) {
+            return;
+        }
 
-    function handleAddSetting(settingType: SettingType) {
-        const setting = LayerSettingFactory.makeSetting(settingType);
-        layerManager.getMainGroup().prependItem(setting);
+        let origin = layerManager.current.getGroupDelegate();
+        if (originId) {
+            const candidate = groupDelegate.findDescendantById(originId);
+            if (candidate && instanceofGroup(candidate)) {
+                origin = candidate.getGroupDelegate();
+            }
+        }
+
+        let destination = layerManager.current.getGroupDelegate();
+        if (destinationId) {
+            const candidate = groupDelegate.findDescendantById(destinationId);
+            if (candidate && instanceofGroup(candidate)) {
+                destination = candidate.getGroupDelegate();
+            }
+        }
+
+        if (origin === destination) {
+            origin.moveChild(movedItem, position);
+            return;
+        }
+
+        origin.removeChild(movedItem);
+        destination.insertChild(movedItem, position);
     }
 
     return (
-        <div className="flex flex-col gap-2 h-full">
-            <CollapsibleGroup title="Field" expanded>
-                <FieldDropdown
-                    ensembleSet={ensembleSet}
-                    value={selectedFieldIdentifier}
-                    onChange={handleFieldIdentifierChange}
-                />
-            </CollapsibleGroup>
+        <div className="h-full flex flex-col gap-1">
             <div className="flex-grow flex flex-col min-h-0">
-                <LayersPanel
-                    title="Layers"
-                    ensembleSet={filteredEnsembleSet}
-                    workbenchSession={props.workbenchSession}
-                    workbenchSettings={props.workbenchSettings}
-                    layerManager={layerManager}
-                    layerFactory={LayerFactory}
-                    layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
-                    makeSettingsContainerFunc={makeSettingsContainer}
-                    actions={
-                        <LayersPanelActions
-                            layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
-                            settingTypeToStringMapping={SETTING_TYPE_TO_STRING_MAPPING}
-                            onAddView={handleAddView}
-                            onAddLayer={handleAddLayer}
-                            onAddSetting={handleAddSetting}
-                        />
-                    }
-                    groupIcon={<GridView fontSize="inherit" />}
-                />
+                <div className="w-full flex-grow flex flex-col min-h-0">
+                    <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
+                        <div className="flex-grow font-bold text-sm">Layers</div>
+                        <LayersActions layersActionGroups={LAYER_ACTIONS} onActionClick={handleLayerAction} />
+                    </div>
+                    <div className="w-full flex-grow flex flex-col relative h-full">
+                        <SortableList
+                            onItemMoved={handleItemMoved}
+                            isMoveAllowed={checkIfItemMoveAllowed}
+                            contentWhenEmpty={
+                                <div className="flex -mt-1 justify-center text-sm items-center gap-1 h-40">
+                                    Click on <Add fontSize="inherit" /> to add a layer.
+                                </div>
+                            }
+                        >
+                            {items.map((item: Item) => makeComponent(item, VIEW_ACTIONS, handleLayerAction))}
+                        </SortableList>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
-type LayersPanelActionsProps<TLayerType extends string, TSettingType extends string> = {
-    layerTypeToStringMapping: Record<TLayerType, string>;
-    settingTypeToStringMapping: Record<TSettingType, string>;
-    onAddView: () => void;
-    onAddLayer: (layerType: TLayerType) => void;
-    onAddSetting: (settingType: TSettingType) => void;
-};
+const LAYER_ACTIONS: LayersActionGroup[] = [
+    {
+        label: "View",
+        children: [
+            {
+                identifier: "view",
+                label: "Add View",
+            },
+        ],
+    },
+    {
+        label: "Layers",
+        children: [
+            {
+                label: "Surfaces",
+                children: [
+                    {
+                        identifier: "observed_surface",
+                        label: "Observed Surface",
+                    },
+                    {
+                        identifier: "statistical_surface",
+                        label: "Statistical Surface",
+                    },
+                    {
+                        identifier: "realization_surface",
+                        label: "Realization Surface",
+                    },
+                ],
+            },
+            {
+                label: "Others",
+                children: [
+                    {
+                        identifier: "realization_polygons",
+                        label: "Realization Polygons",
+                    },
+                    {
+                        identifier: "drilled_wellbores",
+                        label: "Drilled Wellbore Trajectories",
+                    },
+                    {
+                        identifier: "realization_grid",
+                        label: "Realization Grid",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        label: "Shared Settings",
+        children: [
+            {
+                identifier: "ensemble",
+                label: "Ensemble",
+            },
+            {
+                identifier: "realization",
+                label: "Realization",
+            },
+            {
+                identifier: "surface_name",
+                label: "Surface Name",
+            },
+        ],
+    },
+];
 
-function LayersPanelActions<TLayerType extends string, TSettingType extends string>(
-    props: LayersPanelActionsProps<TLayerType, TSettingType>
-): React.ReactNode {
-    return (
-        <Dropdown>
-            <MenuButton>
-                <div className="hover:cursor-pointer hover:bg-blue-100 p-0.5 rounded text-sm flex items-center gap-2">
-                    <Add fontSize="inherit" />
-                    <span>Add</span>
-                    <ArrowDropDown fontSize="inherit" />
-                </div>
-            </MenuButton>
-            <Menu anchorOrigin="bottom-end" className="text-sm p-1">
-                <MenuItem className="text-sm p-0.5 flex gap-2" onClick={props.onAddView}>
-                    <GridView fontSize="inherit" className="opacity-50" />
-                    View
-                </MenuItem>
-                <MenuDivider />
-                <MenuHeading>Layers</MenuHeading>
-                {Object.keys(props.layerTypeToStringMapping).map((layerType, index) => {
-                    return (
-                        <MenuItem
-                            key={index}
-                            className="text-sm p-0.5"
-                            onClick={() => props.onAddLayer(layerType as TLayerType)}
-                        >
-                            {props.layerTypeToStringMapping[layerType as TLayerType]}
-                        </MenuItem>
-                    );
-                })}
-                <MenuDivider />
-                <MenuHeading>Settings</MenuHeading>
-                {Object.keys(props.settingTypeToStringMapping).map((settingType, index) => {
-                    return (
-                        <MenuItem
-                            key={index}
-                            className="text-sm p-0.5"
-                            onClick={() => props.onAddSetting(settingType as TSettingType)}
-                        >
-                            {props.settingTypeToStringMapping[settingType as TSettingType]}
-                        </MenuItem>
-                    );
-                })}
-            </Menu>
-        </Dropdown>
-    );
-}
-
-function makeSettingsContainer(
-    layer: BaseLayer<any, any>,
-    ensembleSet: EnsembleSet,
-    workbenchSession: WorkbenchSession,
-    workbenchSettings: WorkbenchSettings
-): React.ReactNode {
-    if (isSurfaceLayer(layer)) {
-        return (
-            <SurfaceLayerSettingsComponent
-                ensembleSet={ensembleSet}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-                layer={layer}
-            />
-        );
-    }
-    if (isWellboreLayer(layer)) {
-        return (
-            <WellboreLayerSettingsComponent
-                ensembleSet={ensembleSet}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-                layer={layer}
-            />
-        );
-    }
-    if (isFaultPolygonLayer(layer)) {
-        return (
-            <FaultPolygonLayerSettingsComponent
-                ensembleSet={ensembleSet}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-                layer={layer}
-            />
-        );
-    }
-    if (isPolygonLayer(layer)) {
-        return (
-            <PolygonLayerSettingsComponent
-                ensembleSet={ensembleSet}
-                workbenchSession={workbenchSession}
-                workbenchSettings={workbenchSettings}
-                layer={layer}
-            />
-        );
-    }
-    return null;
-}
+const VIEW_ACTIONS: LayersActionGroup[] = LAYER_ACTIONS.filter((group) => group.label !== "View");

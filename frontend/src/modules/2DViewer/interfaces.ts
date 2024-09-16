@@ -1,10 +1,10 @@
 import { InterfaceInitialization } from "@framework/UniDirectionalModuleComponentsInterface";
-import { LayerManager } from "@modules_shared/layers/LayerManager";
 
-import { layerManagerAtom } from "./settings/atoms/derivedAtoms";
+import { LayerManager } from "./layers/LayerManager";
+import { layerManagerAtom } from "./settings/atoms/baseAtoms";
 
 export type SettingsToViewInterface = {
-    layerManager: LayerManager;
+    layerManager: LayerManager | null;
 };
 
 export type Interfaces = {

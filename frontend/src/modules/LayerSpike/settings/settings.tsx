@@ -13,6 +13,7 @@ import { LayerManager } from "../layers/LayerManager";
 import { usePublishSubscribeTopicValue } from "../layers/PublishSubscribeHandler";
 import { SharedSetting } from "../layers/SharedSetting";
 import { View } from "../layers/View";
+import { LayersActionGroup, LayersActions } from "../layers/components/layersActions";
 import { makeComponent } from "../layers/components/utils";
 import { GroupBaseTopic } from "../layers/delegates/GroupDelegate";
 import { DrilledWellTrajectoriesLayer } from "../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
@@ -24,14 +25,7 @@ import { StatisticalSurfaceLayer } from "../layers/implementations/layers/Statis
 import { Ensemble } from "../layers/implementations/settings/Ensemble";
 import { Realization } from "../layers/implementations/settings/Realization";
 import { SurfaceName } from "../layers/implementations/settings/SurfaceName";
-import { Item, instanceofGroup } from "../layers/interfaces";
-import { LayersPanelActions } from "../layersActions";
-import {
-    LAYER_TYPE_TO_STRING_MAPPING,
-    LayerType,
-    SHARED_SETTING_TYPE_TO_STRING_MAPPING,
-    SharedSettingType,
-} from "../types";
+import { Group, Item, instanceofGroup } from "../layers/interfaces";
 
 export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
     const queryClient = useQueryClient();
@@ -53,40 +47,43 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         [setLayerManager]
     );
 
-    function handleAddLayer(layerType: LayerType) {
-        if (layerType === LayerType.OBSERVED_SURFACE) {
-            groupDelegate.appendChild(new ObservedSurfaceLayer());
+    function handleLayerAction(identifier: string, group?: Group) {
+        let groupDelegate = layerManager.current.getGroupDelegate();
+        if (group) {
+            groupDelegate = group.getGroupDelegate();
         }
-        if (layerType === LayerType.STATISTICAL_SURFACE) {
-            groupDelegate.appendChild(new StatisticalSurfaceLayer());
-        }
-        if (layerType === LayerType.REALIZATION_SURFACE) {
-            groupDelegate.appendChild(new RealizationSurfaceLayer());
-        }
-        if (layerType === LayerType.REALIZATION_POLYGONS) {
-            groupDelegate.appendChild(new RealizationPolygonsLayer());
-        }
-        if (layerType === LayerType.DRILLED_WELLBORE_TRAJECTORIES) {
-            groupDelegate.appendChild(new DrilledWellTrajectoriesLayer());
-        }
-        if (layerType === LayerType.REALIZATION_GRID) {
-            groupDelegate.appendChild(new RealizationGridLayer());
-        }
-    }
 
-    function handleAddView() {
-        groupDelegate.appendChild(new View("New View", colorSet.getNextColor()));
-    }
-
-    function handleAddSharedSetting(settingType: SharedSettingType) {
-        if (settingType === SharedSettingType.ENSEMBLE) {
-            groupDelegate.prependChild(new SharedSetting(new Ensemble()));
-        }
-        if (settingType === SharedSettingType.REALIZATION) {
-            groupDelegate.prependChild(new SharedSetting(new Realization()));
-        }
-        if (settingType === SharedSettingType.SURFACE_NAME) {
-            groupDelegate.prependChild(new SharedSetting(new SurfaceName()));
+        switch (identifier) {
+            case "view":
+                groupDelegate.appendChild(new View("New View", colorSet.getNextColor()));
+                return;
+            case "observed_surface":
+                groupDelegate.appendChild(new ObservedSurfaceLayer());
+                return;
+            case "statistical_surface":
+                groupDelegate.appendChild(new StatisticalSurfaceLayer());
+                return;
+            case "realization_surface":
+                groupDelegate.appendChild(new RealizationSurfaceLayer());
+                return;
+            case "realization_polygons":
+                groupDelegate.appendChild(new RealizationPolygonsLayer());
+                return;
+            case "drilled_wellbores":
+                groupDelegate.appendChild(new DrilledWellTrajectoriesLayer());
+                return;
+            case "realization_grid":
+                groupDelegate.appendChild(new RealizationGridLayer());
+                return;
+            case "ensemble":
+                groupDelegate.prependChild(new SharedSetting(new Ensemble()));
+                return;
+            case "realization":
+                groupDelegate.prependChild(new SharedSetting(new Realization()));
+                return;
+            case "surface_name":
+                groupDelegate.prependChild(new SharedSetting(new SurfaceName()));
+                return;
         }
     }
 
@@ -170,13 +167,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                 <div className="w-full flex-grow flex flex-col min-h-0">
                     <div className="flex bg-slate-100 p-2 items-center border-b border-gray-300 gap-2">
                         <div className="flex-grow font-bold text-sm">Layers</div>
-                        <LayersPanelActions
-                            layerTypeToStringMapping={LAYER_TYPE_TO_STRING_MAPPING}
-                            settingTypeToStringMapping={SHARED_SETTING_TYPE_TO_STRING_MAPPING}
-                            onAddLayer={handleAddLayer}
-                            onAddView={handleAddView}
-                            onAddSharedSetting={handleAddSharedSetting}
-                        />
+                        <LayersActions layersActionGroups={LAYER_ACTIONS} onActionClick={handleLayerAction} />
                     </div>
                     <div className="w-full flex-grow flex flex-col relative h-full">
                         <SortableList
@@ -188,7 +179,7 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
                                 </div>
                             }
                         >
-                            {items.map((item: Item) => makeComponent(item))}
+                            {items.map((item: Item) => makeComponent(item, VIEW_ACTIONS, handleLayerAction))}
                         </SortableList>
                     </div>
                 </div>
@@ -196,3 +187,73 @@ export function Settings(props: ModuleSettingsProps<any>): React.ReactNode {
         </div>
     );
 }
+
+const LAYER_ACTIONS: LayersActionGroup[] = [
+    {
+        label: "View",
+        children: [
+            {
+                identifier: "view",
+                label: "Add View",
+            },
+        ],
+    },
+    {
+        label: "Layers",
+        children: [
+            {
+                label: "Surfaces",
+                children: [
+                    {
+                        identifier: "observed_surface",
+                        label: "Observed Surface",
+                    },
+                    {
+                        identifier: "statistical_surface",
+                        label: "Statistical Surface",
+                    },
+                    {
+                        identifier: "realization_surface",
+                        label: "Realization Surface",
+                    },
+                ],
+            },
+            {
+                label: "Others",
+                children: [
+                    {
+                        identifier: "realization_polygons",
+                        label: "Realization Polygons",
+                    },
+                    {
+                        identifier: "drilled_wellbores",
+                        label: "Drilled Wellbore Trajectories",
+                    },
+                    {
+                        identifier: "realization_grid",
+                        label: "Realization Grid",
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        label: "Shared Settings",
+        children: [
+            {
+                identifier: "ensemble",
+                label: "Ensemble",
+            },
+            {
+                identifier: "realization",
+                label: "Realization",
+            },
+            {
+                identifier: "surface_name",
+                label: "Surface Name",
+            },
+        ],
+    },
+];
+
+const VIEW_ACTIONS: LayersActionGroup[] = LAYER_ACTIONS.filter((group) => group.label !== "View");

@@ -1,6 +1,7 @@
 import { SortableListGroup } from "@lib/components/SortableList";
 
 import { EditNameComponent } from "./editNameComponent";
+import { LayersActionGroup, LayersActions } from "./layersActions";
 import { RemoveButtonComponent } from "./removeButtonComponent";
 import { makeComponent } from "./utils";
 import { VisibilityToggleComponent } from "./visibilityToggleComponent";
@@ -11,11 +12,28 @@ import { Group, Item } from "../interfaces";
 
 export type GroupComponentProps = {
     group: Group;
+    actions?: LayersActionGroup[];
+    onActionClick?: (actionIdentifier: string, group: Group) => void;
 };
 
 export function GroupComponent(props: GroupComponentProps): React.ReactNode {
     const children = usePublishSubscribeTopicValue(props.group.getGroupDelegate(), GroupBaseTopic.CHILDREN);
     const color = props.group.getGroupDelegate().getColor();
+
+    function handleActionClick(actionIdentifier: string) {
+        if (props.onActionClick) {
+            props.onActionClick(actionIdentifier, props.group);
+        }
+    }
+
+    function makeEndAdornment() {
+        const adorment: React.ReactNode[] = [];
+        if (props.actions) {
+            adorment.push(<LayersActions layersActionGroups={props.actions} onActionClick={handleActionClick} />);
+        }
+        adorment.push(<RemoveButtonComponent item={props.group} />);
+        return adorment;
+    }
 
     return (
         <SortableListGroup
@@ -36,7 +54,7 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
                 backgroundColor: color ?? undefined,
             }}
             startAdornment={<VisibilityToggleComponent item={props.group} />}
-            endAdornment={<RemoveButtonComponent item={props.group} />}
+            endAdornment={<>{makeEndAdornment()}</>}
             contentWhenEmpty={
                 <div className="flex !bg-white h-16 justify-center text-sm items-center gap-1">
                     Drag a layer inside to add it to this group.

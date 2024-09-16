@@ -24,7 +24,7 @@ export function SharedSettingComponent(props: SharedSettingComponentProps): Reac
             title={<span className="font-bold">{props.sharedSetting.getItemDelegate().getName()}</span>}
             startAdornment={<Link fontSize="inherit" />}
             endAdornment={<Actions sharedSetting={props.sharedSetting} />}
-            headerClassNames="!bg-slate-300"
+            headerClassNames="!bg-teal-200"
         >
             <SettingComponent
                 setting={props.sharedSetting.getWrappedSetting()}

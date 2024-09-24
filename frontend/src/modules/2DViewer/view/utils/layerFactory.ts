@@ -1,6 +1,6 @@
 import { PolygonData_api, SurfaceDef_api, WellboreTrajectory_api } from "@api";
-import { Layer } from "@deck.gl/core/typed";
-import { GeoJsonLayer } from "@deck.gl/layers/typed";
+import { Layer } from "@deck.gl/core";
+import { GeoJsonLayer } from "@deck.gl/layers";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
 import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 import { GridMappedProperty_trans, GridSurface_trans } from "@modules/3DViewer/view/queries/queryDataTransforms";
@@ -86,9 +86,6 @@ function createMapImageLayer(layerData: SurfaceDataPng, id: string, colorScale?:
         valueRange: [layerData.value_min, layerData.value_max],
         colorMapRange: [layerData.value_min, layerData.value_max],
         colorMapName: "Physics",
-        parameters: {
-            depthTest: false,
-        },
         colorMapFunction: makeColorMapFunction(colorScale),
     });
 }
@@ -110,7 +107,12 @@ function _calcBoundsForRotationAroundUpperLeftCorner(surfDef: SurfaceDef_api): [
     return bounds;
 }
 
-function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {
+type PropertiesType = {
+    name: string;
+    color: string;
+};
+
+function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer<PropertiesType> {
     const features: Record<string, unknown>[] = polygonsData.map((polygon) => {
         return polygonsToGeojson(polygon);
     });
@@ -119,7 +121,7 @@ function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJs
         unit: "m",
         features: features,
     };
-    return new GeoJsonLayer({
+    return new GeoJsonLayer<PropertiesType>({
         id: id,
         data: data,
         // opacity: 0.5,

@@ -1,8 +1,6 @@
 import React from "react";
 
 import { Viewport } from "@framework/components/EsvIntersection/esvIntersection";
-import { Point2D } from "@webviz/subsurface-viewer/dist/utils/BoundingBox2D";
-import { Point3D } from "@webviz/subsurface-viewer/dist/utils/BoundingBox3D";
 
 import { isEqual } from "lodash";
 
@@ -26,7 +24,7 @@ export type GlobalTopicDefinitions = {
     "global.syncValue.timeSeries": { vectorName: string };
     "global.syncValue.surface": { name: string; attribute: string };
     "global.syncValue.cameraPositionMap": {
-        target: Point2D | Point3D | undefined;
+        target: number[];
         zoom: number;
         rotationX: number;
         rotationOrbit: number;

@@ -140,6 +140,8 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         bounds = [prevBoundingBox.x[0], prevBoundingBox.y[0], prevBoundingBox.x[1], prevBoundingBox.y[1]];
     }
 
+    console.debug(bounds);
+
     const layers = viewerLayers.toSorted((a, b) => b.position - a.position).map((layer) => layer.layer);
 
     return (

@@ -9,7 +9,7 @@ import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { ColormapLayer, Grid3DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Rgb, parse } from "culori";
-import { Feature, FeatureCollection, GeoJsonObject } from "geojson";
+import { Feature, FeatureCollection } from "geojson";
 import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
 import { DrilledWellTrajectoriesLayer } from "../../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
@@ -123,7 +123,7 @@ function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJs
         filled: false,
         lineWidthMinPixels: 2,
         parameters: {
-            depthWriteEnabled: false,
+            depthTest: false,
         },
         pickable: true,
     });
@@ -185,6 +185,11 @@ export function makeWellsLayer(
         wellHeadStyle: { size: getWellHeadStyleWidth, color: getColor },
         pickable: true,
         ZIncreasingDownwards: false,
+        wellNameZoomThreshold: -2,
+        wellNameVisible: true,
+        widthMaxPixels: 15,
+        widthMinPixels: 10,
+        outline: false,
     });
 
     return wellsLayer;

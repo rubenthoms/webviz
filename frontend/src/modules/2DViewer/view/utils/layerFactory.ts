@@ -9,7 +9,7 @@ import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
 import { ColormapLayer, Grid3DLayer, MapLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Rgb, parse } from "culori";
-import { Feature } from "geojson";
+import { Feature, FeatureCollection, GeoJsonObject } from "geojson";
 import { SurfaceDataPng } from "src/api/models/SurfaceDataPng";
 
 import { DrilledWellTrajectoriesLayer } from "../../layers/implementations/layers/DrilledWellTrajectoriesLayer/DrilledWellTrajectoriesLayer";
@@ -107,35 +107,29 @@ function _calcBoundsForRotationAroundUpperLeftCorner(surfDef: SurfaceDef_api): [
     return bounds;
 }
 
-type PropertiesType = {
-    name: string;
-    color: string;
-};
-
-function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer<PropertiesType> {
-    const features: Record<string, unknown>[] = polygonsData.map((polygon) => {
+function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {
+    const features: Feature[] = polygonsData.map((polygon) => {
         return polygonsToGeojson(polygon);
     });
-    const data: Record<string, unknown> = {
+    const data: FeatureCollection = {
         type: "FeatureCollection",
-        unit: "m",
         features: features,
     };
-    return new GeoJsonLayer<PropertiesType>({
+
+    return new GeoJsonLayer({
         id: id,
         data: data,
         // opacity: 0.5,
         filled: false,
         lineWidthMinPixels: 2,
         parameters: {
-            depthTest: false,
+            depthWriteEnabled: false,
         },
-
         pickable: true,
     });
 }
-function polygonsToGeojson(polygons: PolygonData_api): Record<string, unknown> {
-    const data: Record<string, unknown> = {
+function polygonsToGeojson(polygons: PolygonData_api): Feature {
+    const data: Feature = {
         type: "Feature",
         geometry: {
             type: "Polygon",

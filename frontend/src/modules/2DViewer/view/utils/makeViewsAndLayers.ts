@@ -1,4 +1,4 @@
-import { Layer as DeckGlLayer } from "@deck.gl/core/typed";
+import { Layer as DeckGlLayer } from "@deck.gl/core";
 import { ColorScale } from "@modules/2DViewer/layers/ColorScale";
 import { View } from "@modules/2DViewer/layers/View";
 import {

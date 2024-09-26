@@ -73,7 +73,6 @@ function createMapFloatLayer(layerData: SurfaceDataFloat_trans, id: string): Map
         parameters: {
             depthTest: false,
         },
-        depthTest: false,
     });
 }
 
@@ -185,11 +184,12 @@ export function makeWellsLayer(
         wellHeadStyle: { size: getWellHeadStyleWidth, color: getColor },
         pickable: true,
         ZIncreasingDownwards: false,
-        wellNameZoomThreshold: -2,
+        wellNameZoomThreshold: -3,
         wellNameVisible: true,
-        widthMaxPixels: 15,
-        widthMinPixels: 10,
+        widthMaxPixels: 3,
+        widthMinPixels: 3,
         outline: false,
+        depthTest: false,
     });
 
     return wellsLayer;
@@ -209,7 +209,7 @@ export function wellTrajectoryToGeojson(
     };
 
     let color = [150, 150, 150];
-    let lineWidth = 2;
+    let lineWidth = 5;
     let wellHeadSize = 1;
     if (wellTrajectory.wellboreUuid === selectedWellboreUuid) {
         color = [255, 0, 0];

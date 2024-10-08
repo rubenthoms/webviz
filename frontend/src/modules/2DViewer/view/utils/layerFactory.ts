@@ -169,7 +169,7 @@ export function makeWellsLayer(
         if (object.properties && "color" in object.properties) {
             return object.properties.color as [number, number, number, number];
         }
-        return [50, 50, 50, 100];
+        return [0, 0, 0, 255];
     }
 
     const wellsLayer = new WellsLayer({
@@ -186,10 +186,10 @@ export function makeWellsLayer(
         ZIncreasingDownwards: false,
         wellNameZoomThreshold: -3,
         wellNameVisible: true,
-        widthMaxPixels: 3,
-        widthMinPixels: 3,
+        lineWidthMinPixels: 150,
         outline: false,
         depthTest: false,
+        widthUnits: "meters",
     });
 
     return wellsLayer;
@@ -208,7 +208,7 @@ export function wellTrajectoryToGeojson(
         coordinates: zipCoords(wellTrajectory.eastingArr, wellTrajectory.northingArr, wellTrajectory.tvdMslArr),
     };
 
-    let color = [150, 150, 150];
+    let color = [0, 0, 0];
     let lineWidth = 5;
     let wellHeadSize = 1;
     if (wellTrajectory.wellboreUuid === selectedWellboreUuid) {

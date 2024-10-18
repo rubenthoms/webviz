@@ -20,6 +20,7 @@ import { RealizationSurfaceLayer } from "../../layers/implementations/layers/Rea
 import { StatisticalSurfaceLayer } from "../../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Layer as LayerInterface } from "../../layers/interfaces";
 import { AdvancedWellsLayer } from "../customDeckGlLayers/AdvancedWellsLayer";
+import { FlowLayer } from "../customDeckGlLayers/FlowLayer";
 import { WellBorePickLayerData, WellborePicksLayer } from "../customDeckGlLayers/WellborePicksLayer";
 
 export function makeLayer(layer: LayerInterface<any, any>, colorScale?: ColorScaleWithName): Layer | null {
@@ -164,6 +165,21 @@ function _calcBoundsForRotationAroundUpperLeftCorner(surfDef: SurfaceDef_api): [
     const bounds: [number, number, number, number] = [tLeft, tBottom, tRight, tTop];
 
     return bounds;
+}
+
+function createFlowLayer(flowData: SurfaceDataPng_api, id: string): FlowLayer {
+    return new FlowLayer({
+        id: id,
+        image: `data:image/png;base64,${flowData.png_image_base64}`,
+        bounds: _calcBoundsForRotationAroundUpperLeftCorner(flowData.surface_def),
+        imageUnscale: [],
+        numParticles: 1000,
+        maxAge: 60,
+        speedFactor: 1,
+        color: [0, 0, 0, 255],
+        animate: true,
+        width: 1,
+    });
 }
 
 function createPolygonsLayer(polygonsData: PolygonData_api[], id: string): GeoJsonLayer {

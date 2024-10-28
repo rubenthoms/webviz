@@ -22,13 +22,11 @@ export enum SettingsContextLoadingState {
 
 export enum SettingsContextDelegateTopic {
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
-    REFETCH_REQUIRED = "REFETCH_REQUIRED",
     LOADING_STATE = "LOADING_STATE_CHANGED",
 }
 
 export type SettingsContextDelegatePayloads = {
     [SettingsContextDelegateTopic.SETTINGS_CHANGED]: void;
-    [SettingsContextDelegateTopic.REFETCH_REQUIRED]: void;
     [SettingsContextDelegateTopic.LOADING_STATE]: boolean;
 };
 
@@ -184,9 +182,6 @@ export class SettingsContextDelegate<TSettings extends Settings, TKey extends ke
     makeSnapshotGetter<T extends SettingsContextDelegateTopic>(topic: T): () => SettingsContextDelegatePayloads[T] {
         const snapshotGetter = (): any => {
             if (topic === SettingsContextDelegateTopic.SETTINGS_CHANGED) {
-                return;
-            }
-            if (topic === SettingsContextDelegateTopic.REFETCH_REQUIRED) {
                 return;
             }
             if (topic === SettingsContextDelegateTopic.LOADING_STATE) {

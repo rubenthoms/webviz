@@ -154,11 +154,19 @@ export class TreeData {
         return result;
     }
 
+    static isCharacterALetter(char: string): boolean {
+        return char.toLowerCase() != char.toUpperCase();
+    }
+
     makeExpressionCaseInsensitive(expression: string): string {
         let modifiedExpression = "";
         for (let i = 0; i < expression.length; i++) {
             const char = expression.substr(i, 1);
-            modifiedExpression += `[${char.toLowerCase()}${char.toUpperCase()}]`;
+            if (TreeData.isCharacterALetter(char)) {
+                modifiedExpression += `[${char.toLowerCase()}${char.toUpperCase()}]`;
+            } else {
+                modifiedExpression += char;
+            }
         }
         return modifiedExpression;
     }
@@ -279,12 +287,17 @@ export class TreeData {
         matchType = MatchType.openMatch
     ): { nodePaths: string[]; metaData: TreeDataNodeMetaData[][] } {
         let nodePathString = "";
-        for (let i = 0; i < nodePath.length; i++) {
+        for (let i = 0; i < nodePath.length - 1; i++) {
             if (i > 0) {
                 nodePathString += this._delimiter;
             }
             nodePathString += `\\{(\\d+)\\}${this.adjustNodeName(nodePath[i])}`;
         }
+
+        nodePathString += `\\{(\\d+)\\}${this.adjustNodeName(
+            this.makeExpressionCaseInsensitive(nodePath[nodePath.length - 1])
+        )}`;
+
         const re =
             matchType === MatchType.fullMatch
                 ? RegExp(`"(${nodePathString})"`, "g")

@@ -1,7 +1,9 @@
 import { CompositeLayer, CompositeLayerProps, FilterContext, Layer, UpdateParameters } from "@deck.gl/core";
-import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
+import { GeoJsonLayer, TextLayer, _TextBackgroundLayer } from "@deck.gl/layers";
 
 import type { Feature, FeatureCollection } from "geojson";
+
+import { BoundingBox2D } from "./BoundingBox";
 
 export type WellBorePickLayerData = {
     easting: number;
@@ -16,6 +18,8 @@ type TextLayerData = {
     coordinates: [number, number, number];
     name: string;
 };
+
+function makeBoundingBoxFromLabel(label: TextLayerData): BoundingBox2D {}
 
 export type WellBorePicksLayerProps = {
     id: string;
@@ -69,7 +73,21 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
     shouldUpdateState(
         params: UpdateParameters<Layer<WellBorePicksLayerProps & Required<CompositeLayerProps>>>
     ): boolean {
-        // console.debug(params.context.viewport.zoom);
+        const textLayer = params.context.layerManager.getLayers({ layerIds: [`${this.id}-text`] })[0] as TextLayer;
+        if (!textLayer) {
+            return false;
+        }
+        const backgroundLayer = textLayer.context.layerManager.getLayers({
+            layerIds: [`${textLayer.id}-background`],
+        })[0] as _TextBackgroundLayer;
+        if (!backgroundLayer) {
+            return false;
+        }
+        const getBoundingRect = backgroundLayer.props.getBoundingRect;
+
+        if (typeof getBoundingRect !== "function") {
+            return false;
+        }
         return false;
     }
 
@@ -113,14 +131,17 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
                         fontSize: fontSize * 2,
                         sdf: true,
                     },
+                    lineHeight: 1,
                     outlineColor: [0, 0, 0],
+                    background: true,
+                    getBackgroundColor: [0, 0, 0, 255],
                     outlineWidth: 2,
                     getSize: 12,
                     sdf: true,
                     sizeScale: fontSize,
                     sizeUnits: "meters",
-                    sizeMinPixels: sizeMinPixels,
-                    sizeMaxPixels: sizeMaxPixels,
+                    // sizeMinPixels: sizeMinPixels,
+                    // sizeMaxPixels: sizeMaxPixels,
                     getAlignmentBaseline: "top",
                     getTextAnchor: "middle",
                     getPosition: (d: TextLayerData) => d.coordinates,

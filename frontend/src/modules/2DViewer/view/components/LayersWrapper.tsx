@@ -1,6 +1,5 @@
 import React from "react";
 
-import { View as DeckGlView } from "@deck.gl/core";
 import { ViewContext } from "@framework/ModuleContext";
 import { useViewStatusWriter } from "@framework/StatusWriter";
 import { PendingWrapper } from "@lib/components/PendingWrapper";
@@ -16,7 +15,7 @@ import { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContai
 import { ViewportType } from "@webviz/subsurface-viewer";
 import { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 
-import { ReadoutWrapper } from "./ReadoutWrapper";
+import { ReadoutWrapper, ViewportAnnotation } from "./ReadoutWrapper";
 
 import { PlaceholderLayer } from "../customDeckGlLayers/PlaceholderLayer";
 import { DeckGlLayerWithPosition, recursivelyMakeViewsAndLayers } from "../utils/makeViewsAndLayers";
@@ -38,7 +37,7 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
 
     const viewports: ViewportType[] = [];
     const viewerLayers: DeckGlLayerWithPosition[] = [];
-    const viewportAnnotations: React.ReactNode[] = [];
+    const viewportAnnotations: ViewportAnnotation[] = [];
     const globalColorScales: ColorScaleWithId[] = [];
 
     const views: ViewsType = {
@@ -76,26 +75,27 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
         });
         viewerLayers.push(...view.layers);
 
-        viewportAnnotations.push(
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            /* @ts-expect-error */
-            <DeckGlView key={view.id} id={view.id}>
-                <ColorLegendsContainer
-                    colorScales={[...view.colorScales, ...globalColorScales]}
-                    height={((mainDivSize.height / 3) * 2) / numCols - 20}
-                    position="left"
-                />
-                <div className="font-bold text-lg flex gap-2 justify-center items-center">
-                    <div className="flex gap-2 items-center bg-white p-2 backdrop-blur bg-opacity-50 rounded">
-                        <div
-                            className="rounded-full h-3 w-3 border border-white"
-                            style={{ backgroundColor: view.color ?? undefined }}
-                        />
-                        <div className="">{view.name}</div>
+        viewportAnnotations.push({
+            viewportId: view.id,
+            content: (
+                <>
+                    <ColorLegendsContainer
+                        colorScales={[...view.colorScales, ...globalColorScales]}
+                        height={((mainDivSize.height / 3) * 2) / numCols - 20}
+                        position="left"
+                    />
+                    <div className="font-bold text-lg flex gap-2 justify-center items-center">
+                        <div className="flex gap-2 items-center bg-white p-2 backdrop-blur bg-opacity-50 rounded">
+                            <div
+                                className="rounded-full h-3 w-3 border border-white"
+                                style={{ backgroundColor: view.color ?? undefined }}
+                            />
+                            <div className="">{view.name}</div>
+                        </div>
                     </div>
-                </div>
-            </DeckGlView>
-        );
+                </>
+            ),
+        });
     }
 
     if (viewsAndLayers.boundingBox !== null) {

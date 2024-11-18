@@ -50,11 +50,11 @@ export function ReadoutWrapper(props: ReadooutWrapperProps): React.ReactNode {
         setTriggerHomeCounter((prev) => prev + 1);
     }
 
-    function handleMouseEvent(event: MapMouseEvent): void {
+    const handleMouseEvent = React.useCallback(function handleMouseEvent(event: MapMouseEvent): void {
         if (event.type === "hover") {
             assembler.current?.getMultiViewPickingInfo(event);
         }
-    }
+    }, []);
 
     const currentCursorWorldCoordinates: [number, number] | null = pickingInfo[activeViewPortId]?.coordinates
         ? [pickingInfo[activeViewPortId].coordinates?.x ?? 0, pickingInfo[activeViewPortId].coordinates?.y ?? 0]

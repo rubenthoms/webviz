@@ -20,7 +20,8 @@ import { RealizationSurfaceLayer } from "../../layers/implementations/layers/Rea
 import { StatisticalSurfaceLayer } from "../../layers/implementations/layers/StatisticalSurfaceLayer/StatisticalSurfaceLayer";
 import { Layer as LayerInterface } from "../../layers/interfaces";
 import { AdvancedWellsLayer } from "../customDeckGlLayers/AdvancedWellsLayer";
-import { WellBorePickLayerData, WellborePicksLayer } from "../customDeckGlLayers/WellborePicksLayer";
+import { LabelLayer } from "../customDeckGlLayers/LabelLayer";
+import { WellBorePickLayerData } from "../customDeckGlLayers/WellborePicksLayer";
 
 export function makeLayer(layer: LayerInterface<any, any>, colorScale?: ColorScaleWithName): Layer | null {
     const data = layer.getLayerDelegate().getData();
@@ -82,7 +83,7 @@ export function makeLayer(layer: LayerInterface<any, any>, colorScale?: ColorSca
     }
     return null;
 }
-function createWellPicksLayer(wellPicksDataApi: WellborePick_api[], id: string): WellborePicksLayer {
+function createWellPicksLayer(wellPicksDataApi: WellborePick_api[], id: string): LabelLayer {
     const wellPicksData: WellBorePickLayerData[] = wellPicksDataApi.map((wellPick) => {
         return {
             easting: wellPick.easting,
@@ -94,10 +95,20 @@ function createWellPicksLayer(wellPicksDataApi: WellborePick_api[], id: string):
             slotName: "",
         };
     });
+    /*
     return new WellborePicksLayer({
         id: id,
         data: wellPicksData,
         pickable: true,
+    });*/
+    return new LabelLayer({
+        id: id,
+        data: wellPicksData.map((wellPick) => {
+            return {
+                coordinates: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
+                name: wellPick.wellBoreUwi,
+            };
+        }),
     });
 }
 

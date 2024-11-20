@@ -1,13 +1,7 @@
 import React from "react";
-import Plot from "react-plotly.js";
 
-import { ModuleViewProps } from "@framework/Module";
 import { useElementSize } from "@lib/hooks/useElementSize";
-import { ColorScaleType } from "@lib/utils/ColorScale";
-
-import { PlotData } from "plotly.js";
-
-import { Interfaces } from "./interfaces";
+import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
 
 const countryData = [
     "Belarus",
@@ -402,46 +396,86 @@ for (let i = 0; i < countryData.length; i += 2) {
     alcConsumption.push(countryData[i + 1] as number);
 }
 
-export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
-    const type = props.viewContext.useSettingsToViewInterfaceValue("type");
-    const gradientType = props.viewContext.useSettingsToViewInterfaceValue("gradientType");
-    const min = props.viewContext.useSettingsToViewInterfaceValue("min");
-    const max = props.viewContext.useSettingsToViewInterfaceValue("max");
-    const divMidPoint = props.viewContext.useSettingsToViewInterfaceValue("divMidPoint");
+type Label = Entity & {
+    name: string;
+    width: number;
+    height: number;
+};
 
+export function View(): React.ReactNode {
     const ref = React.useRef<HTMLDivElement>(null);
+    const [labels, setLabels] = React.useState<Label[]>([]);
 
     const size = useElementSize(ref);
 
-    const colorScale =
-        type === ColorScaleType.Continuous
-            ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType,
-              })
-            : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType,
-              });
+    function autoGenerateSetup(): void {
+        const newLabels: Label[] = [];
 
-    colorScale.setRangeAndMidPoint(min, max, divMidPoint);
+        const numPoints = 50;
 
-    const data: Partial<PlotData & { zmid: number }> = {
-        ...colorScale.getAsPlotlyColorScaleMapObject(),
-        type: "choropleth",
-        locationmode: "country names",
-        locations: countries,
-        z: alcConsumption,
-    };
+        for (let i = 0; i < numPoints; i++) {
+            const point: [number, number] = [Math.random() * size.width, Math.random() * size.height];
 
-    const layout = {
-        mapbox: { style: "dark", center: { lon: -110, lat: 50 }, zoom: 0.8 },
-        width: size.width,
-        height: size.height,
-        margin: { t: 0, b: 0 },
-    };
+            newLabels.push({
+                name: `Label ${i}`,
+                coordinates: point,
+                anchorCoordinates: point,
+                width: 100,
+                height: 24,
+            });
+        }
+
+        setLabels(newLabels);
+    }
+
+    function repositionLabels() {
+        const forceDirectedEntityPositioning = new ForceDirectedEntityPositioning(labels, {
+            springConstant: 0.00001,
+            chargeConstant: 50,
+            springRestLength: 1,
+            tolerance: 0.5,
+        });
+
+        const adjustedLabels = forceDirectedEntityPositioning.run();
+
+        setLabels(adjustedLabels);
+    }
 
     return (
-        <div ref={ref} className="w-full h-full">
-            <Plot data={[data]} layout={layout} />
+        <div ref={ref} className="w-full h-full relative">
+            <div className="absolute top-0 right-0 p-4 flex flex-col gap-1">
+                <button onClick={autoGenerateSetup}>Auto Generate</button>
+                <button onClick={repositionLabels}>Reposition Labels</button>
+            </div>
+            <svg className="w-full h-full">
+                {labels.map((label) => (
+                    <g key={label.name}>
+                        <circle
+                            key={`${label.name}-anchor`}
+                            cx={label.anchorCoordinates[0]}
+                            cy={label.anchorCoordinates[1]}
+                            r={5}
+                            fill="red"
+                        />
+                        <line
+                            x1={label.anchorCoordinates[0]}
+                            y1={label.anchorCoordinates[1]}
+                            x2={label.coordinates[0]}
+                            y2={label.coordinates[1]}
+                            stroke="blue"
+                        />
+                        <rect
+                            key={label.name}
+                            x={label.coordinates[0] - label.width / 2}
+                            y={label.coordinates[1] - label.height / 2}
+                            width={label.width}
+                            height={label.height}
+                            fill="blue"
+                            fillOpacity={0.5}
+                        />
+                    </g>
+                ))}
+            </svg>
         </div>
     );
 }

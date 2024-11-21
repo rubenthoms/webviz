@@ -1,9 +1,10 @@
 import { cloneDeep } from "lodash";
 
-export type Entity = {
+export interface Entity {
     coordinates: [number, number];
     anchorCoordinates: [number, number];
-};
+    chargeMagnitude?: number; // The charge magnitude of the entity. The higher the charge, the higher the repulsion. If not set, it is assumed to be 1.
+}
 
 export type ForceDirectedEntityPositioningOptions = {
     springRestLength?: number;
@@ -80,7 +81,7 @@ export class ForceDirectedEntityPositioning<TEntity extends Entity> {
             const [fAx, fAy] = this.calcAttractionForce(coordinates, anchorCoordinates);
             totalForce = [totalForce[0] + fAx, totalForce[1] + fAy];
 
-            // Next, calculate the repulsion force between the entity and all other entities and their anchors
+            // Next, calculate the repulsion forces between the entity and all other entities and their anchors
             for (let j = 0; j < this._adjustedEntities.length; j++) {
                 if (i === j) {
                     continue;
@@ -91,7 +92,7 @@ export class ForceDirectedEntityPositioning<TEntity extends Entity> {
                 const [fRx, fRy] = this.calcRepulsionForce(
                     coordinates,
                     otherEntity.coordinates,
-                    this._options.chargeConstant
+                    this._options.chargeConstant * (entity.chargeMagnitude ?? 1) * (otherEntity.chargeMagnitude ?? 1)
                 );
                 totalForce = [totalForce[0] + fRx, totalForce[1] + fRy];
 
@@ -115,34 +116,44 @@ export class ForceDirectedEntityPositioning<TEntity extends Entity> {
     }
 
     private calcAttractionForce(point: [number, number], otherPoint: [number, number]): [number, number] {
-        const d = Math.sqrt((point[0] - otherPoint[0]) ** 2 + (point[1] - otherPoint[1]) ** 2);
-        const dx = Math.sqrt((point[0] - otherPoint[0]) ** 2);
-        const dy = Math.sqrt((point[1] - otherPoint[1]) ** 2);
+        let dx = otherPoint[0] - point[0];
+        let dy = otherPoint[1] - point[1];
 
-        let directionX = (otherPoint[0] - point[0]) / dx;
-        let directionY = (otherPoint[1] - point[1]) / dy;
-        if (Number.isNaN(directionX)) {
-            directionX = 0;
-        }
-        if (Number.isNaN(directionY)) {
-            directionY = 0;
+        if (dx === 0 && dy === 0) {
+            // If the points are at the same location, we add a small random offset to avoid division by zero.
+            dx = 0.01;
+            dy = 0.01;
         }
 
+        const d = Math.sqrt(dx ** 2 + dy ** 2);
+
+        // Hooke's law: F = k * x
         const force = this._options.springConstant * (d - this._options.springRestLength);
 
-        return [force * directionX, force * directionY];
+        // The force vector is co-linear to the spring given by the line between the two points.
+        // Hence, we can use the similarity theorems for triangles to calculate the force components.
+        // Moreover, we get the directions of the forces by the difference between the two points.
+        return [(force * dx) / d, (force * dy) / d];
     }
 
-    private calcRepulsionForce(point: [number, number], otherPoint: [number, number], beta = 10): [number, number] {
-        let d = Math.sqrt((point[0] - otherPoint[0]) ** 2 + (point[1] - otherPoint[1]) ** 2);
-        if (d === 0) {
-            d = 0.0001;
-        }
-        const directionX = (point[0] - otherPoint[0]) / d;
-        const directionY = (point[1] - otherPoint[1]) / d;
+    private calcRepulsionForce(point: [number, number], otherPoint: [number, number], beta: number): [number, number] {
+        let dx = point[0] - otherPoint[0];
+        let dy = point[1] - otherPoint[1];
 
+        if (dx === 0 && dy === 0) {
+            // If the points are at the same location, we add a small random offset to avoid division by zero.
+            dx = 0.01;
+            dy = 0.01;
+        }
+
+        const d = Math.sqrt(dx ** 2 + dy ** 2);
+
+        // Coulomb's law: F = (|Q * q|) / (4 * pi * eps0) * 1 / d^2 = beta / d^2.
         const force = beta / d ** 2;
 
-        return [force * directionX, force * directionY];
+        // The force vector is co-linear to the line between the two points.
+        // Hence, we can use the similarity theorems for triangles to calculate the force components.
+        // Moreover, we get the directions of the forces by the difference between the two points.
+        return [(force * dx) / d, (force * dy) / d];
     }
 }

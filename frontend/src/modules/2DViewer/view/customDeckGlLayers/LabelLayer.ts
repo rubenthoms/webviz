@@ -1,6 +1,7 @@
-import { CompositeLayer, FilterContext } from "@deck.gl/core";
+import { CompositeLayer, FilterContext, GetPickingInfoParams, Layer, PickingInfo } from "@deck.gl/core";
 import { LineLayer, TextLayer } from "@deck.gl/layers";
-import { ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
+import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
+import { EntityGroup, ProximityGrouping } from "@lib/utils/ProximityGrouping";
 import { PointsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 type LabelData = {
@@ -8,12 +9,10 @@ type LabelData = {
     name: string;
 };
 
-type IntermediateLabelData = {
+interface IntermediateLabelData extends Entity {
     name: string;
     otherNames: string[];
-    coordinates: [number, number];
-    anchorCoordinates: [number, number];
-};
+}
 
 type ExtendedLabelData = {
     name: string;
@@ -35,11 +34,16 @@ type BoundingBox2D = {
     bottomRight: number[];
 };
 
+export type LabelPickingInfo = PickingInfo & {
+    additionalText?: string;
+};
+
 export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     static layerName: string = "LabelLayer";
 
     private _labelBoundingBoxes: (BoundingBox2D | null)[] = [];
     private _adjustedData: ExtendedLabelData[] = [];
+    private _labelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
 
     estimateLabelBoundingBoxes(): void {
         const viewport = this.context.viewport;
@@ -100,6 +104,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     coordinates: [xWorld, yWorld],
                     anchorCoordinates: [xWorld, yWorld],
                     otherNames: [],
+                    chargeMagnitude: label.name.length,
                 });
             }
         }
@@ -107,12 +112,11 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         return labelGroups;
     }
 
-    reduceCollidingLabels(): ExtendedLabelData[] {
-        const labels = this.collectLabelGroups();
+    reduceCollidingLabels(labels: IntermediateLabelData[]): ExtendedLabelData[] {
         const forceDirectedEntityPositioning = new ForceDirectedEntityPositioning(labels, {
-            springRestLength: 25,
+            springRestLength: 10,
             springConstant: 0.2,
-            chargeConstant: 150,
+            chargeConstant: 3,
             tolerance: 0.1,
             maxIterations: 500,
         });
@@ -128,20 +132,100 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     }
 
     updateState(): void {
-        this._adjustedData = this.reduceCollidingLabels();
+        const labels = this.collectLabelGroups();
+
+        let zoomLevel = 1;
+        this._labelGroups.clear();
+        const grouping = new ProximityGrouping(labels);
+
+        for (let i = 0; i < 5; i++) {
+            this._labelGroups.set(
+                zoomLevel,
+                grouping
+                    .groupEntities(100 / 2 ** zoomLevel)
+                    .map((el) => ({ ...el, name: el.entities?.length.toString() ?? el.name }))
+            );
+            zoomLevel -= 1;
+        }
+        this._adjustedData = this.reduceCollidingLabels(labels);
     }
 
     filterSubLayer(context: FilterContext): boolean {
-        if (context.layer.id.includes("text")) {
-            return context.viewport.zoom > -2;
+        if (context.layer.id === `${this.props.id}-text`) {
+            return context.viewport.zoom > 1;
+        }
+        if (context.layer.id === `${this.props.id}-lines`) {
+            return context.viewport.zoom > 1;
+        }
+
+        const reg = /(text|points)-zoom-([-\d\\.]+)/;
+        const match = context.layer.id.match(reg);
+
+        if (match) {
+            const zoom = parseFloat(match[2]);
+            const zoomLevels = Array.from(this._labelGroups.keys());
+            const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
+                Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
+            );
+            return closestZoomLevel === zoom && context.viewport.zoom <= 1;
         }
 
         return true;
     }
 
+    getPickingInfo(params: GetPickingInfoParams): LabelPickingInfo {
+        const info = super.getPickingInfo(params) as LabelPickingInfo;
+        const { index, sourceLayer } = info;
+        if (index >= 0 && sourceLayer) {
+            info.object.name = `${this._adjustedData[index].name}\n${this._adjustedData[index].otherNames.join("\n")}`;
+        }
+        return info;
+    }
+
     renderLayers() {
         const sizeMinPixels = 14;
         const sizeMaxPixels = 14;
+
+        const zoomLayers: Layer<any>[] = [];
+
+        for (const [zoomLevel, labelGroups] of this._labelGroups) {
+            zoomLayers.push(
+                new PointsLayer(
+                    this.getSubLayerProps({
+                        id: `points-zoom-${zoomLevel}`,
+                        pointsData: labelGroups.flatMap((d) => [...d.coordinates, 0]),
+                        pointRadius: 100 / 2 ** zoomLevel,
+                        color: [255, 255, 255, 30],
+                        radiusUnits: "meters",
+                    })
+                )
+            );
+            zoomLayers.push(
+                new TextLayer(
+                    this.getSubLayerProps({
+                        id: `text-zoom-${zoomLevel}`,
+                        data: labelGroups,
+                        getPosition: (d: ExtendedLabelData) => d.coordinates,
+                        getText: (d: ExtendedLabelData) => `${d.name}`,
+                        getSize: 16,
+                        getColor: [255, 255, 255],
+                        getAngle: 0,
+                        getPixelOffset: [0, 0],
+                        fontWeight: 800,
+                        getTextAnchor: "middle",
+                        getAlignmentBaseline: "center",
+                        pickable: true,
+                        sizeScale: Math.abs(zoomLevel - 3) ** 2,
+                        sizeUnits: "meters",
+                        sizeMinPixels: sizeMinPixels,
+                        sizeMaxPixels: 24,
+                        fontSettings: {
+                            sdf: true,
+                        },
+                    })
+                )
+            );
+        }
 
         return [
             new PointsLayer(
@@ -164,8 +248,13 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     getColor: [0, 0, 0],
                     getLineWidth: 1,
                     sizeUnits: "pixels",
-                    sizeMinPixels: sizeMinPixels,
-                    sizeMaxPixels: sizeMaxPixels,
+                    collisionGroup: "label",
+                    collisionTestProps: {
+                        widthMaxPixels: 0.001,
+                        widthMinPixels: 0.001,
+                    },
+                    collisionEnabled: true,
+                    autoHighlight: true,
                 })
             ),
             new TextLayer(
@@ -177,8 +266,6 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                         `${d.name} ${d.otherNames.length > 0 ? `(+${d.otherNames.length})` : ""}`,
                     getSize: 12,
                     getColor: [255, 255, 255],
-                    outlineColor: [0, 0, 0],
-                    outlineWidth: 2,
                     getAngle: 0,
                     getPixelOffset: [0, 0],
                     fontWeight: 800,
@@ -187,14 +274,18 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     fontSettings: {
                         fontSize: 16,
                     },
+                    pickable: true,
                     sizeScale: 1,
                     sizeUnits: "meters",
                     sizeMinPixels: sizeMinPixels,
                     sizeMaxPixels: sizeMaxPixels,
                     getBackgroundColor: [0, 0, 0, 255],
                     background: true,
+                    autoHighlight: true,
+                    highlightColor: [0, 0, 255, 255],
                 })
             ),
+            ...zoomLayers,
             /*
             new PolygonLayer(
                 this.getSubLayerProps({

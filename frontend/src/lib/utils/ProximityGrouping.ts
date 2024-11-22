@@ -4,7 +4,8 @@ export interface Entity {
 
 export type EntityGroup<TEntity extends Entity> = Entity &
     TEntity & {
-        entities?: TEntity[];
+        entities: TEntity[];
+        radius: number;
     };
 
 export class ProximityGrouping<TEntity extends Entity> {
@@ -34,6 +35,7 @@ export class ProximityGrouping<TEntity extends Entity> {
                 group = {
                     ...entity,
                     coordinates: entity.coordinates,
+                    radius: 0,
                     entities: [],
                 };
 
@@ -45,6 +47,22 @@ export class ProximityGrouping<TEntity extends Entity> {
                     (group.coordinates[1] * (group.entities?.length ?? 1) + entity.coordinates[1]) /
                         ((group.entities?.length ?? 1) + 1),
                 ];
+                group.radius = Math.max(
+                    group.radius,
+                    Math.sqrt(
+                        group.entities.reduce(
+                            (acc, entity) =>
+                                Math.max(
+                                    acc,
+                                    Math.sqrt(
+                                        (entity.coordinates[0] - group!.coordinates[0]) ** 2 +
+                                            (entity.coordinates[1] - group!.coordinates[1]) ** 2
+                                    )
+                                ),
+                            0
+                        )
+                    )
+                );
             }
 
             group.entities?.push(entity);

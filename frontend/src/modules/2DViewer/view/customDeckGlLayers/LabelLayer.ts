@@ -185,7 +185,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
             const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
                 Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
             );
-            return closestZoomLevel === zoom && context.viewport.zoom <= 2;
+            return closestZoomLevel === zoom && context.viewport.zoom <= 2 && context.viewport.zoom > -4;
         }
 
         const reg2 = /text-single-zoom-([-\d\\.]+)/;

@@ -52,6 +52,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     private _labelBoundingBoxes: (BoundingBox2D | null)[] = [];
     private _adjustedData: ExtendedLabelData[] = [];
     private _labelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
+    private _singleLabelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
 
     estimateLabelBoundingBoxes(): void {
         const viewport = this.context.viewport;
@@ -151,11 +152,16 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         const grouping = new ProximityGrouping(labels);
 
         for (let i = 0; i < 5; i++) {
+            const result = grouping.groupEntities(100 / 2 ** zoomLevel);
+            const singleLabelGroups = result.filter((el) => el.entities.length === 1);
+            const multiLabelGroups = result.filter((el) => el.entities.length > 1);
             this._labelGroups.set(
                 zoomLevel,
-                grouping
-                    .groupEntities(100 / 2 ** zoomLevel)
-                    .map((el) => ({ ...el, name: el.entities?.length.toString() ?? el.name }))
+                multiLabelGroups.map((el) => ({ ...el, name: el.entities.length.toString() }))
+            );
+            this._singleLabelGroups.set(
+                zoomLevel,
+                singleLabelGroups.map((el) => ({ ...el, name: el.entities[0].name }))
             );
             zoomLevel -= 1;
         }
@@ -164,10 +170,10 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
 
     filterSubLayer(context: FilterContext): boolean {
         if (context.layer.id === `${this.props.id}-text`) {
-            return context.viewport.zoom > 1;
+            return context.viewport.zoom > 2;
         }
         if (context.layer.id === `${this.props.id}-lines`) {
-            return context.viewport.zoom > 1;
+            return context.viewport.zoom > 2;
         }
 
         const reg = /(text|points)-zoom-([-\d\\.]+)/;
@@ -179,7 +185,19 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
             const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
                 Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
             );
-            return closestZoomLevel === zoom && context.viewport.zoom <= 1;
+            return closestZoomLevel === zoom && context.viewport.zoom <= 2;
+        }
+
+        const reg2 = /text-single-zoom-([-\d\\.]+)/;
+        const match2 = context.layer.id.match(reg2);
+
+        if (match2) {
+            const zoom = parseFloat(match2[1]);
+            const zoomLevels = Array.from(this._singleLabelGroups.keys());
+            const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
+                Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
+            );
+            return closestZoomLevel === zoom && context.viewport.zoom <= 2 && context.viewport.zoom > -4;
         }
 
         return true;
@@ -231,6 +249,33 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                         sizeUnits: "meters",
                         sizeMinPixels: sizeMinPixels,
                         sizeMaxPixels: 24,
+                        fontSettings: {
+                            sdf: true,
+                        },
+                    })
+                )
+            );
+        }
+        for (const [zoomLevel, labelGroups] of this._singleLabelGroups) {
+            zoomLayers.push(
+                new TextLayer(
+                    this.getSubLayerProps({
+                        id: `text-single-zoom-${zoomLevel}`,
+                        data: labelGroups,
+                        getPosition: (d: ExtendedLabelData) => d.coordinates,
+                        getText: (d: ExtendedLabelData) => `${d.name}`,
+                        getSize: 16,
+                        getColor: [255, 255, 255],
+                        getAngle: 0,
+                        getPixelOffset: [0, 0],
+                        fontWeight: 800,
+                        getTextAnchor: "middle",
+                        getAlignmentBaseline: "center",
+                        pickable: true,
+                        sizeScale: Math.abs(zoomLevel - 3) ** 2,
+                        sizeUnits: "meters",
+                        sizeMinPixels: sizeMinPixels,
+                        sizeMaxPixels: 16,
                         fontSettings: {
                             sdf: true,
                         },

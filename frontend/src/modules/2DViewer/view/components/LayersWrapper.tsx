@@ -2,20 +2,17 @@ import React from "react";
 
 import { ViewContext } from "@framework/ModuleContext";
 import { useViewStatusWriter } from "@framework/StatusWriter";
-import { PendingWrapper } from "@lib/components/PendingWrapper";
-import { useElementSize } from "@lib/hooks/useElementSize";
 import { Rect2D, outerRectContainsInnerRect } from "@lib/utils/geometry";
 import { Interfaces } from "@modules/2DViewer/interfaces";
 import { LayerManager, LayerManagerTopic } from "@modules/2DViewer/layers/LayerManager";
 import { usePublishSubscribeTopicValue } from "@modules/2DViewer/layers/delegates/PublishSubscribeDelegate";
 import { BoundingBox } from "@modules/2DViewer/layers/interfaces";
 import { PreferredViewLayout } from "@modules/2DViewer/types";
-import { ColorLegendsContainer } from "@modules/_shared/components/ColorLegendsContainer";
 import { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorLegendsContainer";
 import { ViewportType } from "@webviz/subsurface-viewer";
 import { ViewsType } from "@webviz/subsurface-viewer/dist/SubsurfaceViewer";
 
-import { ReadoutWrapper, ViewportAnnotation } from "./ReadoutWrapper";
+import { ResizeWrapper, ViewportInfo } from "./ResizeWrapper";
 
 import { PlaceholderLayer } from "../customDeckGlLayers/PlaceholderLayer";
 import { DeckGlLayerWithPosition, recursivelyMakeViewsAndLayers } from "../utils/makeViewsAndLayers";
@@ -28,16 +25,13 @@ export type LayersWrapperProps = {
 
 export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
     const [prevBoundingBox, setPrevBoundingBox] = React.useState<BoundingBox | null>(null);
-
-    const mainDivRef = React.useRef<HTMLDivElement>(null);
-    const mainDivSize = useElementSize(mainDivRef);
     const statusWriter = useViewStatusWriter(props.viewContext);
 
     usePublishSubscribeTopicValue(props.layerManager, LayerManagerTopic.LAYER_DATA_REVISION);
 
     const viewports: ViewportType[] = [];
     const viewerLayers: DeckGlLayerWithPosition[] = [];
-    const viewportAnnotations: ViewportAnnotation[] = [];
+    const viewportInfoArr: ViewportInfo[] = [];
     const globalColorScales: ColorScaleWithId[] = [];
 
     const views: ViewsType = {
@@ -75,26 +69,15 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
         });
         viewerLayers.push(...view.layers);
 
-        viewportAnnotations.push({
-            viewportId: view.id,
-            content: (
-                <>
-                    <ColorLegendsContainer
-                        colorScales={[...view.colorScales, ...globalColorScales]}
-                        height={((mainDivSize.height / 3) * 2) / numCols - 20}
-                        position="left"
-                    />
-                    <div className="font-bold text-lg flex gap-2 justify-center items-center">
-                        <div className="flex gap-2 items-center bg-white p-2 backdrop-blur bg-opacity-50 rounded">
-                            <div
-                                className="rounded-full h-3 w-3 border border-white"
-                                style={{ backgroundColor: view.color ?? undefined }}
-                            />
-                            <div className="">{view.name}</div>
-                        </div>
-                    </div>
-                </>
-            ),
+        viewportInfoArr.push({
+            id: view.id,
+            color: view.color,
+            name: view.name,
+            colorLegend: {
+                colorScales: [...view.colorScales, ...globalColorScales],
+                position: "left",
+                height: 0,
+            },
         });
     }
 
@@ -138,17 +121,13 @@ export function LayersWrapper(props: LayersWrapperProps): React.ReactNode {
     layers.push(new PlaceholderLayer({ id: "placeholder" }));
 
     return (
-        <div ref={mainDivRef} className="relative w-full h-full flex flex-col">
-            <PendingWrapper isPending={numLoadingLayers > 0}>
-                <div style={{ height: mainDivSize.height, width: mainDivSize.width }}>
-                    <ReadoutWrapper
-                        views={views}
-                        viewportAnnotations={viewportAnnotations}
-                        layers={layers}
-                        bounds={bounds}
-                    />
-                </div>
-            </PendingWrapper>
-        </div>
+        <ResizeWrapper
+            numRows={numRows}
+            views={views}
+            viewportInfoArray={viewportInfoArr}
+            layers={layers}
+            bounds={bounds}
+            isPending={numLoadingLayers > 0}
+        />
     );
 }

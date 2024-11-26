@@ -102,7 +102,7 @@ function createWellPicksLayer(wellPicksDataApi: WellborePick_api[], id: string):
         pickable: true,
     });*/
     return new LabelLayer({
-        id: id,
+        id,
         data: wellPicksData.map((wellPick) => {
             return {
                 coordinates: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],

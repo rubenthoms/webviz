@@ -1,4 +1,12 @@
-import { CompositeLayer, FilterContext, GetPickingInfoParams, Layer, PickingInfo } from "@deck.gl/core";
+import {
+    CompositeLayer,
+    CompositeLayerProps,
+    FilterContext,
+    GetPickingInfoParams,
+    Layer,
+    PickingInfo,
+    UpdateParameters,
+} from "@deck.gl/core";
 import { LineLayer, TextLayer } from "@deck.gl/layers";
 import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
 import { EntityGroup, ProximityGrouping } from "@lib/utils/ProximityGrouping";
@@ -131,7 +139,11 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         }));
     }
 
-    updateState(): void {
+    updateState(params: UpdateParameters<Layer<LabelLayerProps & Required<CompositeLayerProps>>>): void {
+        if (!params.changeFlags.dataChanged) {
+            return;
+        }
+
         const labels = this.collectLabelGroups();
 
         let zoomLevel = 1;

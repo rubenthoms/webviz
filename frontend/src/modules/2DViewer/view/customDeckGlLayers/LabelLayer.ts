@@ -4,13 +4,13 @@ import {
     FilterContext,
     GetPickingInfoParams,
     Layer,
+    LayerContext,
     PickingInfo,
     UpdateParameters,
 } from "@deck.gl/core";
-import { LineLayer, TextLayer } from "@deck.gl/layers";
+import { GeoJsonLayer, LineLayer, TextLayer } from "@deck.gl/layers";
 import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
 import { EntityGroup, ProximityGrouping } from "@lib/utils/ProximityGrouping";
-import { PointsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 type LabelData = {
     coordinates: [number, number, number];
@@ -49,51 +49,27 @@ export type LabelPickingInfo = PickingInfo & {
 export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     static layerName: string = "LabelLayer";
 
-    private _labelBoundingBoxes: (BoundingBox2D | null)[] = [];
-    private _adjustedData: ExtendedLabelData[] = [];
     private _labelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
     private _singleLabelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
 
-    estimateLabelBoundingBoxes(): void {
-        const viewport = this.context.viewport;
-        const viewportBounds = viewport.getBounds();
+    // @ts-ignore
+    state!: {
+        adjustedData: ExtendedLabelData[];
+        hoveredId: string | null;
+        labelGroups: Map<number, EntityGroup<IntermediateLabelData>[]>;
+        singleLabelGroups: Map<number, EntityGroup<IntermediateLabelData>[]>;
+    };
 
-        for (const label of this.props.data) {
-            const [xWorld, yWorld] = label.coordinates;
-
-            if (
-                xWorld < viewportBounds[0] ||
-                xWorld > viewportBounds[2] ||
-                yWorld < viewportBounds[1] ||
-                yWorld > viewportBounds[3]
-            ) {
-                this._labelBoundingBoxes.push(null);
-                continue;
-            }
-
-            const [xScreen, yScreen] = viewport.project([xWorld, yWorld]);
-
-            const numChars = label.name.length;
-            const fontSize = this.props.fontSize ?? 16;
-            const charWidth = fontSize / 1.5;
-            const charHeight = fontSize;
-            const labelWidth = numChars * charWidth;
-            const labelHeight = charHeight;
-
-            const topLeftScreen: [number, number] = [xScreen - labelWidth / 2, yScreen - labelHeight / 2];
-            const bottomRightScreen: [number, number] = [xScreen + labelWidth / 2, yScreen + labelHeight / 2];
-
-            const topLeftWorld = viewport.unproject(topLeftScreen);
-            const bottomRightWorld = viewport.unproject(bottomRightScreen);
-
-            this._labelBoundingBoxes.push({
-                topLeft: topLeftWorld,
-                bottomRight: bottomRightWorld,
-            });
-        }
+    initializeState(context: LayerContext): void {
+        this.state = {
+            adjustedData: [],
+            hoveredId: null,
+            labelGroups: new Map(),
+            singleLabelGroups: new Map(),
+        };
     }
 
-    collectLabelGroups(): IntermediateLabelData[] {
+    private collectLabelGroups(): IntermediateLabelData[] {
         const labelGroups: IntermediateLabelData[] = [];
 
         for (const label of this.props.data) {
@@ -121,7 +97,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         return labelGroups;
     }
 
-    reduceCollidingLabels(labels: IntermediateLabelData[]): ExtendedLabelData[] {
+    private reduceCollidingLabels(labels: IntermediateLabelData[]): ExtendedLabelData[] {
         const forceDirectedEntityPositioning = new ForceDirectedEntityPositioning(labels, {
             springRestLength: 10,
             springConstant: 0.2,
@@ -148,27 +124,42 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         const labels = this.collectLabelGroups();
 
         let zoomLevel = 1;
-        this._labelGroups.clear();
         const grouping = new ProximityGrouping(labels);
+
+        const labelGroupsMap: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
+        const singleLabelGroupsMap: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
 
         for (let i = 0; i < 5; i++) {
             const result = grouping.groupEntities(100 / 2 ** zoomLevel);
             const singleLabelGroups = result.filter((el) => el.entities.length === 1);
             const multiLabelGroups = result.filter((el) => el.entities.length > 1);
-            this._labelGroups.set(
+            labelGroupsMap.set(
                 zoomLevel,
-                multiLabelGroups.map((el) => ({ ...el, name: el.entities.length.toString() }))
+                multiLabelGroups.map((el) => ({
+                    ...el,
+                    name: el.entities.length.toString(),
+                    otherNames: el.entities.map((e) => e.name),
+                }))
             );
-            this._singleLabelGroups.set(
+            singleLabelGroupsMap.set(
                 zoomLevel,
                 singleLabelGroups.map((el) => ({ ...el, name: el.entities[0].name }))
             );
             zoomLevel -= 1;
         }
-        this._adjustedData = this.reduceCollidingLabels(labels);
+        const adjustedData = this.reduceCollidingLabels(labels);
+
+        this.setState({
+            ...this.state,
+            adjustedData,
+            labelGroups: labelGroupsMap,
+            singleLabelGroups: singleLabelGroupsMap,
+        });
     }
 
     filterSubLayer(context: FilterContext): boolean {
+        const { labelGroups, singleLabelGroups } = this.state;
+
         if (context.layer.id === `${this.props.id}-text`) {
             return context.viewport.zoom > 2;
         }
@@ -181,7 +172,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
 
         if (match) {
             const zoom = parseFloat(match[2]);
-            const zoomLevels = Array.from(this._labelGroups.keys());
+            const zoomLevels = Array.from(labelGroups.keys());
             const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
                 Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
             );
@@ -193,7 +184,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
 
         if (match2) {
             const zoom = parseFloat(match2[1]);
-            const zoomLevels = Array.from(this._singleLabelGroups.keys());
+            const zoomLevels = Array.from(singleLabelGroups.keys());
             const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
                 Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
             );
@@ -204,29 +195,70 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     }
 
     getPickingInfo(params: GetPickingInfoParams): LabelPickingInfo {
+        const { adjustedData } = this.state;
         const info = super.getPickingInfo(params) as LabelPickingInfo;
         const { index, sourceLayer } = info;
         if (index >= 0 && sourceLayer) {
-            info.object.name = `${this._adjustedData[index].name}\n${this._adjustedData[index].otherNames.join("\n")}`;
+            info.object.name = `${adjustedData[index].name}\n${adjustedData[index].otherNames
+                .filter((el) => el.length > 0)
+                .join("\n")}`;
+            console.debug(info.object.name);
         }
         return info;
     }
 
+    onHover(info: LabelPickingInfo): boolean {
+        const { adjustedData, hoveredId } = this.state;
+        let newHoveredId: string | null;
+        if (info.index >= 0) {
+            newHoveredId = this.makeId(adjustedData[info.index]);
+        } else {
+            newHoveredId = null;
+        }
+
+        if (newHoveredId !== hoveredId) {
+            this.setState({ ...this.state, hoveredId: newHoveredId });
+        }
+
+        return false;
+    }
+
+    private makeId(labelData: ExtendedLabelData): string {
+        return `${labelData.name}-${labelData.coordinates.join(",")}`;
+    }
+
     renderLayers() {
+        const { adjustedData, singleLabelGroups, labelGroups, hoveredId } = this.state;
         const sizeMinPixels = 14;
         const sizeMaxPixels = 14;
 
         const zoomLayers: Layer<any>[] = [];
 
-        for (const [zoomLevel, labelGroups] of this._labelGroups) {
+        for (const [zoomLevel, labelGroup] of labelGroups) {
+            const featureCollection = {
+                type: "FeatureCollection",
+                features: labelGroup.map((d) => ({
+                    id: d.coordinates.join(","),
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: d.coordinates,
+                    },
+                    properties: {
+                        name: d.otherNames.join("\n"),
+                    },
+                })),
+            };
             zoomLayers.push(
-                new PointsLayer(
+                new GeoJsonLayer(
                     this.getSubLayerProps({
                         id: `points-zoom-${zoomLevel}`,
-                        pointsData: labelGroups.flatMap((d) => [...d.coordinates, 0]),
-                        pointRadius: 100 / 2 ** zoomLevel,
-                        color: [255, 255, 255, 30],
-                        radiusUnits: "meters",
+                        data: featureCollection,
+                        getRadius: 100 / 2 ** zoomLevel,
+                        getFillColor: [255, 255, 255, 30],
+                        stroked: false,
+                        pickable: true,
+                        pointRadiusUnits: "meters",
                     })
                 )
             );
@@ -256,12 +288,12 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                 )
             );
         }
-        for (const [zoomLevel, labelGroups] of this._singleLabelGroups) {
+        for (const [zoomLevel, labelGroup] of singleLabelGroups) {
             zoomLayers.push(
                 new TextLayer(
                     this.getSubLayerProps({
                         id: `text-single-zoom-${zoomLevel}`,
-                        data: labelGroups,
+                        data: labelGroup,
                         getPosition: (d: ExtendedLabelData) => d.coordinates,
                         getText: (d: ExtendedLabelData) => `${d.name}`,
                         getSize: 16,
@@ -284,40 +316,81 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
             );
         }
 
+        const featureCollection = {
+            type: "FeatureCollection",
+            features: adjustedData.map((d) => ({
+                id: this.makeId(d),
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: d.anchorCoordinates,
+                },
+                properties: {
+                    name: [d.name, ...d.otherNames].join("\n"),
+                },
+            })),
+        };
+
         return [
-            new PointsLayer(
-                this.getSubLayerProps({
-                    id: "points",
-                    pointsData: this._adjustedData.flatMap((d) => d.anchorCoordinates),
-                    pointRadius: 3,
-                    color: [0, 0, 0],
-                    radiusUnits: "pixels",
-                    sizeMinPixels: sizeMinPixels,
-                    sizeMaxPixels: sizeMaxPixels,
-                })
-            ),
             new LineLayer(
                 this.getSubLayerProps({
                     id: "lines",
-                    data: this._adjustedData,
+                    data: adjustedData,
                     getSourcePosition: (d: ExtendedLabelData) => d.anchorCoordinates,
                     getTargetPosition: (d: ExtendedLabelData) => d.coordinates,
-                    getColor: [0, 0, 0],
-                    getLineWidth: 1,
-                    sizeUnits: "pixels",
-                    collisionGroup: "label",
-                    collisionTestProps: {
-                        widthMaxPixels: 0.001,
-                        widthMinPixels: 0.001,
+                    getColor: (d: ExtendedLabelData) => {
+                        if (hoveredId && this.makeId(d) === hoveredId) {
+                            return [0, 0, 100, 255];
+                        }
+                        return [0, 0, 0, 255];
                     },
-                    collisionEnabled: true,
+                    getWidth: (d: ExtendedLabelData) => {
+                        if (hoveredId && this.makeId(d) === hoveredId) {
+                            return 2;
+                        }
+                        return 1;
+                    },
+                    widthMaxPixels: 5,
+                    sizeUnits: "pixels",
+                    updateTriggers: {
+                        getWidth: [hoveredId],
+                        getColor: [hoveredId],
+                    },
+                })
+            ),
+            new GeoJsonLayer(
+                this.getSubLayerProps({
+                    id: `points`,
+                    data: featureCollection,
+                    getRadius: (d: any) => {
+                        if (hoveredId && d.id === hoveredId) {
+                            return 4;
+                        }
+                        return 3;
+                    },
+                    pointRadiusUnits: "pixels",
+                    radiusUnits: "meters",
+                    pointRadiusMaxPixels: 4,
+                    pickable: true,
+                    filled: true,
+                    stroked: false,
                     autoHighlight: true,
+                    getFillColor: (d: any) => {
+                        if (hoveredId && d.id === hoveredId) {
+                            return [0, 0, 255];
+                        }
+                        return [0, 0, 0];
+                    },
+                    updateTriggers: {
+                        getRadius: [hoveredId],
+                        getFillColor: [hoveredId],
+                    },
                 })
             ),
             new TextLayer(
                 this.getSubLayerProps({
                     id: "text",
-                    data: this._adjustedData,
+                    data: adjustedData,
                     getPosition: (d: ExtendedLabelData) => d.coordinates,
                     getText: (d: ExtendedLabelData) =>
                         `${d.name} ${d.otherNames.length > 0 ? `(+${d.otherNames.length})` : ""}`,
@@ -336,10 +409,16 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     sizeUnits: "meters",
                     sizeMinPixels: sizeMinPixels,
                     sizeMaxPixels: sizeMaxPixels,
-                    getBackgroundColor: [0, 0, 0, 255],
+                    getBackgroundColor: (d: ExtendedLabelData) => {
+                        if (hoveredId && this.makeId(d) === hoveredId) {
+                            return [0, 0, 255, 255];
+                        }
+                        return [0, 0, 0];
+                    },
                     background: true,
-                    autoHighlight: true,
-                    highlightColor: [0, 0, 255, 255],
+                    updateTriggers: {
+                        getBackgroundColor: [hoveredId],
+                    },
                 })
             ),
             ...zoomLayers,

@@ -4,7 +4,6 @@ import {
     FilterContext,
     GetPickingInfoParams,
     Layer,
-    LayerContext,
     PickingInfo,
     UpdateParameters,
 } from "@deck.gl/core";
@@ -49,9 +48,6 @@ export type LabelPickingInfo = PickingInfo & {
 export class LabelLayer extends CompositeLayer<LabelLayerProps> {
     static layerName: string = "LabelLayer";
 
-    private _labelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
-    private _singleLabelGroups: Map<number, EntityGroup<IntermediateLabelData>[]> = new Map();
-
     // @ts-ignore
     state!: {
         adjustedData: ExtendedLabelData[];
@@ -60,7 +56,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         singleLabelGroups: Map<number, EntityGroup<IntermediateLabelData>[]>;
     };
 
-    initializeState(context: LayerContext): void {
+    initializeState(): void {
         this.state = {
             adjustedData: [],
             hoveredId: null,
@@ -199,9 +195,8 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         const info = super.getPickingInfo(params) as LabelPickingInfo;
         const { index, sourceLayer } = info;
         if (index >= 0 && sourceLayer) {
-            info.object.name = `${adjustedData[index].name}\n${adjustedData[index].otherNames
-                .filter((el) => el.length > 0)
-                .join("\n")}`;
+            const otherNames = adjustedData[index].otherNames;
+            info.object.name = this.reduceNames([adjustedData[index].name, ...otherNames]);
             console.debug(info.object.name);
         }
         return info;
@@ -227,6 +222,12 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
         return `${labelData.name}-${labelData.coordinates.join(",")}`;
     }
 
+    private reduceNames(names: string[], maxNum: number = 5): string {
+        const ellipsis = names.length > maxNum ? `\n... + ${names.length - maxNum} more` : "";
+        const newNames = names.slice(0, Math.min(maxNum, names.length));
+        return `${newNames.join("\n")}${ellipsis}`;
+    }
+
     renderLayers() {
         const { adjustedData, singleLabelGroups, labelGroups, hoveredId } = this.state;
         const sizeMinPixels = 14;
@@ -245,7 +246,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                         coordinates: d.coordinates,
                     },
                     properties: {
-                        name: d.otherNames.join("\n"),
+                        name: this.reduceNames(d.entities.map((e) => e.name)),
                     },
                 })),
             };
@@ -255,7 +256,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                         id: `points-zoom-${zoomLevel}`,
                         data: featureCollection,
                         getRadius: 100 / 2 ** zoomLevel,
-                        getFillColor: [255, 255, 255, 30],
+                        getFillColor: [155, 155, 155, 30],
                         stroked: false,
                         pickable: true,
                         pointRadiusUnits: "meters",
@@ -422,25 +423,6 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                 })
             ),
             ...zoomLayers,
-            /*
-            new PolygonLayer(
-                this.getSubLayerProps({
-                    id: "bounding-boxes",
-                    data: this._labelBoundingBoxes.filter((d) => d !== null) as BoundingBox2D[],
-                    getPolygon: (d: BoundingBox2D) => [
-                        [d.topLeft[0], d.topLeft[1]],
-                        [d.bottomRight[0], d.topLeft[1]],
-                        [d.bottomRight[0], d.bottomRight[1]],
-                        [d.topLeft[0], d.bottomRight[1]],
-                    ],
-                    getLineColor: [255, 255, 255],
-                    getFillColor: [255, 255, 255, 0],
-                    getLineWidth: 5,
-                    stroked: true,
-                    sizeUnits: "pixels",
-                })
-            ),
-            */
         ];
     }
 }

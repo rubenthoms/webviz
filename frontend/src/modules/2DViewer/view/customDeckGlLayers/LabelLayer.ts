@@ -21,6 +21,7 @@ type LabelData = {
 interface IntermediateLabelData extends Entity {
     name: string;
     otherNames: string[];
+    polygon?: [number, number][];
 }
 
 type ExtendedLabelData = {
@@ -132,6 +133,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     ...el,
                     name: el.entities.length.toString(),
                     otherNames: el.entities.map((e) => e.name),
+                    polygon: makePolygon(el.entities.map((e) => e.coordinates)),
                 }))
             );
             singleLabelGroupsMap.set(
@@ -286,8 +288,8 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                     id: this.makeZoomLevelGroupId(zoomLevel, d),
                     type: "Feature",
                     geometry: {
-                        type: "Point",
-                        coordinates: d.coordinates,
+                        type: "Polygon",
+                        coordinates: [d.polygon],
                     },
                     properties: {
                         name: this.reduceNames(d.entities.map((e) => e.name)),
@@ -306,7 +308,16 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                             }
                             return [255, 255, 255, 30];
                         },
-                        stroked: false,
+                        stroked: true,
+                        getLineColor: (d: Feature) => {
+                            if (hoveredId && d.id === hoveredId) {
+                                return [20, 20, 255, 30];
+                            }
+                            return [255, 255, 255, 30];
+                        },
+                        getLineWidth: 50,
+                        lineCapRounded: true,
+                        lineJointRounded: true,
                         pickable: true,
                         pointRadiusUnits: "meters",
                         parameters: {
@@ -314,6 +325,7 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
                         },
                         updateTriggers: {
                             getFillColor: [hoveredId],
+                            getLineColor: [hoveredId],
                         },
                     })
                 )
@@ -480,4 +492,73 @@ export class LabelLayer extends CompositeLayer<LabelLayerProps> {
             ...zoomLayers,
         ];
     }
+}
+
+function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+    let isInside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][0];
+        const yi = polygon[i][1];
+        const xj = polygon[j][0];
+        const yj = polygon[j][1];
+
+        const intersect = yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+
+        if (intersect) {
+            isInside = !isInside;
+        }
+    }
+
+    return isInside;
+}
+
+function makePolygon(coords: [number, number][]): [number, number][] {
+    const points: Set<[number, number]> = new Set();
+
+    for (const coord of coords) {
+        if (points.size < 3) {
+            points.add(coord);
+            continue;
+        }
+
+        if (!pointInPolygon(coord, Array.from(points))) {
+            points.add(coord);
+
+            for (const point of points) {
+                if (pointInPolygon(point, [coord, ...Array.from(points).filter((p) => p !== point)])) {
+                    points.delete(point);
+                }
+            }
+        }
+    }
+
+    const pointsArray: [number, number][] = [];
+
+    pointsArray.push(Array.from(points)[0]);
+    points.delete(Array.from(points)[0]);
+
+    const length = points.size + 1;
+
+    for (let i = 1; i < length; i++) {
+        const lastPoint = pointsArray[i - 1];
+
+        const nearestPoint = Array.from(points).reduce(
+            (prev, curr) => {
+                const prevDist = Math.sqrt((prev[0] - lastPoint[0]) ** 2 + (prev[1] - lastPoint[1]) ** 2);
+                const currDist = Math.sqrt((curr[0] - lastPoint[0]) ** 2 + (curr[1] - lastPoint[1]) ** 2);
+
+                return prevDist < currDist ? prev : curr;
+            },
+            [Infinity, Infinity]
+        );
+
+        points.delete(nearestPoint);
+
+        pointsArray.push(nearestPoint);
+    }
+
+    pointsArray.push(pointsArray[0]);
+
+    return pointsArray;
 }

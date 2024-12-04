@@ -1,6 +1,7 @@
 import { FilterContext, Layer, LayersList, UpdateParameters } from "@deck.gl/core";
 import { CollisionFilterExtension } from "@deck.gl/extensions";
 import { GeoJsonLayer, TextLayer } from "@deck.gl/layers";
+import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 import { WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { FeatureCollection, GeometryCollection } from "geojson";
@@ -10,7 +11,7 @@ export class AdvancedWellsLayer extends WellsLayer {
 
     // @ts-ignore
     state!: {
-        labelCoords: WellboreLabelCoords[];
+        labelCoordsMap: Map<number, WellboreLabelCoords[]>;
     };
 
     constructor(props: any) {
@@ -18,11 +19,31 @@ export class AdvancedWellsLayer extends WellsLayer {
     }
 
     filterSubLayer(context: FilterContext): boolean {
-        if (context.layer.id.includes("names")) {
-            return context.viewport.zoom > -3;
+        const { labelCoordsMap } = this.state;
+
+        const reg = /names-zoom-([-\d\\.]+)/;
+        const match = context.layer.id.match(reg);
+
+        if (match) {
+            const zoom = parseFloat(match[1]);
+            const zoomLevels = Array.from(labelCoordsMap.keys());
+            const closestZoomLevel = zoomLevels.reduce((prev, curr) =>
+                Math.abs(curr - context.viewport.zoom) < Math.abs(prev - context.viewport.zoom) ? curr : prev
+            );
+            return closestZoomLevel === zoom && context.viewport.zoom > -4;
         }
 
         return true;
+    }
+
+    private makeLabelData(): Map<number, WellboreLabelCoords[]> {
+        const labelCoordsMap = new Map<number, WellboreLabelCoords[]>();
+        for (let z = 1; z > -5; z--) {
+            const labelCoords = precalculateLabelPositions(this.props.data as FeatureCollection, 300 / 2 ** z);
+            labelCoordsMap.set(z, labelCoords);
+        }
+
+        return labelCoordsMap;
     }
 
     updateState(params: UpdateParameters<WellsLayer>): void {
@@ -32,15 +53,15 @@ export class AdvancedWellsLayer extends WellsLayer {
             return;
         }
 
-        const labelCoords = precalculateLabelPositions(params.props.data as FeatureCollection);
-        this.setState({ labelCoords });
+        const labelCoordsMap = this.makeLabelData();
+        this.setState({ labelCoordsMap });
     }
 
     initializeState(): void {
         super.initializeState();
 
         this.setState({
-            labelCoords: precalculateLabelPositions(this.props.data as FeatureCollection),
+            labelCoords: new Map(),
         });
     }
 
@@ -101,32 +122,37 @@ export class AdvancedWellsLayer extends WellsLayer {
             onHover: () => {},
         });
 
-        const newTextLayer = new TextLayer({
-            id: "names",
-            data: this.state.labelCoords,
-            getColor: [0, 0, 0],
-            getBackgroundColor: [255, 255, 255],
-            getBorderColor: [0, 173, 230],
-            getBorderWidth: 1,
-            getPosition: (d: WellboreLabelCoords) => d.coords,
-            getText: (d: WellboreLabelCoords) => d.name,
-            getSize: 16,
-            getAngle: (d: WellboreLabelCoords) => d.angle,
-            billboard: false,
-            background: true,
-            backgroundPadding: [4, 1],
-            fontFamily: "monospace",
-            collisionEnabled: true,
-            sizeUnits: "meters",
-            sizeMaxPixels: 20,
-            sizeMinPixels: 8,
-            extensions: [new CollisionFilterExtension()],
-        });
+        const zoomLabelsLayers: Layer<any>[] = [];
 
+        for (const [zoom, labelCoords] of this.state.labelCoordsMap) {
+            zoomLabelsLayers.push(
+                new TextLayer({
+                    id: `names-zoom-${zoom}`,
+                    data: labelCoords,
+                    getColor: [0, 0, 0],
+                    getBackgroundColor: [255, 255, 255],
+                    getBorderColor: [0, 173, 230],
+                    getBorderWidth: 1,
+                    getPosition: (d: WellboreLabelCoords) => d.coords,
+                    getText: (d: WellboreLabelCoords) => d.name,
+                    getSize: 16,
+                    getAngle: (d: WellboreLabelCoords) => d.angle,
+                    billboard: false,
+                    background: true,
+                    backgroundPadding: [4, 1],
+                    fontFamily: "monospace",
+                    collisionEnabled: true,
+                    sizeUnits: "meters",
+                    sizeMaxPixels: 20,
+                    sizeMinPixels: 10,
+                    extensions: [new CollisionFilterExtension()],
+                })
+            );
+        }
         return [
             newColorsLayer,
             ...layers.filter((layer) => layer !== colorsLayer && layer !== textLayer),
-            newTextLayer,
+            ...zoomLabelsLayers,
         ];
     }
 }
@@ -140,6 +166,43 @@ type WellboreLabelCoords = {
 
 function precalculateLabelPositions(data: FeatureCollection, minDistance: number = 1000): WellboreLabelCoords[] {
     const labelCoords: WellboreLabelCoords[] = [];
+
+    function makeBoundingBox(
+        midPoint: [number, number],
+        width: number,
+        height: number,
+        angle: number
+    ): {
+        x0: number;
+        y0: number;
+        x1: number;
+        y1: number;
+    } {
+        const topLeft: Vec2 = {
+            x: midPoint[0] - width / 2,
+            y: midPoint[1] - height / 2,
+        };
+
+        const bottomRight: Vec2 = {
+            x: midPoint[0] + width / 2,
+            y: midPoint[1] + height / 2,
+        };
+
+        const midPointVec2: Vec2 = {
+            x: midPoint[0],
+            y: midPoint[1],
+        };
+
+        const rotatedTopLeft = rotatePoint2Around(topLeft, midPointVec2, angle);
+        const rotatedBottomRight = rotatePoint2Around(bottomRight, midPointVec2, angle);
+
+        return {
+            x0: Math.min(rotatedTopLeft.x, rotatedBottomRight.x),
+            y0: Math.min(rotatedTopLeft.y, rotatedBottomRight.y),
+            x1: Math.max(rotatedTopLeft.x, rotatedBottomRight.x),
+            y1: Math.max(rotatedTopLeft.y, rotatedBottomRight.y),
+        };
+    }
 
     for (const feature of data.features) {
         const name = feature.properties?.name;
@@ -169,19 +232,7 @@ function precalculateLabelPositions(data: FeatureCollection, minDistance: number
                     (coords[i][0] - lastCoordinates[0]) ** 2 + (coords[i][1] - lastCoordinates[1]) ** 2
                 );
 
-                if (distance < minDistance) {
-                    continue;
-                }
-
-                if (
-                    labelCoords.some(
-                        (label) =>
-                            label.coords[0] - minDistance / 5 <= coords[i][0] &&
-                            label.coords[0] + minDistance / 5 >= coords[i][0] &&
-                            label.coords[1] - minDistance / 5 <= coords[i][1] &&
-                            label.coords[1] + minDistance / 5 >= coords[i][1]
-                    )
-                ) {
+                if (distance < minDistance && i !== 1) {
                     continue;
                 }
 
@@ -197,6 +248,28 @@ function precalculateLabelPositions(data: FeatureCollection, minDistance: number
 
                 if (angle > 90) {
                     angle -= 180;
+                }
+
+                const bbox = makeBoundingBox([current[0], current[1]], name.length * 20, 20, angle);
+
+                if (
+                    labelCoords.some((label) => {
+                        const otherBbox = makeBoundingBox(
+                            [label.coords[0], label.coords[1]],
+                            label.name.length * 20,
+                            20,
+                            label.angle
+                        );
+
+                        return (
+                            bbox.x0 < otherBbox.x1 &&
+                            bbox.x1 > otherBbox.x0 &&
+                            bbox.y0 < otherBbox.y1 &&
+                            bbox.y1 > otherBbox.y0
+                        );
+                    })
+                ) {
+                    continue;
                 }
 
                 labelCoords.push({

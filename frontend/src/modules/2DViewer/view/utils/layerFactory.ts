@@ -203,7 +203,7 @@ function polygonsToGeojson(polygons: PolygonData_api): Feature<Geometry, GeoJson
         type: "Feature",
         geometry: {
             type: "Polygon",
-            coordinates: [zipCoords(polygons.x_arr, polygons.y_arr, polygons.z_arr)],
+            coordinates: [zipCoords(polygons.x_arr, polygons.y_arr)],
         },
         properties: { name: polygons.poly_id, color: [0, 0, 0, 255] },
     };
@@ -273,7 +273,7 @@ export function wellTrajectoryToGeojson(
     };
     const coordinates: Record<string, unknown> = {
         type: "LineString",
-        coordinates: zipCoords(wellTrajectory.eastingArr, wellTrajectory.northingArr, wellTrajectory.tvdMslArr),
+        coordinates: zipCoords(wellTrajectory.eastingArr, wellTrajectory.northingArr),
     };
 
     let color = [100, 100, 100];
@@ -305,10 +305,10 @@ export function wellTrajectoryToGeojson(
     return geometryCollection;
 }
 
-function zipCoords(x_arr: number[], y_arr: number[], z_arr: number[]): number[][] {
+function zipCoords(x_arr: number[], y_arr: number[]): number[][] {
     const coords: number[][] = [];
     for (let i = 0; i < x_arr.length; i++) {
-        coords.push([x_arr[i], y_arr[i], -z_arr[i]]);
+        coords.push([x_arr[i], y_arr[i], 0]);
     }
 
     return coords;

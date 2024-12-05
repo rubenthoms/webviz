@@ -9,7 +9,7 @@ import {
     UpdateParameters,
 } from "@deck.gl/core";
 import { GeoJsonLayer, LineLayer, TextLayer } from "@deck.gl/layers";
-import { Entity } from "@lib/utils/ForceDirectedEntityPositioning";
+import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
 import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 
 import { FeatureCollection, GeometryCollection } from "geojson";
@@ -73,18 +73,18 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         const labelCoordsMap = new Map<number, WellboreLabelCoords[]>();
         for (let z = 1; z > -5; z--) {
             const labelCoords = precalculateLabelPositions(this.props.data as FeatureCollection, 300 * 2 ** z);
-            /*
+
             const forceDirectedEntityPositioning = new ForceDirectedEntityPositioning(labelCoords, {
-                springRestLength: 10,
-                springConstant: 0.01 / 2 ** z,
+                springRestLength: 20,
+                springConstant: 0.01,
                 chargeConstant: 100 ** -z,
                 tolerance: 0.1,
-                maxIterations: 300,
+                maxIterations: 50,
             });
 
             const adjustedLabelCoords = forceDirectedEntityPositioning.run();
-            */
-            labelCoordsMap.set(z, labelCoords);
+
+            labelCoordsMap.set(z, adjustedLabelCoords);
         }
 
         return labelCoordsMap;
@@ -240,32 +240,10 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
             );
 
             layers.push(
-                new GeoJsonLayer(
-                    this.getSubLayerProps({
-                        id: `points-zoom-${zoom}`,
-                        data: featureCollection,
-                        getRadius: (d: any) => {
-                            return 3;
-                        },
-                        pointRadiusUnits: "pixels",
-                        radiusUnits: "meters",
-                        pointRadiusMaxPixels: 4,
-                        pickable: true,
-                        filled: true,
-                        stroked: false,
-                        autoHighlight: true,
-                        getFillColor: (d: any) => {
-                            return [0, 0, 0];
-                        },
-                    })
-                )
-            );
-
-            layers.push(
                 new TextLayer({
                     id: `names-zoom-${zoom}`,
                     data: labelCoords,
-                    getColor: [255, 255, 255],
+                    getColor: [0, 0, 0],
                     getBorderColor: [0, 173, 230],
                     getBorderWidth: 0,
                     getPosition: (d: WellboreLabelCoords) => d.coordinates,
@@ -288,7 +266,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                         if (hoveredWellboreUuid === d.wellboreUuid) {
                             return [255, 100, 0, 255];
                         }
-                        return [0, 0, 0, 255];
+                        return [255, 255, 255, 200];
                     },
                     updateTriggers: {
                         getBackgroundColor: [hoveredWellboreUuid, activeWellboreUuid],

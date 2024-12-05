@@ -9,6 +9,7 @@ from primary.services.utils.authenticated_user import AuthenticatedUser
 from primary.auth.auth_helper import AuthHelper
 
 from primary.services.ssdl_access.well_access import WellAccess as SsdlWellAccess
+from primary.services.wellbore_trajectory_reducer import reduce_child_wellbore_trajectories
 
 from . import schemas
 from . import converters
@@ -43,7 +44,8 @@ async def get_well_trajectories(
     # fmt:off
     authenticated_user: AuthenticatedUser = Depends(AuthHelper.get_authenticated_user),
     field_identifier: str = Query(description="Official field identifier"),
-    wellbore_uuids:List[str] =  Query(None, description="Optional subset of wellbore uuids")
+    wellbore_uuids:List[str] =  Query(None, description="Optional subset of wellbore uuids"),
+    use_kickoff_depth: bool = Query(False, description="Use kickoff depth to reduce child wellbore trajectory length")
     # fmt:on
 ) -> List[schemas.WellboreTrajectory]:
     """Get well trajectories for field"""
@@ -56,9 +58,22 @@ async def get_well_trajectories(
 
     wellbore_trajectories = await well_access.get_wellbore_trajectories(wellbore_uuids=wellbore_uuids)
 
+    if not use_kickoff_depth:
+        return [
+            converters.convert_well_trajectory_to_schema(wellbore_trajectory)
+            for wellbore_trajectory in wellbore_trajectories
+        ]
+
+    # Use kickoff depth to reduce child wellbore trajectory length
+    wellbore_headers = await well_access.get_wellbore_headers(wellbore_uuids=wellbore_uuids)
+
+    adjusted_wellbore_trajectories = reduce_child_wellbore_trajectories(
+        wellbore_headers=wellbore_headers, wellbore_trajectories=wellbore_trajectories
+    )
+
     return [
         converters.convert_well_trajectory_to_schema(wellbore_trajectory)
-        for wellbore_trajectory in wellbore_trajectories
+        for wellbore_trajectory in adjusted_wellbore_trajectories
     ]
 
 

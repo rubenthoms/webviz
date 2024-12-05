@@ -13,5 +13,7 @@ export type WellboreHeader = {
     depthReferenceElevation: number;
     wellborePurpose: string;
     wellboreStatus: string;
+    parentWellbore: string;
+    kickoffDepthMd: number;
 };
 

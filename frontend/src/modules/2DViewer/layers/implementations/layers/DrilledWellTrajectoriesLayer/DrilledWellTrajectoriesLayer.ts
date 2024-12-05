@@ -102,7 +102,7 @@ export class DrilledWellTrajectoriesLayer implements Layer<DrilledWellTrajectori
         const promise = queryClient
             .fetchQuery({
                 queryKey,
-                queryFn: () => apiService.well.getWellTrajectories(fieldIdentifier ?? ""),
+                queryFn: () => apiService.well.getWellTrajectories(fieldIdentifier ?? "", undefined, false),
                 staleTime: 1800000, // TODO
                 gcTime: 1800000,
             })

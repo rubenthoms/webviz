@@ -6,7 +6,7 @@ import { ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 import { GridMappedProperty_trans, GridSurface_trans } from "@modules/3DViewer/view/queries/queryDataTransforms";
 import { ColorScaleWithName } from "@modules/_shared/utils/ColorScaleWithName";
-import { ColormapLayer, Grid3DLayer, WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
+import { ColormapLayer, Grid3DLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { Rgb, parse } from "culori";
 import { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
@@ -203,7 +203,7 @@ function polygonsToGeojson(polygons: PolygonData_api): Feature<Geometry, GeoJson
         type: "Feature",
         geometry: {
             type: "Polygon",
-            coordinates: [zipCoords(polygons.x_arr, polygons.y_arr)],
+            coordinates: [zipCoords(polygons.x_arr, polygons.y_arr, polygons.z_arr)],
         },
         properties: { name: polygons.poly_id, color: [0, 0, 0, 255] },
     };
@@ -214,7 +214,7 @@ export function makeWellsLayer(
     fieldWellboreTrajectoriesData: WellboreTrajectory_api[],
     id: string,
     selectedWellboreUuid: string | null
-): WellsLayer {
+): AdvancedWellsLayer {
     const tempWorkingWellsData = fieldWellboreTrajectoriesData.filter(
         (el) => el.uniqueWellboreIdentifier !== "NO 34/4-K-3 AH"
     );
@@ -273,11 +273,11 @@ export function wellTrajectoryToGeojson(
     };
     const coordinates: Record<string, unknown> = {
         type: "LineString",
-        coordinates: zipCoords(wellTrajectory.eastingArr, wellTrajectory.northingArr),
+        coordinates: zipCoords(wellTrajectory.eastingArr, wellTrajectory.northingArr, wellTrajectory.tvdMslArr),
     };
 
-    let color = [100, 100, 100];
-    let lineWidth = 2;
+    let color = [0, 0, 0];
+    let lineWidth = 5;
     let wellHeadSize = 1;
     if (wellTrajectory.wellboreUuid === selectedWellboreUuid) {
         color = [255, 0, 0];
@@ -305,10 +305,10 @@ export function wellTrajectoryToGeojson(
     return geometryCollection;
 }
 
-function zipCoords(x_arr: number[], y_arr: number[]): number[][] {
+function zipCoords(xArr: number[], yArr: number[], zArr: number[]): number[][] {
     const coords: number[][] = [];
-    for (let i = 0; i < x_arr.length; i++) {
-        coords.push([x_arr[i], y_arr[i], 0]);
+    for (let i = 0; i < xArr.length; i++) {
+        coords.push([xArr[i], yArr[i], -zArr[i]]);
     }
 
     return coords;

@@ -40,12 +40,14 @@ export class WellService {
      * Get well trajectories for field
      * @param fieldIdentifier Official field identifier
      * @param wellboreUuids Optional subset of wellbore uuids
+     * @param useKickoffDepth Use kickoff depth to reduce child wellbore trajectory length
      * @returns WellboreTrajectory Successful Response
      * @throws ApiError
      */
     public getWellTrajectories(
         fieldIdentifier: string,
         wellboreUuids?: Array<string>,
+        useKickoffDepth: boolean = false,
     ): CancelablePromise<Array<WellboreTrajectory>> {
         return this.httpRequest.request({
             method: 'GET',
@@ -53,6 +55,7 @@ export class WellService {
             query: {
                 'field_identifier': fieldIdentifier,
                 'wellbore_uuids': wellboreUuids,
+                'use_kickoff_depth': useKickoffDepth,
             },
             errors: {
                 422: `Validation Error`,

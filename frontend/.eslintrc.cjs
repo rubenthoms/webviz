@@ -10,6 +10,7 @@ module.exports = {
         "react/jsx-uses-react": "off", // Import of React is not required anymore in React 17
         "react/react-in-jsx-scope": "off", // Import of React is not required anymore in React 17
         "no-console": ["error", { allow: ["debug", "info", "warn", "error"] }],
+        "camelcase": "always",
     },
     parser: "@typescript-eslint/parser",
     parserOptions: {
@@ -17,6 +18,7 @@ module.exports = {
         sourceType: "module",
     },
     settings: {
+        
         react: {
             version: "detect",
         },

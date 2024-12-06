@@ -8,11 +8,11 @@ import {
     PickingInfo,
     UpdateParameters,
 } from "@deck.gl/core";
-import { GeoJsonLayer, LineLayer, TextLayer } from "@deck.gl/layers";
+import { GeoJsonLayer, LineLayer, PointCloudLayer, TextLayer } from "@deck.gl/layers";
 import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
 import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 
-import { FeatureCollection, GeometryCollection } from "geojson";
+import { Feature, FeatureCollection, GeometryCollection, LineString, Position } from "geojson";
 
 export type WellsLayerProps = {
     pointRadiusScale?: number;
@@ -45,6 +45,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         labelCoordsMap: Map<number, WellboreLabelCoords[]>;
         hoveredWellboreUuid: string | null;
         activeWellboreUuid: string | null;
+        hoveredMd: number | null;
     };
 
     constructor(props: any) {
@@ -115,6 +116,11 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
             return info;
         }
 
+        const coordinate = info.coordinate;
+        if (!coordinate) {
+            return info;
+        }
+
         if (sourceLayer.id.includes("names") && sourceLayer instanceof TextLayer) {
             const wellboreUuid = sourceLayer.props.data[index].wellboreUuid;
             const name = sourceLayer.props.data[index].name;
@@ -122,7 +128,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                 ...info,
                 wellboreUuid,
                 name,
-                md: 0,
+                md: this.getMd(info.object, coordinate) ?? 0,
             };
         }
 
@@ -138,15 +144,15 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
             ...info,
             wellboreUuid,
             name,
-            md: 0,
+            md: this.getMd(info.object, coordinate) ?? 0,
         };
     }
 
     onHover(info: WellsLayerPickingInfo): boolean {
         if (info.object) {
-            this.setState({ hoveredWellboreUuid: info.wellboreUuid });
+            this.setState({ hoveredWellboreUuid: info.wellboreUuid, hoveredMd: info.md });
         } else {
-            this.setState({ hoveredWellboreUuid: null });
+            this.setState({ hoveredWellboreUuid: null, hoveredMd: null });
         }
 
         return false;
@@ -162,8 +168,77 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         return false;
     }
 
+    private getWellTrajectory(well: Feature): Position[] | null {
+        return (
+            ((well.geometry as GeometryCollection)?.geometries.find((el) => el.type === "LineString") as LineString)
+                .coordinates ?? null
+        );
+    }
+
+    private getClosestSegmentIndex(trajectory: Position[], coord: Position): number {
+        let minDistance = Infinity;
+        let closestSegmentIndex = -1;
+
+        for (let i = 0; i < trajectory.length - 1; i++) {
+            const a = trajectory[i];
+            const b = trajectory[i + 1];
+
+            const distance = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+            const t = ((coord[0] - a[0]) * (b[0] - a[0]) + (coord[1] - a[1]) * (b[1] - a[1])) / distance ** 2;
+            const x = a[0] + t * (b[0] - a[0]);
+            const y = a[1] + t * (b[1] - a[1]);
+
+            const dx = x - coord[0];
+            const dy = y - coord[1];
+
+            const dist = Math.sqrt(dx ** 2 + dy ** 2);
+
+            if (dist < minDistance) {
+                minDistance = dist;
+                closestSegmentIndex = i;
+            }
+        }
+
+        return closestSegmentIndex;
+    }
+
+    private interpolateDataOnTrajectory(trajectory: Position[], data: number[], coord: Position): number {
+        if (data.length <= 1 || data.length !== trajectory.length) {
+            return -1;
+        }
+
+        const closestSegmentIndex = this.getClosestSegmentIndex(trajectory, coord);
+
+        if (closestSegmentIndex === -1) {
+            return -1;
+        }
+
+        const a = trajectory[closestSegmentIndex];
+        const b = trajectory[closestSegmentIndex + 1];
+
+        const distance = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+        const t = ((coord[0] - a[0]) * (b[0] - a[0]) + (coord[1] - a[1]) * (b[1] - a[1])) / distance ** 2;
+
+        return data[closestSegmentIndex] + t * (data[closestSegmentIndex + 1] - data[closestSegmentIndex]);
+    }
+
+    private getMd(feature: Feature, coord: Position): number | null {
+        if (!feature.properties?.md || !feature.geometry) {
+            return null;
+        }
+
+        const mds = feature.properties.md as number[];
+        const trajectory = this.getWellTrajectory(feature);
+
+        if (!trajectory) {
+            return null;
+        }
+
+        return this.interpolateDataOnTrajectory(trajectory, mds, coord);
+    }
+
     renderLayers(): LayersList {
-        const { hoveredWellboreUuid, activeWellboreUuid } = this.state;
+        const { hoveredWellboreUuid, activeWellboreUuid, hoveredMd } = this.state;
 
         const layers: Layer[] = [];
 
@@ -176,9 +251,9 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                 lineWidthUnits: "meters",
                 pointRadiusScale: this.props.pointRadiusScale,
                 lineWidthScale: this.props.lineWidthScale,
-                getLineWidth: (d: any) => {
+                getLineWidth: (d: Feature) => {
                     if (activeWellboreUuid === d.properties?.uuid) {
-                        return this.props.lineWidth! * 2;
+                        return d.properties.lineWidth * 2;
                     }
                     return this.props.lineWidth!;
                 },
@@ -187,8 +262,8 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                 visible: this.props.visible,
                 id: "colors",
                 lineWidthMinPixels: 1,
-                lineWidthMaxPixels: 5,
-                getLineColor: (d: any) => {
+                lineWidthMaxPixels: 7,
+                getLineColor: (d: Feature) => {
                     if (activeWellboreUuid === d.properties?.uuid) {
                         return [0, 173, 230, 255];
                     }
@@ -197,11 +272,56 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                     }
                     return [0, 0, 0, 255];
                 },
-                getFillColor: (d: any) => {
-                    return hoveredWellboreUuid === d.properties?.uuid ? [255, 0, 0, 255] : [0, 0, 0, 255];
+                updateTriggers: {
+                    getLineColor: [hoveredWellboreUuid, activeWellboreUuid],
+                    getLineWidth: [activeWellboreUuid],
+                },
+            })
+        );
+
+        layers.push(
+            new PointCloudLayer({
+                id: "highlight-md",
+                getPosition: () => {
+                    return hoveredMd ?? [0, 0, 0];
+                },
+            })
+        );
+
+        layers.push(
+            new GeoJsonLayer({
+                data: this.props.data,
+                pickable: true,
+                stroked: false,
+                pointRadiusUnits: "meters",
+                lineWidthUnits: "meters",
+                pointRadiusScale: this.props.pointRadiusScale,
+                lineWidthScale: this.props.lineWidthScale,
+                getLineWidth: (d: Feature) => {
+                    if (activeWellboreUuid === d.properties?.uuid) {
+                        return d.properties.lineWidth * 5;
+                    }
+                    if (hoveredWellboreUuid === d.properties?.uuid) {
+                        return d.properties.lineWidth * 3;
+                    }
+                    return this.props.lineWidth!;
+                },
+                lineBillboard: true,
+                pointBillboard: true,
+                visible: this.props.visible,
+                id: "highlight",
+                lineWidthMinPixels: 1,
+                lineWidthMaxPixels: 5,
+                getLineColor: (d: Feature) => {
+                    if (activeWellboreUuid === d.properties?.uuid) {
+                        return [0, 173, 230, 255];
+                    }
+                    if (hoveredWellboreUuid === d.properties?.uuid) {
+                        return [120, 120, 230, 255];
+                    }
+                    return [0, 0, 0, 0];
                 },
                 updateTriggers: {
-                    getFillColor: [hoveredWellboreUuid, activeWellboreUuid],
                     getLineColor: [hoveredWellboreUuid, activeWellboreUuid],
                     getLineWidth: [activeWellboreUuid],
                 },
@@ -209,17 +329,6 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         );
 
         for (const [zoom, labelCoords] of this.state.labelCoordsMap) {
-            const featureCollection = {
-                type: "FeatureCollection",
-                features: labelCoords.map((d) => ({
-                    type: "Feature",
-                    geometry: {
-                        type: "Point",
-                        coordinates: d.anchorCoordinates,
-                    },
-                })),
-            };
-
             layers.push(
                 new LineLayer(
                     this.getSubLayerProps({
@@ -259,14 +368,14 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                     sizeMaxPixels: 20,
                     sizeMinPixels: 12,
                     pickable: true,
-                    getBackgroundColor: (d: any) => {
+                    getBackgroundColor: (d: WellboreLabelCoords) => {
                         if (activeWellboreUuid === d.wellboreUuid) {
                             return [0, 173, 230, 255];
                         }
                         if (hoveredWellboreUuid === d.wellboreUuid) {
-                            return [255, 100, 0, 255];
+                            return [173, 173, 230, 255];
                         }
-                        return [255, 255, 255, 200];
+                        return [255, 255, 255, 100];
                     },
                     updateTriggers: {
                         getBackgroundColor: [hoveredWellboreUuid, activeWellboreUuid],

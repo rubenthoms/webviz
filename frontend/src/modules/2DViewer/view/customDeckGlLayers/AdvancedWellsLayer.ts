@@ -8,8 +8,8 @@ import {
     PickingInfo,
     UpdateParameters,
 } from "@deck.gl/core";
-import { GeoJsonLayer, LineLayer, PointCloudLayer, TextLayer } from "@deck.gl/layers";
-import { Entity, ForceDirectedEntityPositioning } from "@lib/utils/ForceDirectedEntityPositioning";
+import { GeoJsonLayer, PointCloudLayer, TextLayer } from "@deck.gl/layers";
+import { Entity } from "@lib/utils/ForceDirectedEntityPositioning";
 import { Vec2, rotatePoint2Around } from "@lib/utils/vec2";
 
 import { Feature, FeatureCollection, GeometryCollection, LineString, Position } from "geojson";
@@ -27,6 +27,7 @@ export type WellsLayerPickingInfo = PickingInfo & {
     name: string;
     tvd: number;
     md: number;
+    mdCoord: Position;
 };
 
 const defaultProps: Partial<WellsLayerProps> = {
@@ -45,7 +46,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         labelCoordsMap: Map<number, WellboreLabelCoords[]>;
         hoveredWellboreUuid: string | null;
         activeWellboreUuid: string | null;
-        hoveredMd: number | null;
+        hoveredMdCoord: Position | null;
     };
 
     constructor(props: any) {
@@ -75,6 +76,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         for (let z = 1; z > -5; z--) {
             const labelCoords = precalculateLabelPositions(this.props.data as FeatureCollection, 300 * 2 ** z);
 
+            /*
             const forceDirectedEntityPositioning = new ForceDirectedEntityPositioning(labelCoords, {
                 springRestLength: 20,
                 springConstant: 0.01,
@@ -83,9 +85,10 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                 maxIterations: 50,
             });
 
-            const adjustedLabelCoords = forceDirectedEntityPositioning.run();
+            const adjustedLabelCoords = forceDirectedEntityPositioning.run();^
+                */
 
-            labelCoordsMap.set(z, adjustedLabelCoords);
+            labelCoordsMap.set(z, labelCoords);
         }
 
         return labelCoordsMap;
@@ -145,14 +148,15 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
             wellboreUuid,
             name,
             md: this.getMd(info.object, coordinate) ?? 0,
+            mdCoord: this.getMdCoord(info.object, coordinate) ?? [0, 0],
         };
     }
 
     onHover(info: WellsLayerPickingInfo): boolean {
         if (info.object) {
-            this.setState({ hoveredWellboreUuid: info.wellboreUuid, hoveredMd: info.md });
+            this.setState({ hoveredWellboreUuid: info.wellboreUuid, hoveredMdCoord: info.mdCoord });
         } else {
-            this.setState({ hoveredWellboreUuid: null, hoveredMd: null });
+            this.setState({ hoveredWellboreUuid: null, hoveredMdCoord: null });
         }
 
         return false;
@@ -237,8 +241,37 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         return this.interpolateDataOnTrajectory(trajectory, mds, coord);
     }
 
+    private getMdCoord(feature: Feature, coord: Position): Position | null {
+        if (!feature.properties?.md || !feature.geometry) {
+            return null;
+        }
+
+        const trajectory = this.getWellTrajectory(feature);
+
+        if (!trajectory) {
+            return null;
+        }
+
+        const closestSegmentIndex = this.getClosestSegmentIndex(trajectory, coord);
+
+        if (closestSegmentIndex === -1) {
+            return null;
+        }
+
+        const a = trajectory[closestSegmentIndex];
+        const b = trajectory[closestSegmentIndex + 1];
+
+        const distance = Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
+        const t = ((coord[0] - a[0]) * (b[0] - a[0]) + (coord[1] - a[1]) * (b[1] - a[1])) / distance ** 2;
+
+        const x = a[0] + t * (b[0] - a[0]);
+        const y = a[1] + t * (b[1] - a[1]);
+
+        return [x, y];
+    }
+
     renderLayers(): LayersList {
-        const { hoveredWellboreUuid, activeWellboreUuid, hoveredMd } = this.state;
+        const { hoveredWellboreUuid, activeWellboreUuid, hoveredMdCoord } = this.state;
 
         const layers: Layer[] = [];
 
@@ -257,7 +290,6 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                     }
                     return this.props.lineWidth!;
                 },
-                lineBillboard: true,
                 pointBillboard: true,
                 visible: this.props.visible,
                 id: "colors",
@@ -282,9 +314,13 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         layers.push(
             new PointCloudLayer({
                 id: "highlight-md",
-                getPosition: () => {
-                    return hoveredMd ?? [0, 0, 0];
+                data: [hoveredMdCoord],
+                getPosition: (d) => {
+                    return d;
                 },
+                getColor: [0, 173, 230],
+                radiusPixels: 10,
+                visible: !!hoveredMdCoord,
             })
         );
 
@@ -306,7 +342,9 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                     }
                     return this.props.lineWidth!;
                 },
-                lineBillboard: true,
+                getElevation: (d: Feature) => {
+                    return 0;
+                },
                 pointBillboard: true,
                 visible: this.props.visible,
                 id: "highlight",
@@ -329,6 +367,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
         );
 
         for (const [zoom, labelCoords] of this.state.labelCoordsMap) {
+            /*
             layers.push(
                 new LineLayer(
                     this.getSubLayerProps({
@@ -347,6 +386,7 @@ export class AdvancedWellsLayer extends CompositeLayer<WellsLayerProps> {
                     })
                 )
             );
+            */
 
             layers.push(
                 new TextLayer({
@@ -460,6 +500,14 @@ function precalculateLabelPositions(data: FeatureCollection, minDistance: number
             const prev = coords[i - 1];
             const next = coords[i + 1];
 
+            const vec = [current[0] - prev[0], current[1] - prev[1]];
+            const normal = [-vec[1], vec[0]];
+            const length = Math.sqrt(normal[0] ** 2 + normal[1] ** 2);
+            normal[0] /= length;
+            normal[1] /= length;
+
+            const coordinates: [number, number] = [current[0] + normal[0] * 15, current[1] + normal[1] * 15];
+
             let angle = Math.atan2(prev[1] - next[1], prev[0] - next[0]) * (180 / Math.PI);
 
             if (angle < -90) {
@@ -474,7 +522,7 @@ function precalculateLabelPositions(data: FeatureCollection, minDistance: number
                 name,
                 wellboreUuid: uuid,
                 anchorCoordinates: [current[0], current[1]],
-                coordinates: [current[0], current[1]],
+                coordinates,
                 angle: angle,
             });
             continue;

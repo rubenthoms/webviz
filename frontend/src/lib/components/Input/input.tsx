@@ -1,5 +1,6 @@
 import React from "react";
 
+import { useDisabledComponent } from "@lib/hooks/useDisableComponent";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Input as InputUnstyled, InputProps as InputUnstyledProps } from "@mui/base";
 
@@ -41,6 +42,8 @@ export const Input = React.forwardRef((props: InputProps, ref: React.ForwardedRe
     >(props.inputRef, () => internalRef.current);
 
     const debounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const disableComponent = useDisabledComponent({ disabled: props.disabled });
 
     React.useEffect(function handleMount() {
         return function handleUnmount() {

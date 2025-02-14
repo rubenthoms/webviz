@@ -64,9 +64,10 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
     }
 
     updateState(params: UpdateParameters<Layer<WellBorePicksLayerProps & Required<CompositeLayerProps>>>): void {
+        const { zIncreaseDownwards } = this.props;
         const pointsData = params.props.data.map((wellPick) => {
             return {
-                coordinates: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
+                coordinates: [wellPick.easting, wellPick.northing, (zIncreaseDownwards ? -1.0 : 1.0) * wellPick.tvdMsl],
                 name: `${wellPick.wellBoreUwi}, TVD_MSL: ${wellPick.tvdMsl}, MD: ${wellPick.md}`,
                 id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
             };
@@ -84,7 +85,11 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
                 return {
                     id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
                     name: wellPick.wellBoreUwi,
-                    position: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
+                    position: [
+                        wellPick.easting,
+                        wellPick.northing,
+                        (zIncreaseDownwards ? -1.0 : 1.0) * wellPick.tvdMsl,
+                    ],
                     priority: 0,
                     direction: [0, 0, 1],
                 };

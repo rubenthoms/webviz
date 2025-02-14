@@ -1,6 +1,6 @@
 import { CompositeLayer, CompositeLayerProps, FilterContext, Layer, UpdateParameters } from "@deck.gl/core";
 import { GeoJsonLayer } from "@deck.gl/layers";
-import { LabelOrganizer } from "@modules/3DViewerNew/view/utils/LabelOrganizer";
+import { AnnotationOrganizer } from "@modules/3DViewerNew/view/utils/LabelOrganizer/AnnotationOrganizer";
 import { ExtendedLayerProps } from "@webviz/subsurface-viewer";
 import { BoundingBox3D, ReportBoundingBoxAction } from "@webviz/subsurface-viewer/dist/components/Map";
 
@@ -27,7 +27,7 @@ export interface WellBorePicksLayerProps extends ExtendedLayerProps {
 
     // Non public properties:
     reportBoundingBox?: React.Dispatch<ReportBoundingBoxAction>;
-    reportLabels?: LabelOrganizer["registerLabels"];
+    reportLabels?: AnnotationOrganizer["registerAnnotations"];
 }
 
 export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> {
@@ -98,22 +98,25 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
         this.props.reportBoundingBox?.({
             layerBoundingBox: this.calcBoundingBox(),
         });
+
+        this.props.reportLabels?.(
+            this.id,
+            this.props.data.map((wellPick) => {
+                return {
+                    id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
+                    name: wellPick.wellBoreUwi,
+                    position: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
+                    priority: 0,
+                    direction: [0, 0, 1],
+                };
+            })
+        );
     }
 
     renderLayers() {
         const fontSize = 16;
         const sizeMinPixels = 16;
         const sizeMaxPixels = 16;
-
-        this.props.reportLabels?.(
-            this.id,
-            this.props.data.map((wellPick) => {
-                return {
-                    name: wellPick.wellBoreUwi,
-                    referencePosition: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
-                };
-            })
-        );
 
         return [
             new GeoJsonLayer(

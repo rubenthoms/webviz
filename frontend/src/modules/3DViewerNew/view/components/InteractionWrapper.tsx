@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Layer as DeckGlLayer, View as DeckGlView } from "@deck.gl/core";
+import { Layer as DeckGlLayer } from "@deck.gl/core";
 import { DeckGLRef } from "@deck.gl/react";
 import { useIntersectionPolylines } from "@framework/UserCreatedItems";
 import { IntersectionPolylinesEvent } from "@framework/userCreatedItems/IntersectionPolylines";
@@ -14,7 +14,7 @@ import { ReadooutWrapperProps, ReadoutWrapper } from "./ReadoutWrapper";
 import { Toolbar } from "./Toolbar";
 
 import { DeckGlInstanceManager, DeckGlInstanceManagerTopic } from "../utils/DeckGlInstanceManager";
-import { LabelComponent, LabelOrganizer } from "../utils/LabelOrganizer";
+import { AnnotationOrganizer, useAnnotations } from "../utils/LabelOrganizer/AnnotationOrganizer";
 import { Polyline, PolylinesPlugin, PolylinesPluginTopic } from "../utils/PolylinesPlugin";
 
 export type InteractionWrapperProps = {} & Omit<
@@ -28,7 +28,12 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const [deckGlManager, setDeckGlManager] = React.useState<DeckGlInstanceManager>(
         new DeckGlInstanceManager(deckGlRef.current)
     );
-    const [labelOrganizer, setLabelOrganizer] = React.useState<LabelOrganizer>(new LabelOrganizer(deckGlRef.current));
+    const [labelOrganizer, setLabelOrganizer] = React.useState<AnnotationOrganizer>(
+        new AnnotationOrganizer({
+            maxDistance: 30000,
+            labelOffset: 0,
+        })
+    );
     const [polylinesPlugin, setPolylinesPlugin] = React.useState<PolylinesPlugin>(new PolylinesPlugin(deckGlManager));
 
     usePublishSubscribeTopicValue(deckGlManager, DeckGlInstanceManagerTopic.REDRAW);
@@ -136,7 +141,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
         adjustedLayers.push(
             layer.clone({
                 // @ts-expect-error - we need to add the registerLabels function to the layer
-                reportLabels: labelOrganizer.registerLabels.bind(labelOrganizer),
+                reportLabels: labelOrganizer.registerAnnotations.bind(labelOrganizer),
             })
         );
     }
@@ -144,22 +149,13 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
         adjustedLayers = adjustedLayers.filter((layer) => !(layer instanceof AxesLayer));
     }
 
-    const viewportLabels = labelOrganizer.makeLabelComponents();
-    const viewportAnnotations = viewportLabels.map((el) => {
-        return (
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            /* @ts-expect-error */
-            <DeckGlView key={el.viewportId} id={el.viewportId}>
-                <div className="h-full w-full relative top-0 left-0 overflow-hidden">
-                    {el.labels.map((label) => (
-                        <LabelComponent {...label} />
-                    ))}
-                </div>
-            </DeckGlView>
-        );
+    const annotations = useAnnotations({
+        layers: adjustedLayers,
+        organizer: labelOrganizer,
+        maxVisibleAnnotations: 10,
     });
 
-    const adjustedViewportAnnotations = [...props.viewportAnnotations, ...viewportAnnotations];
+    const adjustedViewportAnnotations = [...props.viewportAnnotations, ...annotations];
 
     return (
         <>

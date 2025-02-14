@@ -131,8 +131,8 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
         );
 
         let screenPosition = viewport.project(position) as Vec3;
-        screenPosition[0] = screenPosition[0] / viewport.width - 0.5;
-        screenPosition[1] = screenPosition[1] / viewport.height - 0.5;
+        screenPosition[0] = (2.0 * screenPosition[0]) / viewport.width - 1.0;
+        screenPosition[1] = 1.0 - (2.0 * screenPosition[1]) / viewport.height;
 
         const isInViewSpace =
             screenPosition[2] >= 0 &&

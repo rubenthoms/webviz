@@ -31,7 +31,6 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const [labelOrganizer, setLabelOrganizer] = React.useState<AnnotationOrganizer>(
         new AnnotationOrganizer({
             maxDistance: 30000,
-            labelOffset: 0,
         })
     );
     const [polylinesPlugin, setPolylinesPlugin] = React.useState<PolylinesPlugin>(new PolylinesPlugin(deckGlManager));
@@ -152,7 +151,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const annotations = useAnnotations({
         layers: adjustedLayers,
         organizer: labelOrganizer,
-        maxVisibleAnnotations: 10,
+        maxVisibleAnnotations: 100,
     });
 
     const adjustedViewportAnnotations = [...props.viewportAnnotations, ...annotations];

@@ -1,10 +1,8 @@
 import { CompositeLayer, CompositeLayerProps, FilterContext, Layer, UpdateParameters } from "@deck.gl/core";
-import { GeoJsonLayer } from "@deck.gl/layers";
+import { PointCloudLayer } from "@deck.gl/layers";
 import { AnnotationOrganizer } from "@modules/3DViewerNew/view/utils/LabelOrganizer/AnnotationOrganizer";
 import { ExtendedLayerProps } from "@webviz/subsurface-viewer";
 import { BoundingBox3D, ReportBoundingBoxAction } from "@webviz/subsurface-viewer/dist/components/Map";
-
-import type { Feature, FeatureCollection } from "geojson";
 
 export type WellborePickLayerData = {
     easting: number;
@@ -33,7 +31,7 @@ export interface WellBorePicksLayerProps extends ExtendedLayerProps {
 export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> {
     static layerName: string = "WellborePicksLayer";
     private _textData: TextLayerData[] = [];
-    private _pointsData: FeatureCollection | null = null;
+    private _pointsData: { coordinates: number[]; name: string; id: string }[] | null = null;
 
     filterSubLayer(context: FilterContext): boolean {
         if (context.layer.id.includes("text")) {
@@ -66,34 +64,15 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
     }
 
     updateState(params: UpdateParameters<Layer<WellBorePicksLayerProps & Required<CompositeLayerProps>>>): void {
-        const features: Feature[] = params.props.data.map((wellPick) => {
-            return {
-                type: "Feature",
-                geometry: {
-                    type: "Point",
-                    coordinates: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
-                },
-                properties: {
-                    name: `${wellPick.wellBoreUwi}, TVD_MSL: ${wellPick.tvdMsl}, MD: ${wellPick.md}`,
-                    color: [100, 100, 100, 100],
-                },
-            };
-        });
-
-        const pointsData: FeatureCollection = {
-            type: "FeatureCollection",
-            features: features,
-        };
-
-        const textData: TextLayerData[] = this.props.data.map((wellPick) => {
+        const pointsData = params.props.data.map((wellPick) => {
             return {
                 coordinates: [wellPick.easting, wellPick.northing, wellPick.tvdMsl],
-                name: wellPick.wellBoreUwi,
+                name: `${wellPick.wellBoreUwi}, TVD_MSL: ${wellPick.tvdMsl}, MD: ${wellPick.md}`,
+                id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
             };
         });
 
         this._pointsData = pointsData;
-        this._textData = textData;
 
         this.props.reportBoundingBox?.({
             layerBoundingBox: this.calcBoundingBox(),
@@ -119,24 +98,19 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
         const sizeMaxPixels = 16;
 
         return [
-            new GeoJsonLayer(
-                this.getSubLayerProps({
-                    id: "points",
-                    data: this._pointsData ?? undefined,
-                    filled: true,
-                    lineWidthMinPixels: 5,
-                    lineWidthMaxPixels: 5,
-                    lineWidthUnits: "meters",
-                    parameters: {
-                        depthTest: false,
-                    },
-                    getLineWidth: 1,
+            new PointCloudLayer({
+                id: "points",
+                data: this._pointsData,
+                getPosition: (d) => d.coordinates,
+                getColor: [0, 0, 0],
+                pointSize: 10,
+                pointSizeMinPixels: 10,
+                sizeUnits: "meters",
+                parameters: {
                     depthTest: false,
-                    pickable: true,
-                    getText: (d: Feature) => d.properties?.wellBoreUwi,
-                    getLineColor: [50, 50, 50],
-                })
-            ),
+                },
+                pickable: true,
+            }),
 
             /*
             new TextLayer(

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Layer, View } from "@deck.gl/core";
+import { Layer, View, Viewport } from "@deck.gl/core";
 import { DeckGLRef } from "@deck.gl/react";
 import {
     PublishSubscribe,
@@ -26,12 +26,12 @@ export type AnnotationOrganizerParams = {
 };
 
 const defaultAnnotationOrganizerProps: Required<AnnotationOrganizerParams> = {
-    labelOffset: 10,
+    labelOffset: 15,
     distanceFactor: 100,
     minDistance: 10,
     maxDistance: 10000,
     anchorOcclusionRadius: 10,
-    anchorSize: 0.25,
+    anchorSize: 2,
     anchorColor: "black",
     connectorWidth: 1,
     connectorColor: "black",
@@ -207,10 +207,21 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
             if (!ctx) {
                 return;
             }
+
             for (const viewport of viewports) {
                 const size: Vec2 = [viewport.width, viewport.height];
 
                 ctx.clearRect(0, 0, size[0], size[1]);
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.arcTo(0, 0, size[0], size[1], 1000);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+
+                ctx.fill();
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 1;
+                ctx.stroke();
 
                 const cursor = [globalCursor[0] - viewport.x, globalCursor[1] - viewport.y];
 
@@ -229,9 +240,11 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
                 const sorted = inViewSpace.sort((a, b) => b.state.distance - a.state.distance);
 
                 for (const instance of sorted) {
+                    /*
                     if (instance.state.occluded || instance.state.capped) {
                         continue;
                     }
+                    */
 
                     x1 = (instance.state.screenPosition[0] * 0.5 + 0.5) * size[0];
                     y1 = (-instance.state.screenPosition[1] * 0.5 + 0.5) * size[1];
@@ -277,7 +290,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
                         ctx.lineTo(x2, y2);
 
                         ctx.strokeStyle = instance.organizer.getParams().connectorColor;
-                        ctx.lineWidth = strokeWidth;
+                        ctx.lineWidth = 1; //strokeWidth;
                         ctx.stroke();
                     }
 
@@ -292,7 +305,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
 
                     ctx.globalAlpha = instance.state.opacity || 0;
                     ctx.strokeStyle = "black";
-                    ctx.lineWidth = 0.75;
+                    ctx.lineWidth = 1;
                     ctx.stroke();
                 }
             }
@@ -312,6 +325,10 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
                 requestAnimationFrame(renderLoop);
             }
             renderLoop();
+
+            return () => {
+                isMounted = false;
+            };
         },
         [render]
     );
@@ -322,8 +339,8 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
         nodes.push(
             /* @ts-expect-error*/
             <View key={viewport.id} id={viewport.id}>
-                <AnnotationComponentsContainer organizer={props.organizer} />
-                <canvas ref={canvasRef} className="w-full h-full absolute inset-0" />
+                <AnnotationComponentsContainer organizer={props.organizer} viewport={viewport} />
+                <canvas ref={canvasRef} className="absolute inset-0" width={viewport.width} height={viewport.height} />
             </View>
         );
     }
@@ -332,6 +349,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
 }
 
 export type AnnotationComponentsContainerProps = {
+    viewport: Viewport;
     organizer: AnnotationOrganizer;
 };
 
@@ -339,7 +357,10 @@ export function AnnotationComponentsContainer(props: AnnotationComponentsContain
     const instances = usePublishSubscribeTopicValue(props.organizer, AnnotationOrganizerTopic.INSTANCES);
 
     return (
-        <div className="h-full w-full relative inset-0 overflow-hidden">
+        <div
+            className="absolute inset-0 overflow-hidden"
+            style={{ width: props.viewport.width, height: props.viewport.height }}
+        >
             {instances.map((instance) => (
                 <AnnotationComponent
                     key={instance.id}

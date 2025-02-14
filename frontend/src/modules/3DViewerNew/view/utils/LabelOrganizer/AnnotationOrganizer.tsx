@@ -1,12 +1,14 @@
 import React from "react";
 
-import { Layer, View, Viewport } from "@deck.gl/core";
+import { FilterContext, Layer, Viewport } from "@deck.gl/core";
 import { DeckGLRef } from "@deck.gl/react";
 import {
     PublishSubscribe,
     PublishSubscribeDelegate,
     usePublishSubscribeTopicValue,
 } from "@modules/_shared/utils/PublishSubscribeDelegate";
+
+import { isEqual } from "lodash";
 
 import { Vec2 } from "./utils/definitions";
 import { mixVec2 } from "./utils/helpers";
@@ -49,6 +51,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
     private _annotationsMap: Map<string, Annotation[]> = new Map();
     private _annotationInstances: AnnotationInstance[] = [];
     private _params: Required<AnnotationOrganizerParams>;
+    private _prevLayerIds: string[] = [];
 
     private _publishSubscribeDelegate = new PublishSubscribeDelegate<AnnotationOrganizerTopicPayloads>();
 
@@ -67,6 +70,30 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
             connectorWidth: params.connectorWidth ?? defaultAnnotationOrganizerProps.connectorWidth,
             connectorColor: params.connectorColor ?? defaultAnnotationOrganizerProps.connectorColor,
         };
+    }
+
+    layerInViewport(viewport: Viewport, layer: Layer<any>) {
+        if (!this.isInitialized()) {
+            return false;
+        }
+
+        const layerFilter = this._ref!.deck!.props.layerFilter;
+        if (!layerFilter) {
+            return true;
+        }
+
+        const context: FilterContext = {
+            layer,
+            viewport,
+            isPicking: false,
+            renderPass: "normal",
+        };
+
+        return layerFilter(context);
+    }
+
+    getRef() {
+        return this._ref;
     }
 
     getPublishSubscribeDelegate(): PublishSubscribeDelegate<AnnotationOrganizerTopicPayloads> {
@@ -92,7 +119,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
         return this._params;
     }
 
-    private isInitialized() {
+    isInitialized() {
         return this._ref?.deck?.isInitialized;
     }
 
@@ -107,7 +134,23 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
         return this._annotationInstances.filter((instance) => instance.layerId === layerId);
     }
 
-    private makeAnnotationInstances(): void {
+    removeOrphanedInstances(layerIds: string[]) {
+        if (isEqual(layerIds, this._prevLayerIds)) {
+            return;
+        }
+
+        console.debug("Removing orphaned instances");
+        this._prevLayerIds = layerIds;
+        for (const key of this._annotationsMap.keys()) {
+            if (!layerIds.includes(key)) {
+                this._annotationsMap.delete(key);
+            }
+        }
+
+        this.updateAnnotationInstances();
+    }
+
+    private updateAnnotationInstances(): void {
         const instancesMap: Map<string, AnnotationInstance> = new Map(this._annotationInstances.map((i) => [i.id, i]));
         const instances: AnnotationInstance[] = [];
 
@@ -170,7 +213,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
 
     registerAnnotations(layerId: string, annotations: Annotation[]) {
         this._annotationsMap.set(layerId, annotations);
-        this.makeAnnotationInstances();
+        this.updateAnnotationInstances();
     }
 }
 
@@ -182,10 +225,13 @@ export type UseAnnotationsProps = {
 
 let x1: number, x2: number, y1: number, y2: number;
 
-export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
+export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const instances = usePublishSubscribeTopicValue(props.organizer, AnnotationOrganizerTopic.INSTANCES);
     const [globalCursor, setGlobalCursor] = React.useState<Vec2>([0, 0]);
+
+    const deck = props.organizer.getRef()?.deck;
+    const canvas = deck?.getCanvas();
 
     React.useEffect(() => {
         const handleMouseMove = (event: MouseEvent) => {
@@ -204,14 +250,20 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
             const viewports = props.organizer.getViewports();
             const ctx = canvasRef.current?.getContext("2d");
 
-            if (!ctx) {
+            if (!ctx || !canvas) {
                 return;
             }
 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             for (const viewport of viewports) {
                 const size: Vec2 = [viewport.width, viewport.height];
+                const offset: Vec2 = [viewport.x, viewport.y];
 
-                ctx.clearRect(0, 0, size[0], size[1]);
+                const filtered = instances.filter((i) => {
+                    const layer = props.layers.find((l) => l.id === i.layerId);
+                    return layer && props.organizer.layerInViewport(viewport, layer);
+                });
 
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -225,14 +277,14 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
 
                 const cursor = [globalCursor[0] - viewport.x, globalCursor[1] - viewport.y];
 
-                const inViewSpace = preprocessInstances(instances, viewport, props.maxVisibleAnnotations ?? 100);
+                const inViewSpace = preprocessInstances(filtered, viewport, props.maxVisibleAnnotations ?? 100);
 
                 if (!inViewSpace.length) {
                     updateInstanceDOMElements(instances);
                     return;
                 }
 
-                postProcessInstances(inViewSpace, size);
+                postProcessInstances(inViewSpace, size, offset);
 
                 // Maybe do some occlusion culling here
                 updateInstanceDOMElements(instances);
@@ -240,20 +292,19 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
                 const sorted = inViewSpace.sort((a, b) => b.state.distance - a.state.distance);
 
                 for (const instance of sorted) {
-                    /*
                     if (instance.state.occluded || instance.state.capped) {
                         continue;
                     }
-                    */
 
-                    x1 = (instance.state.screenPosition[0] * 0.5 + 0.5) * size[0];
-                    y1 = (-instance.state.screenPosition[1] * 0.5 + 0.5) * size[1];
+                    x1 = (instance.state.screenPosition[0] * 0.5 + 0.5) * size[0] + offset[0];
+                    y1 = (-instance.state.screenPosition[1] * 0.5 + 0.5) * size[1] + offset[1];
 
                     let radius = instance.organizer.getParams().anchorSize * instance.state.scaleFactor!;
                     let anchorHovered = false;
                     // boost instance if not visible and cursor is over anchor point
                     if (Math.abs(cursor[0] - x1) <= radius && Math.abs(cursor[1] - y1) <= radius) {
                         if (instance.state.visible) {
+                            7;
                             anchorHovered = true;
                         } else {
                             instance.state.boost = true;
@@ -275,6 +326,9 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
                         } else {
                             [x2, y2] = instance.state.anchorPosition!;
                         }
+
+                        x2 += offset[0];
+                        y2 += offset[1];
 
                         let strokeWidth = Math.max(
                             0.1,
@@ -333,34 +387,38 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode[] {
         [render]
     );
 
-    const viewports = props.organizer.getViewports();
-    const nodes: React.ReactNode[] = [];
-    for (const viewport of viewports) {
-        nodes.push(
-            /* @ts-expect-error*/
-            <View key={viewport.id} id={viewport.id}>
-                <AnnotationComponentsContainer organizer={props.organizer} viewport={viewport} />
-                <canvas ref={canvasRef} className="absolute inset-0" width={viewport.width} height={viewport.height} />
-            </View>
-        );
+    if (!props.organizer.isInitialized()) {
+        return null;
     }
 
-    return nodes;
+    if (!canvas) {
+        return null;
+    }
+
+    return (
+        <div className="absolute inset-0 pointer-events-none" style={{ width: canvas.width, height: canvas.height }}>
+            <AnnotationComponentsContainer organizer={props.organizer} width={canvas.width} height={canvas.height} />
+            <canvas
+                ref={canvasRef}
+                className="absolute inset-0 pointer-events-none"
+                width={canvas.width}
+                height={canvas.height}
+            />
+        </div>
+    );
 }
 
 export type AnnotationComponentsContainerProps = {
-    viewport: Viewport;
     organizer: AnnotationOrganizer;
+    width: number;
+    height: number;
 };
 
 export function AnnotationComponentsContainer(props: AnnotationComponentsContainerProps) {
     const instances = usePublishSubscribeTopicValue(props.organizer, AnnotationOrganizerTopic.INSTANCES);
 
     return (
-        <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ width: props.viewport.width, height: props.viewport.height }}
-        >
+        <div className="absolute inset-0 overflow-hidden" style={{ width: props.width, height: props.height }}>
             {instances.map((instance) => (
                 <AnnotationComponent
                     key={instance.id}
@@ -383,10 +441,16 @@ type AnnotationComponentProps = {
 const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, ref: React.Ref<HTMLDivElement>) => {
     const onPointerEnter = React.useCallback(() => {
         props.state.labelHovered = true;
-    }, [props.state]);
+        props.annotation.onMouseOver?.();
+    }, [props.state, props.annotation]);
 
     const onPointerLeave = React.useCallback(() => {
         props.state.labelHovered = false;
+        props.annotation.onMouseOut?.();
+    }, [props.state, props.annotation]);
+
+    const onPointerClick = React.useCallback(() => {
+        props.state.boost = true;
     }, [props.state]);
 
     return (
@@ -402,6 +466,7 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
             }}
             onPointerEnter={onPointerEnter}
             onPointerLeave={onPointerLeave}
+            onClick={onPointerClick}
         >
             <div
                 key={props.id}

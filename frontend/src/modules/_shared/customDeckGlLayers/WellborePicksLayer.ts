@@ -25,13 +25,20 @@ export interface WellBorePicksLayerProps extends ExtendedLayerProps {
 
     // Non public properties:
     reportBoundingBox?: React.Dispatch<ReportBoundingBoxAction>;
-    reportLabels?: AnnotationOrganizer["registerAnnotations"];
+    reportAnnotations?: AnnotationOrganizer["registerAnnotations"];
 }
 
 export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> {
     static layerName: string = "WellborePicksLayer";
-    private _textData: TextLayerData[] = [];
-    private _pointsData: { coordinates: number[]; name: string; id: string }[] | null = null;
+
+    private _pointsData: { coordinates: number[]; name: string; id: string }[] = [];
+
+    /*
+    state!: {
+        hoveredIndex: number;
+        pointsData: { coordinates: number[]; name: string; id: string }[];
+    };
+    */
 
     filterSubLayer(context: FilterContext): boolean {
         if (context.layer.id.includes("text")) {
@@ -79,9 +86,9 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
             layerBoundingBox: this.calcBoundingBox(),
         });
 
-        this.props.reportLabels?.(
+        this.props.reportAnnotations?.(
             this.id,
-            this.props.data.map((wellPick) => {
+            this.props.data.map((wellPick, index) => {
                 return {
                     id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
                     name: wellPick.wellBoreUwi,
@@ -102,12 +109,20 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
         const sizeMinPixels = 16;
         const sizeMaxPixels = 16;
 
+        const pointsData = this._pointsData;
+        const hoveredIndex = -1;
+
         return [
             new PointCloudLayer({
                 id: "points",
-                data: this._pointsData,
+                data: pointsData,
                 getPosition: (d) => d.coordinates,
-                getColor: [0, 0, 0],
+                getColor: (_, context) => {
+                    if (context.index === hoveredIndex) {
+                        return [0, 0, 255, 255];
+                    }
+                    return [255, 255, 255, 255];
+                },
                 pointSize: 10,
                 pointSizeMinPixels: 10,
                 sizeUnits: "meters",
@@ -115,6 +130,9 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
                     depthTest: false,
                 },
                 pickable: true,
+                updateTriggers: {
+                    getColor: [hoveredIndex],
+                },
             }),
 
             /*

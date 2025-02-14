@@ -12,6 +12,8 @@ export type Annotation = {
     data?: any;
     priority?: number;
     direction?: Vec3;
+    onMouseOver?: () => void;
+    onMouseOut?: () => void;
 };
 
 export type AnnotationComponentProps = Annotation & {

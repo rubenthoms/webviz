@@ -8,6 +8,7 @@ import { usePublishSubscribeTopicValue } from "@modules/_shared/utils/PublishSub
 import { AxesLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { converter } from "culori";
+import { isEqual } from "lodash";
 
 import { ContextMenu } from "./ContextMenu";
 import { ReadooutWrapperProps, ReadoutWrapper } from "./ReadoutWrapper";
@@ -28,11 +29,24 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const [deckGlManager, setDeckGlManager] = React.useState<DeckGlInstanceManager>(
         new DeckGlInstanceManager(deckGlRef.current)
     );
-    const [labelOrganizer, setLabelOrganizer] = React.useState<AnnotationOrganizer>(
+    const [layerIds, setLayerIds] = React.useState<string[]>([]);
+
+    const [annotationOrganizer] = React.useState<AnnotationOrganizer>(
         new AnnotationOrganizer({
-            maxDistance: 30000,
+            labelOffset: 15,
+            maxDistance: 15000,
         })
     );
+
+    const newLayerIds = props.layers.map((layer) => layer.id);
+    if (!isEqual(newLayerIds, layerIds)) {
+        setLayerIds(newLayerIds);
+    }
+
+    React.useEffect(() => {
+        annotationOrganizer.removeOrphanedInstances(layerIds);
+    }, [layerIds, annotationOrganizer]);
+
     const [polylinesPlugin, setPolylinesPlugin] = React.useState<PolylinesPlugin>(new PolylinesPlugin(deckGlManager));
 
     usePublishSubscribeTopicValue(deckGlManager, DeckGlInstanceManagerTopic.REDRAW);
@@ -63,7 +77,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
             const manager = new DeckGlInstanceManager(deckGlRef.current);
             setDeckGlManager(manager);
 
-            labelOrganizer.setDeckRef(deckGlRef.current);
+            annotationOrganizer.setDeckRef(deckGlRef.current);
 
             const polylinesPlugin = new PolylinesPlugin(manager, colorGenerator());
             polylinesPlugin.setPolylines(intersectionPolylines.getPolylines());
@@ -91,7 +105,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
                 unsubscribeFromIntersectionPolylines();
             };
         },
-        [intersectionPolylines, colorGenerator, labelOrganizer]
+        [intersectionPolylines, colorGenerator, annotationOrganizer]
     );
 
     const [triggerHomeCounter, setTriggerHomeCounter] = React.useState<number>(0);
@@ -140,7 +154,8 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
         adjustedLayers.push(
             layer.clone({
                 // @ts-expect-error - we need to add the registerLabels function to the layer
-                reportLabels: labelOrganizer.registerAnnotations.bind(labelOrganizer),
+                reportAnnotations: (layerId: string, annotations: Annotation[]) =>
+                    annotationOrganizer.registerAnnotations(layerId, annotations),
             })
         );
     }
@@ -150,11 +165,9 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
 
     const annotations = useAnnotations({
         layers: adjustedLayers,
-        organizer: labelOrganizer,
+        organizer: annotationOrganizer,
         maxVisibleAnnotations: 100,
     });
-
-    const adjustedViewportAnnotations = [...props.viewportAnnotations, ...annotations];
 
     return (
         <>
@@ -172,12 +185,13 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
             <ReadoutWrapper
                 {...props}
                 deckGlRef={deckGlRef}
-                viewportAnnotations={adjustedViewportAnnotations}
+                viewportAnnotations={props.viewportAnnotations}
                 layers={adjustedLayers}
                 deckGlManager={deckGlManager}
                 verticalScale={verticalScale}
                 triggerHome={triggerHomeCounter}
             />
+            {annotations}
         </>
     );
 }

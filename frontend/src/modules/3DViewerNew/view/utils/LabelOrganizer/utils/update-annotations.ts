@@ -30,7 +30,12 @@ let x: number, y: number;
 const nearTree = new RBush(); // used for near annotations
 const distantTree = new RBush(); // used for distant annotations
 
-function calculateLabelPosition(instance: AnnotationInstance, positionSlot: number, size: Vec2) {
+function calculateLabelPosition(
+    instance: AnnotationInstance,
+    positionSlot: number,
+    size: Vec2,
+    viewportOffset: Vec2 = [0, 0]
+) {
     const scale = instance.state.scaleFactor!;
     const positionOptions = labelAnglesMap[instance.state.quadrant!];
 
@@ -56,8 +61,8 @@ function calculateLabelPosition(instance: AnnotationInstance, positionSlot: numb
     instance.state.scaledOffset = [(labelWidth - scaledWidth) / 2, (labelHeight - scaledHeight) / 2];
 
     instance.state.labelPosition = [
-        anchorPosition[0] - scaledWidth / 2 + labelEdge[0],
-        anchorPosition[1] - scaledHeight / 2 + labelEdge[1],
+        anchorPosition[0] - scaledWidth / 2 + labelEdge[0] + viewportOffset[0],
+        anchorPosition[1] - scaledHeight / 2 + labelEdge[1] + viewportOffset[1],
     ];
 }
 
@@ -234,7 +239,7 @@ export async function occlustionTestIntstances(
 /**
  * POST PROCESS INSTANCES
  */
-export function postProcessInstances(instances: AnnotationInstance[], size: Vec2) {
+export function postProcessInstances(instances: AnnotationInstance[], size: Vec2, offset: Vec2) {
     nearTree.clear();
     distantTree.clear();
 
@@ -268,7 +273,7 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
             const scaledHeight = labelHeight * instance.state.scaleFactor!;
 
             for (let i = 0; i < slots.length; i++) {
-                calculateLabelPosition(instance, slots[i], size);
+                calculateLabelPosition(instance, slots[i], size, offset);
 
                 // test for overlaps
                 const rect = {

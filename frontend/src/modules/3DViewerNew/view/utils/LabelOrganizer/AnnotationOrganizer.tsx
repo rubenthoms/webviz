@@ -12,7 +12,13 @@ import { isEqual } from "lodash";
 
 import { Vec2 } from "./utils/definitions";
 import { mixVec2 } from "./utils/helpers";
-import { Annotation, AnnotationInstance, AnnotationInstanceState } from "./utils/types";
+import {
+    AnnotationInstance,
+    AnnotationInstanceState,
+    BaseAnnotation,
+    LabelAnnotation,
+    PieChartAnnotation,
+} from "./utils/types";
 import { postProcessInstances, preprocessInstances, updateInstanceDOMElements } from "./utils/update-annotations";
 
 export type AnnotationOrganizerParams = {
@@ -30,7 +36,7 @@ export type AnnotationOrganizerParams = {
 const defaultAnnotationOrganizerProps: Required<AnnotationOrganizerParams> = {
     labelOffset: 15,
     distanceFactor: 100,
-    minDistance: 10,
+    minDistance: 100,
     maxDistance: 10000,
     anchorOcclusionRadius: 10,
     anchorSize: 2,
@@ -48,7 +54,7 @@ export type AnnotationOrganizerTopicPayloads = {
 };
 
 export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizerTopicPayloads> {
-    private _annotationsMap: Map<string, Annotation[]> = new Map();
+    private _annotationsMap: Map<string, BaseAnnotation[]> = new Map();
     private _annotationInstances: AnnotationInstance[] = [];
     private _params: Required<AnnotationOrganizerParams>;
     private _prevLayerIds: string[] = [];
@@ -213,7 +219,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
         this._publishSubscribeDelegate.notifySubscribers(AnnotationOrganizerTopic.INSTANCES);
     }
 
-    registerAnnotations(layerId: string, annotations: Annotation[]) {
+    registerAnnotations(layerId: string, annotations: BaseAnnotation[]) {
         this._annotationsMap.set(layerId, annotations);
         this.updateAnnotationInstances();
     }
@@ -460,7 +466,7 @@ export function AnnotationComponentsContainer(props: AnnotationComponentsContain
 type AnnotationComponentProps = {
     id: string;
     state: AnnotationInstanceState;
-    annotation: Annotation;
+    annotation: BaseAnnotation;
 };
 
 const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, ref: React.Ref<HTMLDivElement>) => {
@@ -478,6 +484,8 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
         props.state.boost = true;
     }, [props.state]);
 
+    let cumulativePercent = 0;
+
     return (
         <div
             data-annotationid={props.id}
@@ -494,23 +502,72 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
             onPointerLeave={onPointerLeave}
             onClick={onPointerClick}
         >
-            <div
-                key={props.id}
-                id={`annotation_${props.id}`}
-                style={{
-                    minWidth: "100px",
-                    background: "#000",
-                    color: "white",
-                    textAlign: "center",
-                    overflow: "hidden",
-                    borderRadius: "4px",
-                    padding: "1px 2px",
-                    fontFamily: "sans-serif",
-                    fontSize: "10pt",
-                }}
-            >
-                <div style={{ whiteSpace: "nowrap" }}>{props.annotation.name}</div>
-            </div>
+            {props.annotation.type === "label" && (
+                <div
+                    key={props.id}
+                    id={`annotation_${props.id}`}
+                    style={{
+                        minWidth: "100px",
+                        background: "#000",
+                        color: "white",
+                        textAlign: "center",
+                        overflow: "hidden",
+                        borderRadius: "4px",
+                        padding: "1px 2px",
+                        fontFamily: "sans-serif",
+                        fontSize: "10pt",
+                    }}
+                >
+                    <div style={{ whiteSpace: "nowrap" }}>{(props.annotation as LabelAnnotation).name}</div>
+                </div>
+            )}
+            {props.annotation.type === "pie-chart" && (
+                <div
+                    key={props.id}
+                    id={`annotation_${props.id}`}
+                    style={{
+                        minWidth: "24px",
+                        border: "1px solid #000",
+                        background: "#fff",
+                        color: "white",
+                        textAlign: "center",
+                        overflow: "hidden",
+                        borderRadius: "4px",
+                        padding: "3px 3px",
+                        fontFamily: "sans-serif",
+                        fontSize: "10pt",
+                    }}
+                >
+                    <svg
+                        height="24"
+                        width="24"
+                        viewBox="-1 -1 2 2"
+                        style={{ transform: "rotate(-90deg)" }}
+                        key={props.id}
+                        id={`annotation_${props.id}`}
+                    >
+                        {(props.annotation as PieChartAnnotation).data.values.map((value: number, index: number) => {
+                            const [startX, startY] = getCoordinatesForPercent(cumulativePercent);
+                            cumulativePercent += value;
+                            const [endX, endY] = getCoordinatesForPercent(cumulativePercent);
+                            const largeArcFlag = value > 0.5 ? 1 : 0;
+                            return (
+                                <path
+                                    key={index}
+                                    d={`M ${startX} ${startY} A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY} L 0 0`}
+                                    fill={(props.annotation as PieChartAnnotation).data.colors[index]}
+                                />
+                            );
+                        })}
+                    </svg>
+                </div>
+            )}
         </div>
     );
 });
+
+function getCoordinatesForPercent(percent: number): [number, number] {
+    const x = Math.cos(2 * Math.PI * percent);
+    const y = Math.sin(2 * Math.PI * percent);
+    return [x, y];
+}

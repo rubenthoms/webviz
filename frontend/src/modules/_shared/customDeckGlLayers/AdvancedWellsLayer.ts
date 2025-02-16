@@ -1,7 +1,7 @@
 import { FilterContext, Layer, LayersList, UpdateParameters } from "@deck.gl/core";
 import { GeoJsonLayer } from "@deck.gl/layers";
 import { Vec3 } from "@modules/3DViewerNew/view/utils/LabelOrganizer/utils/definitions";
-import { Annotation } from "@modules/3DViewerNew/view/utils/LabelOrganizer/utils/types";
+import { LabelAnnotation } from "@modules/3DViewerNew/view/utils/LabelOrganizer/utils/types";
 import { WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { FeatureCollection, GeometryCollection, LineString, Point } from "geojson";
@@ -28,7 +28,7 @@ export class AdvancedWellsLayer extends WellsLayer {
         const { data } = this.props;
 
         const featureCollection = data as FeatureCollection;
-        const annotations: Annotation[] = [];
+        const annotations: LabelAnnotation[] = [];
 
         let index = 0;
         for (const feature of featureCollection.features) {
@@ -55,6 +55,7 @@ export class AdvancedWellsLayer extends WellsLayer {
 
             annotations.push({
                 id: wellUuid,
+                type: "label",
                 name: wellName,
                 position: [startPoint[0], startPoint[1], -startPoint[2]],
                 alternativePositions: alternativePositions,

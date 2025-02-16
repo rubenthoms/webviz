@@ -89,8 +89,34 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
         this.props.reportAnnotations?.(
             this.id,
             this.props.data.map((wellPick, index) => {
+                if (index % 10 === 0) {
+                    return {
+                        id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
+                        type: "pie-chart",
+                        data: {
+                            values: [0.2, 0.5, 0.3],
+                            colors: ["red", "green", "blue"],
+                            labels: ["A", "B", "C"],
+                        },
+                        name: wellPick.wellBoreUwi,
+                        position: [
+                            wellPick.easting,
+                            wellPick.northing,
+                            (zIncreaseDownwards ? -1.0 : 1.0) * wellPick.tvdMsl,
+                        ],
+                        priority: 0,
+                        direction: [0, 0, 1],
+                        onMouseOver: () => {
+                            this.setState({ hoveredIndex: index });
+                        },
+                        onMouseOut: () => {
+                            this.setState({ hoveredIndex: -1 });
+                        },
+                    };
+                }
                 return {
                     id: `${wellPick.wellBoreUwi}_${wellPick.md}_${wellPick.tvdMsl}`,
+                    type: "label",
                     name: wellPick.wellBoreUwi,
                     position: [
                         wellPick.easting,

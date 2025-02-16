@@ -4,9 +4,9 @@ import { Vec2, Vec3 } from "./definitions";
 
 import { AnnotationOrganizer } from "../AnnotationOrganizer";
 
-export type Annotation = {
+export type BaseAnnotation = {
     id: string;
-    name: string;
+    type: "label" | "pie-chart";
     position: Vec3;
     alternativePositions?: Vec3[];
     scope?: string;
@@ -17,7 +17,21 @@ export type Annotation = {
     onMouseOut?: () => void;
 };
 
-export type AnnotationComponentProps = Annotation & {
+export type LabelAnnotation = BaseAnnotation & {
+    type: "label";
+    name: string;
+};
+
+export type PieChartAnnotation = BaseAnnotation & {
+    type: "pie-chart";
+    data: {
+        values: number[];
+        colors: string[];
+        labels: string[];
+    };
+};
+
+export type AnnotationComponentProps = BaseAnnotation & {
     instanceId: string;
 };
 
@@ -92,7 +106,7 @@ export type AnnotationInstance = {
     ref: RefObject<HTMLDivElement> | null;
     layerId: string;
     organizer: AnnotationOrganizer;
-    annotation: Annotation;
+    annotation: BaseAnnotation;
     priority: number;
     rank: number;
     state: AnnotationInstanceState;

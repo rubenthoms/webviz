@@ -8,6 +8,7 @@ export type Annotation = {
     id: string;
     name: string;
     position: Vec3;
+    alternativePositions?: Vec3[];
     scope?: string;
     data?: any;
     priority?: number;
@@ -39,6 +40,13 @@ export type AnnotationLayer = {
     //annotations: AnnotationProps[],
 };
 
+export type ScreenPositionCandidate = {
+    originalIndex: number;
+    screenPosition: Vec3;
+    rank: number;
+    quadrant: number;
+};
+
 export type AnnotationInstanceState = {
     visible: boolean;
     health: number;
@@ -50,6 +58,8 @@ export type AnnotationInstanceState = {
     quadrant?: number;
     positionSlot?: number;
     screenPosition: Vec3;
+    possibleScreenPositions: ScreenPositionCandidate[];
+    screenPositionCandidatesLastIndex: number;
     labelPosition?: Vec2;
     scaledOffset?: Vec2;
     anchorPosition?: Vec2;

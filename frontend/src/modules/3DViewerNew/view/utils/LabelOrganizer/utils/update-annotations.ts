@@ -13,7 +13,7 @@ import {
     mixVec2,
     occlusionTest,
 } from "./helpers";
-import { AnnotationInstance } from "./types";
+import { AnnotationInstance, ScreenPositionCandidate } from "./types";
 
 const viewportX = [-0.99, 0.99];
 const viewportY = [-0.99, 0.99];
@@ -32,12 +32,14 @@ const distantTree = new RBush(); // used for distant annotations
 
 function calculateLabelPosition(
     instance: AnnotationInstance,
+    screenPosition: Vec3,
+    quadrant: number,
     positionSlot: number,
     size: Vec2,
     viewportOffset: Vec2 = [0, 0]
 ) {
     const scale = instance.state.scaleFactor!;
-    const positionOptions = labelAnglesMap[instance.state.quadrant!];
+    const positionOptions = labelAnglesMap[quadrant];
 
     const angle = labelAngles[positionOptions[positionSlot]];
 
@@ -52,8 +54,8 @@ function calculateLabelPosition(
     const offset = instance.organizer.getParams().labelOffset! * scale;
 
     const anchorPosition: Vec2 = [
-        (instance.state.screenPosition![0] * 0.5 + 0.5) * size[0] + direction[0] * offset,
-        (-instance.state.screenPosition![1] * 0.5 + 0.5) * size[1] + direction[1] * offset,
+        (screenPosition![0] * 0.5 + 0.5) * size[0] + direction[0] * offset,
+        (-screenPosition![1] * 0.5 + 0.5) * size[1] + direction[1] * offset,
     ];
 
     instance.state.anchorPosition = anchorPosition;
@@ -127,29 +129,46 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
             }
         }
 
-        let position = instance.annotation.position;
-        const cameraPosition = viewport.cameraPosition as Vec3;
-        const distance = calcDistance(position, cameraPosition);
-        const scaleFactor = Math.max(
-            0.25,
-            Math.min(1, (1 / (2 * Math.tan(fovRad / 2) * distance)) * instance.organizer.getParams().distanceFactor)
-        );
+        let positions: Vec3[] = [instance.annotation.position];
+        if (instance.annotation.alternativePositions) {
+            positions.push(...instance.annotation.alternativePositions);
+        }
 
-        let screenPosition = viewport.project(position) as Vec3;
-        screenPosition[0] = (2.0 * screenPosition[0]) / viewport.width - 1.0;
-        screenPosition[1] = 1.0 - (2.0 * screenPosition[1]) / viewport.height;
+        let possibleScreenPositions: Vec3[] = [];
+        let scaleFactor = 0.25;
+        let distance = 0;
+        let isInViewSpace = false;
+        let position: Vec3 = [0, 0, 0];
+        for (let j = 0; j < positions.length; j++) {
+            position = positions[j];
+            const cameraPosition = viewport.cameraPosition as Vec3;
+            distance = calcDistance(position, cameraPosition);
+            scaleFactor = Math.max(
+                0.25,
+                Math.min(1, (1 / (2 * Math.tan(fovRad / 2) * distance)) * instance.organizer.getParams().distanceFactor)
+            );
 
-        const isInViewSpace =
-            screenPosition[2] >= 0 &&
-            screenPosition[2] <= 1 &&
-            screenPosition[0] >= viewportX[0] &&
-            screenPosition[0] <= viewportX[1] &&
-            screenPosition[1] >= viewportY[0] &&
-            screenPosition[1] <= viewportY[1] &&
-            (!instance.organizer.getParams().minDistance || distance >= instance.organizer.getParams().minDistance) &&
-            (!instance.organizer.getParams().maxDistance || distance <= instance.organizer.getParams().maxDistance);
+            const screenPosition = viewport.project(position) as Vec3;
+            screenPosition[0] = (2.0 * screenPosition[0]) / viewport.width - 1.0;
+            screenPosition[1] = 1.0 - (2.0 * screenPosition[1]) / viewport.height;
 
-        instance.state.screenPosition = screenPosition;
+            isInViewSpace =
+                screenPosition[2] >= 0 &&
+                screenPosition[2] <= 1 &&
+                screenPosition[0] >= viewportX[0] &&
+                screenPosition[0] <= viewportX[1] &&
+                screenPosition[1] >= viewportY[0] &&
+                screenPosition[1] <= viewportY[1] &&
+                (!instance.organizer.getParams().minDistance ||
+                    distance >= instance.organizer.getParams().minDistance) &&
+                (!instance.organizer.getParams().maxDistance || distance <= instance.organizer.getParams().maxDistance);
+
+            if (isInViewSpace) {
+                possibleScreenPositions.push(screenPosition);
+            }
+        }
+
+        instance.state.possibleScreenPositions = [];
         instance.state.distance = distance;
         instance.state.scaleFactor = scaleFactor;
         instance.state.inViewSpace = isInViewSpace;
@@ -159,8 +178,55 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
             instance.rank = 0;
         } else {
             // calculate heuristics
-            const hPositionPenalty = clamp((screenPosition[0] ** 2 + screenPosition[1] ** 2) / 2, 0, 1);
-            const hDistancePenalty = Math.min(distance, 1000);
+            for (let j = 0; j < possibleScreenPositions.length; j++) {
+                const screenPosition = possibleScreenPositions[j];
+
+                let candidate: ScreenPositionCandidate = {
+                    originalIndex: j,
+                    screenPosition,
+                    rank: 1000,
+                    quadrant: 0,
+                };
+
+                const hPositionPenalty = clamp((screenPosition[0] ** 2 + screenPosition[1] ** 2) / 2, 0, 1);
+                const hDistancePenalty = Math.min(distance, 1000);
+
+                candidate.rank += instance.priority * 1000 - (hPositionPenalty * 100 + hDistancePenalty);
+
+                if (instance.state.visible) {
+                    candidate.rank += 100;
+                } else {
+                    candidate.rank -= 100;
+                }
+
+                if (instance.state.boost) {
+                    candidate.rank += 100000;
+                }
+
+                if (j === instance.state.screenPositionCandidatesLastIndex) {
+                    candidate.rank += 100;
+                }
+
+                if (nInViewSpace < maxVisible && instance.annotation.direction) {
+                    candidate.quadrant = getLabelQuadrant(
+                        screenPosition,
+                        position,
+                        instance.annotation.direction,
+                        viewport.project
+                    );
+                }
+
+                instance.state.possibleScreenPositions.push(candidate);
+            }
+
+            if (nInViewSpace < maxVisible && instance.state.possibleScreenPositions.length) {
+                nInViewSpace++;
+            } else {
+                instance.state.visible = false;
+                instance.state.capped = true;
+            }
+
+            /*
             instance.rank = 1000;
             instance.rank += instance.priority * 1000 - (hPositionPenalty * 100 + hDistancePenalty);
 
@@ -174,12 +240,7 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
                 nInViewSpace++;
                 instance.state.prevQuadrant = instance.state.quadrant;
                 instance.state.quadrant = instance.annotation.direction
-                    ? getLabelQuadrant(
-                          screenPosition,
-                          instance.annotation.position,
-                          instance.annotation.direction,
-                          viewport.project
-                      )
+                    ? getLabelQuadrant(screenPosition, position, instance.annotation.direction, viewport.project)
                     : 0;
             } else {
                 instance.state.quadrant = 0;
@@ -188,6 +249,7 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
                     instance.state.capped = true;
                 }
             }
+            */
         }
 
         if (instance.state.boost) {
@@ -212,7 +274,11 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
 
     prevTime = Date.now();
 
-    inViewspace.sort((a, b) => b.rank - a.rank);
+    inViewspace.sort(
+        (a, b) =>
+            Math.max(...b.state.possibleScreenPositions.map((el) => el.rank)) -
+            Math.max(...a.state.possibleScreenPositions.map((el) => el.rank))
+    );
 
     return inViewspace;
 }
@@ -258,7 +324,13 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
         }
 
         if (instance.state.kill || instance.state.occluded) {
-            calculateLabelPosition(instance, currentSlot, size);
+            calculateLabelPosition(
+                instance,
+                instance.state.screenPosition,
+                instance.state.quadrant!,
+                currentSlot,
+                size
+            );
             setTransition(instance, currentSlot, prevLabelPosition, prevAnchorPosition);
         } else if (!instance.state.cooldown) {
             let positionFound = false;
@@ -272,26 +344,37 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
             const scaledWidth = labelWidth * instance.state.scaleFactor!;
             const scaledHeight = labelHeight * instance.state.scaleFactor!;
 
+            const sortedCandidates = instance.state.possibleScreenPositions.sort((a, b) => b.rank - a.rank);
+
             for (let i = 0; i < slots.length; i++) {
-                calculateLabelPosition(instance, slots[i], size, offset);
+                for (let j = 0; j < sortedCandidates.length; j++) {
+                    const candidate = sortedCandidates[j];
+                    const screenPosition = candidate.screenPosition;
+                    const quadrant = candidate.quadrant;
+                    calculateLabelPosition(instance, screenPosition, quadrant, slots[i], size, offset);
 
-                // test for overlaps
-                const rect = {
-                    minX: instance.state.labelPosition![0] - collisionMargin,
-                    minY: instance.state.labelPosition![1] - collisionMargin,
-                    maxX: instance.state.labelPosition![0] + scaledWidth + collisionMargin2,
-                    maxY: instance.state.labelPosition![1] + scaledHeight + collisionMargin2,
-                };
+                    // test for overlaps
+                    const rect = {
+                        minX: instance.state.labelPosition![0] - collisionMargin,
+                        minY: instance.state.labelPosition![1] - collisionMargin,
+                        maxX: instance.state.labelPosition![0] + scaledWidth + collisionMargin2,
+                        maxY: instance.state.labelPosition![1] + scaledHeight + collisionMargin2,
+                    };
 
-                const collisionTree = instance.state.scaleFactor! >= 0.5 ? nearTree : distantTree;
+                    const collisionTree = instance.state.scaleFactor! >= 0.5 ? nearTree : distantTree;
 
-                if (!collisionTree.collides(rect)) {
-                    collisionTree.insert(rect);
-                    positionFound = true;
-                    setTransition(instance, slots[i], prevLabelPosition, prevAnchorPosition);
-                    instance.state.positionSlot = slots[i];
-                    break;
+                    if (!collisionTree.collides(rect)) {
+                        collisionTree.insert(rect);
+                        positionFound = true;
+                        instance.state.screenPosition = screenPosition;
+                        instance.state.quadrant = quadrant;
+                        instance.state.screenPositionCandidatesLastIndex = candidate.originalIndex;
+                        setTransition(instance, slots[i], prevLabelPosition, prevAnchorPosition);
+                        instance.state.positionSlot = slots[i];
+                        break;
+                    }
                 }
+                if (positionFound) break;
             }
 
             if (!positionFound) {

@@ -188,6 +188,8 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
                             labelHeight: 0,
                             screenPosition: [0, 0, 0],
                             zIndex: 0,
+                            possibleScreenPositions: [],
+                            screenPositionCandidatesLastIndex: 0,
                         },
                     };
                 }
@@ -215,6 +217,29 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
         this._annotationsMap.set(layerId, annotations);
         this.updateAnnotationInstances();
     }
+
+    handleAnnotationPointerOver(id: string) {
+        const instance = this._annotationInstances.find((i) => i.id === id);
+        if (instance) {
+            instance.state.labelHovered = true;
+            instance.annotation.onMouseOver?.();
+        }
+    }
+
+    handleAnnotationPointerOut(id: string) {
+        const instance = this._annotationInstances.find((i) => i.id === id);
+        if (instance) {
+            instance.state.labelHovered = false;
+            instance.annotation.onMouseOut?.();
+        }
+    }
+
+    handleAnnotationPointerClick(id: string) {
+        const instance = this._annotationInstances.find((i) => i.id === id);
+        if (instance) {
+            instance.state.boost = true;
+        }
+    }
 }
 
 export type UseAnnotationsProps = {
@@ -234,14 +259,14 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
     const canvas = deck?.getCanvas();
 
     React.useEffect(() => {
-        const handleMouseMove = (event: MouseEvent) => {
+        function handlePointerMove(event: PointerEvent) {
             setGlobalCursor([event.clientX, event.clientY]);
-        };
+        }
 
-        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("pointermove", handlePointerMove);
 
         return () => {
-            document.removeEventListener("mousemove", handleMouseMove);
+            document.removeEventListener("pointermove", handlePointerMove);
         };
     }, []);
 
@@ -250,11 +275,11 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
             const viewports = props.organizer.getViewports();
             const ctx = canvasRef.current?.getContext("2d");
 
-            if (!ctx || !canvas) {
+            if (!ctx || !canvas || !canvasRef.current) {
                 return;
             }
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvasRef.current.clientWidth, canvasRef.current.clientHeight);
 
             for (const viewport of viewports) {
                 const size: Vec2 = [viewport.width, viewport.height];
@@ -292,7 +317,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                 const sorted = inViewSpace.sort((a, b) => b.state.distance - a.state.distance);
 
                 for (const instance of sorted) {
-                    if (instance.state.occluded || instance.state.capped) {
+                    if (instance.state.occluded || instance.state.capped || !instance.state.visible) {
                         continue;
                     }
 
@@ -315,7 +340,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                         radius *= 1.5;
                     }
 
-                    if (instance.organizer.getParams().labelOffset > 0 && instance.state.visible) {
+                    if (instance.organizer.getParams().labelOffset > 0) {
                         // connector
                         if (instance.state.inTransition && instance.state.prevAnchorPosition) {
                             [x2, y2] = mixVec2(
@@ -455,6 +480,7 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
 
     return (
         <div
+            data-annotationid={props.id}
             ref={ref}
             className="absolute cursor-pointer"
             style={{
@@ -462,7 +488,7 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
                 left: 0,
                 visibility: "hidden",
                 userSelect: "none",
-                pointerEvents: "visible",
+                pointerEvents: "none",
             }}
             onPointerEnter={onPointerEnter}
             onPointerLeave={onPointerLeave}
@@ -472,15 +498,15 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
                 key={props.id}
                 id={`annotation_${props.id}`}
                 style={{
-                    minWidth: "150px",
-                    background: "#33333390",
+                    minWidth: "100px",
+                    background: "#000",
                     color: "white",
                     textAlign: "center",
                     overflow: "hidden",
                     borderRadius: "4px",
-                    padding: "1px 6px",
+                    padding: "1px 2px",
                     fontFamily: "sans-serif",
-                    fontSize: "12pt",
+                    fontSize: "10pt",
                 }}
             >
                 <div style={{ whiteSpace: "nowrap" }}>{props.annotation.name}</div>

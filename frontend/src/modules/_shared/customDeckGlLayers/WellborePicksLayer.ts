@@ -31,14 +31,11 @@ export interface WellBorePicksLayerProps extends ExtendedLayerProps {
 export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> {
     static layerName: string = "WellborePicksLayer";
 
-    private _pointsData: { coordinates: number[]; name: string; id: string }[] = [];
-
-    /*
+    // @ts-expect-error - state must be initialized like this
     state!: {
         hoveredIndex: number;
         pointsData: { coordinates: number[]; name: string; id: string }[];
     };
-    */
 
     filterSubLayer(context: FilterContext): boolean {
         if (context.layer.id.includes("text")) {
@@ -80,7 +77,10 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
             };
         });
 
-        this._pointsData = pointsData;
+        this.setState({
+            hoveredIndex: -1,
+            pointsData,
+        });
 
         this.props.reportBoundingBox?.({
             layerBoundingBox: this.calcBoundingBox(),
@@ -99,6 +99,12 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
                     ],
                     priority: 0,
                     direction: [0, 0, 1],
+                    onMouseOver: () => {
+                        this.setState({ hoveredIndex: index });
+                    },
+                    onMouseOut: () => {
+                        this.setState({ hoveredIndex: -1 });
+                    },
                 };
             })
         );
@@ -109,8 +115,7 @@ export class WellborePicksLayer extends CompositeLayer<WellBorePicksLayerProps> 
         const sizeMinPixels = 16;
         const sizeMaxPixels = 16;
 
-        const pointsData = this._pointsData;
-        const hoveredIndex = -1;
+        const { hoveredIndex, pointsData } = this.state;
 
         return [
             new PointCloudLayer({

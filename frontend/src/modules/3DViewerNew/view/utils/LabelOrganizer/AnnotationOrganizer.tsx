@@ -19,7 +19,7 @@ import {
     LabelAnnotation,
     PieChartAnnotation,
 } from "./utils/types";
-import { postProcessInstances, preprocessInstances, updateInstanceDOMElements } from "./utils/update-annotations";
+import { postProcessInstances, preprocessInstances, updateInstanceDOMElements } from "./utils/updateAnnotations";
 
 export type AnnotationOrganizerParams = {
     labelOffset?: number;
@@ -194,7 +194,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
                             labelHeight: 0,
                             screenPosition: [0, 0, 0],
                             zIndex: 0,
-                            possibleScreenPositions: [],
+                            screenPositionCandidates: [],
                             screenPositionCandidatesLastIndex: 0,
                         },
                     };
@@ -296,16 +296,6 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                     return layer && props.organizer.layerInViewport(viewport, layer);
                 });
 
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.arcTo(0, 0, size[0], size[1], 1000);
-                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-
-                ctx.fill();
-                ctx.strokeStyle = "black";
-                ctx.lineWidth = 1;
-                ctx.stroke();
-
                 const cursor = [globalCursor[0] - viewport.x, globalCursor[1] - viewport.y];
 
                 const inViewSpace = preprocessInstances(filtered, viewport, props.maxVisibleAnnotations ?? 100);
@@ -320,10 +310,10 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                 // Maybe do some occlusion culling here
                 updateInstanceDOMElements(instances);
 
-                const sorted = inViewSpace.sort((a, b) => b.state.distance - a.state.distance);
+                const sorted = inViewSpace.sort((a, b) => b.rank - a.rank);
 
-                for (const instance of sorted) {
-                    if (instance.state.occluded || instance.state.capped || !instance.state.visible) {
+                for (const instance of inViewSpace) {
+                    if (instance.state.occluded || instance.state.capped) {
                         continue;
                     }
 

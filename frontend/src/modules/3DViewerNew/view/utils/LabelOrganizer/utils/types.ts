@@ -13,6 +13,7 @@ export type BaseAnnotation = {
     data?: any;
     priority?: number;
     direction?: Vec3;
+    group?: string;
     onMouseOver?: () => void;
     onMouseOut?: () => void;
 };
@@ -59,6 +60,9 @@ export type ScreenPositionCandidate = {
     screenPosition: Vec3;
     rank: number;
     quadrant: number;
+    distance: number;
+    scaleFactor: number;
+    inViewSpace: boolean;
 };
 
 export type AnnotationInstanceState = {
@@ -72,7 +76,7 @@ export type AnnotationInstanceState = {
     quadrant?: number;
     positionSlot?: number;
     screenPosition: Vec3;
-    possibleScreenPositions: ScreenPositionCandidate[];
+    screenPositionCandidates: ScreenPositionCandidate[];
     screenPositionCandidatesLastIndex: number;
     labelPosition?: Vec2;
     scaledOffset?: Vec2;

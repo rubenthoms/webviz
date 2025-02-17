@@ -24,7 +24,7 @@ const collisionMargin2 = collisionMargin * 2;
 const healthChangeRate = 3;
 const transitionRate = 5;
 
-let prevTime = 0;
+let prevTime = Date.now();
 let _transform: string, _opacity: string, _zIndex: string;
 let x: number, y: number;
 
@@ -90,8 +90,9 @@ function setTransition(
  * PRE-PROCESS INSTANCES
  */
 export function preprocessInstances(instances: AnnotationInstance[], viewport: Viewport, maxVisible: number) {
-    const deltaTime = Date.now() - prevTime;
+    const deltaTime = Date.now() / 1000.0 - prevTime;
 
+    const cameraPosition = viewport.cameraPosition as Vec3;
     const fov = 2.0 * Math.atan(1.0 / viewport.projectionMatrix[5]);
     const fovRad = (fov * Math.PI) / 180.0;
 
@@ -152,7 +153,6 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
             };
 
             position = positions[j];
-            const cameraPosition = viewport.cameraPosition as Vec3;
             distance = calcDistance(position, cameraPosition);
             scaleFactor = Math.max(
                 0.25,
@@ -186,6 +186,12 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
 
         const minOneCandidateInViewSpace = candidates.filter((el) => el.inViewSpace).length > 0;
 
+        const lastCandidate = instance.state.screenPositionCandidates[instance.state.screenPositionCandidatesLastIndex];
+        instance.state.screenPosition = [...lastCandidate.screenPosition];
+        instance.state.scaleFactor = lastCandidate.scaleFactor;
+        instance.state.distance = lastCandidate.distance;
+        instance.state.inViewSpace = minOneCandidateInViewSpace;
+
         if (instance.state.cooldown && instance.state.visible === false) {
             instance.state.cooldown = Math.max(0, instance.state.cooldown - deltaTime);
             instance.rank = 0;
@@ -203,11 +209,13 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
                 candidate.rank = 1000;
                 candidate.rank += instance.priority * 1000 - (hPositionPenalty * 100 + hDistancePenalty * 100);
 
+                /*
                 if (instance.state.visible) {
                     candidate.rank += 100;
                 } else {
                     candidate.rank -= 100;
                 }
+                */
 
                 candidate.rank += instances.length - i;
 
@@ -219,21 +227,21 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
                     candidate.rank += 1000;
                 }
 
-                if (candidate.inViewSpace && nInViewSpace < maxVisible && instance.annotation.direction) {
-                    candidate.quadrant = getLabelQuadrant(
-                        candidate.screenPosition,
-                        position,
-                        instance.annotation.direction,
-                        viewport.project
-                    );
+                if (candidate.inViewSpace && nInViewSpace < maxVisible) {
+                    candidate.quadrant = instance.annotation.direction
+                        ? getLabelQuadrant(
+                              candidate.screenPosition,
+                              positions[j],
+                              instance.annotation.direction,
+                              viewport.project
+                          )
+                        : 0;
                 }
             }
 
-            const lastCandidate =
-                instance.state.screenPositionCandidates[instance.state.screenPositionCandidatesLastIndex];
             if (nInViewSpace < maxVisible && minOneCandidateInViewSpace) {
                 nInViewSpace++;
-                instance.state.prevQuadrant = instance.state.prevQuadrant;
+                instance.state.prevQuadrant = instance.state.quadrant;
                 instance.state.quadrant = lastCandidate.quadrant;
             } else {
                 instance.state.visible = false;
@@ -242,10 +250,6 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
                     instance.state.capped = true;
                 }
             }
-
-            instance.state.screenPosition = lastCandidate.screenPosition;
-            instance.state.scaleFactor = lastCandidate.scaleFactor;
-            instance.state.distance = lastCandidate.distance;
 
             /*
             instance.rank = 1000;
@@ -273,6 +277,8 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
             */
         }
 
+        instance.rank += instances.length - i;
+
         if (instance.state.boost) {
             instance.state.kill = false;
             instance.state.cooldown = 0;
@@ -283,6 +289,9 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
         }
 
         if (minOneCandidateInViewSpace && !instance.state.capped) {
+            instance.state.screenPositionCandidates = instance.state.screenPositionCandidates.filter(
+                (el) => el.inViewSpace
+            );
             inViewspace.push(instance);
         } else {
             if (instance.state._visibility !== "hidden") {
@@ -293,7 +302,7 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
         }
     });
 
-    prevTime = Date.now();
+    prevTime = Date.now() / 1000.0;
 
     return inViewspace;
 }
@@ -331,11 +340,14 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
         const instance = instances[i];
         const screenPositionCandidates = instance.state.screenPositionCandidates;
         for (let j = 0; j < screenPositionCandidates.length; j++) {
-            instanceCandidates.push({ instance, ...screenPositionCandidates[j] });
+            instanceCandidates.push({
+                instance,
+                ...{ ...screenPositionCandidates[j], rank: instance.rank + screenPositionCandidates[j].rank },
+            });
         }
     }
 
-    instanceCandidates.sort((a, b) => b.rank + b.instance.rank - (a.rank + a.instance.rank));
+    instanceCandidates.sort((a, b) => b.rank - a.rank);
 
     const idArr = instanceCandidates.map((d) => d.instance.id);
     if (!isEqual(lastArr, idArr)) {
@@ -344,10 +356,6 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
 
     const handledInstanceIds = new Set<string>();
     for (const instanceCandidate of instanceCandidates) {
-        if (!instanceCandidate.inViewSpace) {
-            continue;
-        }
-
         const instance = instanceCandidate.instance;
         if (handledInstanceIds.has(instance.id)) {
             continue;
@@ -370,7 +378,10 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
             calculateLabelPosition(instance, currentSlot, size, offset);
             setTransition(instance, currentSlot, prevLabelPosition, prevAnchorPosition);
             handledInstanceIds.add(instance.id);
-        } else if (!instance.state.cooldown) {
+        } else if (instance.state.cooldown) {
+            instance.state.visible = false;
+            handledInstanceIds.add(instance.id);
+        } else {
             const slots = currentSlot === 0 ? [0, 1] : [1, 0];
 
             // calculate label size
@@ -384,6 +395,7 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
             for (let i = 0; i < slots.length; i++) {
                 instance.state.screenPosition = instanceCandidate.screenPosition;
                 instance.state.quadrant = instanceCandidate.quadrant;
+                instance.state.scaleFactor = instanceCandidate.scaleFactor;
                 calculateLabelPosition(instance, slots[i], size, offset);
 
                 // test for overlaps
@@ -408,16 +420,17 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
 
             if (!positionFound) {
                 instance.state.kill = true;
-                instance.state.cooldown = 2.5;
+                instance.state.cooldown = 1.0;
             } else {
                 instance.state.visible = true;
                 instance.state.kill = false;
                 instance.state.cooldown = 0;
                 handledInstanceIds.add(instance.id);
             }
-        } else {
-            instance.state.visible = false;
-            handledInstanceIds.add(instance.id);
+        }
+
+        if (!handledInstanceIds.has(instance.id)) {
+            continue;
         }
 
         if (instance.state.visible) {
@@ -425,8 +438,8 @@ export function postProcessInstances(instances: AnnotationInstance[], size: Vec2
                 ? 1000000
                 : instance.state.kill
                 ? 0
-                : Math.round((1 / instance.state.distance!) * 100000);
-            instance.state.opacity = Math.max(0.75, instance.state.scaleFactor!) * instance.state.health;
+                : Math.round((1 / instanceCandidate.distance!) * 100000);
+            instance.state.opacity = Math.max(0.75, instanceCandidate.scaleFactor!) * instance.state.health;
 
             if (instance.state.inTransition && instance.state.prevLabelPosition) {
                 [x, y] = mixVec2(

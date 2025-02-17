@@ -34,7 +34,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const [annotationOrganizer] = React.useState<AnnotationOrganizer>(
         new AnnotationOrganizer({
             labelOffset: 15,
-            maxDistance: 15000,
+            maxDistance: 3000,
         })
     );
 
@@ -166,7 +166,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const annotations = useAnnotations({
         layers: adjustedLayers,
         organizer: annotationOrganizer,
-        maxVisibleAnnotations: 100,
+        maxVisibleAnnotations: 30,
     });
 
     return (

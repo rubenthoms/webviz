@@ -310,9 +310,9 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                 // Maybe do some occlusion culling here
                 updateInstanceDOMElements(instances);
 
-                const sorted = inViewSpace.sort((a, b) => b.rank - a.rank);
+                const sorted = inViewSpace.toSorted((a, b) => b.rank - a.rank);
 
-                for (const instance of inViewSpace) {
+                for (const instance of sorted) {
                     if (instance.state.occluded || instance.state.capped) {
                         continue;
                     }
@@ -325,7 +325,6 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                     // boost instance if not visible and cursor is over anchor point
                     if (Math.abs(cursor[0] - x1) <= radius && Math.abs(cursor[1] - y1) <= radius) {
                         if (instance.state.visible) {
-                            7;
                             anchorHovered = true;
                         } else {
                             instance.state.boost = true;
@@ -336,7 +335,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                         radius *= 1.5;
                     }
 
-                    if (instance.organizer.getParams().labelOffset > 0) {
+                    if (instance.organizer.getParams().labelOffset > 0 && instance.state.visible) {
                         // connector
                         if (instance.state.inTransition && instance.state.prevAnchorPosition) {
                             [x2, y2] = mixVec2(

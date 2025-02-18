@@ -1,6 +1,6 @@
 import { CompositeLayer, CompositeLayerProps, FilterContext, Layer, UpdateParameters } from "@deck.gl/core";
 import { PointCloudLayer } from "@deck.gl/layers";
-import { AnnotationOrganizer } from "@modules/3DViewerNew/view/utils/LabelOrganizer/AnnotationOrganizer";
+import { AnnotationOrganizer } from "@modules/3DViewerNew/view/utils/AnnotationOrganizer/AnnotationOrganizer";
 import { ExtendedLayerProps } from "@webviz/subsurface-viewer";
 import { BoundingBox3D, ReportBoundingBoxAction } from "@webviz/subsurface-viewer/dist/components/Map";
 

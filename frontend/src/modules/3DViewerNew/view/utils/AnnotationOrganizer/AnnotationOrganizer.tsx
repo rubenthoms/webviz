@@ -2,6 +2,7 @@ import React from "react";
 
 import { FilterContext, Layer, Viewport } from "@deck.gl/core";
 import { DeckGLRef } from "@deck.gl/react";
+import { Rect2D, rectContainsPoint } from "@lib/utils/geometry";
 import {
     PublishSubscribe,
     PublishSubscribeDelegate,
@@ -58,6 +59,7 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
     private _annotationInstances: AnnotationInstance[] = [];
     private _params: Required<AnnotationOrganizerParams>;
     private _prevLayerIds: string[] = [];
+    private _hoveredInstance: AnnotationInstance | null = null;
 
     private _publishSubscribeDelegate = new PublishSubscribeDelegate<AnnotationOrganizerTopicPayloads>();
 
@@ -224,27 +226,37 @@ export class AnnotationOrganizer implements PublishSubscribe<AnnotationOrganizer
         this.updateAnnotationInstances();
     }
 
-    handleAnnotationPointerOver(id: string) {
-        const instance = this._annotationInstances.find((i) => i.id === id);
-        if (instance) {
-            instance.state.labelHovered = true;
-            instance.annotation.onMouseOver?.();
+    handleAnnotationPointerOver(instance: AnnotationInstance) {
+        instance.state.labelHovered = true;
+        instance.state._needsUpdate = true;
+        instance.annotation.onMouseOver?.();
+
+        if (this._hoveredInstance && this._hoveredInstance !== instance) {
+            this.handleAnnotationPointerOut(this._hoveredInstance);
+        }
+
+        this._hoveredInstance = instance;
+    }
+
+    handleAnnotationPointerOut(instance: AnnotationInstance) {
+        instance.state.labelHovered = false;
+        instance.state._needsUpdate = true;
+        instance.annotation.onMouseOut?.();
+
+        if (this._hoveredInstance === instance) {
+            this._hoveredInstance = null;
         }
     }
 
-    handleAnnotationPointerOut(id: string) {
-        const instance = this._annotationInstances.find((i) => i.id === id);
-        if (instance) {
-            instance.state.labelHovered = false;
-            instance.annotation.onMouseOut?.();
+    handleAnnotationPointerClick() {
+        if (!this._hoveredInstance) {
+            return;
         }
-    }
 
-    handleAnnotationPointerClick(id: string) {
-        const instance = this._annotationInstances.find((i) => i.id === id);
-        if (instance) {
-            instance.state.boost = true;
-        }
+        this._hoveredInstance.state.boost = true;
+        this._hoveredInstance.state._needsUpdate = true;
+
+        this._hoveredInstance.annotation.onClick?.();
     }
 }
 
@@ -269,12 +281,18 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
             setGlobalCursor([event.clientX, event.clientY]);
         }
 
+        function handlePointerDown() {
+            props.organizer.handleAnnotationPointerClick();
+        }
+
         document.addEventListener("pointermove", handlePointerMove);
+        document.addEventListener("pointerdown", handlePointerDown);
 
         return () => {
             document.removeEventListener("pointermove", handlePointerMove);
+            document.removeEventListener("pointerdown", handlePointerDown);
         };
-    }, []);
+    }, [props.organizer]);
 
     const render = React.useCallback(
         function render() {
@@ -284,6 +302,8 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
             if (!ctx || !canvas || !canvasRef.current) {
                 return;
             }
+
+            const canvasBoundingRect = canvas.getBoundingClientRect();
 
             ctx.clearRect(0, 0, canvasRef.current.clientWidth, canvasRef.current.clientHeight);
 
@@ -296,7 +316,10 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                     return layer && props.organizer.layerInViewport(viewport, layer);
                 });
 
-                const cursor = [globalCursor[0] - viewport.x, globalCursor[1] - viewport.y];
+                const cursor = [
+                    globalCursor[0] - viewport.x - canvasBoundingRect.left,
+                    globalCursor[1] - viewport.y - canvasBoundingRect.top,
+                ];
 
                 const inViewSpace = preprocessInstances(filtered, viewport, props.maxVisibleAnnotations ?? 100);
 
@@ -322,6 +345,28 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
 
                     let radius = instance.organizer.getParams().anchorSize * instance.state.scaleFactor!;
                     let anchorHovered = false;
+
+                    if (instance.state.visible && instance.state.labelPosition) {
+                        const rect: Rect2D = {
+                            x: instance.state.labelPosition[0],
+                            y: instance.state.labelPosition[1],
+                            width: instance.state.labelWidth,
+                            height: instance.state.labelHeight,
+                        };
+
+                        if (rectContainsPoint(rect, { x: cursor[0], y: cursor[1] })) {
+                            if (!instance.state.labelHovered) {
+                                instance.state.labelHovered = true;
+                                instance.state._needsUpdate = true;
+                            }
+                        } else {
+                            if (instance.state.labelHovered) {
+                                instance.state.labelHovered = false;
+                                instance.state._needsUpdate = true;
+                            }
+                        }
+                    }
+
                     // boost instance if not visible and cursor is over anchor point
                     if (Math.abs(cursor[0] - x1) <= radius && Math.abs(cursor[1] - y1) <= radius) {
                         if (instance.state.visible) {
@@ -364,7 +409,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                         ctx.lineTo(x2, y2);
 
                         ctx.strokeStyle = instance.organizer.getParams().connectorColor;
-                        ctx.lineWidth = 1; //strokeWidth;
+                        ctx.lineWidth = strokeWidth;
                         ctx.stroke();
                     }
 
@@ -384,7 +429,7 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                 }
             }
         },
-        [globalCursor, instances, props]
+        [globalCursor, instances, props, canvas]
     );
 
     React.useEffect(
@@ -554,6 +599,8 @@ const AnnotationComponent = React.forwardRef((props: AnnotationComponentProps, r
         </div>
     );
 });
+
+AnnotationComponent.displayName = "AnnotationComponent";
 
 function getCoordinatesForPercent(percent: number): [number, number] {
     const x = Math.cos(2 * Math.PI * percent);

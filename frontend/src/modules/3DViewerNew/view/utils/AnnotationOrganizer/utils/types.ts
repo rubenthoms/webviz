@@ -16,6 +16,7 @@ export type BaseAnnotation = {
     group?: string;
     onMouseOver?: () => void;
     onMouseOut?: () => void;
+    onClick?: () => void;
 };
 
 export type LabelAnnotation = BaseAnnotation & {

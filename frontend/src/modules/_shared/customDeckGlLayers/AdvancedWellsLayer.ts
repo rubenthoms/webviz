@@ -1,7 +1,7 @@
 import { FilterContext, Layer, LayersList, UpdateParameters } from "@deck.gl/core";
 import { GeoJsonLayer } from "@deck.gl/layers";
-import { Vec3 } from "@modules/3DViewerNew/view/utils/LabelOrganizer/utils/definitions";
-import { LabelAnnotation } from "@modules/3DViewerNew/view/utils/LabelOrganizer/utils/types";
+import { Vec3 } from "@modules/3DViewerNew/view/utils/AnnotationOrganizer/utils/definitions";
+import { LabelAnnotation } from "@modules/3DViewerNew/view/utils/AnnotationOrganizer/utils/types";
 import { WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
 
 import { FeatureCollection, GeometryCollection, LineString, Point } from "geojson";

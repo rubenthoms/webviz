@@ -14,8 +14,8 @@ import { ContextMenu } from "./ContextMenu";
 import { ReadooutWrapperProps, ReadoutWrapper } from "./ReadoutWrapper";
 import { Toolbar } from "./Toolbar";
 
+import { AnnotationOrganizer, useAnnotations } from "../utils/AnnotationOrganizer/AnnotationOrganizer";
 import { DeckGlInstanceManager, DeckGlInstanceManagerTopic } from "../utils/DeckGlInstanceManager";
-import { AnnotationOrganizer, useAnnotations } from "../utils/LabelOrganizer/AnnotationOrganizer";
 import { Polyline, PolylinesPlugin, PolylinesPluginTopic } from "../utils/PolylinesPlugin";
 
 export type InteractionWrapperProps = {} & Omit<
@@ -166,7 +166,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
     const annotations = useAnnotations({
         layers: adjustedLayers,
         organizer: annotationOrganizer,
-        maxVisibleAnnotations: 30,
+        maxVisibleAnnotations: 50,
     });
 
     return (

@@ -129,7 +129,7 @@ export function preprocessInstances(instances: AnnotationInstance[], viewport: V
             }
         }
 
-        let positions: Vec3[] = [instance.annotation.position];
+        const positions: Vec3[] = [instance.annotation.position];
         if (instance.annotation.alternativePositions) {
             positions.push(...instance.annotation.alternativePositions);
         }

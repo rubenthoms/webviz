@@ -9,6 +9,7 @@ import { BoundingBox3D, LayerPickInfo, MapMouseEvent, ViewsType } from "@webviz/
 
 import { ReadoutBoxWrapper } from "./ReadoutBoxWrapper";
 
+import { AnnotationOrganizer } from "../utils/AnnotationOrganizer/AnnotationOrganizer";
 import { DeckGlInstanceManager } from "../utils/DeckGlInstanceManager";
 
 export type ReadooutWrapperProps = {
@@ -22,6 +23,7 @@ export type ReadooutWrapperProps = {
     verticalScale: number;
     triggerHome: number;
     deckGlRef: React.RefObject<DeckGLRef | null>;
+    annotationOrganizer: AnnotationOrganizer;
 };
 
 export function ReadoutWrapper(props: ReadooutWrapperProps): React.ReactNode {
@@ -36,6 +38,8 @@ export function ReadoutWrapper(props: ReadooutWrapperProps): React.ReactNode {
         const pickingInfo = event.infos;
         setLayerPickingInfo(pickingInfo);
     }
+
+    const layers = [...props.layers];
 
     return (
         <>
@@ -62,7 +66,7 @@ export function ReadoutWrapper(props: ReadooutWrapperProps): React.ReactNode {
                     },
                     triggerHome: props.triggerHome,
                     pickingRadius: 5,
-                    layers: props.layers,
+                    layers: layers,
                     onMouseEvent: handleMouseEvent,
                 })}
             >

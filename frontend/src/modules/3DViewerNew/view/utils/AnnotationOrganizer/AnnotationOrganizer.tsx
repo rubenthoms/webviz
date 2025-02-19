@@ -268,7 +268,7 @@ export type UseAnnotationsProps = {
 
 let x1: number, x2: number, y1: number, y2: number;
 
-export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
+export function useAnnotations(props: UseAnnotationsProps): [React.ReactNode, () => void] {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const instances = usePublishSubscribeTopicValue(props.organizer, AnnotationOrganizerTopic.INSTANCES);
     const [globalCursor, setGlobalCursor] = React.useState<Vec2>([0, 0]);
@@ -432,36 +432,20 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
         [globalCursor, instances, props, canvas]
     );
 
-    React.useEffect(
-        function setupRenderLoop() {
-            let isMounted = true;
-            function renderLoop() {
-                render();
-
-                if (!isMounted) {
-                    return;
-                }
-                requestAnimationFrame(renderLoop);
-            }
-            renderLoop();
-
-            return () => {
-                isMounted = false;
-            };
-        },
-        [render]
-    );
-
     if (!props.organizer.isInitialized()) {
-        return null;
+        return [null, render];
     }
 
     if (!canvas) {
-        return null;
+        return [null, render];
     }
 
-    return (
-        <div className="absolute inset-0 pointer-events-none" style={{ width: canvas.width, height: canvas.height }}>
+    return [
+        <div
+            key="annotations"
+            className="absolute inset-0 pointer-events-none"
+            style={{ width: canvas.width, height: canvas.height }}
+        >
             <AnnotationComponentsContainer organizer={props.organizer} width={canvas.width} height={canvas.height} />
             <canvas
                 ref={canvasRef}
@@ -469,8 +453,9 @@ export function useAnnotations(props: UseAnnotationsProps): React.ReactNode {
                 width={canvas.width}
                 height={canvas.height}
             />
-        </div>
-    );
+        </div>,
+        render,
+    ];
 }
 
 export type AnnotationComponentsContainerProps = {

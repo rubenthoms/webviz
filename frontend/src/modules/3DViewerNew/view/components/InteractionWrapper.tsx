@@ -10,17 +10,18 @@ import { AxesLayer } from "@webviz/subsurface-viewer/dist/layers";
 import { converter } from "culori";
 import { isEqual } from "lodash";
 
+import { AnnotationsWrapper } from "./AnnotationsWrapper";
 import { ContextMenu } from "./ContextMenu";
 import { ReadooutWrapperProps, ReadoutWrapper } from "./ReadoutWrapper";
 import { Toolbar } from "./Toolbar";
 
-import { AnnotationOrganizer, useAnnotations } from "../utils/AnnotationOrganizer/AnnotationOrganizer";
+import { AnnotationOrganizer } from "../utils/AnnotationOrganizer/AnnotationOrganizer";
 import { DeckGlInstanceManager, DeckGlInstanceManagerTopic } from "../utils/DeckGlInstanceManager";
 import { Polyline, PolylinesPlugin, PolylinesPluginTopic } from "../utils/PolylinesPlugin";
 
-export type InteractionWrapperProps = {} & Omit<
+export type InteractionWrapperProps = Omit<
     ReadooutWrapperProps,
-    "deckGlManager" | "triggerHome" | "verticalScale" | "deckGlRef"
+    "deckGlManager" | "triggerHome" | "verticalScale" | "deckGlRef" | "annotationOrganizer"
 >;
 
 export function InteractionWrapper(props: InteractionWrapperProps): React.ReactNode {
@@ -163,12 +164,6 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
         adjustedLayers = adjustedLayers.filter((layer) => !(layer instanceof AxesLayer));
     }
 
-    const annotations = useAnnotations({
-        layers: adjustedLayers,
-        organizer: annotationOrganizer,
-        maxVisibleAnnotations: 50,
-    });
-
     return (
         <>
             <Toolbar
@@ -190,8 +185,9 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
                 deckGlManager={deckGlManager}
                 verticalScale={verticalScale}
                 triggerHome={triggerHomeCounter}
+                annotationOrganizer={annotationOrganizer}
             />
-            {annotations}
+            <AnnotationsWrapper layers={adjustedLayers} annotationOrganizer={annotationOrganizer} />
         </>
     );
 }

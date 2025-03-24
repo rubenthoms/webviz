@@ -63,3 +63,42 @@ export function atomWithQueries<
         return results as TCombinedResult;
     });
 }
+
+export type PersistableAtomValue<T> = {
+    value: T;
+    isPersistedValue: boolean;
+};
+
+export function isPersistableAtomValue<T>(value: T | PersistableAtomValue<T>): value is PersistableAtomValue<T> {
+    return value && typeof value === "object" && "value" in value && "isPersistedValue" in value;
+}
+
+export function persistableAtom<T>(initialValue: T, areEqual?: (prev: T, next: T) => boolean) {
+    function adjustedAreEqual(prev: PersistableAtomValue<T>, next: PersistableAtomValue<T>) {
+        if (areEqual) {
+            return areEqual(prev.value, next.value);
+        }
+        // Used by Jotai by default
+        return Object.is(prev.value, next.value);
+    }
+
+    const stateHolderAtom = atomWithCompare<PersistableAtomValue<T>>(
+        { value: initialValue, isPersistedValue: false },
+        adjustedAreEqual,
+    );
+
+    return atom(
+        (get) => {
+            const stateHolder = get(stateHolderAtom);
+            return stateHolder;
+        },
+        (_, set, newValue: T | PersistableAtomValue<T>) => {
+            if (isPersistableAtomValue(newValue)) {
+                set(stateHolderAtom, newValue);
+                return;
+            }
+
+            set(stateHolderAtom, { value: newValue, isPersistedValue: false });
+        },
+    );
+}

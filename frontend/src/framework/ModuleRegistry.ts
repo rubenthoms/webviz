@@ -5,6 +5,8 @@ import type {
     ModuleDevState,
     ModuleInterfaceTypes,
     OnInstanceUnloadFunc,
+    PortingFunctions,
+    SerializedStateTuple,
 } from "./Module";
 import { Module } from "./Module";
 import type { ModuleDataTagId } from "./ModuleDataTags";
@@ -13,7 +15,7 @@ import type { SyncSettingKey } from "./SyncSettings";
 import type { InterfaceInitialization } from "./UniDirectionalModuleComponentsInterface";
 import { ModuleNotFoundPlaceholder } from "./internal/ModuleNotFoundPlaceholder";
 
-export type RegisterModuleOptions = {
+export type RegisterModuleOptions<TSerializedStateDefinition extends SerializedStateTuple> = {
     moduleName: string;
     category: ModuleCategory;
     devState: ModuleDevState;
@@ -25,6 +27,9 @@ export type RegisterModuleOptions = {
     preview?: DrawPreviewFunc;
     description?: string;
     onInstanceUnload?: OnInstanceUnloadFunc;
+    portingFunctions?: TSerializedStateDefinition extends []
+        ? never
+        : PortingFunctions<Exclude<TSerializedStateDefinition, []>>;
 };
 
 export class ModuleNotFoundError extends Error {
@@ -38,15 +43,16 @@ export class ModuleNotFoundError extends Error {
 }
 
 export class ModuleRegistry {
-    private static _registeredModules: Record<string, Module<any>> = {};
-    private static _moduleNotFoundPlaceholders: Record<string, Module<any>> = {};
+    private static _registeredModules: Record<string, Module<any, any>> = {};
+    private static _moduleNotFoundPlaceholders: Record<string, Module<any, any>> = {};
 
     private constructor() {}
 
-    static registerModule<TInterfaceTypes extends ModuleInterfaceTypes>(
-        options: RegisterModuleOptions,
-    ): Module<TInterfaceTypes> {
-        const module = new Module<TInterfaceTypes>({
+    static registerModule<
+        TInterfaceTypes extends ModuleInterfaceTypes,
+        TSerializedStateDefinition extends SerializedStateTuple = [],
+    >(options: RegisterModuleOptions<TSerializedStateDefinition>): Module<TInterfaceTypes, TSerializedStateDefinition> {
+        const module = new Module<TInterfaceTypes, TSerializedStateDefinition>({
             name: options.moduleName,
             defaultTitle: options.defaultTitle,
             category: options.category,
@@ -58,6 +64,7 @@ export class ModuleRegistry {
             drawPreviewFunc: options.preview,
             onInstanceUnloadFunc: options.onInstanceUnload,
             description: options.description,
+            portingFunctions: options.portingFunctions,
         });
         this._registeredModules[options.moduleName] = module;
         return module;

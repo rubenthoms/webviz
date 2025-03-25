@@ -38,7 +38,7 @@ export type ModuleInstanceTopicValueTypes = {
 };
 
 export interface ModuleInstanceOptions<TInterfaceTypes extends ModuleInterfaceTypes> {
-    module: Module<TInterfaceTypes>;
+    module: Module<TInterfaceTypes, any>;
     workbench: Workbench;
     instanceNumber: number;
     channelDefinitions: ChannelDefinition[] | null;

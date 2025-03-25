@@ -43,17 +43,27 @@ export type ModuleInterfacesInitializations<TInterfaceTypes extends ModuleInterf
         : InterfaceInitialization<Exclude<TInterfaceTypes["viewToSettings"], undefined>>;
 };
 
+export interface UsePersistStateHook<TSerializedStateDefinition> {
+    (serializeStateFunction: () => TSerializedStateDefinition, dependencyArray: unknown[]): void;
+}
+
+export type ModuleComponentProps<TSerializedStateDefinition extends SerializedStateBaseType[]> = {
+    workbenchSession: WorkbenchSession;
+    workbenchServices: WorkbenchServices;
+    workbenchSettings: WorkbenchSettings;
+    initialSettings?: InitialSettings;
+    useInitializeState: (serializedState: TSerializedStateDefinition[0]) => void;
+    usePersistState: UsePersistStateHook<TSerializedStateDefinition>;
+};
+
 export type ModuleSettingsProps<
     TInterfaceTypes extends ModuleInterfaceTypes = {
         settingsToView: Record<string, never>;
         viewToSettings: Record<string, never>;
     },
-> = {
+    TSerializedStateDefinition extends SerializedStateBaseType[] = UndefinedSerializedStateType,
+> = ModuleComponentProps<TSerializedStateDefinition> & {
     settingsContext: SettingsContext<TInterfaceTypes>;
-    workbenchSession: WorkbenchSession;
-    workbenchServices: WorkbenchServices;
-    workbenchSettings: WorkbenchSettings;
-    initialSettings?: InitialSettings;
 };
 
 export type ModuleViewProps<
@@ -61,12 +71,9 @@ export type ModuleViewProps<
         settingsToView: Record<string, never>;
         viewToSettings: Record<string, never>;
     },
-> = {
+    TSerializedStateDefinition extends SerializedStateBaseType[] = UndefinedSerializedStateType,
+> = ModuleComponentProps<TSerializedStateDefinition> & {
     viewContext: ViewContext<TInterfaceTypes>;
-    workbenchSession: WorkbenchSession;
-    workbenchServices: WorkbenchServices;
-    workbenchSettings: WorkbenchSettings;
-    initialSettings?: InitialSettings;
 };
 
 export type InterfaceEffects<TInterfaceType extends InterfaceBaseType> = ((
@@ -89,6 +96,10 @@ export type ModuleView<
     },
 > = React.FC<ModuleViewProps<TInterfaceTypes>>;
 
+export type SerializedStateBaseType = { version: number } & Record<string, unknown>;
+export type SerializedStateTuple = [SerializedStateBaseType, ...SerializedStateBaseType[]] | [];
+export type UndefinedSerializedStateType = [];
+
 export enum ImportState {
     NotImported = "NotImported",
     Importing = "Importing",
@@ -96,7 +107,7 @@ export enum ImportState {
     Failed = "Failed",
 }
 
-export interface ModuleOptions {
+export interface ModuleOptions<TSerializedStateDefinition extends SerializedStateTuple> {
     name: string;
     defaultTitle: string;
     category: ModuleCategory;
@@ -108,9 +119,16 @@ export interface ModuleOptions {
     channelDefinitions?: ChannelDefinition[];
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
     onInstanceUnloadFunc?: OnInstanceUnloadFunc;
+    serializedStateDefinition?: TSerializedStateDefinition;
+    portingFunctions?: TSerializedStateDefinition extends []
+        ? never
+        : PortingFunctions<Exclude<TSerializedStateDefinition, []>>;
 }
 
-export class Module<TInterfaceTypes extends ModuleInterfaceTypes> {
+export class Module<
+    TInterfaceTypes extends ModuleInterfaceTypes,
+    TSerializedStateDefinition extends SerializedStateTuple = UndefinedSerializedStateType,
+> {
     private _name: string;
     private _defaultTitle: string;
     public viewFC: ModuleView<TInterfaceTypes>;
@@ -137,8 +155,9 @@ export class Module<TInterfaceTypes extends ModuleInterfaceTypes> {
     private _category: ModuleCategory;
     private _devState: ModuleDevState;
     private _dataTagIds: ModuleDataTagId[];
+    private _serializedStateDefinition: TSerializedStateDefinition | null = null;
 
-    constructor(options: ModuleOptions) {
+    constructor(options: ModuleOptions<TSerializedStateDefinition>) {
         this._name = options.name;
         this._defaultTitle = options.defaultTitle;
         this._category = options.category;
@@ -152,6 +171,14 @@ export class Module<TInterfaceTypes extends ModuleInterfaceTypes> {
         this._channelDefinitions = options.channelDefinitions ?? null;
         this._channelReceiverDefinitions = options.channelReceiverDefinitions ?? null;
         this._dataTagIds = options.dataTagIds ?? [];
+
+        if (options.serializedStateDefinition) {
+            this._serializedStateDefinition = options.serializedStateDefinition;
+        }
+    }
+
+    getSerializedStateDefinition(): TSerializedStateDefinition | null {
+        return this._serializedStateDefinition;
     }
 
     getDrawPreviewFunc(): DrawPreviewFunc | null {
@@ -302,3 +329,45 @@ export class Module<TInterfaceTypes extends ModuleInterfaceTypes> {
             });
     }
 }
+
+type RemoveLastTupleElement<T extends any[]> = T extends [...infer U, any] ? U : never;
+type RemoveFirstTupleElement<T extends any[]> = T extends [any, ...infer U] ? U : never;
+
+// Define a generic type for entity versioning
+export type PortingFunctions<Versions extends [SerializedStateBaseType, ...SerializedStateBaseType[]]> = {
+    [K in keyof RemoveLastTupleElement<Versions> as K extends `${infer N extends number}`
+        ? Versions[N]["version"]
+        : never]: (
+        entity: RemoveLastTupleElement<Versions>[K],
+    ) => RemoveFirstTupleElement<Versions>[K extends `${infer N extends number}`
+        ? N extends keyof RemoveFirstTupleElement<Versions>
+            ? N
+            : never
+        : never];
+};
+
+function registerVersions<Versions extends [any, ...any[]]>(portingFunctions: PortingFunctions<Versions>) {
+    return portingFunctions;
+}
+
+// Example usage:
+type EntityV1 = { version: 4; name: string; age: number };
+type EntityV2 = { version: 5; fullName: string; age: number; email?: string };
+type EntityV3 = { version: 6; fullName: string; age: number; email?: string; address?: string };
+
+registerVersions<[EntityV1, EntityV2, EntityV3]>({
+    4: (entity) => {
+        return {
+            ...entity,
+            version: 5,
+            fullName: entity.name,
+        };
+    },
+    5: (entity) => {
+        return {
+            ...entity,
+            version: 6,
+            email: undefined,
+        };
+    },
+});

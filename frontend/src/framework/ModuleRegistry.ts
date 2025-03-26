@@ -5,6 +5,7 @@ import type {
     ModuleCategory,
     ModuleDevState,
     ModuleInterfaceTypes,
+    ModuleOptions,
     OnInstanceUnloadFunc,
     SerializedStateTuple,
 } from "./Module";
@@ -55,7 +56,7 @@ export class ModuleRegistry {
         TInterfaceTypes extends ModuleInterfaceTypes,
         TSerializedStateDefinition extends SerializedStateTuple = [],
     >(options: RegisterModuleOptions<TSerializedStateDefinition>): Module<TInterfaceTypes, TSerializedStateDefinition> {
-        const module = new Module<TInterfaceTypes, TSerializedStateDefinition>({
+        const moduleOptions: ModuleOptions<TSerializedStateDefinition> = {
             name: options.moduleName,
             defaultTitle: options.defaultTitle,
             category: options.category,
@@ -67,8 +68,13 @@ export class ModuleRegistry {
             drawPreviewFunc: options.preview,
             onInstanceUnloadFunc: options.onInstanceUnload,
             description: options.description,
-            migrateFunctions: options.migrateFunctions,
-        });
+        };
+        if (options.migrateFunctions) {
+            moduleOptions.migrateFunctions = options.migrateFunctions as MigrateFunctions<
+                Exclude<TSerializedStateDefinition, []>
+            >;
+        }
+        const module = new Module<TInterfaceTypes, TSerializedStateDefinition>(moduleOptions);
         this._registeredModules[options.moduleName] = module;
         return module;
     }

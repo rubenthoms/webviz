@@ -1,7 +1,3 @@
-export class PersistenceService {
-    _;
-}
-
 export class LocalStoragePersistenceService {
     private _registeredUniqueKeys: Set<string> = new Set();
 

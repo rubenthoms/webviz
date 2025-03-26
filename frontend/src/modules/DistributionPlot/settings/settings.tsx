@@ -1,7 +1,5 @@
 import type React from "react";
 
-import { useApplyInitialSettingsToState } from "@framework/InitialSettings";
-import type { ModuleSettingsProps } from "@framework/Module";
 import { CollapsibleGroup } from "@lib/components/CollapsibleGroup";
 import { Dropdown } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
@@ -12,7 +10,6 @@ import { useAtom } from "jotai";
 
 import { numBinsAtom, orientationAtom, plotTypeAtom } from "./atoms/baseAtoms";
 
-import type { Interfaces } from "../interfaces";
 import { PlotType } from "../typesAndEnums";
 
 const plotTypes = [
@@ -35,14 +32,10 @@ const plotTypes = [
 ];
 
 //-----------------------------------------------------------------------------------------------------------
-export function Settings({ initialSettings }: ModuleSettingsProps<Interfaces>) {
+export function Settings() {
     const [plotType, setPlotType] = useAtom(plotTypeAtom);
     const [numBins, setNumBins] = useAtom(numBinsAtom);
     const [orientation, setOrientation] = useAtom(orientationAtom);
-
-    useApplyInitialSettingsToState(initialSettings, "plotType", "string", setPlotType);
-    useApplyInitialSettingsToState(initialSettings, "numBins", "number", setNumBins);
-    useApplyInitialSettingsToState(initialSettings, "orientation", "string", setOrientation);
 
     function handlePlotTypeChanged(value: string) {
         setPlotType(value as PlotType);

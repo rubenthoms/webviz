@@ -3,7 +3,6 @@ import type React from "react";
 import type { Getter, Setter } from "jotai";
 
 import type { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
-import type { InitialSettings } from "./InitialSettings";
 import type { SettingsContext, ViewContext } from "./ModuleContext";
 import type { ModuleDataTagId } from "./ModuleDataTags";
 import { ModuleInstance, ModuleInstanceTopic } from "./ModuleInstance";
@@ -47,13 +46,10 @@ export interface UsePersistStateHook<TSerializedStateDefinition> {
     (serializeStateFunction: () => TSerializedStateDefinition, dependencyArray: unknown[]): void;
 }
 
-export type ModuleComponentProps<TSerializedStateDefinition extends SerializedStateBaseType[]> = {
+export type ModuleComponentProps = {
     workbenchSession: WorkbenchSession;
     workbenchServices: WorkbenchServices;
     workbenchSettings: WorkbenchSettings;
-    initialSettings?: InitialSettings;
-    useInitializeState: (serializedState: TSerializedStateDefinition[0]) => void;
-    usePersistState: UsePersistStateHook<TSerializedStateDefinition>;
 };
 
 export type ModuleSettingsProps<
@@ -61,8 +57,7 @@ export type ModuleSettingsProps<
         settingsToView: Record<string, never>;
         viewToSettings: Record<string, never>;
     },
-    TSerializedStateDefinition extends SerializedStateBaseType[] = UndefinedSerializedStateType,
-> = ModuleComponentProps<TSerializedStateDefinition> & {
+> = ModuleComponentProps & {
     settingsContext: SettingsContext<TInterfaceTypes>;
 };
 
@@ -71,8 +66,7 @@ export type ModuleViewProps<
         settingsToView: Record<string, never>;
         viewToSettings: Record<string, never>;
     },
-    TSerializedStateDefinition extends SerializedStateBaseType[] = UndefinedSerializedStateType,
-> = ModuleComponentProps<TSerializedStateDefinition> & {
+> = ModuleComponentProps & {
     viewContext: ViewContext<TInterfaceTypes>;
 };
 
@@ -119,13 +113,8 @@ export type ModuleOptions<TSerializedStateDefinition extends SerializedStateTupl
     channelDefinitions?: ChannelDefinition[];
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
     onInstanceUnloadFunc?: OnInstanceUnloadFunc;
-} & (TSerializedStateDefinition extends [any] | []
-    ? {
-          migrateFunctions?: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
-      }
-    : {
-          migrateFunctions: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
-      });
+    migrateFunctions?: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
+};
 export class Module<
     TInterfaceTypes extends ModuleInterfaceTypes,
     TSerializedStateDefinition extends SerializedStateTuple = UndefinedSerializedStateType,

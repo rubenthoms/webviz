@@ -1,11 +1,11 @@
 import type { ChannelDefinition, ChannelReceiverDefinition } from "./DataChannelTypes";
 import type {
     InterfaceEffects,
+    MigrateFunctions,
     ModuleCategory,
     ModuleDevState,
     ModuleInterfaceTypes,
     OnInstanceUnloadFunc,
-    PortingFunctions,
     SerializedStateTuple,
 } from "./Module";
 import { Module } from "./Module";
@@ -27,10 +27,13 @@ export type RegisterModuleOptions<TSerializedStateDefinition extends SerializedS
     preview?: DrawPreviewFunc;
     description?: string;
     onInstanceUnload?: OnInstanceUnloadFunc;
-    portingFunctions?: TSerializedStateDefinition extends []
-        ? never
-        : PortingFunctions<Exclude<TSerializedStateDefinition, []>>;
-};
+} & (TSerializedStateDefinition extends [any] | []
+    ? {
+          migrateFunctions?: undefined;
+      }
+    : {
+          migrateFunctions: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
+      });
 
 export class ModuleNotFoundError extends Error {
     readonly moduleName: string;
@@ -64,7 +67,7 @@ export class ModuleRegistry {
             drawPreviewFunc: options.preview,
             onInstanceUnloadFunc: options.onInstanceUnload,
             description: options.description,
-            portingFunctions: options.portingFunctions,
+            migrateFunctions: options.migrateFunctions,
         });
         this._registeredModules[options.moduleName] = module;
         return module;

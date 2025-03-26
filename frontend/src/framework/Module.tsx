@@ -107,7 +107,7 @@ export enum ImportState {
     Failed = "Failed",
 }
 
-export interface ModuleOptions<TSerializedStateDefinition extends SerializedStateTuple> {
+export type ModuleOptions<TSerializedStateDefinition extends SerializedStateTuple> = {
     name: string;
     defaultTitle: string;
     category: ModuleCategory;
@@ -119,12 +119,13 @@ export interface ModuleOptions<TSerializedStateDefinition extends SerializedStat
     channelDefinitions?: ChannelDefinition[];
     channelReceiverDefinitions?: ChannelReceiverDefinition[];
     onInstanceUnloadFunc?: OnInstanceUnloadFunc;
-    serializedStateDefinition?: TSerializedStateDefinition;
-    portingFunctions?: TSerializedStateDefinition extends []
-        ? never
-        : PortingFunctions<Exclude<TSerializedStateDefinition, []>>;
-}
-
+} & (TSerializedStateDefinition extends [any] | []
+    ? {
+          migrateFunctions?: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
+      }
+    : {
+          migrateFunctions: MigrateFunctions<Exclude<TSerializedStateDefinition, []>>;
+      });
 export class Module<
     TInterfaceTypes extends ModuleInterfaceTypes,
     TSerializedStateDefinition extends SerializedStateTuple = UndefinedSerializedStateType,
@@ -172,9 +173,11 @@ export class Module<
         this._channelReceiverDefinitions = options.channelReceiverDefinitions ?? null;
         this._dataTagIds = options.dataTagIds ?? [];
 
+        /*
         if (options.serializedStateDefinition) {
             this._serializedStateDefinition = options.serializedStateDefinition;
         }
+            */
     }
 
     getSerializedStateDefinition(): TSerializedStateDefinition | null {
@@ -334,40 +337,17 @@ type RemoveLastTupleElement<T extends any[]> = T extends [...infer U, any] ? U :
 type RemoveFirstTupleElement<T extends any[]> = T extends [any, ...infer U] ? U : never;
 
 // Define a generic type for entity versioning
-export type PortingFunctions<Versions extends [SerializedStateBaseType, ...SerializedStateBaseType[]]> = {
-    [K in keyof RemoveLastTupleElement<Versions> as K extends `${infer N extends number}`
-        ? Versions[N]["version"]
-        : never]: (
-        entity: RemoveLastTupleElement<Versions>[K],
-    ) => RemoveFirstTupleElement<Versions>[K extends `${infer N extends number}`
-        ? N extends keyof RemoveFirstTupleElement<Versions>
-            ? N
-            : never
-        : never];
-};
-
-function registerVersions<Versions extends [any, ...any[]]>(portingFunctions: PortingFunctions<Versions>) {
-    return portingFunctions;
-}
-
-// Example usage:
-type EntityV1 = { version: 4; name: string; age: number };
-type EntityV2 = { version: 5; fullName: string; age: number; email?: string };
-type EntityV3 = { version: 6; fullName: string; age: number; email?: string; address?: string };
-
-registerVersions<[EntityV1, EntityV2, EntityV3]>({
-    4: (entity) => {
-        return {
-            ...entity,
-            version: 5,
-            fullName: entity.name,
-        };
-    },
-    5: (entity) => {
-        return {
-            ...entity,
-            version: 6,
-            email: undefined,
-        };
-    },
-});
+export type MigrateFunctions<Versions extends [SerializedStateBaseType, ...SerializedStateBaseType[]]> =
+    Versions extends [any]
+        ? never
+        : {
+              [K in keyof RemoveLastTupleElement<Versions> as K extends `${infer N extends number}`
+                  ? Versions[N]["version"]
+                  : never]: (
+                  entity: RemoveLastTupleElement<Versions>[K],
+              ) => RemoveFirstTupleElement<Versions>[K extends `${infer N extends number}`
+                  ? N extends keyof RemoveFirstTupleElement<Versions>
+                      ? N
+                      : never
+                  : never];
+          };

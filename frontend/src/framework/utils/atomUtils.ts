@@ -66,7 +66,7 @@ export function atomWithQueries<
 
 export type PersistableAtomValue<T> = {
     value: T;
-    isPersistedValue: boolean;
+    isPersisted: boolean;
 };
 
 export function isPersistableAtomValue<T>(value: T | PersistableAtomValue<T>): value is PersistableAtomValue<T> {
@@ -83,7 +83,7 @@ export function persistableAtom<T>(initialValue: T, areEqual?: (prev: T, next: T
     }
 
     const stateHolderAtom = atomWithCompare<PersistableAtomValue<T>>(
-        { value: initialValue, isPersistedValue: false },
+        { value: initialValue, isPersisted: false },
         adjustedAreEqual,
     );
 
@@ -98,7 +98,7 @@ export function persistableAtom<T>(initialValue: T, areEqual?: (prev: T, next: T
                 return;
             }
 
-            set(stateHolderAtom, { value: newValue, isPersistedValue: false });
+            set(stateHolderAtom, { value: newValue, isPersisted: false });
         },
     );
 }

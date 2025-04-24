@@ -7,6 +7,25 @@ function normalizeVector(vector: number[]): number[] {
     return [vector[0] / vectorLength, vector[1] / vectorLength];
 }
 
+/**
+ * Creates a simplified curve of (x,y) points using simplify-js.
+ *
+ * If the number of points is less than or equal to 2, it returns the original points without duplicates (if any).
+ */
+function createSimplifiedCurveFromXyPoints(xyPointsArray: { x: number; y: number }[], epsilon: number): number[][] {
+    // Find simplified curve (simplify() has early return for number of points <= 2)
+    if (xyPointsArray.length <= 2) {
+        // Original points, without duplicate points if existing
+        return xyPointsArray
+            .map((point) => [point.x, point.y])
+            .filter(
+                (point, index, array) =>
+                    index === 0 || point[0] !== array[index - 1][0] || point[1] !== array[index - 1][1],
+            );
+    }
+    return simplify(xyPointsArray, epsilon).map((point) => [point.x, point.y]);
+}
+
 export type SimplifiedWellboreTrajectoryInXyPlaneResult = {
     simplifiedWellboreTrajectoryXy: number[][];
     actualSectionLengths: number[];
@@ -25,12 +44,13 @@ export function calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
     const simplifiedTrajectoryXy: number[][] = [];
     const actualSectionLengths: number[] = [];
 
-    const adjustedWellboreTrajectory = wellboreTrajectory.map((point) => ({ x: point[0], y: point[1] }));
+    const wellboreTrajectoryXyPoints = wellboreTrajectory.map((point) => ({ x: point[0], y: point[1] }));
 
-    const simplifiedCurve = simplify(adjustedWellboreTrajectory, epsilon).map((point) => [point.x, point.y]);
+    // Get simplified curve from xy trajectory
+    const simplifiedCurveXy = createSimplifiedCurveFromXyPoints(wellboreTrajectoryXyPoints, epsilon);
 
     let lastWellboreTrajectoryIndex = 0;
-    for (const [index, point] of simplifiedCurve.entries()) {
+    for (const [index, point] of simplifiedCurveXy.entries()) {
         simplifiedTrajectoryXy.push([point[0], point[1]]);
 
         if (index === 0) {
@@ -53,11 +73,11 @@ export function calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
     }
 
     if (extensionLength > 0) {
-        const vectorEndPoint = simplifiedCurve[simplifiedCurve.length - 1];
+        const vectorEndPoint = simplifiedCurveXy[simplifiedCurveXy.length - 1];
         let vectorStartPoint = vectorEndPoint;
-        for (let i = simplifiedCurve.length - 2; i >= 0; i--) {
-            if (simplifiedCurve[i][0] !== vectorEndPoint[0] || simplifiedCurve[i][1] !== vectorEndPoint[1]) {
-                vectorStartPoint = simplifiedCurve[i];
+        for (let i = simplifiedCurveXy.length - 2; i >= 0; i--) {
+            if (simplifiedCurveXy[i][0] !== vectorEndPoint[0] || simplifiedCurveXy[i][1] !== vectorEndPoint[1]) {
+                vectorStartPoint = simplifiedCurveXy[i];
                 break;
             }
         }
@@ -71,24 +91,24 @@ export function calcExtendedSimplifiedWellboreTrajectoryInXYPlane(
         const normalizedVector = normalizeVector(vector);
 
         const extendedFirstPoint = [
-            simplifiedCurve[0][0] - normalizedVector[0] * extensionLength,
-            simplifiedCurve[0][1] - normalizedVector[1] * extensionLength,
+            simplifiedCurveXy[0][0] - normalizedVector[0] * extensionLength,
+            simplifiedCurveXy[0][1] - normalizedVector[1] * extensionLength,
         ];
         const extendedLastPoint = [
-            simplifiedCurve[simplifiedCurve.length - 1][0] + normalizedVector[0] * extensionLength,
-            simplifiedCurve[simplifiedCurve.length - 1][1] + normalizedVector[1] * extensionLength,
+            simplifiedCurveXy[simplifiedCurveXy.length - 1][0] + normalizedVector[0] * extensionLength,
+            simplifiedCurveXy[simplifiedCurveXy.length - 1][1] + normalizedVector[1] * extensionLength,
         ];
 
         simplifiedTrajectoryXy.unshift(extendedFirstPoint);
         simplifiedTrajectoryXy.push(extendedLastPoint);
 
         actualSectionLengths.unshift(
-            point2Distance(vec2FromArray(extendedFirstPoint), vec2FromArray(simplifiedCurve[0])),
+            point2Distance(vec2FromArray(extendedFirstPoint), vec2FromArray(simplifiedCurveXy[0])),
         );
         actualSectionLengths.push(
             point2Distance(
                 vec2FromArray(extendedLastPoint),
-                vec2FromArray(simplifiedCurve[simplifiedCurve.length - 1]),
+                vec2FromArray(simplifiedCurveXy[simplifiedCurveXy.length - 1]),
             ),
         );
     }

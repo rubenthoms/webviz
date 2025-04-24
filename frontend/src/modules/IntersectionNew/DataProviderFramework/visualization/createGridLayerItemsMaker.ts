@@ -14,10 +14,11 @@ import { LayerType } from "@modules/_shared/components/EsvIntersection";
 
 export function createGridLayerItemsMaker({
     id,
+    name,
+    isLoading,
     getData,
     getSetting,
     getStoredData,
-    name,
 }: TransformerArgs<
     IntersectionRealizationGridSettings,
     IntersectionRealizationGridData,
@@ -28,15 +29,34 @@ export function createGridLayerItemsMaker({
     const colorScale = getSetting(Setting.COLOR_SCALE)?.colorScale;
     const intersectionExtensionLength = getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) ?? 0;
     const showGridLines = getSetting(Setting.SHOW_GRID_LINES);
-    const sourcePolylineActualSectionLengths = getStoredData("polylineWithSectionLengths")?.actualSectionLengths;
+    const sourcePolylineWithSectionLengths = getStoredData("polylineWithSectionLengths");
 
-    if (!intersectionData || !sourcePolylineActualSectionLengths || !colorScale) {
+    if (!intersectionData || !sourcePolylineWithSectionLengths || !colorScale) {
         return null;
+    }
+
+    if (sourcePolylineWithSectionLengths.polylineUtmXy.length === 0) {
+        return null;
+    }
+
+    if (isLoading) {
+        // Temporary
+        // TODO: Handle loading state for color scale, or provide another layer for loading state
+        return null;
+    }
+
+    // Temporary until we can ensure that fetched data and settings/stored data is synced as long
+    // as isLoading is false
+    if (intersectionData.fenceMeshSections.length !== sourcePolylineWithSectionLengths.actualSectionLengths.length) {
+        throw new Error(
+            "The number of fence mesh sections does not match the number of requested actual section lengths",
+        );
+        // return null;
     }
 
     const transformedPolylineIntersection = createTransformedPolylineIntersectionResult(
         intersectionData,
-        sourcePolylineActualSectionLengths,
+        sourcePolylineWithSectionLengths.actualSectionLengths,
     );
 
     // TODO: Always use custom boundaries for the color scale?

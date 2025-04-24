@@ -8,8 +8,9 @@ import type { WorkbenchSession } from "@framework/WorkbenchSession";
 import type { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import { IntersectionType } from "@framework/types/intersection";
 import type { Viewport } from "@framework/types/viewport";
-import { PendingWrapper } from "@lib/components/PendingWrapper";
 import { useElementSize } from "@lib/hooks/useElementSize";
+import type { BBox } from "@lib/utils/bbox";
+import { combine } from "@lib/utils/bbox";
 import { makeColorScaleAnnotation } from "@modules/IntersectionNew/DataProviderFramework/annotations/makeColorScaleAnnotation";
 import { makeGridBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeGridBoundingBox";
 import { makeSeismicBoundingBox } from "@modules/IntersectionNew/DataProviderFramework/boundingBoxes/makeSeismicBoundingBox";
@@ -47,6 +48,7 @@ import type {
 } from "@modules/_shared/DataProviderFramework/visualization/VisualizationAssembler";
 import { useDrilledWellboreHeadersQuery } from "@modules/_shared/WellBore";
 import { ColorLegendsContainer } from "@modules/_shared/components/ColorLegendsContainer";
+import { isColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorScaleWithId";
 import type { LayerItem } from "@modules/_shared/components/EsvIntersection";
 import { usePublishSubscribeTopicValue } from "@modules/_shared/utils/PublishSubscribeDelegate";
 
@@ -139,7 +141,7 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
 );
 
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
-    CustomDataProviderType.PER_REALIZATION_SURFACES,
+    CustomDataProviderType.REALIZATIONS_UNCERTAINTY_SURFACES,
     PerRealizationSurfacesProvider,
     {
         transformToVisualization: createUncertaintySurfacesLayerItemsMaker,
@@ -186,6 +188,7 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
     const view = viewCandidate ?? null;
 
     const viewIntersection = view?.customProps.intersection ?? null;
+    const extensionLength = view?.customProps.extensionLength ?? null;
 
     // Additional visualization for wellbore
     const wellboreHeadersQuery = useDrilledWellboreHeadersQuery(fieldIdentifier ?? undefined);
@@ -217,6 +220,7 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
     // Layers to be visualized in esv intersection
     const visualizationLayerItems: LayerItem[] = [];
 
+    let boundingBox: BBox | null = null;
     if (view && viewIntersection && intersectionReferenceSystem) {
         for (const item of view.children) {
             if (item.itemType === VisualizationItemType.DATA_PROVIDER_VISUALIZATION) {
@@ -267,6 +271,27 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
             visualizationLayerItems.push(
                 ...createWellboreLayerItems(wellboreCasingsData, intersectionReferenceSystem, layerOrder),
             );
+
+            // Bound box for wellbore path
+            const validExtensionLength = extensionLength ?? 0;
+            const wellborePath = intersectionReferenceSystem.projectedPath;
+            const minX = Math.min(...wellborePath.map((point) => point[0]));
+            const maxX = Math.max(...wellborePath.map((point) => point[0]));
+            const minY = Math.min(...wellborePath.map((point) => point[1]));
+            const maxY = Math.max(...wellborePath.map((point) => point[1]));
+
+            boundingBox = {
+                min: {
+                    x: minX - validExtensionLength,
+                    y: minY,
+                    z: 0.0,
+                },
+                max: {
+                    x: maxX + validExtensionLength,
+                    y: maxY,
+                    z: 0.0,
+                },
+            } as BBox;
         }
     }
 
@@ -278,16 +303,23 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
     const isLoading = assemblerProduct.numLoadingDataProviders > 0;
     statusWriter.setLoading(isLoading);
 
+    let combinedBoundingBox: BBox | null = null;
+    if (boundingBox && assemblerProduct.combinedBoundingBox) {
+        combinedBoundingBox = combine(boundingBox, assemblerProduct.combinedBoundingBox);
+    } else if (boundingBox) {
+        combinedBoundingBox = boundingBox;
+    } else if (assemblerProduct.combinedBoundingBox) {
+        combinedBoundingBox = assemblerProduct.combinedBoundingBox;
+    }
+
     const bounds: { x: [number, number]; y: [number, number] } = {
         x: [Number.MAX_VALUE, Number.MIN_VALUE],
         y: [Number.MAX_VALUE, Number.MIN_VALUE],
     };
-
     let isBoundsSetByProvider = false;
-    if (assemblerProduct.combinedBoundingBox) {
-        const boundingBox = assemblerProduct.combinedBoundingBox;
-        bounds.x = [boundingBox.min.x, boundingBox.max.x];
-        bounds.y = [boundingBox.min.y, boundingBox.max.y];
+    if (combinedBoundingBox) {
+        bounds.x = [combinedBoundingBox.min.x, combinedBoundingBox.max.x];
+        bounds.y = [combinedBoundingBox.min.y, combinedBoundingBox.max.y];
         isBoundsSetByProvider = true;
     }
 
@@ -333,27 +365,24 @@ export function DataProvidersWrapper(props: DataProvidersWrapperProps): React.Re
 
     const isInvalidView = !view || !intersectionReferenceSystem || visualizationLayerItems.length === 0;
 
+    const colorScales = assemblerProduct.annotations.filter((elm) => isColorScaleWithId(elm));
+
     return (
         <div ref={mainDivRef} className="relative w-full h-full flex flex-col">
             {isInvalidView ? null : (
-                <PendingWrapper isPending={assemblerProduct.numLoadingDataProviders > 0}>
-                    <div style={{ height: mainDivSize.height, width: mainDivSize.width }}>
-                        <ViewportWrapper
-                            referenceSystem={intersectionReferenceSystem ?? undefined}
-                            layerItems={visualizationLayerItems}
-                            layerItemIdToNameMap={layerIdToNameMap}
-                            bounds={bounds}
-                            viewport={viewport}
-                            workbenchServices={props.workbenchServices}
-                            viewContext={props.viewContext}
-                            wellboreHeaderUuid={wellboreHeadersQuery.data?.[0].wellboreUuid ?? null}
-                        />
-                        <ColorLegendsContainer
-                            colorScales={assemblerProduct.annotations}
-                            height={mainDivSize.height / 2 - 50}
-                        />
-                    </div>
-                </PendingWrapper>
+                <div style={{ height: mainDivSize.height, width: mainDivSize.width }}>
+                    <ViewportWrapper
+                        referenceSystem={intersectionReferenceSystem ?? undefined}
+                        layerItems={visualizationLayerItems}
+                        layerItemIdToNameMap={layerIdToNameMap}
+                        bounds={bounds}
+                        viewport={viewport}
+                        workbenchServices={props.workbenchServices}
+                        viewContext={props.viewContext}
+                        wellboreHeaderUuid={wellboreHeadersQuery.data?.[0].wellboreUuid ?? null}
+                    />
+                    <ColorLegendsContainer colorScales={colorScales} height={mainDivSize.height / 2 - 50} />
+                </div>
             )}
         </div>
     );

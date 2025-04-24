@@ -14,7 +14,7 @@ export class IntersectionView implements CustomGroupImplementationWithSettings<I
     getDefaultSettingsValues() {
         return {
             intersection: null,
-            intersectionExtensionLength: 100.0,
+            intersectionExtensionLength: 500.0,
         };
     }
 }

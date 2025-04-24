@@ -11,6 +11,6 @@ DataProviderRegistry.registerDataProvider(
 );
 DataProviderRegistry.registerDataProvider(CustomDataProviderType.REALIZATION_SURFACES, RealizationSurfacesProvider);
 DataProviderRegistry.registerDataProvider(
-    CustomDataProviderType.PER_REALIZATION_SURFACES,
+    CustomDataProviderType.REALIZATIONS_UNCERTAINTY_SURFACES,
     PerRealizationSurfacesProvider,
 );

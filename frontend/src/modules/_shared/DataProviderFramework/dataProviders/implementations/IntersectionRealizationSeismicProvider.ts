@@ -6,6 +6,7 @@ import type {
     WellboreIntersectionSpecification,
 } from "@modules/_shared/Intersection/intersectionPolylineUtils";
 import {
+    createResampledPolylineWithSectionLengths,
     createResampledPolylineXyUtm,
     makeIntersectionPolylineWithSectionLengthsPromise,
 } from "@modules/_shared/Intersection/intersectionPolylineUtils";
@@ -41,6 +42,7 @@ type SettingsWithTypes = MakeSettingTypesMap<IntersectionRealizationSeismicSetti
 export type IntersectionRealizationSeismicStoredData = {
     sourcePolylineWithSectionLengths: PolylineWithSectionLengths;
     seismicFencePolylineUtmXy: number[];
+    seismicFencePolylineWithSectionLengths: PolylineWithSectionLengths;
 };
 
 export enum SeismicDataSource {
@@ -79,7 +81,7 @@ export class IntersectionRealizationSeismicProvider
 
     getDefaultName(): string {
         const dataSourceString = SeismicDataSourceEnumToStringMapping[this._dataSource];
-        return `Intersection Realization ${dataSourceString} Seismic Provider`;
+        return `Intersection Realization ${dataSourceString} Seismic`;
     }
 
     doSettingsChangesRequireDataRefetch(prevSettings: SettingsWithTypes, newSettings: SettingsWithTypes): boolean {
@@ -381,6 +383,32 @@ export class IntersectionRealizationSeismicProvider
             );
             return resampledPolylineXyUtm;
         });
+
+        storedDataUpdater("seismicFencePolylineWithSectionLengths", ({ getHelperDependency, getLocalSetting }) => {
+            const intersectionPolylineWithSectionLengths = getHelperDependency(
+                intersectionPolylineWithSectionLengthsDep,
+            );
+            const sampleResolutionInMeters = getLocalSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
+
+            // If no intersection is selected, or polyline is empty, return an empty polyline
+            if (
+                !intersectionPolylineWithSectionLengths ||
+                intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
+            ) {
+                return {
+                    polylineUtmXy: [],
+                    actualSectionLengths: [],
+                };
+            }
+
+            // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline
+            const resampledPolylineWithSectionLengths = createResampledPolylineWithSectionLengths(
+                intersectionPolylineWithSectionLengths,
+                sampleResolutionInMeters,
+            );
+
+            return resampledPolylineWithSectionLengths;
+        });
     }
 
     fetchData({
@@ -397,7 +425,7 @@ export class IntersectionRealizationSeismicProvider
         const realization = getSetting(Setting.REALIZATION);
         const attribute = getSetting(Setting.ATTRIBUTE);
         const timeOrInterval = getSetting(Setting.TIME_OR_INTERVAL);
-        const seismicFencePolylineUtmXy = getStoredData("seismicFencePolylineUtmXy");
+        const seismicFencePolylineUtmXy = getStoredData("seismicFencePolylineWithSectionLengths")?.polylineUtmXy;
 
         if (!seismicFencePolylineUtmXy) {
             throw new Error("No seismic fence polyline found in stored data");

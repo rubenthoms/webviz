@@ -18,13 +18,15 @@ export class InputNumberSetting implements CustomSettingImplementation<ValueType
             return false;
         }
 
-        if (!availableValues) {
-            return false;
+        if (availableValues.length < 2) {
+            // If min and max are not defined, we assume the value is valid
+            // This is the case when the setting is not overridden
+            return true;
         }
 
         const min = availableValues[0];
         const max = availableValues[1];
-        if (max === null || min === null) {
+        if (max === null || max === undefined || min === null || min === undefined) {
             return false;
         }
 

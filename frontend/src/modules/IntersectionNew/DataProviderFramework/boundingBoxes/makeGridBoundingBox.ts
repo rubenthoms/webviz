@@ -15,6 +15,7 @@ import { createTransformedPolylineIntersectionResult } from "@modules/_shared/In
  * as they are to be visualized in a 2D view.
  */
 export function makeGridBoundingBox({
+    isLoading,
     getData,
     getStoredData,
     getSetting,
@@ -32,10 +33,19 @@ export function makeGridBoundingBox({
         return null;
     }
 
+    // Temporary
+    // TODO: Handle loading state for color scale, or provide another layer for loading state
+    if (isLoading) {
+        return null;
+    }
+
+    // Temporary until we can ensure that fetched data and settings/stored data is synced as long
+    // as isLoading is false
     if (polylineIntersectionData.fenceMeshSections.length !== polylineActualSectionLengths.length) {
         throw new Error(
             "The number of fence mesh sections does not match the number of requested actual section lengths",
         );
+        return null;
     }
 
     const transformedPolylineIntersection = createTransformedPolylineIntersectionResult(

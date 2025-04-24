@@ -66,7 +66,10 @@ export function createUncertaintySurfacesLayerItemsMaker({
         });
         fancharts.push(fanchart);
 
-        currentColor = isLoading ? "#aaaaaa" : colorSet.getNextColor();
+        // Update color for the next surface
+        if (!isLoading) {
+            currentColor = colorSet.getNextColor();
+        }
     }
 
     const uncertaintySurfaceIntersectionLayerItemsMaker: EsvLayerItemsMaker = {

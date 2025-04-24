@@ -112,7 +112,6 @@ export function Settings(props: ModuleSettingsProps<Interfaces>): JSX.Element {
                 .makeSubscriberFunction(GroupDelegateTopic.CHILDREN_EXPANSION_STATES)(persistState);
 
             return function onUnmountEffect() {
-                dataProviderManager.beforeDestroy();
                 unsubscribeDataRev();
                 unsubscribeExpands();
             };

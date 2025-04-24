@@ -3,6 +3,7 @@ import { point2Distance } from "@lib/utils/vec2";
 import type {
     IntersectionRealizationSeismicData,
     IntersectionRealizationSeismicSettings,
+    IntersectionRealizationSeismicStoredData,
 } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationSeismicProvider";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import type {
@@ -18,33 +19,26 @@ import { LayerType } from "@modules/_shared/components/EsvIntersection";
  * This implies common z-coordinate, and the u-coordinate is the projection - i.e. the distance
  * along the polyline in the xy-plane.
  */
-function makeTrajectoryFenceProjectionFromPolylineXy(
-    polylineXyUtm: number[],
-    actualSectionLengths: number[],
-    resolution: number,
+function makeTrajectoryFenceProjectionFromFenceActualSectionLengths(
+    actualFenceSectionLengths: number[],
     extensionLength: number,
 ): number[][] {
+    if (actualFenceSectionLengths.length === 0) {
+        return [];
+    }
+
     // Calculate uz projection of the trajectory
     const trajectoryFenceProjection: number[][] = [];
-    const polyline = polylineXyUtm;
 
     let u = -extensionLength;
     trajectoryFenceProjection.push([u, 0]);
-    for (let i = 2; i < polyline.length; i += 2) {
-        const distance = point2Distance(
-            { x: polyline[i], y: polyline[i + 1] },
-            { x: polyline[i - 2], y: polyline[i - 1] },
-        );
 
-        const actualDistance = actualSectionLengths[i / 2 - 1];
-        const scale = actualDistance / distance;
-        const numPoints = Math.floor(distance / resolution) - 1;
-
-        for (let p = 1; p <= numPoints; p++) {
-            u += resolution * scale;
-            trajectoryFenceProjection.push([u, 0]);
-        }
+    for (const sectionLength of actualFenceSectionLengths) {
+        // Calculate new u projection value
+        u += sectionLength;
+        trajectoryFenceProjection.push([u, 0]);
     }
+
     return trajectoryFenceProjection;
 }
 
@@ -58,26 +52,41 @@ export function createSeismicLayerItemsMaker({
 }: TransformerArgs<
     IntersectionRealizationSeismicSettings,
     IntersectionRealizationSeismicData,
-    any,
+    IntersectionRealizationSeismicStoredData,
     any
 >): EsvLayerItemsMaker | null {
     const fenceData = getData();
     const colorScale = getSetting(Setting.COLOR_SCALE)?.colorScale;
     const intersectionExtensionLength = getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) ?? 0;
-    const sampleResolution = getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
+    // const sampleResolution = getSetting(Setting.SAMPLE_RESOLUTION_IN_METERS) ?? 1;
     const attribute = getSetting(Setting.ATTRIBUTE);
 
-    const sourcePolylineWithSectionLengths = getStoredData("sourcePolylineWithSectionLengths");
+    const seismicFenceSectionLengths = getStoredData("seismicFencePolylineWithSectionLengths")?.actualSectionLengths;
 
-    // if (isLoading || !fenceData || !sourcePolylineWithSectionLengths || !colorScale) {
-    if (!fenceData || !sourcePolylineWithSectionLengths || !colorScale) {
+    // if (isLoading || !fenceData || !seismicFencePolylineWithSectionLengths || !colorScale) {
+    if (!fenceData || !seismicFenceSectionLengths || !colorScale) {
         return null;
     }
 
-    const trajectoryFenceProjection = makeTrajectoryFenceProjectionFromPolylineXy(
-        sourcePolylineWithSectionLengths.polylineUtmXy,
-        sourcePolylineWithSectionLengths.actualSectionLengths,
-        sampleResolution,
+    // Temporary
+    if (isLoading) {
+        // TODO: Handle loading state for color scale, or provide another layer for loading state
+        return null;
+    }
+
+    // Temporary to catch loading (null -> empty polyline -> empty section lengths)
+    // if (seismicFenceSectionLengths.length === 0) {
+    //     return null;
+    // }
+
+    if (fenceData.num_traces !== seismicFenceSectionLengths.length + 1) {
+        throw new Error(
+            "The number of fence mesh sections does not match the number if actual section lengths for requested polyline",
+        );
+    }
+
+    const trajectoryFenceProjection = makeTrajectoryFenceProjectionFromFenceActualSectionLengths(
+        seismicFenceSectionLengths,
         intersectionExtensionLength,
     );
 

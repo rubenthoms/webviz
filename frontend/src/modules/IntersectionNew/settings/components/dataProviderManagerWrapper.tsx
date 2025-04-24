@@ -20,7 +20,7 @@ import { SettingsGroup } from "@modules/_shared/DataProviderFramework/framework/
 import { SharedSetting } from "@modules/_shared/DataProviderFramework/framework/SharedSetting/SharedSetting";
 import { GroupRegistry } from "@modules/_shared/DataProviderFramework/groups/GroupRegistry";
 import { GroupType } from "@modules/_shared/DataProviderFramework/groups/groupTypes";
-import type { ItemGroup } from "@modules/_shared/DataProviderFramework/interfacesAndTypes/entities";
+import type { Item, ItemGroup } from "@modules/_shared/DataProviderFramework/interfacesAndTypes/entities";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
 import { usePublishSubscribeTopicValue } from "@modules/_shared/utils/PublishSubscribeDelegate";
 import { Dropdown } from "@mui/base";
@@ -82,11 +82,12 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
                     ),
                 );
                 return;
-            case "per-realization-uncertainty-surfaces":
+            case "realizations-uncertainty-surfaces":
                 groupDelegate.prependChild(
                     DataProviderRegistry.makeDataProvider(
-                        CustomDataProviderType.PER_REALIZATION_SURFACES,
+                        CustomDataProviderType.REALIZATIONS_UNCERTAINTY_SURFACES,
                         props.dataProviderManager,
+                        "Realizations Uncertainty Surfaces",
                     ),
                 );
                 return;
@@ -131,6 +132,26 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
         }
     }
 
+    function checkIfItemMoveIsAllowed(movedItem: Item, destinationItem: ItemGroup): boolean {
+        if (!(destinationItem instanceof Group)) {
+            return false;
+        }
+
+        // if (movedItem instanceof SettingsGroup) {
+        //     return false;
+        // }
+
+        // if (movedItem instanceof SharedSetting) {
+        //     return false;
+        // }
+
+        // if (movedItem instanceof Group && movedItem.getGroupType() === GroupType.SETTINGS_GROUP) {
+        //     return false;
+        // }
+
+        return true;
+    }
+
     function makeActionsForGroup(group: ItemGroup): ActionGroup[] {
         const hasIntersectionView =
             groupDelegate.getDescendantItems(
@@ -152,7 +173,7 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
 
     return (
         <DataProviderManagerComponent
-            title={"Intersection Views"}
+            title={"Views"}
             dataProviderManager={props.dataProviderManager}
             additionalHeaderComponents={
                 <Dropdown>
@@ -179,6 +200,7 @@ export function DataProviderManagerWrapper(props: DataProviderManagerWrapperProp
             // layerActions={adjustedLayerActions}
             groupActions={makeActionsForGroup}
             onAction={handleAction}
+            isMoveAllowed={checkIfItemMoveIsAllowed}
         />
     );
 }
@@ -261,9 +283,9 @@ const ACTIONS: ActionGroup[] = [
                         label: "Realization Surfaces",
                     },
                     {
-                        identifier: "per-realization-uncertainty-surfaces",
+                        identifier: "realizations-uncertainty-surfaces",
                         icon: <Icon data={surface_layer} fontSize="small" />,
-                        label: "Per Realization Uncertainty Surfaces",
+                        label: "Realizations Uncertainty Surfaces",
                     },
                 ],
             },

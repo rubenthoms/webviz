@@ -117,6 +117,9 @@ export class Dependency<
         this._cachedSettingsMap.set(settingName as string, value);
 
         this._makeLocalSettingGetter(settingName, (value) => {
+            if (isEqual(value, this._cachedSettingsMap.get(settingName as string))) {
+                return;
+            }
             this._cachedSettingsMap.set(settingName as string, value);
             this.callUpdateFunc();
         });

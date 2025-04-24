@@ -120,6 +120,7 @@ export class DataProvider<
     private _isSubordinated: boolean = false;
     private _prevSettings: TSettingTypes | null = null;
     private _prevStoredData: NullableStoredData<TStoredData> | null = null;
+    private _revision: number = 0;
 
     constructor(params: DataProviderParams<TSettings, TData, TStoredData, TSettingTypes, TSettingKey>) {
         const {
@@ -183,6 +184,10 @@ export class DataProvider<
         );
     }
 
+    getRevision(): number {
+        return this._revision;
+    }
+
     areCurrentSettingsValid(): boolean {
         if (!this._customDataProviderImpl.areCurrentSettingsValid) {
             return true;
@@ -223,8 +228,6 @@ export class DataProvider<
         }
 
         if (!refetchRequired) {
-            this._publishSubscribeDelegate.notifySubscribers(DataProviderTopic.DATA);
-            this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
             this.setStatus(DataProviderStatus.SUCCESS);
             return;
         }
@@ -381,7 +384,6 @@ export class DataProvider<
             }
             this._queryKeys = [];
             this._publishSubscribeDelegate.notifySubscribers(DataProviderTopic.DATA);
-            this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
             this.setStatus(DataProviderStatus.SUCCESS);
         } catch (error: any) {
             if (isCancelledError(error)) {
@@ -423,8 +425,14 @@ export class DataProvider<
         }
 
         this._status = status;
-        this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
         this._publishSubscribeDelegate.notifySubscribers(DataProviderTopic.STATUS);
+
+        this.updateRevision();
+    }
+
+    private updateRevision(): void {
+        this._revision += 1;
+        this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
     }
 
     private getQueryClient(): QueryClient | null {

@@ -1,4 +1,3 @@
-
 import type { PublishSubscribe } from "../../utils/PublishSubscribeDelegate";
 import { PublishSubscribeDelegate } from "../../utils/PublishSubscribeDelegate";
 import { DataProvider } from "../framework/DataProvider/DataProvider";
@@ -62,7 +61,6 @@ export class GroupDelegate implements PublishSubscribe<GroupDelegateTopicPayload
         } else {
             this.insertChild(child, startIndex);
         }
-        this.takeOwnershipOfChild(child);
     }
 
     appendChild(child: Item) {

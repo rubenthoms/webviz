@@ -1,5 +1,6 @@
 import type { Layer as DeckGlLayer } from "@deck.gl/core";
 import type { Layer as EsvLayer } from "@equinor/esv-intersection";
+import { isEqual } from "lodash";
 
 import type { StatusMessage } from "@framework/ModuleInstanceStatusController";
 import type { GlobalTopicDefinitions } from "@framework/WorkbenchServices";
@@ -202,6 +203,20 @@ export type AssemblerProduct<
 
 export type CustomGroupPropsMap = Partial<Record<GroupType, Record<string, any>>>;
 
+type DataProviderTransformationResults<
+    TTarget extends VisualizationTarget,
+    TInjectedData extends Record<string, any> = never,
+    TAccumulatedData extends Record<string, any> = never,
+> = {
+    revision: number;
+    injectedData?: TInjectedData;
+    visualization: DataProviderVisualization<TTarget>;
+    boundingBox: bbox.BBox | null;
+    annotations: Annotation[];
+    hoverVisualizationFunction: HoverVisualizationsFunction<TTarget>;
+    accumulatedData: TAccumulatedData | null;
+};
+
 export class VisualizationAssembler<
     TTarget extends VisualizationTarget,
     TCustomGroupProps extends CustomGroupPropsMap = Record<GroupType, never>,
@@ -212,6 +227,8 @@ export class VisualizationAssembler<
         string,
         DataProviderTransformers<any, any, TTarget, any, TInjectedData, TAccumulatedData>
     > = new Map();
+    private _providerCache: Map<string, DataProviderTransformationResults<TTarget, TInjectedData, TAccumulatedData>> =
+        new Map();
 
     private _groupCustomPropsCollectors: Map<
         keyof TCustomGroupProps,
@@ -332,6 +349,22 @@ export class VisualizationAssembler<
                     continue;
                 }
 
+                const cached = this.maybeGetCachedProviderTransformationResults(child, injectedData);
+                if (cached) {
+                    const {
+                        visualization,
+                        boundingBox,
+                        annotations: newAnnotations,
+                        hoverVisualizationFunction,
+                    } = cached;
+                    children.push(visualization);
+                    maybeApplyBoundingBox(boundingBox);
+                    annotations.push(...newAnnotations);
+                    hoverVisualizationFunctions.push(hoverVisualizationFunction);
+                    accumulatedData = this.accumulateDataProviderData(child, accumulatedData) ?? accumulatedData;
+                    continue;
+                }
+
                 const dataProviderVisualization = this.makeDataProviderVisualization(child, injectedData);
 
                 if (!dataProviderVisualization) {
@@ -344,6 +377,16 @@ export class VisualizationAssembler<
                 annotations.push(...this.makeDataProviderAnnotations(child));
                 hoverVisualizationFunctions.push(this.makeDataProviderHoverVisualizationsFunction(child, injectedData));
                 accumulatedData = this.accumulateDataProviderData(child, accumulatedData) ?? accumulatedData;
+
+                this.cacheProviderTransformationResults(child, {
+                    revision: child.getRevision(),
+                    injectedData,
+                    visualization: dataProviderVisualization,
+                    boundingBox: providerBoundingBox,
+                    annotations,
+                    hoverVisualizationFunction: this.makeDataProviderHoverVisualizationsFunction(child, injectedData),
+                    accumulatedData,
+                });
             }
         }
 
@@ -431,6 +474,39 @@ export class VisualizationAssembler<
             getValueRange: dataProvider.getValueRange.bind(dataProvider),
             ...dataProvider.makeAccessors(),
         };
+    }
+
+    private maybeGetCachedProviderTransformationResults(
+        dataProvider: DataProvider<any, any, any>,
+        injectedData?: TInjectedData,
+    ): DataProviderTransformationResults<TTarget, TInjectedData, TAccumulatedData> | null {
+        const revision = dataProvider.getRevision();
+        const id = dataProvider.getItemDelegate().getId();
+        const cached = this._providerCache.get(id);
+
+        if (!cached) {
+            return null;
+        }
+
+        if (cached.revision !== revision) {
+            this._providerCache.delete(id);
+            return null;
+        }
+
+        if (!isEqual(cached.injectedData, injectedData)) {
+            this._providerCache.delete(id);
+            return null;
+        }
+
+        return cached;
+    }
+
+    private cacheProviderTransformationResults(
+        dataProvider: DataProvider<any, any, any>,
+        results: DataProviderTransformationResults<TTarget, TInjectedData, TAccumulatedData>,
+    ): void {
+        const id = dataProvider.getItemDelegate().getId();
+        this._providerCache.set(id, results);
     }
 
     private makeDataProviderVisualization(

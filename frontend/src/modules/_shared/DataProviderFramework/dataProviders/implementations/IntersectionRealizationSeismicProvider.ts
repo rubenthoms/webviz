@@ -115,17 +115,22 @@ export class IntersectionRealizationSeismicProvider
 
     areCurrentSettingsValid({
         getSetting,
+        getStoredData
     }: DataProviderInformationAccessors<
         IntersectionRealizationSeismicSettings,
         IntersectionRealizationSeismicData,
         IntersectionRealizationSeismicStoredData
     >): boolean {
+        const seismicFencePolylineUtmXy = getStoredData("seismicFencePolylineWithSectionLengths")?.polylineUtmXy;
+
         // Extension has to be set if intersection is wellbore
         const isValidIntersectionExtensionLength =
             getSetting(Setting.INTERSECTION)?.type !== IntersectionType.WELLBORE ||
             getSetting(Setting.INTERSECTION_EXTENSION_LENGTH) !== null;
 
         return (
+            seismicFencePolylineUtmXy !== undefined &&
+            seismicFencePolylineUtmXy.length > 0 &&
             getSetting(Setting.INTERSECTION) !== null &&
             isValidIntersectionExtensionLength &&
             getSetting(Setting.ENSEMBLE) !== null &&

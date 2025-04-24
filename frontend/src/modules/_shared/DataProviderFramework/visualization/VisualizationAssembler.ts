@@ -3,7 +3,7 @@ import type { IntersectionReferenceSystem } from "@equinor/esv-intersection";
 import type { StatusMessage } from "@framework/ModuleInstanceStatusController";
 import type { GlobalTopicDefinitions } from "@framework/WorkbenchServices";
 import * as bbox from "@lib/utils/bbox";
-import { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorScaleWithId";
+import type { ColorScaleWithId } from "@modules/_shared/components/ColorLegendsContainer/colorScaleWithId";
 import type { LayerItem } from "@modules/_shared/components/EsvIntersection";
 
 import type { GroupDelegate } from "../delegates/GroupDelegate";
@@ -315,7 +315,7 @@ export class VisualizationAssembler<
                     numLoadingDataProviders++;
                 }
 
-                if (child.getStatus() === DataProviderStatus.ERROR) {
+                if (child.getStatus() !== DataProviderStatus.SUCCESS && child.getStatus() !== DataProviderStatus.LOADING) {
                     const error = child.getError();
                     if (error) {
                         aggregatedErrorMessages.push(error);

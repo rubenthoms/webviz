@@ -223,8 +223,6 @@ export class DataProvider<
         }
 
         if (!refetchRequired) {
-            this._publishSubscribeDelegate.notifySubscribers(DataProviderTopic.DATA);
-            this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
             this.setStatus(DataProviderStatus.SUCCESS);
             return;
         }
@@ -381,7 +379,6 @@ export class DataProvider<
             }
             this._queryKeys = [];
             this._publishSubscribeDelegate.notifySubscribers(DataProviderTopic.DATA);
-            this._dataProviderManager.publishTopic(DataProviderManagerTopic.DATA_REVISION);
             this.setStatus(DataProviderStatus.SUCCESS);
         } catch (error: any) {
             if (isCancelledError(error)) {

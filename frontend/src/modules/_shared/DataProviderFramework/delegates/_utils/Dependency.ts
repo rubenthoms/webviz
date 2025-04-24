@@ -1,6 +1,6 @@
 import { isCancelledError } from "@tanstack/react-query";
 
-import { isEqual } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 
 import type { GlobalSettings } from "../../framework/DataProviderManager/DataProviderManager";
 import { SettingTopic } from "../../framework/SettingManager/SettingManager";
@@ -162,7 +162,7 @@ export class Dependency<
             if (isEqual(value, cachedValue)) {
                 return;
             }
-            this._cachedGlobalSettingsMap.set(settingName as string, value);
+            this._cachedGlobalSettingsMap.set(settingName as string, cloneDeep(value));
             this.callUpdateFunc();
         });
 

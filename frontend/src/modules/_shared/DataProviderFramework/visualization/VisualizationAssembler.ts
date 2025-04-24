@@ -315,7 +315,11 @@ export class VisualizationAssembler<
                     numLoadingDataProviders++;
                 }
 
-                if (child.getStatus() !== DataProviderStatus.SUCCESS && child.getStatus() !== DataProviderStatus.LOADING) {
+                if (child.getStatus() === DataProviderStatus.INVALID_SETTINGS) {
+                    continue;
+                }
+
+                if (child.getStatus() === DataProviderStatus.ERROR) {
                     const error = child.getError();
                     if (error) {
                         aggregatedErrorMessages.push(error);

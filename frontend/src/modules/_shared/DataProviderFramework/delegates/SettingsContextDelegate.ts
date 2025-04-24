@@ -376,6 +376,7 @@ export class SettingsContextDelegate<
                     return;
                 }
                 this.setAvailableValues(settingKey, availableValues);
+                this.handleSettingChanged();
             });
 
             dependency.subscribeLoading((loading: boolean, hasDependencies: boolean) => {

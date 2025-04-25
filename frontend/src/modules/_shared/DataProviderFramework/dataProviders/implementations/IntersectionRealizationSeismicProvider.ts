@@ -23,7 +23,7 @@ import type {
     DataProviderInformationAccessors,
     FetchDataParams,
 } from "../../interfacesAndTypes/customDataProviderImplementation";
-import type { DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
+import { CancelUpdate, type DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
 import type { IntersectionSettingValue } from "../../settings/implementations/IntersectionSetting";
 
 const intersectionRealizationSeismicSettings = [
@@ -115,7 +115,7 @@ export class IntersectionRealizationSeismicProvider
 
     areCurrentSettingsValid({
         getSetting,
-        getStoredData
+        getStoredData,
     }: DataProviderInformationAccessors<
         IntersectionRealizationSeismicSettings,
         IntersectionRealizationSeismicData,
@@ -195,7 +195,7 @@ export class IntersectionRealizationSeismicProvider
             const seismicCubeMetaList = getHelperDependency(ensembleSeismicCubeMetaListDep);
 
             if (!seismicCubeMetaList) {
-                return [];
+                return CancelUpdate;
             }
 
             // Get seismic attributes that are depth of correct data source
@@ -239,16 +239,18 @@ export class IntersectionRealizationSeismicProvider
             const wellboreHeaders = getHelperDependency(wellboreHeadersDep);
             const intersectionPolylines = getGlobalSetting("intersectionPolylines");
 
+            if (!wellboreHeaders) {
+                return CancelUpdate;
+            }
+
             const intersectionOptions: IntersectionSettingValue[] = [];
 
-            if (wellboreHeaders) {
-                for (const wellboreHeader of wellboreHeaders) {
-                    intersectionOptions.push({
-                        type: IntersectionType.WELLBORE,
-                        name: wellboreHeader.uniqueWellboreIdentifier,
-                        uuid: wellboreHeader.wellboreUuid,
-                    });
-                }
+            for (const wellboreHeader of wellboreHeaders) {
+                intersectionOptions.push({
+                    type: IntersectionType.WELLBORE,
+                    name: wellboreHeader.uniqueWellboreIdentifier,
+                    uuid: wellboreHeader.wellboreUuid,
+                });
             }
 
             for (const polyline of intersectionPolylines) {
@@ -273,7 +275,7 @@ export class IntersectionRealizationSeismicProvider
             const seismicAttribute = getLocalSetting(Setting.ATTRIBUTE);
 
             if (!seismicAttribute || !seismicCubeMetaList) {
-                return [];
+                return CancelUpdate;
             }
 
             const availableTimeOrIntervals = [

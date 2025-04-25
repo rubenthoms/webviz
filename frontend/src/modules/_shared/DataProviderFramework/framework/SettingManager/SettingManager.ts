@@ -405,7 +405,7 @@ export class SettingManager<
         const prevIsValid = this._isValueValid;
         this.setValueValid(this.checkIfValueIsValid(this.getValue()));
         this.initialize();
-        if (valueChanged || this._isValueValid !== prevIsValid) {
+        if ((valueChanged || this._isValueValid !== prevIsValid) && this._overriddenValue === undefined) {
             this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         }
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.AVAILABLE_VALUES);

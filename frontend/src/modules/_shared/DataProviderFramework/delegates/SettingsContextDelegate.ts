@@ -9,12 +9,9 @@ import {
     DataProviderManagerTopic,
     type GlobalSettings,
 } from "../framework/DataProviderManager/DataProviderManager";
-import { Group } from "../framework/Group/Group";
 import type { SettingManager } from "../framework/SettingManager/SettingManager";
 import { SettingTopic } from "../framework/SettingManager/SettingManager";
-import { SharedSetting } from "../framework/SharedSetting/SharedSetting";
 import type { CustomSettingsHandler, SettingAttributes, UpdateFunc } from "../interfacesAndTypes/customSettingsHandler";
-import { type SharedSettingsProvider, instanceofSharedSettingsProvider } from "../interfacesAndTypes/entities";
 import type { SerializedSettingsState } from "../interfacesAndTypes/serialization";
 import type { NullableStoredData, StoredData } from "../interfacesAndTypes/sharedTypes";
 import type { AvailableValuesType, SettingsKeysFromTuple } from "../interfacesAndTypes/utils";
@@ -110,23 +107,6 @@ export class SettingsContextDelegate<
                     this.handleSettingsLoadingStateChanged();
                 }),
             );
-            this._unsubscribeHandler.registerUnsubscribeFunction(
-                "data-provider-manager",
-                dataProviderManager
-                    .getPublishSubscribeDelegate()
-                    .makeSubscriberFunction(DataProviderManagerTopic.SHARED_SETTINGS_CHANGED)(() => {
-                    this.handleSharedSettingsChanged();
-                }),
-            );
-
-            this._unsubscribeHandler.registerUnsubscribeFunction(
-                "data-provider-manager",
-                dataProviderManager
-                    .getPublishSubscribeDelegate()
-                    .makeSubscriberFunction(DataProviderManagerTopic.ITEMS)(() => {
-                    this.handleSharedSettingsChanged();
-                }),
-            );
         }
 
         this._settings = settings;
@@ -157,6 +137,7 @@ export class SettingsContextDelegate<
         return settings;
     }
 
+    /*
     handleSharedSettingsChanged() {
         const parentGroup = this._owner.getItemDelegate().getParentGroup();
         if (!parentGroup) {
@@ -176,6 +157,7 @@ export class SettingsContextDelegate<
             this._settings[key].checkForOverrides(sharedSettingsProviders);
         }
     }
+    */
 
     areCurrentSettingsValid(): boolean {
         for (const key in this._settings) {

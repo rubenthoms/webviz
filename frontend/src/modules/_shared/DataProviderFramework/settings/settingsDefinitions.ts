@@ -324,7 +324,7 @@ export const settingCategoryAvailableValuesIntersectionReducerMap: SettingCatego
 
                 return [Math.max(min, currentMin), Math.min(max, currentMax)];
             },
-            startingValue: [Number.MIN_VALUE, Number.MAX_VALUE],
+            startingValue: [-Number.MAX_VALUE, Number.MAX_VALUE],
         },
         [SettingCategory.RANGE]: {
             reducer: (accumulator, currentAvailableValues) => {

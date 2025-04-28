@@ -1,18 +1,31 @@
 import { UnsubscribeHandlerDelegate } from "../../delegates/UnsubscribeHandlerDelegate";
 import type { Item } from "../../interfacesAndTypes/entities";
-import type { Setting } from "../../settings/settingsDefinitions";
+import type { AvailableValuesType, MakeAvailableValuesTypeBasedOnCategory } from "../../interfacesAndTypes/utils";
+import {
+    type Setting,
+    type SettingCategories,
+    type SettingTypes,
+    settingCategoryAvailableValuesIntersectionReducerMap,
+} from "../../settings/settingsDefinitions";
 import { DataProvider } from "../DataProvider/DataProvider";
 import { DataProviderManagerTopic } from "../DataProviderManager/DataProviderManager";
 import { Group } from "../Group/Group";
 import type { SettingManager } from "../SettingManager/SettingManager";
 
-export class ExternalSettingController<TSetting extends Setting> {
+export class ExternalSettingController<
+    TSetting extends Setting,
+    TValue extends SettingTypes[TSetting] = SettingTypes[TSetting],
+    TCategory extends SettingCategories[TSetting] = SettingCategories[TSetting],
+> {
     private _parentItem: Item;
-    private _controlledSettings: Map<string, SettingManager<TSetting>> = new Map();
+    private _setting: SettingManager<TSetting, TValue, TCategory>;
+    private _controlledSettings: Map<string, SettingManager<TSetting, TValue, TCategory>> = new Map();
+    private _availableValuesMap: Map<string, AvailableValuesType<TSetting>> = new Map();
     private _unsubscribeHandler: UnsubscribeHandlerDelegate = new UnsubscribeHandlerDelegate();
 
-    constructor(parentItem: Item) {
+    constructor(parentItem: Item, setting: SettingManager<TSetting, TValue, TCategory>) {
         this._parentItem = parentItem;
+        this._setting = setting;
 
         const dataProviderManager = parentItem.getItemDelegate().getDataProviderManager();
         this._unsubscribeHandler.registerUnsubscribeFunction(
@@ -23,6 +36,19 @@ export class ExternalSettingController<TSetting extends Setting> {
                 },
             ),
         );
+    }
+
+    getParentItem(): Item {
+        return this._parentItem;
+    }
+
+    registerSetting(settingManager: SettingManager<TSetting, TValue, TCategory>): void {
+        this._controlledSettings.set(settingManager.getId(), settingManager);
+        settingManager.registerExternalSettingController(this);
+    }
+
+    getSetting(): SettingManager<TSetting, TValue, TCategory> {
+        return this._setting;
     }
 
     private updateControlledSettings(): void {
@@ -43,13 +69,54 @@ export class ExternalSettingController<TSetting extends Setting> {
         >[];
 
         for (const provider of providers) {
+            const setting = provider.getSettingsContextDelegate().getSettings()[this._setting.getType()];
+            if (setting) {
+                this._controlledSettings.set(setting.getId(), setting);
+                setting.registerExternalSettingController(this);
+            }
         }
     }
 
-    private unregisterAllControlledSettings(): void {
+    unregisterAllControlledSettings(): void {
         for (const setting of this._controlledSettings.values()) {
             setting.unregisterExternalSettingController();
         }
         this._controlledSettings.clear();
+    }
+
+    setAvailableValues(availableValues: AvailableValuesType<TSetting> | null): void {
+        if (availableValues) {
+            this._availableValuesMap.set(this._setting.getId(), availableValues);
+        } else {
+            this._availableValuesMap.delete(this._setting.getId());
+        }
+
+        this.makeIntersectionOfAvailableValues();
+    }
+
+    private makeIntersectionOfAvailableValues(): void {
+        const category = this._setting.getCategory();
+        const reducerDefinition = settingCategoryAvailableValuesIntersectionReducerMap[category];
+
+        if (!reducerDefinition) {
+            throw new Error(
+                `No reducer definition found for category ${category}. Please check the settings definitions.`,
+            );
+        }
+
+        const { reducer, startingValue } = reducerDefinition;
+        let availableValues: MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory> =
+            startingValue as MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory>;
+        let index = 0;
+
+        for (const value of this._availableValuesMap.values()) {
+            availableValues = reducer(
+                availableValues as any,
+                value as any,
+                index++,
+            ) as MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory>;
+        }
+
+        this._setting.setAvailableValues(availableValues);
     }
 }

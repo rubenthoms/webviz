@@ -6,9 +6,9 @@ import { PublishSubscribeDelegate } from "@modules/_shared/utils/PublishSubscrib
 import { isEqual } from "lodash";
 import { v4 } from "uuid";
 
+import { UnsubscribeHandlerDelegate } from "../../delegates/UnsubscribeHandlerDelegate";
 import type { CustomSettingImplementation } from "../../interfacesAndTypes/customSettingImplementation";
 import type { SettingAttributes } from "../../interfacesAndTypes/customSettingsHandler";
-import type { SharedSettingsProvider } from "../../interfacesAndTypes/entities";
 import type { AvailableValuesType, MakeAvailableValuesTypeBasedOnCategory } from "../../interfacesAndTypes/utils";
 import type { Setting, SettingCategories, SettingCategory, SettingTypes } from "../../settings/settingsDefinitions";
 import { settingCategoryFixupMap, settingCategoryIsValueValidMap } from "../../settings/settingsDefinitions";
@@ -20,8 +20,8 @@ export enum SettingTopic {
     VALUE_ABOUT_TO_BE_CHANGED = "VALUE_ABOUT_TO_BE_CHANGED",
     IS_VALID = "IS_VALID",
     AVAILABLE_VALUES = "AVAILABLE_VALUES",
-    OVERRIDDEN_VALUE = "OVERRIDDEN_VALUE",
-    OVERRIDDEN_VALUE_PROVIDER = "OVERRIDDEN_VALUE_PROVIDER",
+    IS_EXTERNALLY_CONTROLLED = "IS_EXTERNALLY_CONTROLLED",
+    EXTERNAL_CONTROLLER_PROVIDER = "EXTERNAL_CONTROLLER_PROVIDER",
     IS_LOADING = "IS_LOADING",
     IS_INITIALIZED = "IS_INITIALIZED",
     IS_PERSISTED = "IS_PERSISTED",
@@ -33,8 +33,8 @@ export type SettingTopicPayloads<TValue, TCategory extends SettingCategory> = {
     [SettingTopic.VALUE_ABOUT_TO_BE_CHANGED]: void;
     [SettingTopic.IS_VALID]: boolean;
     [SettingTopic.AVAILABLE_VALUES]: MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory> | null;
-    [SettingTopic.OVERRIDDEN_VALUE]: TValue | undefined;
-    [SettingTopic.OVERRIDDEN_VALUE_PROVIDER]: OverriddenValueProviderType | undefined;
+    [SettingTopic.IS_EXTERNALLY_CONTROLLED]: boolean;
+    [SettingTopic.EXTERNAL_CONTROLLER_PROVIDER]: OverriddenValueProviderType | undefined;
     [SettingTopic.IS_LOADING]: boolean;
     [SettingTopic.IS_INITIALIZED]: boolean;
     [SettingTopic.IS_PERSISTED]: boolean;
@@ -79,8 +79,6 @@ export class SettingManager<
     private _isValueValid: boolean = false;
     private _publishSubscribeDelegate = new PublishSubscribeDelegate<SettingTopicPayloads<TValue, TCategory>>();
     private _availableValues: MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory> | null = null;
-    private _overriddenValue: TValue | undefined = undefined;
-    private _overriddenValueProviderType: OverriddenValueProviderType | undefined = undefined;
     private _loading: boolean = false;
     private _initialized: boolean = false;
     private _currentValueFromPersistence: TValue | null = null;
@@ -89,7 +87,8 @@ export class SettingManager<
         enabled: true,
         visible: true,
     };
-    private _externalController: ExternalSettingController<TSetting> | null = null;
+    private _externalController: ExternalSettingController<TSetting, TValue, TCategory> | null = null;
+    private _unsubscribeHandler: UnsubscribeHandlerDelegate = new UnsubscribeHandlerDelegate();
 
     constructor({
         type,
@@ -110,8 +109,23 @@ export class SettingManager<
         }
     }
 
+    registerExternalSettingController(
+        externalController: ExternalSettingController<TSetting, TValue, TCategory>,
+    ): void {
+        this._externalController = externalController;
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.VALUE)(
+                () => {
+                    this.setValue(externalController.getSetting().getValue());
+                },
+            ),
+        );
+    }
+
     unregisterExternalSettingController(): void {
         this._externalController = null;
+        this._unsubscribeHandler.unsubscribe("external-setting-controller");
     }
 
     getId(): string {
@@ -145,8 +159,8 @@ export class SettingManager<
     }
 
     getValue(): TValue {
-        if (this._overriddenValue !== undefined) {
-            return this._overriddenValue;
+        if (this._externalController) {
+            return this._externalController.getSetting().getValue();
         }
 
         if (this._currentValueFromPersistence !== null) {
@@ -263,6 +277,7 @@ export class SettingManager<
         return "Value has no string representation";
     }
 
+    /*
     checkForOverrides(sharedSettingsProviders: SharedSettingsProvider[]) {
         let overriddenValue: TValue | undefined;
         let overriddenValueProviderType: OverriddenValueProviderType | undefined;
@@ -288,7 +303,9 @@ export class SettingManager<
         this._overriddenValueProviderType = overriddenValueProviderType;
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.OVERRIDDEN_VALUE_PROVIDER);
     }
+    */
 
+    /*
     setOverriddenValue(overriddenValue: TValue | undefined): void {
         if (isEqual(this._overriddenValue, overriddenValue)) {
             return;
@@ -318,6 +335,7 @@ export class SettingManager<
 
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
     }
+    */
 
     makeSnapshotGetter<T extends SettingTopic>(topic: T): () => SettingTopicPayloads<TValue, TCategory>[T] {
         const snapshotGetter = (): any => {
@@ -330,10 +348,12 @@ export class SettingManager<
                     return this._isValueValid;
                 case SettingTopic.AVAILABLE_VALUES:
                     return this._availableValues;
-                case SettingTopic.OVERRIDDEN_VALUE:
-                    return this._overriddenValue;
-                case SettingTopic.OVERRIDDEN_VALUE_PROVIDER:
-                    return this._overriddenValueProviderType;
+                case SettingTopic.IS_EXTERNALLY_CONTROLLED:
+                    return this._externalController !== null;
+                case SettingTopic.EXTERNAL_CONTROLLER_PROVIDER:
+                    return this._externalController?.getParentItem() instanceof Group
+                        ? OverriddenValueProviderType.GROUP
+                        : OverriddenValueProviderType.SHARED_SETTING;
                 case SettingTopic.IS_LOADING:
                     return this.isLoading();
                 case SettingTopic.IS_PERSISTED:
@@ -404,6 +424,12 @@ export class SettingManager<
         }
 
         this._availableValues = availableValues;
+
+        if (this._externalController) {
+            this._externalController.setAvailableValues(availableValues);
+            return;
+        }
+
         let valueChanged = false;
         if ((!this.checkIfValueIsValid(this.getValue()) && this.maybeFixupValue()) || this.maybeResetPersistedValue()) {
             valueChanged = true;
@@ -412,7 +438,7 @@ export class SettingManager<
         this.setValueValid(this.checkIfValueIsValid(this.getValue()));
         this.initialize();
         this.setLoading(false);
-        if ((valueChanged || this._isValueValid !== prevIsValid) && this._overriddenValue === undefined) {
+        if (valueChanged || this._isValueValid !== prevIsValid) {
             this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         }
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.AVAILABLE_VALUES);

@@ -12,6 +12,7 @@ import type { SharedSettingsProvider } from "../../interfacesAndTypes/entities";
 import type { AvailableValuesType, MakeAvailableValuesTypeBasedOnCategory } from "../../interfacesAndTypes/utils";
 import type { Setting, SettingCategories, SettingCategory, SettingTypes } from "../../settings/settingsDefinitions";
 import { settingCategoryFixupMap, settingCategoryIsValueValidMap } from "../../settings/settingsDefinitions";
+import type { ExternalSettingController } from "../ExternalSettingController/ExternalSettingController";
 import { Group } from "../Group/Group";
 
 export enum SettingTopic {
@@ -88,6 +89,7 @@ export class SettingManager<
         enabled: true,
         visible: true,
     };
+    private _externalController: ExternalSettingController<TSetting> | null = null;
 
     constructor({
         type,
@@ -106,6 +108,10 @@ export class SettingManager<
         if (this._isStatic) {
             this.setValueValid(this.checkIfValueIsValid(this._value));
         }
+    }
+
+    unregisterExternalSettingController(): void {
+        this._externalController = null;
     }
 
     getId(): string {

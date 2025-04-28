@@ -229,6 +229,13 @@ export class SettingManager<
         if (this._loading === loading) {
             return;
         }
+
+        if (this._externalController) {
+            this._externalController.getSetting().setLoading(loading);
+            this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_LOADING);
+            return;
+        }
+
         this._loading = loading;
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_LOADING);
     }
@@ -246,6 +253,9 @@ export class SettingManager<
     }
 
     isLoading(): boolean {
+        if (this._externalController) {
+            return this._externalController.getSetting().isLoading();
+        }
         return this._loading;
     }
 

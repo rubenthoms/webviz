@@ -79,7 +79,9 @@ export function createSeismicLayerItemsMaker({
     // }
 
     if (fenceData.num_traces !== seismicFenceSectionLengths.length + 1) {
-       return null;
+        throw new Error(
+            `Number of traces (${fenceData.num_traces}) does not match number of sections (${seismicFenceSectionLengths.length + 1})`,
+        );
     }
 
     const trajectoryFenceProjection = makeTrajectoryFenceProjectionFromFenceActualSectionLengths(

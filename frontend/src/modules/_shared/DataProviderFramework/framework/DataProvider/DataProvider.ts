@@ -120,6 +120,7 @@ export class DataProvider<
     private _isSubordinated: boolean = false;
     private _prevSettings: TSettingTypes | null = null;
     private _prevStoredData: NullableStoredData<TStoredData> | null = null;
+    private _currentTransactionId: number = 0;
 
     constructor(params: DataProviderParams<TSettings, TData, TStoredData, TSettingTypes, TSettingKey>) {
         const {
@@ -187,7 +188,7 @@ export class DataProvider<
             this.setStatus(DataProviderStatus.LOADING);
             return;
         }
-        
+
         if (!this.areCurrentSettingsValid()) {
             this._error = "Invalid settings";
             this.setStatus(DataProviderStatus.INVALID_SETTINGS);
@@ -226,6 +227,11 @@ export class DataProvider<
         this._cancellationPending = true;
         this._prevSettings = clone(this._settingsContextDelegate.getValues()) as TSettingTypes;
         this._prevStoredData = clone(this._settingsContextDelegate.getStoredDataRecord()) as TStoredData;
+
+        // It might be that we started a new transaction while the previous one was still running.
+        // In this case, we need to make sure that we only use the latest transaction and cancel the previous one.
+        this._currentTransactionId += 1;
+
         this.maybeCancelQuery().then(() => {
             this.maybeRefetchData();
         });
@@ -339,6 +345,8 @@ export class DataProvider<
     }
 
     async maybeRefetchData(): Promise<void> {
+        const thisTransactionId = this._currentTransactionId;
+
         const queryClient = this.getQueryClient();
 
         if (!queryClient) {
@@ -365,6 +373,12 @@ export class DataProvider<
                 queryClient,
                 registerQueryKey: (key) => this.registerQueryKey(key),
             });
+
+            if (this._currentTransactionId !== thisTransactionId) {
+                console.log("DataProvider: Transaction cancelled");
+                return;
+            }
+
             if (this._customDataProviderImpl.makeValueRange) {
                 this._valueRange = this._customDataProviderImpl.makeValueRange(accessors);
             }

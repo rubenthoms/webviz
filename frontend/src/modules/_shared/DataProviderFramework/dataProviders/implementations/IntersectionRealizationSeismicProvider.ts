@@ -359,10 +359,7 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return {
-                    polylineUtmXy: [],
-                    actualSectionLengths: [],
-                };
+                return CancelUpdate;
             }
 
             return intersectionPolylineWithSectionLengths;
@@ -380,7 +377,7 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return [];
+                return CancelUpdate;
             }
 
             // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline
@@ -402,10 +399,7 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return {
-                    polylineUtmXy: [],
-                    actualSectionLengths: [],
-                };
+                return CancelUpdate;
             }
 
             // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline

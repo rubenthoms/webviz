@@ -192,6 +192,9 @@ export class SettingManager<
     }
 
     isValueValid(): boolean {
+        if (this._externalController) {
+            return this._externalController.getSetting().isValueValid();
+        }
         return this._isValueValid;
     }
 
@@ -429,19 +432,23 @@ export class SettingManager<
     }
 
     setAvailableValues(availableValues: MakeAvailableValuesTypeBasedOnCategory<TValue, TCategory>): void {
+        if (this._externalController) {
+            this.initialize();
+            this._externalController.setAvailableValues(availableValues);
+            return;
+        }
+        
         if (isEqual(this._availableValues, availableValues) && this._initialized) {
+            this.setLoading(false);
             return;
         }
 
         this._availableValues = availableValues;
 
-        if (this._externalController) {
-            this._externalController.setAvailableValues(availableValues);
-            return;
-        }
-
         let valueChanged = false;
-        if ((!this.checkIfValueIsValid(this.getValue()) && this.maybeFixupValue()) || this.maybeResetPersistedValue()) {
+        const valueFixedUp = !this.checkIfValueIsValid(this.getValue()) && this.maybeFixupValue();
+        const persistedValueReset = this.maybeResetPersistedValue();
+        if (valueFixedUp || persistedValueReset) {
             valueChanged = true;
         }
         const prevIsValid = this._isValueValid;

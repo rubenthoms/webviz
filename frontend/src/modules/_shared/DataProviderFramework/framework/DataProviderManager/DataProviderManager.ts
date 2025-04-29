@@ -207,7 +207,6 @@ export class DataProviderManager implements ItemGroup, PublishSubscribe<DataProv
         this._deserializing = false;
 
         this.publishTopic(DataProviderManagerTopic.ITEMS);
-        this.publishTopic(DataProviderManagerTopic.GLOBAL_SETTINGS);
     }
 
     makeGroupColor(): string {

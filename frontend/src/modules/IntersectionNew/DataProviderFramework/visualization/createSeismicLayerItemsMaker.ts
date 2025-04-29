@@ -1,5 +1,4 @@
 import type { IntersectionReferenceSystem } from "@equinor/esv-intersection";
-import { point2Distance } from "@lib/utils/vec2";
 import type {
     IntersectionRealizationSeismicData,
     IntersectionRealizationSeismicSettings,
@@ -80,9 +79,7 @@ export function createSeismicLayerItemsMaker({
     // }
 
     if (fenceData.num_traces !== seismicFenceSectionLengths.length + 1) {
-        throw new Error(
-            "The number of fence mesh sections does not match the number if actual section lengths for requested polyline",
-        );
+       return null;
     }
 
     const trajectoryFenceProjection = makeTrajectoryFenceProjectionFromFenceActualSectionLengths(

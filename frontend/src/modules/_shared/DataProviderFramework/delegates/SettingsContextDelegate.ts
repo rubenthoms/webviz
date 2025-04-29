@@ -24,14 +24,12 @@ export enum SettingsContextStatus {
 }
 
 export enum SettingsContextDelegateTopic {
-    SETTINGS_CHANGED = "SETTINGS_CHANGED",
-    STORED_DATA_CHANGED = "STORED_DATA_CHANGED",
+    SETTINGS_AND_STORED_DATA_CHANGED = "SETTINGS_CHANGED",
     STATUS = "LOADING_STATE_CHANGED",
 }
 
 export type SettingsContextDelegatePayloads = {
-    [SettingsContextDelegateTopic.SETTINGS_CHANGED]: void;
-    [SettingsContextDelegateTopic.STORED_DATA_CHANGED]: void;
+    [SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED]: void;
     [SettingsContextDelegateTopic.STATUS]: SettingsContextStatus;
 };
 
@@ -76,6 +74,9 @@ export class SettingsContextDelegate<
     private _unsubscribeHandler: UnsubscribeHandlerDelegate = new UnsubscribeHandlerDelegate();
     private _status: SettingsContextStatus = SettingsContextStatus.LOADING;
     private _storedData: NullableStoredData<TStoredData> = {} as NullableStoredData<TStoredData>;
+    private _storedDataLoadingStatus: { [K in TStoredDataKey]: boolean } = {} as {
+        [K in TStoredDataKey]: boolean;
+    };
     private _dependencies: Dependency<any, TSettings, any, any>[] = [];
 
     constructor(
@@ -189,6 +190,16 @@ export class SettingsContextDelegate<
         return true;
     }
 
+    isAllStoredDataLoaded(): boolean {
+        for (const key in this._storedDataLoadingStatus) {
+            if (this._storedDataLoadingStatus[key]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     areAllSettingsInitialized(): boolean {
         for (const key in this._settings) {
             if (!this._settings[key].isInitialized() || this._settings[key].isPersistedValue()) {
@@ -232,15 +243,11 @@ export class SettingsContextDelegate<
         this.getDataProviderManager().publishTopic(DataProviderManagerTopic.AVAILABLE_SETTINGS_CHANGED);
     }
 
-    setStoredData<K extends keyof TStoredData>(key: K, data: TStoredData[K] | null): void {
+    setStoredData<K extends TStoredDataKey>(key: K, data: TStoredData[K] | null): void {
         this._storedData[key] = data;
+        this._storedDataLoadingStatus[key] = false;
 
-        if (!this.areAllDependenciesLoaded()) {
-            this.setStatus(SettingsContextStatus.LOADING);
-            return;
-        }
-
-        this._publishSubscribeDelegate.notifySubscribers(SettingsContextDelegateTopic.STORED_DATA_CHANGED);
+        this.handleSettingChanged();
     }
 
     getSettings() {
@@ -257,10 +264,7 @@ export class SettingsContextDelegate<
 
     makeSnapshotGetter<T extends SettingsContextDelegateTopic>(topic: T): () => SettingsContextDelegatePayloads[T] {
         const snapshotGetter = (): any => {
-            if (topic === SettingsContextDelegateTopic.SETTINGS_CHANGED) {
-                return;
-            }
-            if (topic === SettingsContextDelegateTopic.STORED_DATA_CHANGED) {
+            if (topic === SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED) {
                 return;
             }
             if (topic === SettingsContextDelegateTopic.STATUS) {
@@ -304,12 +308,25 @@ export class SettingsContextDelegate<
 
         const makeLocalSettingGetter = <K extends TSettingKey>(key: K, handler: (value: TSettingTypes[K]) => void) => {
             const handleChange = (): void => {
-                handler(this._settings[key].getValue() as unknown as TSettingTypes[K]);
+                const setting = this._settings[key];
+                if (setting.isValueValid()) {
+                    handler(setting.getValue() as unknown as TSettingTypes[K]);
+                }
             };
             this._unsubscribeHandler.registerUnsubscribeFunction(
                 "dependencies",
                 this._settings[key].getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.VALUE)(
                     handleChange,
+                ),
+            );
+
+            this._unsubscribeHandler.registerUnsubscribeFunction(
+                "dependencies",
+                this._settings[key].getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_LOADING)(() => {
+                    if (!this._settings[key].isLoading()) {
+                        handleChange();
+                    }
+                }
                 ),
             );
 
@@ -340,6 +357,10 @@ export class SettingsContextDelegate<
             return handleChange;
         };
 
+        const loadingStateGetter = <K extends TSettingKey>(settingKey: K): boolean => {
+            return this._settings[settingKey].isLoading();
+        }
+
         const availableSettingsUpdater = <K extends TSettingKey>(
             settingKey: K,
             updateFunc: UpdateFunc<AvailableValuesType<K>, TSettings, TSettingTypes, TSettingKey>,
@@ -348,6 +369,7 @@ export class SettingsContextDelegate<
                 this,
                 updateFunc,
                 makeLocalSettingGetter,
+                loadingStateGetter,
                 makeGlobalSettingGetter,
             );
             this._dependencies.push(dependency);
@@ -361,10 +383,11 @@ export class SettingsContextDelegate<
                 this.handleSettingChanged();
             });
 
-            dependency.subscribeLoading((loading: boolean, hasDependencies: boolean) => {
+            dependency.subscribeLoading((loading: boolean) => {
                 if (loading) {
                     this._settings[settingKey].setLoading(loading);
                 }
+                this.handleSettingChanged();
                 /*
                 this._settings[settingKey].setLoading(loading);
 
@@ -387,6 +410,7 @@ export class SettingsContextDelegate<
                 this,
                 updateFunc,
                 makeLocalSettingGetter,
+                loadingStateGetter,
                 makeGlobalSettingGetter,
             );
             this._dependencies.push(dependency);
@@ -412,11 +436,26 @@ export class SettingsContextDelegate<
                 TSettings,
                 TSettingTypes,
                 TSettingKey
-            >(this, updateFunc, makeLocalSettingGetter, makeGlobalSettingGetter);
+            >(this, updateFunc, makeLocalSettingGetter,loadingStateGetter, makeGlobalSettingGetter);
             this._dependencies.push(dependency);
 
             dependency.subscribe((storedData: TStoredData[K] | null) => {
                 this.setStoredData(key, storedData);
+            });
+
+            dependency.subscribeLoading((loading: boolean) => {
+                if (loading) {
+                    this._storedData[key] = null;
+                    this._storedDataLoadingStatus[key] = loading;
+                    this.handleSettingChanged();
+                }
+                /*
+                this._settings[settingKey].setLoading(loading);
+
+                if (!hasDependencies && !loading) {
+                    this.handleSettingChanged();
+                }
+                */
             });
 
             dependency.initialize();
@@ -438,9 +477,14 @@ export class SettingsContextDelegate<
                 this,
                 update,
                 makeLocalSettingGetter,
+                loadingStateGetter,
                 makeGlobalSettingGetter,
             );
             this._dependencies.push(dependency);
+
+            dependency.subscribeLoading(() => {
+                this.handleSettingChanged();
+            });
 
             dependency.initialize();
 
@@ -474,18 +518,18 @@ export class SettingsContextDelegate<
     }
 
     private handleSettingChanged() {
-        if (!this.areAllSettingsLoaded() || !this.areAllDependenciesLoaded() || !this.areAllSettingsInitialized()) {
+        if (!this.areAllSettingsLoaded() || !this.areAllDependenciesLoaded() || !this.isAllStoredDataLoaded()) {
             this.setStatus(SettingsContextStatus.LOADING);
             return;
         }
 
-        if (this.isSomePersistedSettingNotValid() || !this.areCurrentSettingsValid()) {
+        if (this.isSomePersistedSettingNotValid() || !this.areCurrentSettingsValid() || !this.areAllSettingsInitialized()) {
             this.setStatus(SettingsContextStatus.INVALID_SETTINGS);
             return;
         }
 
         this.setStatus(SettingsContextStatus.VALID_SETTINGS);
-        this._publishSubscribeDelegate.notifySubscribers(SettingsContextDelegateTopic.SETTINGS_CHANGED);
+        this._publishSubscribeDelegate.notifySubscribers(SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED);
     }
 
     private handleSettingsLoadingStateChanged() {

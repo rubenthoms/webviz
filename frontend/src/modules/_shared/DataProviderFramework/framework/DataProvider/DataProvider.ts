@@ -150,16 +150,7 @@ export class DataProvider<
             "settings-context",
             this._settingsContextDelegate
                 .getPublishSubscribeDelegate()
-                .makeSubscriberFunction(SettingsContextDelegateTopic.SETTINGS_CHANGED)(() => {
-                this.handleSettingsAndStoredDataChange();
-            }),
-        );
-
-        this._unsubscribeHandler.registerUnsubscribeFunction(
-            "settings-context",
-            this._settingsContextDelegate
-                .getPublishSubscribeDelegate()
-                .makeSubscriberFunction(SettingsContextDelegateTopic.STORED_DATA_CHANGED)(() => {
+                .makeSubscriberFunction(SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED)(() => {
                 this.handleSettingsAndStoredDataChange();
             }),
         );
@@ -192,6 +183,11 @@ export class DataProvider<
     }
 
     handleSettingsAndStoredDataChange(): void {
+        if (this._settingsContextDelegate.getStatus() === SettingsContextStatus.LOADING) {
+            this.setStatus(DataProviderStatus.LOADING);
+            return;
+        }
+        
         if (!this.areCurrentSettingsValid()) {
             this._error = "Invalid settings";
             this.setStatus(DataProviderStatus.INVALID_SETTINGS);

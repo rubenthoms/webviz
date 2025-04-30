@@ -3,7 +3,6 @@ import { DenseIconButtonColorScheme } from "@lib/components/DenseIconButton/dens
 import { Delete } from "@mui/icons-material";
 
 import type { Item } from "../../interfacesAndTypes/entities";
-import { DataProvider } from "../DataProvider/DataProvider";
 
 export type RemoveItemButtonProps = {
     item: Item;
@@ -16,9 +15,7 @@ export function RemoveItemButton(props: RemoveItemButtonProps): React.ReactNode 
             parentGroup.removeChild(props.item);
         }
 
-        if (props.item instanceof DataProvider) {
-            props.item.beforeDestroy();
-        }
+        props.item.beforeDestroy?.();
     }
 
     return (

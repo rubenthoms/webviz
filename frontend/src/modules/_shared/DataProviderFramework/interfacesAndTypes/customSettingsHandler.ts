@@ -22,8 +22,6 @@ export type SettingAttributes = {
     enabled: boolean;
 };
 
-export const CancelUpdate = Symbol("CancelUpdate");
-
 export interface UpdateFunc<
     TReturnValue,
     TSettings extends Settings,
@@ -35,7 +33,7 @@ export interface UpdateFunc<
         getGlobalSetting: <T extends keyof GlobalSettings>(settingName: T) => GlobalSettings[T];
         getHelperDependency: GetHelperDependency<TSettings, TSettingTypes, TKey>;
         abortSignal: AbortSignal;
-    }): TReturnValue | typeof CancelUpdate;
+    }): TReturnValue;
 }
 
 export interface DefineDependenciesArgs<

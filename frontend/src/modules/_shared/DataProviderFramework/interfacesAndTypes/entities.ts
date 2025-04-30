@@ -13,6 +13,7 @@ export interface Item {
     getItemDelegate(): ItemDelegate;
     serializeState(): SerializedItem;
     deserializeState(serialized: SerializedItem): void;
+    beforeDestroy?(): void;
 }
 
 export function instanceofItem(item: any): item is Item {

@@ -45,19 +45,10 @@ export class SharedSettingsDelegate<
                 },
             ),
         );
-
-        this.updateControlledSettings();
     }
 
     getWrappedSettings(): { [K in TSettingKey]: SettingManager<K, SettingTypes[K]> } {
         return this._wrappedSettings;
-    }
-
-    publishValueChange(): void {
-        const dataProviderManager = this._parentItem.getItemDelegate().getDataProviderManager();
-        if (dataProviderManager) {
-            dataProviderManager.publishTopic(DataProviderManagerTopic.SHARED_SETTINGS_CHANGED);
-        }
     }
 
     private updateControlledSettings(): void {
@@ -86,6 +77,11 @@ export class SharedSettingsDelegate<
                 }
             }
         }
+
+        for (const key in this._externalSettingControllers) {
+            const externalSettingController = this._externalSettingControllers[key];
+            externalSettingController.makeIntersectionOfAvailableValues();
+        }
     }
 
     private unregisterAllControlledSettings(): void {
@@ -94,68 +90,6 @@ export class SharedSettingsDelegate<
             externalSettingController.unregisterAllControlledSettings();
         }
     }
-
-    /*
-    private makeIntersectionOfAvailableValues(): void {
-        let parentGroup = this._parentItem.getItemDelegate().getParentGroup();
-        if (this._parentItem instanceof Group) {
-            parentGroup = this._parentItem.getGroupDelegate();
-        }
-
-        if (!parentGroup) {
-            return;
-        }
-
-        const providers = parentGroup.getDescendantItems((item) => item instanceof DataProvider) as DataProvider<
-            any,
-            any
-        >[];
-        const availableValuesMap: { [K in TSettingKey]: AvailableValuesType<K> } = {} as {
-            [K in TSettingKey]: AvailableValuesType<K>;
-        };
-        const indices: { [K in TSettingKey]: number } = {} as { [K in TSettings[number]]: number };
-
-        for (const provider of providers) {
-            for (const key in this._wrappedSettings) {
-                const wrappedSetting = this._wrappedSettings[key];
-                const category = wrappedSetting.getCategory();
-                const index = indices[key] ?? 0;
-                const setting = provider.getSettingsContextDelegate().getSettings()[wrappedSetting.getType()];
-                if (setting) {
-                    if (setting.isLoading()) {
-                        wrappedSetting.setLoading(true);
-                        continue;
-                    }
-
-                    if (setting.getAvailableValues() === null) {
-                        continue;
-                    }
-
-                    const reducerDefinition = settingCategoryAvailableValuesIntersectionReducerMap[category];
-                    if (reducerDefinition) {
-                        const { reducer, startingValue } = reducerDefinition;
-                        if (index === 0) {
-                            availableValuesMap[key] = startingValue as AvailableValuesType<typeof key>;
-                        }
-                        availableValuesMap[key] = reducer(
-                            availableValuesMap[key] as any,
-                            setting.getAvailableValues(),
-                            index,
-                        ) as AvailableValuesType<typeof key>;
-                    }
-                    indices[key] = index + 1;
-                }
-            }
-        }
-
-        for (const key in this._wrappedSettings) {
-            const wrappedSetting = this._wrappedSettings[key];
-            wrappedSetting.setLoading(false);
-            wrappedSetting.setAvailableValues(availableValuesMap[key] ?? []);
-            this.publishValueChange();
-        }
-    }
-    */
 
     unsubscribeAll(): void {
         this._unsubscribeHandler.unsubscribeAll();

@@ -164,15 +164,6 @@ export class DataProvider<
                 this.handleSettingsStatusChange();
             }),
         );
-
-        this._unsubscribeHandler.registerUnsubscribeFunction(
-            "data-provider-manager",
-            dataProviderManager
-                .getPublishSubscribeDelegate()
-                .makeSubscriberFunction(DataProviderManagerTopic.GLOBAL_SETTINGS)(() => {
-                this.handleSettingsAndStoredDataChange();
-            }),
-        );
     }
 
     areCurrentSettingsValid(): boolean {
@@ -194,6 +185,9 @@ export class DataProvider<
             this.setStatus(DataProviderStatus.INVALID_SETTINGS);
             return;
         }
+
+        console.debug(this);
+        console.debug(this._settingsContextDelegate);
 
         let refetchRequired = false;
 
@@ -225,15 +219,16 @@ export class DataProvider<
         }
 
         this._cancellationPending = true;
-        this._prevSettings = clone(this._settingsContextDelegate.getValues()) as TSettingTypes;
-        this._prevStoredData = clone(this._settingsContextDelegate.getStoredDataRecord()) as TStoredData;
 
         // It might be that we started a new transaction while the previous one was still running.
         // In this case, we need to make sure that we only use the latest transaction and cancel the previous one.
         this._currentTransactionId += 1;
 
         this.maybeCancelQuery().then(() => {
-            this.maybeRefetchData();
+            this.maybeRefetchData().then(() => {
+                this._prevSettings = clone(this._settingsContextDelegate.getValues()) as TSettingTypes;
+                this._prevStoredData = clone(this._settingsContextDelegate.getStoredDataRecord()) as TStoredData;
+            });
         });
     }
 
@@ -374,8 +369,11 @@ export class DataProvider<
                 registerQueryKey: (key) => this.registerQueryKey(key),
             });
 
+            // This is a security check to make sure that we are not using a stale transaction id.
+            // This can happen if the transaction id is incremented while the async fetch data function is still running.
+            // Queries are cancelled in the maybeCancelQuery function and should, hence, throw a cancelled error.
+            // However, there might me some operations following after the query execution that are not cancelled.
             if (this._currentTransactionId !== thisTransactionId) {
-                console.log("DataProvider: Transaction cancelled");
                 return;
             }
 

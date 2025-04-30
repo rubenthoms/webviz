@@ -72,9 +72,12 @@ export class ExternalSettingController<
             const setting = provider.getSettingsContextDelegate().getSettings()[this._setting.getType()];
             if (setting) {
                 this._controlledSettings.set(setting.getId(), setting);
+                this._availableValuesMap.set(setting.getId(), setting.getAvailableValues());
                 setting.registerExternalSettingController(this);
             }
         }
+
+        this.makeIntersectionOfAvailableValues();
     }
 
     unregisterAllControlledSettings(): void {
@@ -94,7 +97,7 @@ export class ExternalSettingController<
         this.makeIntersectionOfAvailableValues();
     }
 
-    private makeIntersectionOfAvailableValues(): void {
+    makeIntersectionOfAvailableValues(): void {
         const category = this._setting.getCategory();
         const reducerDefinition = settingCategoryAvailableValuesIntersectionReducerMap[category];
 

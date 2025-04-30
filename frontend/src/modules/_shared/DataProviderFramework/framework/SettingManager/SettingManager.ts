@@ -117,8 +117,65 @@ export class SettingManager<
             "external-setting-controller",
             externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.VALUE)(
                 () => {
-                    this.setValue(externalController.getSetting().getValue());
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
+                    this._value = externalController.getSetting().getValue();
                 },
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_VALID)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_VALID);
+                },
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_LOADING)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_LOADING);
+                }
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.ATTRIBUTES)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.ATTRIBUTES);
+                }
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.VALUE_ABOUT_TO_BE_CHANGED)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE_ABOUT_TO_BE_CHANGED);
+                }
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_INITIALIZED)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_INITIALIZED);
+                }
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.IS_PERSISTED)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_PERSISTED);
+                }   
+            ),
+        );
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "external-setting-controller",
+            externalController.getSetting().getPublishSubscribeDelegate().makeSubscriberFunction(SettingTopic.AVAILABLE_VALUES)(
+                () => {
+                    this._publishSubscribeDelegate.notifySubscribers(SettingTopic.AVAILABLE_VALUES);
+                }
             ),
         );
     }
@@ -199,6 +256,9 @@ export class SettingManager<
     }
 
     isPersistedValue(): boolean {
+        if (this._externalController) {
+            return this._externalController.getSetting().isPersistedValue();
+        }
         return this._currentValueFromPersistence !== null;
     }
 
@@ -252,6 +312,9 @@ export class SettingManager<
     }
 
     isInitialized(): boolean {
+        if (this._externalController) {
+            return this._externalController.getSetting().isInitialized();
+        }
         return this._initialized || this._isStatic;
     }
 
@@ -267,6 +330,10 @@ export class SettingManager<
         workbenchSession: WorkbenchSession,
         workbenchSettings: WorkbenchSettings,
     ): React.ReactNode {
+        if (this._externalController) {
+            return this._externalController.getSetting().valueToRepresentation(value, workbenchSession, workbenchSettings);
+        }
+
         if (this._customSettingImplementation.overriddenValueRepresentation) {
             return this._customSettingImplementation.overriddenValueRepresentation({
                 value,
@@ -290,67 +357,22 @@ export class SettingManager<
         return "Value has no string representation";
     }
 
-    /*
-    checkForOverrides(sharedSettingsProviders: SharedSettingsProvider[]) {
-        let overriddenValue: TValue | undefined;
-        let overriddenValueProviderType: OverriddenValueProviderType | undefined;
-
-        for (const provider of sharedSettingsProviders) {
-            if (!provider.getSharedSettingsDelegate()) {
-                continue;
-            }
-            for (const sharedSettingKey in provider.getSharedSettingsDelegate().getWrappedSettings()) {
-                const sharedSetting = provider.getSharedSettingsDelegate().getWrappedSettings()[sharedSettingKey];
-                if (sharedSetting.getType() === this._type) {
-                    overriddenValue = sharedSetting.getValue();
-                    overriddenValueProviderType = OverriddenValueProviderType.SHARED_SETTING;
-                    if (provider instanceof Group) {
-                        overriddenValueProviderType = OverriddenValueProviderType.GROUP;
-                    }
-                    break;
-                }
-            }
-        }
-
-        this.setOverriddenValue(overriddenValue);
-        this._overriddenValueProviderType = overriddenValueProviderType;
-        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.OVERRIDDEN_VALUE_PROVIDER);
-    }
-    */
-
-    /*
-    setOverriddenValue(overriddenValue: TValue | undefined): void {
-        if (isEqual(this._overriddenValue, overriddenValue)) {
-            return;
-        }
-
-        const prevValue = this._overriddenValue;
-        this._overriddenValue = overriddenValue;
-        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.OVERRIDDEN_VALUE);
-
-        if (overriddenValue === undefined) {
-            // Keep overridden value, if invalid fix it
-            if (prevValue !== undefined) {
-                this._value = prevValue;
-            }
-            this.maybeFixupValue();
-        }
-
-        this.setValueValid(this.checkIfValueIsValid(this.getValue()));
-
-        if (prevValue === undefined && overriddenValue !== undefined && isEqual(this._value, overriddenValue)) {
-            return;
-        }
-
-        if (prevValue !== undefined && overriddenValue === undefined && isEqual(this._value, prevValue)) {
-            return;
-        }
-
-        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
-    }
-    */
-
     makeSnapshotGetter<T extends SettingTopic>(topic: T): () => SettingTopicPayloads<TValue, TCategory>[T] {
+        const externalController = this._externalController;
+        if (externalController) {
+            return (): any => {
+                if (topic === SettingTopic.IS_EXTERNALLY_CONTROLLED) {
+                    return true;
+                }
+                if (topic === SettingTopic.EXTERNAL_CONTROLLER_PROVIDER) {
+                    return externalController.getParentItem() instanceof Group
+                        ? OverriddenValueProviderType.GROUP
+                        : OverriddenValueProviderType.SHARED_SETTING;
+                }
+                return externalController.getSetting().makeSnapshotGetter(topic)();
+            }
+        }
+
         const snapshotGetter = (): any => {
             switch (topic) {
                 case SettingTopic.VALUE:
@@ -435,7 +457,6 @@ export class SettingManager<
         if (this._externalController) {
             this.initialize();
             this._externalController.setAvailableValues(availableValues);
-            return;
         }
         
         if (isEqual(this._availableValues, availableValues) && this._initialized) {

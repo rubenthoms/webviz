@@ -23,7 +23,7 @@ import type {
     DataProviderInformationAccessors,
     FetchDataParams,
 } from "../../interfacesAndTypes/customDataProviderImplementation";
-import { CancelUpdate, type DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
+import { type DefineDependenciesArgs } from "../../interfacesAndTypes/customSettingsHandler";
 import type { IntersectionSettingValue } from "../../settings/implementations/IntersectionSetting";
 
 const intersectionRealizationSeismicSettings = [
@@ -195,7 +195,7 @@ export class IntersectionRealizationSeismicProvider
             const seismicCubeMetaList = getHelperDependency(ensembleSeismicCubeMetaListDep);
 
             if (!seismicCubeMetaList) {
-                return CancelUpdate;
+                return [];
             }
 
             // Get seismic attributes that are depth of correct data source
@@ -240,7 +240,7 @@ export class IntersectionRealizationSeismicProvider
             const intersectionPolylines = getGlobalSetting("intersectionPolylines");
 
             if (!wellboreHeaders) {
-                return CancelUpdate;
+                return [];
             }
 
             const intersectionOptions: IntersectionSettingValue[] = [];
@@ -275,7 +275,7 @@ export class IntersectionRealizationSeismicProvider
             const seismicAttribute = getLocalSetting(Setting.ATTRIBUTE);
 
             if (!seismicAttribute || !seismicCubeMetaList) {
-                return CancelUpdate;
+                return [];
             }
 
             const availableTimeOrIntervals = [
@@ -359,7 +359,10 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return CancelUpdate;
+                return {
+                    polylineUtmXy: [],
+                    actualSectionLengths: [],
+                }
             }
 
             return intersectionPolylineWithSectionLengths;
@@ -377,7 +380,7 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return CancelUpdate;
+                return [];
             }
 
             // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline
@@ -399,7 +402,10 @@ export class IntersectionRealizationSeismicProvider
                 !intersectionPolylineWithSectionLengths ||
                 intersectionPolylineWithSectionLengths.polylineUtmXy.length === 0
             ) {
-                return CancelUpdate;
+                return {
+                    polylineUtmXy: [],
+                    actualSectionLengths: [],
+                }
             }
 
             // Resample the polyline, as seismic fence is created by one trace per (x,y) point in the polyline

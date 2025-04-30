@@ -46,7 +46,6 @@ export type SettingsContextDelegateState<TSettings extends Settings, TKey extend
  * many settings are interdependent.
  *
  * It creates a dependency graph for all settings and implements dependencies between both themselves and global settings.
- * It also takes care of overriding settings that are set by shared settings.
  * It also takes care of notifying its subscribers (e.g. the respective data provider) when the settings change.
  *
  */
@@ -95,6 +94,15 @@ export class SettingsContextDelegate<
         this._customSettingsHandler = customSettingsHandler;
         this._dataProviderManager = dataProviderManager;
 
+        this._unsubscribeHandler.registerUnsubscribeFunction(
+            "dependencies",
+            this.getDataProviderManager()
+                .getPublishSubscribeDelegate()
+                .makeSubscriberFunction(DataProviderManagerTopic.GLOBAL_SETTINGS)(() => {
+                    this.handleSettingChanged();
+                }),
+        );
+
         for (const key in settings) {
             this._unsubscribeHandler.registerUnsubscribeFunction(
                 "settings",
@@ -137,28 +145,6 @@ export class SettingsContextDelegate<
 
         return settings;
     }
-
-    /*
-    handleSharedSettingsChanged() {
-        const parentGroup = this._owner.getItemDelegate().getParentGroup();
-        if (!parentGroup) {
-            return;
-        }
-
-        const sharedSettingsProviders: SharedSettingsProvider[] = parentGroup.getAncestorAndSiblingItems(
-            (item) => item instanceof SharedSetting,
-        ) as unknown as SharedSettingsProvider[];
-
-        const ancestorGroups: SharedSettingsProvider[] = parentGroup.getAncestors(
-            (item) => item instanceof Group && instanceofSharedSettingsProvider(item),
-        ) as unknown as SharedSettingsProvider[];
-        sharedSettingsProviders.push(...ancestorGroups);
-
-        for (const key in this._settings) {
-            this._settings[key].checkForOverrides(sharedSettingsProviders);
-        }
-    }
-    */
 
     areCurrentSettingsValid(): boolean {
         for (const key in this._settings) {
@@ -239,8 +225,6 @@ export class SettingsContextDelegate<
     setAvailableValues<K extends TSettingKey>(key: K, availableValues: AvailableValuesType<K>): void {
         const settingDelegate = this._settings[key];
         settingDelegate.setAvailableValues(availableValues);
-
-        this.getDataProviderManager().publishTopic(DataProviderManagerTopic.AVAILABLE_SETTINGS_CHANGED);
     }
 
     setStoredData<K extends TStoredDataKey>(key: K, data: TStoredData[K] | null): void {
@@ -309,9 +293,7 @@ export class SettingsContextDelegate<
         const makeLocalSettingGetter = <K extends TSettingKey>(key: K, handler: (value: TSettingTypes[K]) => void) => {
             const handleChange = (): void => {
                 const setting = this._settings[key];
-                if (setting.isValueValid()) {
-                    handler(setting.getValue() as unknown as TSettingTypes[K]);
-                }
+                handler(setting.getValue() as unknown as TSettingTypes[K]);
             };
             this._unsubscribeHandler.registerUnsubscribeFunction(
                 "dependencies",

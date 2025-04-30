@@ -26,19 +26,15 @@ import "../../settings/registerAllSettings";
 export enum DataProviderManagerTopic {
     ITEMS = "ITEMS",
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
-    AVAILABLE_SETTINGS_CHANGED = "AVAILABLE_SETTINGS_CHANGED",
     DATA_REVISION = "DATA_REVISION",
     GLOBAL_SETTINGS = "GLOBAL_SETTINGS",
-    SHARED_SETTINGS_CHANGED = "SHARED_SETTINGS_CHANGED",
 }
 
 export type DataProviderManagerTopicPayload = {
     [DataProviderManagerTopic.ITEMS]: Item[];
     [DataProviderManagerTopic.SETTINGS_CHANGED]: void;
-    [DataProviderManagerTopic.AVAILABLE_SETTINGS_CHANGED]: void;
     [DataProviderManagerTopic.DATA_REVISION]: number;
     [DataProviderManagerTopic.GLOBAL_SETTINGS]: GlobalSettings;
-    [DataProviderManagerTopic.SHARED_SETTINGS_CHANGED]: void;
 };
 
 export type GlobalSettings = {
@@ -166,17 +162,11 @@ export class DataProviderManager implements ItemGroup, PublishSubscribe<DataProv
             if (topic === DataProviderManagerTopic.SETTINGS_CHANGED) {
                 return;
             }
-            if (topic === DataProviderManagerTopic.AVAILABLE_SETTINGS_CHANGED) {
-                return;
-            }
             if (topic === DataProviderManagerTopic.DATA_REVISION) {
                 return this._dataRevision;
             }
             if (topic === DataProviderManagerTopic.GLOBAL_SETTINGS) {
                 return this._globalSettings;
-            }
-            if (topic === DataProviderManagerTopic.SHARED_SETTINGS_CHANGED) {
-                return;
             }
         };
 

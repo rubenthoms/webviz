@@ -2,7 +2,6 @@ import { isCancelledError } from "@tanstack/react-query";
 
 import type { GlobalSettings } from "../../framework/DataProviderManager/DataProviderManager";
 import { SettingTopic } from "../../framework/SettingManager/SettingManager";
-import { CancelUpdate } from "../../interfacesAndTypes/customSettingsHandler";
 import type { UpdateFunc } from "../../interfacesAndTypes/customSettingsHandler";
 import type { SettingsKeysFromTuple } from "../../interfacesAndTypes/utils";
 import type { MakeSettingTypesMap, Settings } from "../../settings/settingsDefinitions";
@@ -166,12 +165,6 @@ export class Dependency<
         }
 
         this._makeGlobalSettingGetter(settingName, (value) => {
-            const cachedValue = this._cachedGlobalSettingsMap.get(settingName as string);
-            /*
-            if (isEqual(value, cachedValue)) {
-                return;
-            }
-                */
             this._cachedGlobalSettingsMap.set(settingName as string, value);
             this.invalidate();
         });
@@ -188,6 +181,10 @@ export class Dependency<
             this._numParentDependencies++;
         }
 
+        if (dep.getIsLoading()) {
+            throw new DependencyLoadingError("Dependency is loading");
+        }
+
         if (this._cachedDependenciesMap.has(dep)) {
             return this._cachedDependenciesMap.get(dep);
         }
@@ -196,13 +193,6 @@ export class Dependency<
         this._cachedDependenciesMap.set(dep, value);
 
         dep.subscribe((newValue) => {
-            const oldValue = this._cachedDependenciesMap.get(dep);
-            
-            /*
-            if (isEqual(newValue, oldValue)) {
-                return;
-            }
-                */
             this._cachedDependenciesMap.set(dep, newValue);
             this.invalidate();
         }, true);
@@ -254,7 +244,7 @@ export class Dependency<
 
         this._abortController = new AbortController();
 
-        let newValue: Awaited<TReturnValue> | null | typeof CancelUpdate = null;
+        let newValue: Awaited<TReturnValue> | null = null;
         try {
             newValue = await this._updateFunc({
                 getLocalSetting: this.getLocalSetting,
@@ -271,10 +261,6 @@ export class Dependency<
                 this.applyNewValue(null);
                 return;
             }
-            return;
-        }
-
-        if (newValue === CancelUpdate) {
             return;
         }
 

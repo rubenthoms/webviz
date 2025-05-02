@@ -186,9 +186,6 @@ export class DataProvider<
             return;
         }
 
-        console.debug(this);
-        console.debug(this._settingsContextDelegate);
-
         let refetchRequired = false;
 
         if (this._customDataProviderImpl.doSettingsChangesRequireDataRefetch) {

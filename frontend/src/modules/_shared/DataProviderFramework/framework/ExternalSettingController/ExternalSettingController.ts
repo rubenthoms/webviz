@@ -85,6 +85,7 @@ export class ExternalSettingController<
             setting.unregisterExternalSettingController();
         }
         this._controlledSettings.clear();
+        this._availableValuesMap.clear();
     }
 
     setAvailableValues(availableValues: AvailableValuesType<TSetting> | null): void {
@@ -113,6 +114,9 @@ export class ExternalSettingController<
         let index = 0;
 
         for (const value of this._availableValuesMap.values()) {
+            if (value === null) {
+                continue;
+            }
             availableValues = reducer(
                 availableValues as any,
                 value as any,

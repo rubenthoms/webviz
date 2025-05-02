@@ -1,9 +1,6 @@
 import { UnsubscribeHandlerDelegate } from "./UnsubscribeHandlerDelegate";
 
-import { DataProvider } from "../framework/DataProvider/DataProvider";
-import { DataProviderManagerTopic } from "../framework/DataProviderManager/DataProviderManager";
 import { ExternalSettingController } from "../framework/ExternalSettingController/ExternalSettingController";
-import { Group } from "../framework/Group/Group";
 import type { SettingManager } from "../framework/SettingManager/SettingManager";
 import type { Item } from "../interfacesAndTypes/entities";
 import type { SettingsKeysFromTuple } from "../interfacesAndTypes/utils";
@@ -36,59 +33,10 @@ export class SharedSettingsDelegate<
         if (!dataProviderManager) {
             throw new Error("SharedSettingDelegate must have a parent item with a data provider manager.");
         }
-
-        this._unsubscribeHandler.registerUnsubscribeFunction(
-            "data-provider-manager",
-            dataProviderManager.getPublishSubscribeDelegate().makeSubscriberFunction(DataProviderManagerTopic.ITEMS)(
-                () => {
-                    this.updateControlledSettings();
-                },
-            ),
-        );
     }
 
     getWrappedSettings(): { [K in TSettingKey]: SettingManager<K, SettingTypes[K]> } {
         return this._wrappedSettings;
-    }
-
-    private updateControlledSettings(): void {
-        this.unregisterAllControlledSettings();
-
-        let parentGroup = this._parentItem.getItemDelegate().getParentGroup();
-        if (this._parentItem instanceof Group) {
-            parentGroup = this._parentItem.getGroupDelegate();
-        }
-
-        if (!parentGroup) {
-            return;
-        }
-
-        const providers = parentGroup.getDescendantItems((item) => item instanceof DataProvider) as DataProvider<
-            any,
-            any
-        >[];
-
-        for (const provider of providers) {
-            for (const key in this._externalSettingControllers) {
-                const externalSettingController = this._externalSettingControllers[key];
-                const setting = provider.getSettingsContextDelegate().getSettings()[key];
-                if (setting) {
-                    externalSettingController.registerSetting(setting);
-                }
-            }
-        }
-
-        for (const key in this._externalSettingControllers) {
-            const externalSettingController = this._externalSettingControllers[key];
-            externalSettingController.makeIntersectionOfAvailableValues();
-        }
-    }
-
-    private unregisterAllControlledSettings(): void {
-        for (const key in this._externalSettingControllers) {
-            const externalSettingController = this._externalSettingControllers[key];
-            externalSettingController.unregisterAllControlledSettings();
-        }
     }
 
     unsubscribeAll(): void {

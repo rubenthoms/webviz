@@ -7,8 +7,10 @@ import type { ModuleViewProps } from "@framework/Module";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleType } from "@lib/utils/ColorScale";
 
-
 import type { Interfaces } from "./interfaces";
+import { postAlwaysLongRunning, postAlwaysLongRunningQueryKey } from "@api";
+import { queryOptions, useQuery, type QueryKey, type QueryOptions } from "@tanstack/react-query";
+import type { RequestResult } from "@hey-api/client-axios";
 
 const countryData = [
     "Belarus",
@@ -433,6 +435,15 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         z: alcConsumption,
     };
 
+    const options = {
+        query: {
+            a: "b",
+            b: "c",
+        },
+    };
+    const wrapped = wrapLongRunningQuery(postAlwaysLongRunning, options, postAlwaysLongRunningQueryKey(options));
+    const test = useQuery({ ...wrapped });
+
     const layout = {
         mapbox: { style: "dark", center: { lon: -110, lat: 50 }, zoom: 0.8 },
         width: size.width,
@@ -445,4 +456,19 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
             <Plot data={[data]} layout={layout} />
         </div>
     );
+}
+
+function wrapLongRunningQuery<TResult, TOptions>(
+    func: (options: TOptions) => RequestResult<TResult>,
+    options: TOptions,
+    queryKey: QueryKey,
+): QueryOptions<TResult | undefined> {
+    return queryOptions({
+        queryKey,
+        queryFn: async ({ queryKey, signal }) => {
+            const response = await func({ ...options, ...(queryKey[0] as any), signal });
+
+            return response.data;
+        },
+    });
 }

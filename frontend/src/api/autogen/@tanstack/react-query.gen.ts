@@ -30,6 +30,8 @@ import {
     getDeltaSurfaceData,
     getMisfitSurfaceData,
     deprecatedGetStratigraphicUnits,
+    getStatus,
+    postConcatenate,
     postAlwaysLongRunning,
     getAlwaysLongRunningStatus,
     getMaybeLongRunning,
@@ -114,6 +116,10 @@ import type {
     GetDeltaSurfaceDataData_api,
     GetMisfitSurfaceDataData_api,
     DeprecatedGetStratigraphicUnitsData_api,
+    GetStatusData_api,
+    PostConcatenateData_api,
+    PostConcatenateError_api,
+    PostConcatenateResponse_api,
     PostAlwaysLongRunningData_api,
     PostAlwaysLongRunningError_api,
     PostAlwaysLongRunningResponse_api,
@@ -758,6 +764,60 @@ export const deprecatedGetStratigraphicUnitsOptions = (options: Options<Deprecat
         },
         queryKey: deprecatedGetStratigraphicUnitsQueryKey(options),
     });
+};
+
+export const getStatusQueryKey = (options: Options<GetStatusData_api>) => [createQueryKey("getStatus", options)];
+
+export const getStatusOptions = (options: Options<GetStatusData_api>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getStatus({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getStatusQueryKey(options),
+    });
+};
+
+export const postConcatenateQueryKey = (options: Options<PostConcatenateData_api>) => [
+    createQueryKey("postConcatenate", options),
+];
+
+export const postConcatenateOptions = (options: Options<PostConcatenateData_api>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await postConcatenate({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: postConcatenateQueryKey(options),
+    });
+};
+
+export const postConcatenateMutation = (options?: Partial<Options<PostConcatenateData_api>>) => {
+    const mutationOptions: UseMutationOptions<
+        PostConcatenateResponse_api,
+        AxiosError<PostConcatenateError_api>,
+        Options<PostConcatenateData_api>
+    > = {
+        mutationFn: async (localOptions) => {
+            const { data } = await postConcatenate({
+                ...options,
+                ...localOptions,
+                throwOnError: true,
+            });
+            return data;
+        },
+    };
+    return mutationOptions;
 };
 
 export const postAlwaysLongRunningQueryKey = (options: Options<PostAlwaysLongRunningData_api>) => [

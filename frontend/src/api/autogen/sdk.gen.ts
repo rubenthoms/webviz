@@ -77,6 +77,12 @@ import type {
     DeprecatedGetStratigraphicUnitsData_api,
     DeprecatedGetStratigraphicUnitsResponse_api,
     DeprecatedGetStratigraphicUnitsError_api,
+    GetStatusData_api,
+    GetStatusResponse_api,
+    GetStatusError_api,
+    PostConcatenateData_api,
+    PostConcatenateResponse_api,
+    PostConcatenateError_api,
     PostAlwaysLongRunningData_api,
     PostAlwaysLongRunningResponse_api,
     PostAlwaysLongRunningError_api,
@@ -652,6 +658,28 @@ export const deprecatedGetStratigraphicUnits = <ThrowOnError extends boolean = f
     >({
         ...options,
         url: "/surface/deprecated_stratigraphic_units",
+    });
+};
+
+/**
+ * Get Status
+ */
+export const getStatus = <ThrowOnError extends boolean = false>(options: Options<GetStatusData_api, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetStatusResponse_api, GetStatusError_api, ThrowOnError>({
+        ...options,
+        url: "/surface/concatenate_status",
+    });
+};
+
+/**
+ * Post Concatenate
+ */
+export const postConcatenate = <ThrowOnError extends boolean = false>(
+    options: Options<PostConcatenateData_api, ThrowOnError>,
+) => {
+    return (options?.client ?? client).post<PostConcatenateResponse_api, PostConcatenateError_api, ThrowOnError>({
+        ...options,
+        url: "/surface/concatenate",
     });
 };
 

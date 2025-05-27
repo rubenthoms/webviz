@@ -1,10 +1,12 @@
 import asyncio
+from functools import wraps
 import logging
 from enum import Enum
 from hashlib import sha256
-from typing import Generic, Literal, TypeVar
+from typing import Callable, Generic, Literal, Type, TypeVar
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from primary.middleware.add_browser_cache import no_cache
@@ -82,6 +84,76 @@ async def _concatenate_strings_task(task_id: str, delay: float, a: str, b: str) 
     _FAKE_TASK_QUEUE[task_id] = TaskState.COMPLETED
 
 
+
+def with_lro_status(
+    *,
+    router: APIRouter,
+    status_path: str,
+    result_type: Type,
+    task_queue: dict,
+    result_store: dict,
+    task_state_enum,
+):
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            return await func(*args, **kwargs)
+
+        print(f"Registering status route at {status_path}")
+        # Register the status endpoint only once during decoration
+        @router.get(status_path, response_model=LroSuccessResp[result_type] | LroInProgressResp | LroErrorResp)
+        async def get_status(task_id: str):
+            state = task_queue.get(task_id)
+            if not state:
+                raise HTTPException(status_code=404, detail="Unknown task_id")
+
+            if state in [task_state_enum.PENDING, task_state_enum.RUNNING]:
+                return LroInProgressResp(
+                    status="in_progress",
+                    operation_id=task_id,
+                    poll_url=f"surface/{status_path}?task_id={task_id}",
+                    progress=ProgressInfo(progress_message="Task is pending or running"),
+                )
+
+            if state == task_state_enum.FAILED:
+                return LroErrorResp(
+                    status="error",
+                    error_message="Task failed",
+                )
+
+            result = result_store.get(task_id)
+            if result is None:
+                raise HTTPException(status_code=500, detail="Task completed but no result found")
+
+            return LroSuccessResp[result_type](status="success", data=result)
+
+        return wrapper
+
+    return decorator
+
+@router.post("/concatenate", response_model=LroInProgressResp)
+@with_lro_status(
+    router=router,
+    status_path="/concatenate_status", 
+    result_type=str,
+    task_queue=_FAKE_TASK_QUEUE,
+    result_store=_FAKE_TASK_RESULT_STORE,
+    task_state_enum=TaskState,
+)
+async def post_concatenate(
+    background_tasks: BackgroundTasks, a: str, b: str, delay: float = 0
+) -> LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]:
+    task_id = _generate_new_task_id()
+    _FAKE_TASK_QUEUE[task_id] = TaskState.PENDING
+    background_tasks.add_task(_concatenate_strings_task, task_id, a, b, delay)
+
+    return LroInProgressResp(
+        status="in_progress",
+        operation_id=task_id,
+        poll_url=f"/surface/concatenate_status?task_id={task_id}",
+        progress=ProgressInfo(progress_message="Task was added to queue"),
+    )
+
 @router.post("/always_long_running")
 @no_cache
 async def post_always_long_running(
@@ -92,12 +164,12 @@ async def post_always_long_running(
     _FAKE_TASK_QUEUE[task_id] = TaskState.PENDING
     background_tasks.add_task(_concatenate_strings_task, task_id, delay, a, b)
 
-    return LroInProgressResp(
+    return JSONResponse(status_code=202, content=LroInProgressResp(
         status="in_progress",
         operation_id=task_id,
-        poll_url=f"surface/always_long_running_status",
+        poll_url=f"surface/always_long_running_status?task_id={task_id}",       
         progress=ProgressInfo(progress_message="Task was added to queue"),
-    )
+    ).model_dump())
 
 
 @router.get("/always_long_running_status")
@@ -111,7 +183,7 @@ async def get_always_long_running_status(task_id: str) -> LroInProgressResp | Lr
         return LroInProgressResp(
             status="in_progress",
             operation_id=task_id,
-            poll_url=f"surface/always_long_running_status",
+            poll_url=f"surface/always_long_running_status?task_id={task_id}",
             progress=ProgressInfo(progress_message="Task is pending or running"),
         )
 

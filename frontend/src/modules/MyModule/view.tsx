@@ -6,8 +6,8 @@ import type { PlotData } from "plotly.js";
 
 import {
     client,
-    postAlwaysLongRunning,
-    postAlwaysLongRunningQueryKey,
+    getMaybeLongRunningQueryKey,
+    postConcatenate,
     type HttpValidationError_api,
     type LroErrorResp_api,
     type LroInProgressResp_api,
@@ -18,6 +18,8 @@ import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleType } from "@lib/utils/ColorScale";
 
 import type { Interfaces } from "./interfaces";
+import { Input } from "@lib/components/Input";
+import { CircularProgress } from "@lib/components/CircularProgress";
 
 const countryData = [
     "Belarus",
@@ -419,6 +421,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     const max = props.viewContext.useSettingsToViewInterfaceValue("max");
     const divMidPoint = props.viewContext.useSettingsToViewInterfaceValue("divMidPoint");
     const [progress, setProgress] = React.useState<ProgressInfo_api | undefined>(undefined);
+    const [delay, setDelay] = React.useState<number>(10);
 
     const ref = React.useRef<HTMLDivElement>(null);
 
@@ -447,14 +450,14 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         query: {
             a: "b",
             b: "c",
-            delay: 10,
+            delay,
         },
     };
 
     const wrapped = wrapLongRunningQuery({
-        queryFn: postAlwaysLongRunning<true>,
+        queryFn: postConcatenate<true>,
         queryFnArgs: options,
-        queryKey: postAlwaysLongRunningQueryKey(options),
+        queryKey: getMaybeLongRunningQueryKey(options),
         pollIntervalMs: 2000,
         maxRetries: 50,
         onProgress: (progress) => {
@@ -471,17 +474,28 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
 
     const result = useQuery(wrapped);
 
+    function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+        const value = event.target.value;
+        const newDelay = value ? parseInt(value, 10) : 10;
+        setDelay(newDelay);
+    }
+
+    console.debug(result.isFetching);
+
     return (
-        <div ref={ref} className="w-full h-full">
+        <div ref={ref} className="w-full h-full flex flex-col gap-2">
+            <div>
+                <Input type="number" onChange={handleInputChange} endAdornment="s" />
+            </div>
             <table>
                 <tbody>
                     <tr>
                         <td>Loading:</td>
-                        <td>{result.isLoading}</td>
+                        <td>{result.isFetching ? <CircularProgress /> : null}</td>
                     </tr>
                     <tr>
                         <td>Progress:</td>
-                        <td>{progress?.progress_message}</td>
+                        <td>{result.data ? "" : progress?.progress_message}</td>
                     </tr>
                     <tr>
                         <td>Data:</td>
@@ -536,7 +550,6 @@ async function pollUntilDone<T>(options: {
 
         const { data } = await client.get<LongRunningApiResponse<T>, unknown, true>({
             url: currentPollUrl,
-            query: { task_id: operationId },
             signal,
         });
 

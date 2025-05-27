@@ -1,16 +1,23 @@
 import React from "react";
 
+import type { RequestResult } from "@hey-api/client-axios";
+import { useQuery, type QueryFunctionContext, type UseQueryOptions } from "@tanstack/react-query";
 import type { PlotData } from "plotly.js";
-import Plot from "react-plotly.js";
 
+import {
+    client,
+    postAlwaysLongRunning,
+    postAlwaysLongRunningQueryKey,
+    type HttpValidationError_api,
+    type LroErrorResp_api,
+    type LroInProgressResp_api,
+    type ProgressInfo_api,
+} from "@api";
 import type { ModuleViewProps } from "@framework/Module";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleType } from "@lib/utils/ColorScale";
 
 import type { Interfaces } from "./interfaces";
-import { postAlwaysLongRunning, postAlwaysLongRunningQueryKey } from "@api";
-import { queryOptions, useQuery, type QueryKey, type QueryOptions } from "@tanstack/react-query";
-import type { RequestResult } from "@hey-api/client-axios";
 
 const countryData = [
     "Belarus",
@@ -411,6 +418,7 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
     const min = props.viewContext.useSettingsToViewInterfaceValue("min");
     const max = props.viewContext.useSettingsToViewInterfaceValue("max");
     const divMidPoint = props.viewContext.useSettingsToViewInterfaceValue("divMidPoint");
+    const [progress, setProgress] = React.useState<ProgressInfo_api | undefined>(undefined);
 
     const ref = React.useRef<HTMLDivElement>(null);
 
@@ -439,10 +447,20 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         query: {
             a: "b",
             b: "c",
+            delay: 10,
         },
     };
-    const wrapped = wrapLongRunningQuery(postAlwaysLongRunning, options, postAlwaysLongRunningQueryKey(options));
-    const test = useQuery({ ...wrapped });
+
+    const wrapped = wrapLongRunningQuery({
+        queryFn: postAlwaysLongRunning<true>,
+        queryFnArgs: options,
+        queryKey: postAlwaysLongRunningQueryKey(options),
+        pollIntervalMs: 2000,
+        maxRetries: 50,
+        onProgress: (progress) => {
+            setProgress(progress);
+        },
+    });
 
     const layout = {
         mapbox: { style: "dark", center: { lon: -110, lat: 50 }, zoom: 0.8 },
@@ -451,24 +469,148 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         margin: { t: 0, b: 0 },
     };
 
+    const result = useQuery(wrapped);
+
     return (
         <div ref={ref} className="w-full h-full">
-            <Plot data={[data]} layout={layout} />
+            <table>
+                <tbody>
+                    <tr>
+                        <td>Loading:</td>
+                        <td>{result.isLoading}</td>
+                    </tr>
+                    <tr>
+                        <td>Progress:</td>
+                        <td>{progress?.progress_message}</td>
+                    </tr>
+                    <tr>
+                        <td>Data:</td>
+                        <td>{result.data ? JSON.stringify(result.data) : "No data"}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     );
 }
 
-function wrapLongRunningQuery<TResult, TOptions>(
-    func: (options: TOptions) => RequestResult<TResult>,
-    options: TOptions,
-    queryKey: QueryKey,
-): QueryOptions<TResult | undefined> {
-    return queryOptions({
-        queryKey,
-        queryFn: async ({ queryKey, signal }) => {
-            const response = await func({ ...options, ...(queryKey[0] as any), signal });
+type LongRunningApiResponse<TData> =
+    | LroInProgressResp_api
+    | LroErrorResp_api
+    | {
+          status: "success";
+          data: TData;
+      };
 
-            return response.data;
+type QueryFn<TArgs, TData> = (
+    options: TArgs,
+) => RequestResult<LongRunningApiResponse<TData>, HttpValidationError_api, true>;
+
+interface WrapLongRunningQueryArgs<TArgs, TData> {
+    queryFn: QueryFn<TArgs, TData>;
+    queryFnArgs: TArgs;
+    queryKey: unknown[];
+    pollIntervalMs?: number;
+    maxRetries?: number;
+    onProgress?: (progress: ProgressInfo_api | undefined) => void;
+}
+
+interface OnProgressCallback {
+    (progress: ProgressInfo_api | undefined): void;
+}
+
+async function pollUntilDone<T>(options: {
+    pollUrl: string;
+    operationId: string;
+    intervalMs: number;
+    maxRetries: number;
+    signal?: AbortSignal;
+    onProgress?: OnProgressCallback;
+}): Promise<T> {
+    const { pollUrl, operationId, intervalMs, maxRetries, signal, onProgress } = options;
+    let currentPollUrl = pollUrl;
+
+    for (let i = 0; i < maxRetries; i++) {
+        if (signal?.aborted) {
+            throw new Error("Polling aborted");
+        }
+
+        const { data } = await client.get<LongRunningApiResponse<T>, unknown, true>({
+            url: currentPollUrl,
+            query: { task_id: operationId },
+            signal,
+        });
+
+        if (data.status === "success") {
+            return data.data as T;
+        } else if (data.status === "failure") {
+            throw new Error(data.error?.message || "Unknown error");
+        }
+
+        if (data.status === "in_progress") {
+            if (!data.poll_url) {
+                throw new Error("Missing poll_url in in_progress response");
+            }
+            currentPollUrl = data.poll_url;
+            onProgress?.(data.progress ?? undefined);
+        }
+
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(resolve, intervalMs);
+
+            const onAbort = () => {
+                clearTimeout(timeout);
+                reject(new Error("Polling aborted during wait"));
+            };
+
+            signal?.addEventListener("abort", onAbort, { once: true });
+
+            if (signal) {
+                // Ensure cleanup in case timeout wins
+                setTimeout(() => {
+                    signal.removeEventListener("abort", onAbort);
+                }, intervalMs + 100); // Just after the timeout
+            }
+        });
+    }
+
+    throw new Error("Polling timed out");
+}
+
+export function wrapLongRunningQuery<TArgs, TData, TQueryKey extends readonly unknown[]>({
+    queryFn,
+    queryFnArgs,
+    queryKey,
+    pollIntervalMs = 2000,
+    maxRetries = 50,
+    onProgress,
+}: WrapLongRunningQueryArgs<TArgs, TData> & { queryKey: TQueryKey }): UseQueryOptions<TData, Error, TData, TQueryKey> {
+    return {
+        queryKey,
+        queryFn: async (ctx: QueryFunctionContext<TQueryKey>) => {
+            const signal = ctx.signal;
+
+            const { data: result } = await queryFn({ ...queryFnArgs, signal, throwOnError: true });
+
+            if (result.status === "success") {
+                if (result.data === undefined) {
+                    throw new Error("Missing data in successful response");
+                }
+                return result.data;
+            } else if (result.status === "in_progress" && result.poll_url && result.operation_id) {
+                return pollUntilDone<TData>({
+                    pollUrl: result.poll_url,
+                    intervalMs: pollIntervalMs,
+                    maxRetries,
+                    signal,
+                    onProgress,
+                    operationId: result.operation_id,
+                });
+            }
+            if (result.status === "failure") {
+                throw new Error(result.error?.message || "Unknown error");
+            }
+
+            throw new Error("Invalid response status or missing poll_url");
         },
-    });
+    };
 }

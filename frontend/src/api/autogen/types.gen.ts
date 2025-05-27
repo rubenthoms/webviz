@@ -2325,7 +2325,7 @@ export type PostAlwaysLongRunningResponses_api = {
     /**
      * Successful Response
      */
-    200: LroInProgressResp_api;
+    200: LroInProgressResp_api | LroErrorResp_api | LroSuccessRespMyResult_api;
 };
 
 export type PostAlwaysLongRunningResponse_api = PostAlwaysLongRunningResponses_api[keyof PostAlwaysLongRunningResponses_api];

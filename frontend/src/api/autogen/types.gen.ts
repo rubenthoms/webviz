@@ -433,11 +433,6 @@ export type LroSuccessRespMyResult_api = {
     data: MyResult_api;
 };
 
-export type LroSuccessRespStr_api = {
-    status: "success";
-    data: string;
-};
-
 export type MyAscResult_api = {
     format: "asc";
     the_string: string;
@@ -2306,33 +2301,6 @@ export type DeprecatedGetStratigraphicUnitsResponses_api = {
 export type DeprecatedGetStratigraphicUnitsResponse_api =
     DeprecatedGetStratigraphicUnitsResponses_api[keyof DeprecatedGetStratigraphicUnitsResponses_api];
 
-export type GetStatusData_api = {
-    body?: never;
-    path?: never;
-    query: {
-        task_id: string;
-    };
-    url: "/surface/concatenate_status";
-};
-
-export type GetStatusErrors_api = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError_api;
-};
-
-export type GetStatusError_api = GetStatusErrors_api[keyof GetStatusErrors_api];
-
-export type GetStatusResponses_api = {
-    /**
-     * Successful Response
-     */
-    200: LroSuccessRespStr_api | LroInProgressResp_api | LroErrorResp_api;
-};
-
-export type GetStatusResponse_api = GetStatusResponses_api[keyof GetStatusResponses_api];
-
 export type PostConcatenateData_api = {
     body?: never;
     path?: never;
@@ -2340,8 +2308,9 @@ export type PostConcatenateData_api = {
         a: string;
         b: string;
         delay?: number;
+        fail?: boolean;
     };
-    url: "/surface/concatenate";
+    url: "/surface/postconcatenate";
 };
 
 export type PostConcatenateErrors_api = {
@@ -2349,18 +2318,117 @@ export type PostConcatenateErrors_api = {
      * Validation Error
      */
     422: HttpValidationError_api;
+    /**
+     * An error occurred
+     */
+    500: LroErrorResp_api;
 };
 
 export type PostConcatenateError_api = PostConcatenateErrors_api[keyof PostConcatenateErrors_api];
 
 export type PostConcatenateResponses_api = {
     /**
-     * Successful Response
+     * Task completed successfully
      */
-    200: LroInProgressResp_api;
+    200: LroSuccessRespMyResult_api;
+    /**
+     * Task is in progress
+     */
+    202: LroInProgressResp_api;
 };
 
 export type PostConcatenateResponse_api = PostConcatenateResponses_api[keyof PostConcatenateResponses_api];
+
+export type PostConcatenateStatusData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        task_id: string;
+    };
+    url: "/surface/postconcatenate_status";
+};
+
+export type PostConcatenateStatusErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError_api;
+};
+
+export type PostConcatenateStatusError_api = PostConcatenateStatusErrors_api[keyof PostConcatenateStatusErrors_api];
+
+export type PostConcatenateStatusResponses_api = {
+    /**
+     * Successful Response
+     */
+    200: LroInProgressResp_api | LroErrorResp_api | LroSuccessRespMyResult_api;
+};
+
+export type PostConcatenateStatusResponse_api = PostConcatenateStatusResponses_api[keyof PostConcatenateStatusResponses_api];
+
+export type GetConcatenateData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        a: string;
+        b: string;
+        delay?: number;
+    };
+    url: "/surface/getconcatenate";
+};
+
+export type GetConcatenateErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError_api;
+    /**
+     * An error occurred
+     */
+    500: LroErrorResp_api;
+};
+
+export type GetConcatenateError_api = GetConcatenateErrors_api[keyof GetConcatenateErrors_api];
+
+export type GetConcatenateResponses_api = {
+    /**
+     * Task completed successfully
+     */
+    200: LroSuccessRespMyResult_api;
+    /**
+     * Task is in progress
+     */
+    202: LroInProgressResp_api;
+};
+
+export type GetConcatenateResponse_api = GetConcatenateResponses_api[keyof GetConcatenateResponses_api];
+
+export type GetConcatenateStatusData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        task_id: string;
+    };
+    url: "/surface/getconcatenate_status";
+};
+
+export type GetConcatenateStatusErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError_api;
+};
+
+export type GetConcatenateStatusError_api = GetConcatenateStatusErrors_api[keyof GetConcatenateStatusErrors_api];
+
+export type GetConcatenateStatusResponses_api = {
+    /**
+     * Successful Response
+     */
+    200: LroInProgressResp_api | LroErrorResp_api | LroSuccessRespMyResult_api;
+};
+
+export type GetConcatenateStatusResponse_api = GetConcatenateStatusResponses_api[keyof GetConcatenateStatusResponses_api];
 
 export type PostAlwaysLongRunningData_api = {
     body?: never;

@@ -1,15 +1,26 @@
 import asyncio
-from functools import wraps
 import logging
-from enum import Enum
 from hashlib import sha256
-from typing import Callable, Generic, Literal, Type, TypeVar
+from typing import Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Response, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from primary.middleware.add_browser_cache import no_cache
+
+from primary.utils.long_running_endpoints import (
+    LroInProgressResp,
+    LroErrorResp,
+    LroSuccessResp,
+    TaskState,
+    PollUrl,
+    auto_status,
+    get_poll_url,
+    lro_endpoint,
+    ProgressInfo,
+    ErrorInfo,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -17,46 +28,17 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter()
 
 
-T = TypeVar("T")
-
-
-class ErrorInfo(BaseModel):
-    message: str
-
-
-class ProgressInfo(BaseModel):
-    progress_message: str
-
-
-class LroInProgressResp(BaseModel):
-    status: Literal["in_progress"]
-    operation_id: str
-    poll_url: str | None = None
-    progress: ProgressInfo | None = None
-
-
-class LroErrorResp(BaseModel):
-    status: Literal["failure"]
-    error: ErrorInfo
-
-
-class LroSuccessResp(BaseModel, Generic[T]):
-    status: Literal["success"]
-    data: T
-
-
 class MyResult(BaseModel):
     my_string: str
 
 
-class TaskState(Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
+class Task(BaseModel):
+    state: TaskState
+    error: Optional[str] = None
 
 
 _LAST_USED_TASK_ID = 0
-_FAKE_TASK_QUEUE: dict[str, TaskState] = {}
+_FAKE_TASK_QUEUE: dict[str, Task] = {}
 _FAKE_TASK_RESULT_STORE: dict[str, MyResult] = {}
 
 _PAYLOAD_HASH_TO_TASK_MAP: dict[str, str] = {}
@@ -72,87 +54,146 @@ def _concatenate_strings(a: str, b: str) -> str:
     return f"{a}+++{b}"
 
 
-async def _concatenate_strings_task(task_id: str, delay: float, a: str, b: str) -> None:
-    _FAKE_TASK_QUEUE[task_id] = TaskState.RUNNING
+async def _concatenate_strings_task(task_id: str, delay: float, fail: bool, a: str, b: str) -> None:
+    _FAKE_TASK_QUEUE[task_id] = {
+        "state": TaskState.RUNNING,
+        "error": None,
+    }
 
     if delay > 0:
         # Simulate a long-running task
         await asyncio.sleep(delay)
 
+    if fail:
+        _FAKE_TASK_QUEUE[task_id] = {
+            "state": TaskState.FAILED,
+            "error": "Simulated failure",
+        }
+        return
+
     res = _concatenate_strings(a, b)
     _FAKE_TASK_RESULT_STORE[task_id] = MyResult(my_string=res)
-    _FAKE_TASK_QUEUE[task_id] = TaskState.COMPLETED
+    _FAKE_TASK_QUEUE[task_id] = {
+        "state": TaskState.COMPLETED,
+        "error": None,
+    }
 
 
+"""
+This endpoint is an example of a long-running operation (LRO) that concatenates two strings.
+It uses a decorator to automatically create two endpoints:
+1. A POST endpoint to start the operation and either return the result at once (delay = 0) or return an in-progress response.
+2. A GET endpoint to check the status of the operation.
+"""
 
-def with_lro_status(
-    *,
-    router: APIRouter,
-    status_path: str,
-    result_type: Type,
-    task_queue: dict,
-    result_store: dict,
-    task_state_enum,
-):
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            return await func(*args, **kwargs)
 
-        print(f"Registering status route at {status_path}")
-        # Register the status endpoint only once during decoration
-        @router.get(status_path, response_model=LroSuccessResp[result_type] | LroInProgressResp | LroErrorResp)
-        async def get_status(task_id: str):
-            state = task_queue.get(task_id)
-            if not state:
-                raise HTTPException(status_code=404, detail="Unknown task_id")
-
-            if state in [task_state_enum.PENDING, task_state_enum.RUNNING]:
-                return LroInProgressResp(
-                    status="in_progress",
-                    operation_id=task_id,
-                    poll_url=f"surface/{status_path}?task_id={task_id}",
-                    progress=ProgressInfo(progress_message="Task is pending or running"),
-                )
-
-            if state == task_state_enum.FAILED:
-                return LroErrorResp(
-                    status="error",
-                    error_message="Task failed",
-                )
-
-            result = result_store.get(task_id)
-            if result is None:
-                raise HTTPException(status_code=500, detail="Task completed but no result found")
-
-            return LroSuccessResp[result_type](status="success", data=result)
-
-        return wrapper
-
-    return decorator
-
-@router.post("/concatenate", response_model=LroInProgressResp)
-@with_lro_status(
+@lro_endpoint(
+    path="/postconcatenate",
+    method="post",
+    prefix="/surface",
     router=router,
-    status_path="/concatenate_status", 
-    result_type=str,
     task_queue=_FAKE_TASK_QUEUE,
     result_store=_FAKE_TASK_RESULT_STORE,
-    task_state_enum=TaskState,
 )
-async def post_concatenate(
-    background_tasks: BackgroundTasks, a: str, b: str, delay: float = 0
+async def postConcatenate(
+    background_tasks: BackgroundTasks,
+    response: Response,
+    a: str,
+    b: str,
+    delay: float = 0,
+    fail: bool = False,
+    poll_url: PollUrl = Depends(get_poll_url),
+) -> (
+    LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]
+):  # I would prefer to use LroCombinedResponse[MyResult] here, but it seems Union types cannot be used as generics in Python
+    task_id = _generate_new_task_id()
+    _FAKE_TASK_QUEUE[task_id] = TaskState.PENDING
+    background_tasks.add_task(_concatenate_strings_task, task_id, delay, fail, a, b)
+
+    if delay == 0:
+        if fail:
+            # If fail is True, return an error response
+            return auto_status(
+                LroErrorResp(
+                    status="failure",
+                    error=ErrorInfo(message="Simulated failure"),
+                ),
+                response,
+            )
+        # If no delay, return immediately with success as 200
+        ret_str = _concatenate_strings(a, b)
+        return auto_status(
+            LroSuccessResp[MyResult](
+                status="success",
+                data=MyResult(my_string=ret_str),
+            ),
+            response,
+        )
+
+    # If delay is specified, return 202 with in-progress status
+    return auto_status(
+        LroInProgressResp(
+            status="in_progress",
+            operation_id=task_id,
+            poll_url=poll_url(task_id),
+            progress=ProgressInfo(progress_message="Task was added to queue"),
+        ),
+        response,
+    )
+
+
+@lro_endpoint(
+    path="/getconcatenate",
+    method="get",
+    prefix="/surface",
+    router=router,
+    task_queue=_FAKE_TASK_QUEUE,
+    result_store=_FAKE_TASK_RESULT_STORE,
+)
+async def get_concatenate(
+    background_tasks: BackgroundTasks,
+    response: Response,
+    a: str,
+    b: str,
+    delay: float = 0,
+    fail: bool = False,
+    poll_url: PollUrl = Depends(get_poll_url),
 ) -> LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]:
     task_id = _generate_new_task_id()
     _FAKE_TASK_QUEUE[task_id] = TaskState.PENDING
-    background_tasks.add_task(_concatenate_strings_task, task_id, a, b, delay)
+    background_tasks.add_task(_concatenate_strings_task, task_id, delay, fail, a, b)
 
-    return LroInProgressResp(
-        status="in_progress",
-        operation_id=task_id,
-        poll_url=f"/surface/concatenate_status?task_id={task_id}",
-        progress=ProgressInfo(progress_message="Task was added to queue"),
+    if delay == 0:
+        if fail:
+            # If fail is True, return an error response
+            return auto_status(
+                LroErrorResp(
+                    status="failure",
+                    error=ErrorInfo(message="Simulated failure"),
+                ),
+                response,
+            )
+        # If no delay, return immediately with success as 200
+        ret_str = _concatenate_strings(a, b)
+        return auto_status(
+            LroSuccessResp[MyResult](
+                status="success",
+                data=MyResult(my_string=ret_str),
+            ),
+            response,
+        )
+
+    # If delay is specified, return 202 with in-progress status
+    return auto_status(
+        LroInProgressResp(
+            status="in_progress",
+            operation_id=task_id,
+            poll_url=poll_url(task_id),
+            progress=ProgressInfo(progress_message="Task was added to queue"),
+        ),
+        response,
     )
+
 
 @router.post("/always_long_running")
 @no_cache
@@ -162,20 +203,24 @@ async def post_always_long_running(
 
     task_id = _generate_new_task_id()
     _FAKE_TASK_QUEUE[task_id] = TaskState.PENDING
-    background_tasks.add_task(_concatenate_strings_task, task_id, delay, a, b)
+    background_tasks.add_task(_concatenate_strings_task, task_id, delay, False, a, b)
 
-    return JSONResponse(status_code=202, content=LroInProgressResp(
-        status="in_progress",
-        operation_id=task_id,
-        poll_url=f"surface/always_long_running_status?task_id={task_id}",       
-        progress=ProgressInfo(progress_message="Task was added to queue"),
-    ).model_dump())
+    return JSONResponse(
+        status_code=202,
+        content=LroInProgressResp(
+            status="in_progress",
+            operation_id=task_id,
+            poll_url=f"surface/always_long_running_status?task_id={task_id}",
+            progress=ProgressInfo(progress_message="Task was added to queue"),
+        ).model_dump(),
+    )
 
 
 @router.get("/always_long_running_status")
 @no_cache
 async def get_always_long_running_status(task_id: str) -> LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]:
-    task_state = _FAKE_TASK_QUEUE.get(task_id)
+    task = _FAKE_TASK_QUEUE.get(task_id)
+    task_state = task["state"] if task else None
     if not task_state:
         raise HTTPException(status_code=500, detail="Unknown task_id")
 

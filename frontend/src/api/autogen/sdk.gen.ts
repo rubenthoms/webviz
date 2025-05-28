@@ -77,12 +77,18 @@ import type {
     DeprecatedGetStratigraphicUnitsData_api,
     DeprecatedGetStratigraphicUnitsResponse_api,
     DeprecatedGetStratigraphicUnitsError_api,
-    GetStatusData_api,
-    GetStatusResponse_api,
-    GetStatusError_api,
     PostConcatenateData_api,
     PostConcatenateResponse_api,
     PostConcatenateError_api,
+    PostConcatenateStatusData_api,
+    PostConcatenateStatusResponse_api,
+    PostConcatenateStatusError_api,
+    GetConcatenateData_api,
+    GetConcatenateResponse_api,
+    GetConcatenateError_api,
+    GetConcatenateStatusData_api,
+    GetConcatenateStatusResponse_api,
+    GetConcatenateStatusError_api,
     PostAlwaysLongRunningData_api,
     PostAlwaysLongRunningResponse_api,
     PostAlwaysLongRunningError_api,
@@ -662,24 +668,50 @@ export const deprecatedGetStratigraphicUnits = <ThrowOnError extends boolean = f
 };
 
 /**
- * Get Status
- */
-export const getStatus = <ThrowOnError extends boolean = false>(options: Options<GetStatusData_api, ThrowOnError>) => {
-    return (options?.client ?? client).get<GetStatusResponse_api, GetStatusError_api, ThrowOnError>({
-        ...options,
-        url: "/surface/concatenate_status",
-    });
-};
-
-/**
- * Post Concatenate
+ * Postconcatenate
  */
 export const postConcatenate = <ThrowOnError extends boolean = false>(
     options: Options<PostConcatenateData_api, ThrowOnError>,
 ) => {
     return (options?.client ?? client).post<PostConcatenateResponse_api, PostConcatenateError_api, ThrowOnError>({
         ...options,
-        url: "/surface/concatenate",
+        url: "/surface/postconcatenate",
+    });
+};
+
+/**
+ * Get Status
+ */
+export const postConcatenateStatus = <ThrowOnError extends boolean = false>(
+    options: Options<PostConcatenateStatusData_api, ThrowOnError>,
+) => {
+    return (options?.client ?? client).get<PostConcatenateStatusResponse_api, PostConcatenateStatusError_api, ThrowOnError>({
+        ...options,
+        url: "/surface/postconcatenate_status",
+    });
+};
+
+/**
+ * Get Concatenate
+ */
+export const getConcatenate = <ThrowOnError extends boolean = false>(
+    options: Options<GetConcatenateData_api, ThrowOnError>,
+) => {
+    return (options?.client ?? client).get<GetConcatenateResponse_api, GetConcatenateError_api, ThrowOnError>({
+        ...options,
+        url: "/surface/getconcatenate",
+    });
+};
+
+/**
+ * Get Status
+ */
+export const getConcatenateStatus = <ThrowOnError extends boolean = false>(
+    options: Options<GetConcatenateStatusData_api, ThrowOnError>,
+) => {
+    return (options?.client ?? client).get<GetConcatenateStatusResponse_api, GetConcatenateStatusError_api, ThrowOnError>({
+        ...options,
+        url: "/surface/getconcatenate_status",
     });
 };
 

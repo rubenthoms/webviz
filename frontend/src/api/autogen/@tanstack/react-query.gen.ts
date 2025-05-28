@@ -30,8 +30,10 @@ import {
     getDeltaSurfaceData,
     getMisfitSurfaceData,
     deprecatedGetStratigraphicUnits,
-    getStatus,
     postConcatenate,
+    postConcatenateStatus,
+    getConcatenate,
+    getConcatenateStatus,
     postAlwaysLongRunning,
     getAlwaysLongRunningStatus,
     getMaybeLongRunning,
@@ -116,10 +118,12 @@ import type {
     GetDeltaSurfaceDataData_api,
     GetMisfitSurfaceDataData_api,
     DeprecatedGetStratigraphicUnitsData_api,
-    GetStatusData_api,
     PostConcatenateData_api,
     PostConcatenateError_api,
     PostConcatenateResponse_api,
+    PostConcatenateStatusData_api,
+    GetConcatenateData_api,
+    GetConcatenateStatusData_api,
     PostAlwaysLongRunningData_api,
     PostAlwaysLongRunningError_api,
     PostAlwaysLongRunningResponse_api,
@@ -766,23 +770,6 @@ export const deprecatedGetStratigraphicUnitsOptions = (options: Options<Deprecat
     });
 };
 
-export const getStatusQueryKey = (options: Options<GetStatusData_api>) => [createQueryKey("getStatus", options)];
-
-export const getStatusOptions = (options: Options<GetStatusData_api>) => {
-    return queryOptions({
-        queryFn: async ({ queryKey, signal }) => {
-            const { data } = await getStatus({
-                ...options,
-                ...queryKey[0],
-                signal,
-                throwOnError: true,
-            });
-            return data;
-        },
-        queryKey: getStatusQueryKey(options),
-    });
-};
-
 export const postConcatenateQueryKey = (options: Options<PostConcatenateData_api>) => [
     createQueryKey("postConcatenate", options),
 ];
@@ -818,6 +805,63 @@ export const postConcatenateMutation = (options?: Partial<Options<PostConcatenat
         },
     };
     return mutationOptions;
+};
+
+export const postConcatenateStatusQueryKey = (options: Options<PostConcatenateStatusData_api>) => [
+    createQueryKey("postConcatenateStatus", options),
+];
+
+export const postConcatenateStatusOptions = (options: Options<PostConcatenateStatusData_api>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await postConcatenateStatus({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: postConcatenateStatusQueryKey(options),
+    });
+};
+
+export const getConcatenateQueryKey = (options: Options<GetConcatenateData_api>) => [
+    createQueryKey("getConcatenate", options),
+];
+
+export const getConcatenateOptions = (options: Options<GetConcatenateData_api>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getConcatenate({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getConcatenateQueryKey(options),
+    });
+};
+
+export const getConcatenateStatusQueryKey = (options: Options<GetConcatenateStatusData_api>) => [
+    createQueryKey("getConcatenateStatus", options),
+];
+
+export const getConcatenateStatusOptions = (options: Options<GetConcatenateStatusData_api>) => {
+    return queryOptions({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getConcatenateStatus({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getConcatenateStatusQueryKey(options),
+    });
 };
 
 export const postAlwaysLongRunningQueryKey = (options: Options<PostAlwaysLongRunningData_api>) => [

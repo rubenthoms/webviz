@@ -1,25 +1,28 @@
 import React from "react";
 
-import type { RequestResult } from "@hey-api/client-axios";
-import { useQuery, type QueryFunctionContext, type UseQueryOptions } from "@tanstack/react-query";
-import type { PlotData } from "plotly.js";
+import type { Options } from "@hey-api/client-axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-    client,
-    getMaybeLongRunningQueryKey,
+    getConcatenate,
+    getConcatenateQueryKey,
+    getMaybeLongRunning,
+    postAlwaysLongRunning,
     postConcatenate,
-    type HttpValidationError_api,
-    type LroErrorResp_api,
-    type LroInProgressResp_api,
+    postConcatenateQueryKey,
+    type GetConcatenateData_api,
+    type PostConcatenateData_api,
     type ProgressInfo_api,
 } from "@api";
 import type { ModuleViewProps } from "@framework/Module";
-import { useElementSize } from "@lib/hooks/useElementSize";
-import { ColorScaleType } from "@lib/utils/ColorScale";
+import { wrapLongRunningQuery } from "@framework/utils/longRunningApiCalls";
+import { Button } from "@lib/components/Button";
+import { CircularProgress } from "@lib/components/CircularProgress";
+import { Dropdown } from "@lib/components/Dropdown";
+import { Input } from "@lib/components/Input";
+import { Switch } from "@lib/components/Switch";
 
 import type { Interfaces } from "./interfaces";
-import { Input } from "@lib/components/Input";
-import { CircularProgress } from "@lib/components/CircularProgress";
 
 const countryData = [
     "Belarus",
@@ -414,50 +417,33 @@ for (let i = 0; i < countryData.length; i += 2) {
     alcConsumption.push(countryData[i + 1] as number);
 }
 
+const QUERY_FNS = {
+    postConcatenate: postConcatenate,
+    getConcatenate: getConcatenate,
+    postAlwaysLongRunning: postAlwaysLongRunning,
+    getMaybeLongRunning: getMaybeLongRunning,
+} as const;
+
 export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
-    const type = props.viewContext.useSettingsToViewInterfaceValue("type");
-    const gradientType = props.viewContext.useSettingsToViewInterfaceValue("gradientType");
-    const min = props.viewContext.useSettingsToViewInterfaceValue("min");
-    const max = props.viewContext.useSettingsToViewInterfaceValue("max");
-    const divMidPoint = props.viewContext.useSettingsToViewInterfaceValue("divMidPoint");
     const [progress, setProgress] = React.useState<ProgressInfo_api | undefined>(undefined);
+    const [a, setA] = React.useState<string>("b");
+    const [b, setB] = React.useState<string>("c");
     const [delay, setDelay] = React.useState<number>(10);
-
-    const ref = React.useRef<HTMLDivElement>(null);
-
-    const size = useElementSize(ref);
-
-    const colorScale =
-        type === ColorScaleType.Continuous
-            ? props.workbenchSettings.useContinuousColorScale({
-                  gradientType,
-              })
-            : props.workbenchSettings.useDiscreteColorScale({
-                  gradientType,
-              });
-
-    colorScale.setRangeAndMidPoint(min, max, divMidPoint);
-
-    const data: Partial<PlotData & { zmid: number }> = {
-        ...colorScale.getAsPlotlyColorScaleMapObject(),
-        type: "choropleth",
-        locationmode: "country names",
-        locations: countries,
-        z: alcConsumption,
-    };
-
-    const options = {
+    const [fail, setFail] = React.useState<boolean>(false);
+    const [endpoint, setEndpoint] = React.useState<keyof typeof QUERY_FNS>("postConcatenate");
+    const [options, setOptions] = React.useState<Options<PostConcatenateData_api | GetConcatenateData_api, false>>({
         query: {
             a: "b",
             b: "c",
-            delay,
+            delay: 10,
         },
-    };
+    });
+    const [queryKey, setQueryKey] = React.useState<unknown[]>(postConcatenateQueryKey(options));
 
     const wrapped = wrapLongRunningQuery({
-        queryFn: postConcatenate<true>,
+        queryFn: QUERY_FNS[endpoint],
         queryFnArgs: options,
-        queryKey: getMaybeLongRunningQueryKey(options),
+        queryKey,
         pollIntervalMs: 2000,
         maxRetries: 50,
         onProgress: (progress) => {
@@ -465,14 +451,8 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         },
     });
 
-    const layout = {
-        mapbox: { style: "dark", center: { lon: -110, lat: 50 }, zoom: 0.8 },
-        width: size.width,
-        height: size.height,
-        margin: { t: 0, b: 0 },
-    };
-
-    const result = useQuery(wrapped);
+    const queryClient = useQueryClient();
+    const result = useQuery({ ...wrapped });
 
     function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
         const value = event.target.value;
@@ -480,13 +460,72 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
         setDelay(newDelay);
     }
 
-    console.debug(result.isFetching);
+    function handleButtonClick() {
+        queryClient.invalidateQueries({
+            queryKey,
+            refetchType: "all",
+        });
+        const newOptions = {
+            query: {
+                a: a,
+                b: b,
+                delay: delay,
+                fail: fail,
+            },
+        };
+        if (endpoint === "postConcatenate") {
+            setQueryKey(postConcatenateQueryKey(newOptions));
+        } else {
+            setQueryKey(getConcatenateQueryKey(newOptions));
+        }
+        setOptions(newOptions);
+    }
 
     return (
-        <div ref={ref} className="w-full h-full flex flex-col gap-2">
-            <div>
-                <Input type="number" onChange={handleInputChange} endAdornment="s" />
-            </div>
+        <div className="w-full h-full flex flex-col gap-2">
+            <h2 className="font-bold">Request</h2>
+            <table>
+                <tbody>
+                    <tr>
+                        <td>Endpoint:</td>
+                        <td>
+                            <Dropdown
+                                value={endpoint}
+                                onChange={(value) => setEndpoint(value as keyof typeof QUERY_FNS)}
+                                options={Object.keys(QUERY_FNS).map((key) => ({ value: key, label: key }))}
+                            />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>A:</td>
+                        <td>
+                            <Input type="text" defaultValue={a} onChange={(e) => setA(e.target.value)} />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>B:</td>
+                        <td>
+                            <Input type="text" defaultValue={b} onChange={(e) => setB(e.target.value)} />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Delay:</td>
+                        <td>
+                            <Input type="number" defaultValue={delay} onChange={handleInputChange} endAdornment="s" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Let task fail:</td>
+                        <td>
+                            <Switch checked={fail} onChange={(e) => setFail(e.target.checked)} />
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <Button onClick={handleButtonClick} variant="contained">
+                Start {endpoint}
+            </Button>
+            <h2 className="mt-4 font-bold">Response</h2>
             <table>
                 <tbody>
                     <tr>
@@ -495,135 +534,18 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
                     </tr>
                     <tr>
                         <td>Progress:</td>
-                        <td>{result.data ? "" : progress?.progress_message}</td>
+                        <td>{!result.isFetching ? "" : progress?.progress_message}</td>
+                    </tr>
+                    <tr>
+                        <td>Error:</td>
+                        <td className="text-red-600">{result.error ? result.error.message : null}</td>
                     </tr>
                     <tr>
                         <td>Data:</td>
-                        <td>{result.data ? JSON.stringify(result.data) : "No data"}</td>
+                        <td>{result.data && !result.isFetching ? JSON.stringify(result.data) : "No data"}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     );
-}
-
-type LongRunningApiResponse<TData> =
-    | LroInProgressResp_api
-    | LroErrorResp_api
-    | {
-          status: "success";
-          data: TData;
-      };
-
-type QueryFn<TArgs, TData> = (
-    options: TArgs,
-) => RequestResult<LongRunningApiResponse<TData>, HttpValidationError_api, true>;
-
-interface WrapLongRunningQueryArgs<TArgs, TData> {
-    queryFn: QueryFn<TArgs, TData>;
-    queryFnArgs: TArgs;
-    queryKey: unknown[];
-    pollIntervalMs?: number;
-    maxRetries?: number;
-    onProgress?: (progress: ProgressInfo_api | undefined) => void;
-}
-
-interface OnProgressCallback {
-    (progress: ProgressInfo_api | undefined): void;
-}
-
-async function pollUntilDone<T>(options: {
-    pollUrl: string;
-    operationId: string;
-    intervalMs: number;
-    maxRetries: number;
-    signal?: AbortSignal;
-    onProgress?: OnProgressCallback;
-}): Promise<T> {
-    const { pollUrl, operationId, intervalMs, maxRetries, signal, onProgress } = options;
-    let currentPollUrl = pollUrl;
-
-    for (let i = 0; i < maxRetries; i++) {
-        if (signal?.aborted) {
-            throw new Error("Polling aborted");
-        }
-
-        const { data } = await client.get<LongRunningApiResponse<T>, unknown, true>({
-            url: currentPollUrl,
-            signal,
-        });
-
-        if (data.status === "success") {
-            return data.data as T;
-        } else if (data.status === "failure") {
-            throw new Error(data.error?.message || "Unknown error");
-        }
-
-        if (data.status === "in_progress") {
-            if (!data.poll_url) {
-                throw new Error("Missing poll_url in in_progress response");
-            }
-            currentPollUrl = data.poll_url;
-            onProgress?.(data.progress ?? undefined);
-        }
-
-        await new Promise((resolve, reject) => {
-            const timeout = setTimeout(resolve, intervalMs);
-
-            const onAbort = () => {
-                clearTimeout(timeout);
-                reject(new Error("Polling aborted during wait"));
-            };
-
-            signal?.addEventListener("abort", onAbort, { once: true });
-
-            if (signal) {
-                // Ensure cleanup in case timeout wins
-                setTimeout(() => {
-                    signal.removeEventListener("abort", onAbort);
-                }, intervalMs + 100); // Just after the timeout
-            }
-        });
-    }
-
-    throw new Error("Polling timed out");
-}
-
-export function wrapLongRunningQuery<TArgs, TData, TQueryKey extends readonly unknown[]>({
-    queryFn,
-    queryFnArgs,
-    queryKey,
-    pollIntervalMs = 2000,
-    maxRetries = 50,
-    onProgress,
-}: WrapLongRunningQueryArgs<TArgs, TData> & { queryKey: TQueryKey }): UseQueryOptions<TData, Error, TData, TQueryKey> {
-    return {
-        queryKey,
-        queryFn: async (ctx: QueryFunctionContext<TQueryKey>) => {
-            const signal = ctx.signal;
-
-            const { data: result } = await queryFn({ ...queryFnArgs, signal, throwOnError: true });
-
-            if (result.status === "success") {
-                if (result.data === undefined) {
-                    throw new Error("Missing data in successful response");
-                }
-                return result.data;
-            } else if (result.status === "in_progress" && result.poll_url && result.operation_id) {
-                return pollUntilDone<TData>({
-                    pollUrl: result.poll_url,
-                    intervalMs: pollIntervalMs,
-                    maxRetries,
-                    signal,
-                    onProgress,
-                    operationId: result.operation_id,
-                });
-            }
-            if (result.status === "failure") {
-                throw new Error(result.error?.message || "Unknown error");
-            }
-
-            throw new Error("Invalid response status or missing poll_url");
-        },
-    };
 }

@@ -38,28 +38,57 @@ interface OnProgressCallback {
     (progress: ProgressInfo_api | undefined): void;
 }
 
+type PollResource<TArgs, TData> =
+    | {
+          resourceType: "url";
+          url: string;
+          operationId: string;
+      }
+    | {
+          resourceType: "queryFn";
+          queryFn: QueryFn<TArgs, TData>;
+          options: TArgs;
+      };
+
 async function pollUntilDone<T>(options: {
-    pollUrl: string;
+    // The URL to poll for the long-running operation status or the original query function if polled from same endpoint
+    pollResource: PollResource<any, T>;
     operationId: string;
     intervalMs: number;
     maxRetries: number;
     signal?: AbortSignal;
     onProgress?: OnProgressCallback;
 }): Promise<T> {
-    const { pollUrl, intervalMs, maxRetries, signal, onProgress } = options;
-    let currentPollUrl = pollUrl;
+    const { pollResource, intervalMs, maxRetries, signal, onProgress } = options;
+    let currentPollUrl: string | null = pollResource.resourceType === "url" ? pollResource.url : null;
 
     for (let i = 0; i < maxRetries; i++) {
         if (signal?.aborted) {
             throw new Error("Polling aborted");
         }
 
-        const response = await client.get<LongRunningApiResponse<T>, HttpValidationError_api | LroErrorResp_api, false>(
-            {
+        let response: Awaited<
+            RequestResult<LongRunningApiResponse<T>, LroErrorResp_api | HttpValidationError_api, false>
+        > | null = null;
+
+        if (pollResource.resourceType === "url" && currentPollUrl) {
+            // If pollResource is a URL, use it directly
+            response = await client.get<LongRunningApiResponse<T>, LroErrorResp_api | HttpValidationError_api, false>({
                 url: currentPollUrl,
                 signal,
-            },
-        );
+            });
+        } else if (pollResource.resourceType === "queryFn") {
+            // If pollResource is a function, call it with the operationId
+            response = await pollResource.queryFn({
+                ...pollResource.options,
+                signal,
+                throwOnError: false,
+            });
+        }
+
+        if (!response) {
+            throw new Error("No response received from polling");
+        }
 
         const { data, error } = response;
 
@@ -81,29 +110,28 @@ async function pollUntilDone<T>(options: {
         }
 
         if (data.status === "in_progress") {
-            if (!data.poll_url) {
-                throw new Error("Missing poll_url in in_progress response");
+            if (pollResource.resourceType === "url") {
+                if (!data.poll_url) {
+                    throw new Error("Missing poll_url in in_progress response");
+                }
+                currentPollUrl = data.poll_url;
             }
-            currentPollUrl = data.poll_url;
             onProgress?.(data.progress ?? undefined);
         }
 
-        await new Promise((resolve, reject) => {
-            const timeout = setTimeout(resolve, intervalMs);
-
-            const onAbort = () => {
+        await new Promise<void>((resolve, reject) => {
+            function onAbort() {
                 clearTimeout(timeout);
                 reject(new Error("Polling aborted during wait"));
-            };
-
-            signal?.addEventListener("abort", onAbort, { once: true });
-
-            if (signal) {
-                // Ensure cleanup in case timeout wins
-                setTimeout(() => {
-                    signal.removeEventListener("abort", onAbort);
-                }, intervalMs + 100); // Just after the timeout
             }
+
+            function onTimeout() {
+                signal?.removeEventListener("abort", onAbort);
+                resolve();
+            }
+
+            const timeout = setTimeout(onTimeout, intervalMs);
+            signal?.addEventListener("abort", onAbort, { once: true });
         });
     }
 
@@ -142,9 +170,19 @@ export function wrapLongRunningQuery<TArgs, TData, TQueryKey extends readonly un
                     throw new Error("Missing data in successful response");
                 }
                 return result.data;
-            } else if (result.status === "in_progress" && result.poll_url && result.operation_id) {
+            } else if (result.status === "in_progress" && result.operation_id) {
                 return pollUntilDone<TData>({
-                    pollUrl: result.poll_url,
+                    pollResource: result.poll_url
+                        ? {
+                              resourceType: "url",
+                              url: result.poll_url,
+                              operationId: result.operation_id,
+                          }
+                        : {
+                              resourceType: "queryFn",
+                              queryFn,
+                              options: { ...queryFnArgs },
+                          },
                     intervalMs: pollIntervalMs,
                     maxRetries,
                     signal,

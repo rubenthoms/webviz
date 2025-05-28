@@ -245,7 +245,7 @@ async def get_always_long_running_status(task_id: str) -> LroInProgressResp | Lr
 @router.get("/maybe_long_running")
 @no_cache
 async def get_maybe_long_running(
-    background_tasks: BackgroundTasks, a: str, b: str, delay: float = 0
+    background_tasks: BackgroundTasks, a: str, b: str, delay: float = 0, fail: bool = False
 ) -> LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]:
     # Possibly simulate immediate response
     if delay <= 0:
@@ -260,7 +260,8 @@ async def get_maybe_long_running(
 
     existing_task_id = _PAYLOAD_HASH_TO_TASK_MAP.get(payload_hash)
     if existing_task_id is not None:
-        task_state = _FAKE_TASK_QUEUE.get(existing_task_id)
+        task = _FAKE_TASK_QUEUE.get(existing_task_id)
+        task_state = task["state"] if task else None
         if task_state in [TaskState.PENDING, TaskState.RUNNING]:
             return LroInProgressResp(
                 status="in_progress",
@@ -274,11 +275,19 @@ async def get_maybe_long_running(
                     status="success",
                     data=task_result,
                 )
+        if task_state == TaskState.FAILED:
+            return LroErrorResp(
+                status="failure",
+                error=ErrorInfo(message=task["error"]),
+            )
 
     new_task_id = _generate_new_task_id()
-    _FAKE_TASK_QUEUE[new_task_id] = TaskState.PENDING
+    _FAKE_TASK_QUEUE[new_task_id] = {
+        "state": TaskState.PENDING,
+        "error": None,
+    }
     _PAYLOAD_HASH_TO_TASK_MAP[payload_hash] = new_task_id
-    background_tasks.add_task(_concatenate_strings_task, new_task_id, delay, a, b)
+    background_tasks.add_task(_concatenate_strings_task, new_task_id, delay, fail, a, b)
 
     return LroInProgressResp(
         status="in_progress",

@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from hashlib import sha256
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Response, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, status, Response, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -102,6 +102,7 @@ async def postConcatenate(
     b: str,
     delay: float = 0,
     fail: bool = False,
+    large_array: List[str] = Body(embed=True),
     poll_url: PollUrl = Depends(get_poll_url),
 ) -> (
     LroInProgressResp | LroErrorResp | LroSuccessResp[MyResult]

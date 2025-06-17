@@ -675,6 +675,10 @@ export const postConcatenate = <ThrowOnError extends boolean = false>(
 ) => {
     return (options?.client ?? client).post<PostConcatenateResponse_api, PostConcatenateError_api, ThrowOnError>({
         ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...options?.headers,
+        },
         url: "/surface/postconcatenate",
     });
 };

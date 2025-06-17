@@ -22,6 +22,10 @@ export type B64UintArray_api = {
     data_b64str: string;
 };
 
+export type BodyPostConcatenate_api = {
+    large_array: Array<string>;
+};
+
 export type BodyPostGetAggregatedPerRealizationTableData_api = {
     /**
      * Selected identifiers and wanted values
@@ -2302,7 +2306,7 @@ export type DeprecatedGetStratigraphicUnitsResponse_api =
     DeprecatedGetStratigraphicUnitsResponses_api[keyof DeprecatedGetStratigraphicUnitsResponses_api];
 
 export type PostConcatenateData_api = {
-    body?: never;
+    body: BodyPostConcatenate_api;
     path?: never;
     query: {
         a: string;
@@ -2353,15 +2357,23 @@ export type PostConcatenateStatusErrors_api = {
      * Validation Error
      */
     422: HttpValidationError_api;
+    /**
+     * An error occurred
+     */
+    500: LroErrorResp_api;
 };
 
 export type PostConcatenateStatusError_api = PostConcatenateStatusErrors_api[keyof PostConcatenateStatusErrors_api];
 
 export type PostConcatenateStatusResponses_api = {
     /**
-     * Successful Response
+     * Task completed successfully
      */
-    200: LroInProgressResp_api | LroErrorResp_api | LroSuccessRespMyResult_api;
+    200: LroSuccessRespMyResult_api;
+    /**
+     * Task is in progress
+     */
+    202: LroInProgressResp_api;
 };
 
 export type PostConcatenateStatusResponse_api = PostConcatenateStatusResponses_api[keyof PostConcatenateStatusResponses_api];
@@ -2373,6 +2385,7 @@ export type GetConcatenateData_api = {
         a: string;
         b: string;
         delay?: number;
+        fail?: boolean;
     };
     url: "/surface/getconcatenate";
 };
@@ -2417,15 +2430,23 @@ export type GetConcatenateStatusErrors_api = {
      * Validation Error
      */
     422: HttpValidationError_api;
+    /**
+     * An error occurred
+     */
+    500: LroErrorResp_api;
 };
 
 export type GetConcatenateStatusError_api = GetConcatenateStatusErrors_api[keyof GetConcatenateStatusErrors_api];
 
 export type GetConcatenateStatusResponses_api = {
     /**
-     * Successful Response
+     * Task completed successfully
      */
-    200: LroInProgressResp_api | LroErrorResp_api | LroSuccessRespMyResult_api;
+    200: LroSuccessRespMyResult_api;
+    /**
+     * Task is in progress
+     */
+    202: LroInProgressResp_api;
 };
 
 export type GetConcatenateStatusResponse_api = GetConcatenateStatusResponses_api[keyof GetConcatenateStatusResponses_api];
@@ -2494,6 +2515,7 @@ export type GetMaybeLongRunningData_api = {
         a: string;
         b: string;
         delay?: number;
+        fail?: boolean;
     };
     url: "/surface/maybe_long_running";
 };

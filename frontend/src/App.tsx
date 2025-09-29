@@ -151,7 +151,7 @@ function App() {
     return (
         <>
             {authState === AuthState.NotLoggedIn ? (
-                <div className="w-screen h-screen flex flex-col items-center justify-center gap-8">
+                <div className="w-screen h-screen flex flex-col items-center justify-center gap-8 bg-backdrop">
                     <img src={FmuLogo} alt="FMU Analysis logo" className="w-32 h-32" />
                     <h1 className="text-3xl font-bold">FMU Analysis</h1>
                     <DataSharingLabel />

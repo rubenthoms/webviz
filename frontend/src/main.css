@@ -2,6 +2,7 @@
 @import "animate.css/animate.css";
 
 @import "tailwindcss";
+@import "@equinor/eds-tailwind/theme.css";
 
 /* Additional tailwind component classes */
 @utility input-comp {

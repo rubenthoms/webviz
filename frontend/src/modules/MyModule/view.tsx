@@ -3,6 +3,7 @@ import React from "react";
 import { DragIndicator } from "@mui/icons-material";
 
 import { SortableList } from "@lib/components/SortableList";
+import { Plot } from "@lib/components/Plot/plot";
 
 type ItemOrGroup = {
     id: string;
@@ -217,6 +218,7 @@ export function View(): React.ReactNode {
                     </SortableList.ScrollContainer>
                 </SortableList.Content>
             </SortableList>
+            <Plot width={600} height={400} />
         </div>
     );
 

@@ -6,6 +6,7 @@ import {
     showHistoricalAtom,
     showRealizationsAtom,
     showStatisticsAtom,
+    useAtomsAtom,
 } from "./settings/atoms/baseAtoms";
 import { selectedSensitivityNamesAtom, vectorSpecificationAtom } from "./settings/atoms/derivedAtoms";
 import type { VectorSpec } from "./typesAndEnums";
@@ -17,6 +18,7 @@ export type SettingsToViewInterface = {
     showStatistics: boolean;
     showRealizations: boolean;
     showHistorical: boolean;
+    useAtom: boolean;
 };
 
 export type Interfaces = {
@@ -41,5 +43,8 @@ export const settingsToViewInterfaceInitialization: InterfaceInitialization<Sett
     },
     showHistorical: (get) => {
         return get(showHistoricalAtom);
+    },
+    useAtom: (get) => {
+        return get(useAtomsAtom);
     },
 };

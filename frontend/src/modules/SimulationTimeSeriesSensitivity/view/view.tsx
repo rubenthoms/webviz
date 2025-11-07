@@ -11,13 +11,22 @@ import { simulationVectorDescription } from "@modules/_shared/reservoirSimulatio
 
 import type { Interfaces } from "../interfaces";
 
-import { userSelectedActiveTimestampUtcMsAtom, vectorSpecificationAtom } from "./atoms/baseAtoms";
+import {
+    resamplingFrequencyAtom,
+    showStatisticsAtom,
+    userSelectedActiveTimestampUtcMsAtom,
+    vectorSpecificationAtom,
+} from "./atoms/baseAtoms";
 import { activeTimestampUtcMsAtom } from "./atoms/derivedAtoms";
 import type { TimeSeriesChartHoverInfo } from "./components/timeSeriesChart";
 import { TimeSeriesChart } from "./components/timeSeriesChart";
 import { useMakeViewStatusWriterMessages } from "./hooks/useMakeViewStatusWriterMessages";
 import { usePublishToDataChannels } from "./hooks/usePublishToDataChannels";
 import { useTimeSeriesChartTracesDataArrayBuilder } from "./hooks/useTimeSeriesChartTracesDataArrayBuilder";
+import { useQuery } from "@tanstack/react-query";
+import { Frequency_api, getStatisticalVectorDataPerSensitivityOptions } from "@api";
+import { ValidEnsembleRealizationsFunctionAtom } from "@framework/GlobalAtoms";
+import { encodeAsUintListStr } from "@lib/utils/queryStringUtils";
 
 export const View = ({ viewContext, workbenchSettings, workbenchServices }: ModuleViewProps<Interfaces>) => {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
@@ -36,8 +45,10 @@ export const View = ({ viewContext, workbenchSettings, workbenchServices }: Modu
     useMakeViewStatusWriterMessages(statusWriter);
     usePublishToDataChannels(viewContext);
 
+    const sensitivityQuery = useStatisticalVectorSensitivityDataQuery();
+
     const colorSet = useColorSet(workbenchSettings);
-    const traceDataArr = useTimeSeriesChartTracesDataArrayBuilder(colorSet);
+    const traceDataArr = useTimeSeriesChartTracesDataArrayBuilder(colorSet, sensitivityQuery);
 
     function handleHoverInChart(hoverInfo: TimeSeriesChartHoverInfo | null) {
         if (hoverInfo) {
@@ -79,4 +90,34 @@ export const View = ({ viewContext, workbenchSettings, workbenchServices }: Modu
             />
         </div>
     );
+};
+
+const useStatisticalVectorSensitivityDataQuery = () => {
+    const vectorSpecification = useAtomValue(vectorSpecificationAtom);
+    const resampleFrequency = useAtomValue(resamplingFrequencyAtom);
+    const showStatistics = useAtomValue(showStatisticsAtom);
+    const validEnsembleRealizationsFunction = useAtomValue(ValidEnsembleRealizationsFunctionAtom);
+
+    const fallbackStatisticsResampleFrequency = resampleFrequency ?? Frequency_api.MONTHLY;
+
+    const realizations = vectorSpecification
+        ? validEnsembleRealizationsFunction(vectorSpecification?.ensembleIdent)
+        : null;
+    const realizationsEncodedAsUintListStr = realizations ? encodeAsUintListStr(realizations) : null;
+
+    const queryOptions = getStatisticalVectorDataPerSensitivityOptions({
+        query: {
+            case_uuid: vectorSpecification?.ensembleIdent.getCaseUuid() ?? "",
+            ensemble_name: vectorSpecification?.ensembleIdent.getEnsembleName() ?? "",
+            vector_name: vectorSpecification?.vectorName ?? "",
+            resampling_frequency: fallbackStatisticsResampleFrequency,
+            statistic_functions: undefined,
+            realizations_encoded_as_uint_list_str: realizationsEncodedAsUintListStr,
+        },
+    });
+
+    return useQuery({
+        ...queryOptions,
+        enabled: !!(showStatistics && vectorSpecification),
+    });
 };

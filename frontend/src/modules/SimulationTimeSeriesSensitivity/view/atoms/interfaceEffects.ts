@@ -7,6 +7,7 @@ import {
     showHistoricalAtom,
     showRealizationsAtom,
     showStatisticsAtom,
+    useAtomsAtom,
     vectorSpecificationAtom,
 } from "./baseAtoms";
 
@@ -34,5 +35,9 @@ export const settingsToViewInterfaceEffects: InterfaceEffects<SettingsToViewInte
     (getInterfaceValue, setAtomValue) => {
         const showHistorical = getInterfaceValue("showHistorical");
         setAtomValue(showHistoricalAtom, showHistorical);
+    },
+    (getInterfaceValue, setAtomValue) => {
+        const useAtoms = getInterfaceValue("useAtom");
+        setAtomValue(useAtomsAtom, useAtoms);
     },
 ];

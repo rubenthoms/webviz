@@ -12,9 +12,9 @@ import {
     resamplingFrequencyAtom,
     showHistoricalAtom,
     showStatisticsAtom,
+    useAtomsAtom,
     vectorSpecificationAtom,
 } from "@modules/SimulationTimeSeriesSensitivity/view/atoms/baseAtoms";
-
 
 export const vectorDataQueryAtom = atomWithQuery((get) => {
     const vectorSpecification = get(vectorSpecificationAtom);
@@ -39,6 +39,7 @@ export const vectorDataQueryAtom = atomWithQuery((get) => {
 });
 
 export const statisticalVectorSensitivityDataQueryAtom = atomWithQuery((get) => {
+    const useAtoms = get(useAtomsAtom);
     const vectorSpecification = get(vectorSpecificationAtom);
     const resampleFrequency = get(resamplingFrequencyAtom);
     const showStatistics = get(showStatisticsAtom);
@@ -61,7 +62,7 @@ export const statisticalVectorSensitivityDataQueryAtom = atomWithQuery((get) => 
             realizations_encoded_as_uint_list_str: realizationsEncodedAsUintListStr,
         },
     });
-    return { ...queryOptions, enabled: !!(showStatistics && vectorSpecification) };
+    return { ...queryOptions, enabled: !!(showStatistics && vectorSpecification && useAtoms) };
 });
 
 export const historicalVectorDataQueryAtom = atomWithQuery((get) => {

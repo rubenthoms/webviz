@@ -5,7 +5,6 @@ import { Frequency_api } from "@api";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { atomWithCompare } from "@framework/utils/atomUtils";
 
-
 function areRegularEnsembleIdentsEqual(a: RegularEnsembleIdent | null, b: RegularEnsembleIdent | null) {
     if (a === null) {
         return b === null;
@@ -35,3 +34,5 @@ export const userSelectedVectorNameAndTagAtom = atomWithCompare<{ name: string |
 
 // Note: Default value of null, to detect uninitialized state, and select all sensitivities on first render
 export const userSelectedSensitivityNamesAtom = atomWithCompare<string[] | null>(null, isEqual);
+
+export const useAtomsAtom = atom<boolean>(true);

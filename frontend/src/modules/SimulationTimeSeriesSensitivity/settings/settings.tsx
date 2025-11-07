@@ -29,6 +29,7 @@ import {
     showStatisticsAtom,
     syncedRegularEnsembleIdentsAtom,
     syncedVectorNameAtom,
+    useAtomsAtom,
     userSelectedRegularEnsembleIdentAtom,
     userSelectedSensitivityNamesAtom,
     userSelectedVectorNameAndTagAtom,
@@ -63,6 +64,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
     const [showStatistics, setShowStatistics] = useAtom(showStatisticsAtom);
     const [showRealizations, setShowRealizations] = useAtom(showRealizationsAtom);
     const [showHistorical, setShowHistorical] = useAtom(showHistoricalAtom);
+    const [useAtoms, setUseAtoms] = useAtom(useAtomsAtom);
 
     const syncedSettingKeys = settingsContext.useSyncedSettingKeys();
     const syncHelper = new SyncSettingsHelper(syncedSettingKeys, workbenchServices);
@@ -181,6 +183,7 @@ export function Settings({ settingsContext, workbenchSession, workbenchServices 
                     multiple={true}
                 />
             </CollapsibleGroup>
+            <Checkbox label="Use atoms" checked={useAtoms} onChange={(e) => setUseAtoms(e.target.checked)} />
         </>
     );
 }

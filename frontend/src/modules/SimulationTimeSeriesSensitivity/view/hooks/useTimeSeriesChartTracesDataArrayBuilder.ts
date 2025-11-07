@@ -12,12 +12,12 @@ import {
     createStatisticalLineTraces,
 } from "@modules/SimulationTimeSeriesSensitivity/view/utils/createTracesUtils";
 
-
 import {
     selectedSensitivityNamesAtom,
     showHistoricalAtom,
     showRealizationsAtom,
     showStatisticsAtom,
+    useAtomsAtom,
     vectorSpecificationAtom,
 } from "../atoms/baseAtoms";
 import {
@@ -25,18 +25,25 @@ import {
     statisticalVectorSensitivityDataQueryAtom,
     vectorDataQueryAtom,
 } from "../atoms/queryAtoms";
+import type { UseQueryResult } from "@tanstack/react-query";
 
-export function useTimeSeriesChartTracesDataArrayBuilder(colorSet: ColorSet): TimeSeriesPlotlyTrace[] {
+export function useTimeSeriesChartTracesDataArrayBuilder(
+    colorSet: ColorSet,
+    statisticsQueryArg: UseQueryResult<VectorStatisticSensitivityData_api[]>,
+): TimeSeriesPlotlyTrace[] {
     const ensembleSet = useAtomValue(EnsembleSetAtom);
     const vectorSpecification = useAtomValue(vectorSpecificationAtom);
     const selectedSensitivityNames = useAtomValue(selectedSensitivityNamesAtom);
     const showStatistics = useAtomValue(showStatisticsAtom);
     const showRealizations = useAtomValue(showRealizationsAtom);
     const showHistorical = useAtomValue(showHistoricalAtom);
+    const useAtoms = useAtomValue(useAtomsAtom);
 
     const vectorDataQuery = useAtomValue(vectorDataQueryAtom);
-    const statisticsQuery = useAtomValue(statisticalVectorSensitivityDataQueryAtom);
+    const statisticsAtomQuery = useAtomValue(statisticalVectorSensitivityDataQueryAtom);
     const historicalQuery = useAtomValue(historicalVectorDataQueryAtom);
+
+    const statisticsQuery = useAtoms ? statisticsAtomQuery : statisticsQueryArg;
 
     const ensemble = vectorSpecification ? ensembleSet.findEnsemble(vectorSpecification.ensembleIdent) : null;
 

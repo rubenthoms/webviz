@@ -1,4 +1,4 @@
-import { atomWithQuery } from "jotai-tanstack-query";
+import { atomWithQuery } from "@lib/jotai-tanstack-query-debug";
 
 import { getVectorListOptions } from "@api";
 

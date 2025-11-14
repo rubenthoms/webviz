@@ -1,22 +1,17 @@
-import { atomWithQuery } from "jotai-tanstack-query";
+import { atomWithQuery } from "@lib/jotai-tanstack-query-debug";
 
-import {
-    Frequency_api,
-    getHistoricalVectorDataOptions,
-    getRealizationsVectorDataOptions,
-    getStatisticalVectorDataPerSensitivityOptions,
-} from "@api";
+import { Frequency_api, getStatisticalVectorDataPerSensitivityOptions } from "@api";
 import { ValidEnsembleRealizationsFunctionAtom } from "@framework/GlobalAtoms";
 import { encodeAsUintListStr } from "@lib/utils/queryStringUtils";
 import {
     resamplingFrequencyAtom,
-    showHistoricalAtom,
     showStatisticsAtom,
     useAtomsAtom,
     vectorSpecificationAtom,
 } from "@modules/SimulationTimeSeriesSensitivity/view/atoms/baseAtoms";
 
 export const vectorDataQueryAtom = atomWithQuery((get) => {
+    /*
     const vectorSpecification = get(vectorSpecificationAtom);
     const resampleFrequency = get(resamplingFrequencyAtom);
     const validEnsembleRealizationsFunction = get(ValidEnsembleRealizationsFunctionAtom);
@@ -35,7 +30,15 @@ export const vectorDataQueryAtom = atomWithQuery((get) => {
             realizations_encoded_as_uint_list_str: realizationsEncodedAsUintListStr,
         },
     });
-    return { ...queryOptions, enabled: !!vectorSpecification };
+    return { ...queryOptions, enabled: false && !!vectorSpecification };
+    */
+
+    return {
+        queryKey: ["historicalVectorData", { enabled: false }],
+        queryFn: async () => {
+            return null;
+        },
+    };
 });
 
 export const statisticalVectorSensitivityDataQueryAtom = atomWithQuery((get) => {
@@ -66,7 +69,7 @@ export const statisticalVectorSensitivityDataQueryAtom = atomWithQuery((get) => 
 });
 
 export const historicalVectorDataQueryAtom = atomWithQuery((get) => {
-    const vectorSpecification = get(vectorSpecificationAtom);
+    /*const vectorSpecification = get(vectorSpecificationAtom);
     const showHistorical = get(showHistoricalAtom);
     const resampleFrequency = get(resamplingFrequencyAtom);
 
@@ -79,5 +82,13 @@ export const historicalVectorDataQueryAtom = atomWithQuery((get) => {
         },
     });
 
-    return { ...queryOptions, enabled: !!(showHistorical && vectorSpecification) };
+    return { ...queryOptions, enabled: false && !!(showHistorical && vectorSpecification) };
+    */
+
+    return {
+        queryKey: ["historicalVectorData", { enabled: false }],
+        queryFn: async () => {
+            return null;
+        },
+    };
 });

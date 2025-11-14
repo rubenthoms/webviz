@@ -1,0 +1,20 @@
+diff --git a/src/baseAtomWithQuery.ts b/src/baseAtomWithQuery.ts
+index 1234567..abcdefg 100644
+--- a/src/baseAtomWithQuery.ts
++++ b/src/baseAtomWithQuery.ts
+@@ -54,15 +54,9 @@ export function baseAtomWithQuery<
+     const client = get(clientAtom)
+     const options = getOptions(get)
+     const defaultedOptions = client.defaultQueryOptions(options)
+-
+-    const cache = get(observerCacheAtom)
+-    const cachedObserver = cache.get(client)
+
+     defaultedOptions._optimisticResults = 'optimistic'
+-
+-    if (cachedObserver) {
+-      cachedObserver.setOptions(defaultedOptions)
+-    }
+
+     return ensureStaleTime(defaultedOptions)
+   })

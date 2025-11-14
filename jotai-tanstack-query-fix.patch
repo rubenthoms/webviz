@@ -1,0 +1,20 @@
+diff --git a/src/baseAtomWithQuery.ts b/src/baseAtomWithQuery.ts
+index 1234567..abcdefg 100644
+--- a/src/baseAtomWithQuery.ts
++++ b/src/baseAtomWithQuery.ts
+@@ -95,7 +95,14 @@ export function baseAtomWithQuery<
+     }
+
+     resultAtom.onMount = (set) => {
+-      observer.setOptions(defaultedOptions)
++      // Only call setOptions if observer doesn't have listeners yet
++      // This prevents triggering a duplicate fetch when re-mounting with the same observer
++      // which happens during React re-renders or StrictMode mount/unmount/remount cycles
++      const hadNoListeners = (observer as any).listeners?.size === 0
++      if (hadNoListeners) {
++        observer.setOptions(defaultedOptions)
++      }
++
+       const unsubscribe = observer.subscribe(notifyManager.batchCalls(set))
+       return () => {
+         if (observer.getCurrentResult().isError) {

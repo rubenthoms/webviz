@@ -14,6 +14,7 @@ import type { Interfaces } from "../interfaces";
 import {
     resamplingFrequencyAtom,
     showStatisticsAtom,
+    useAtomsAtom,
     userSelectedActiveTimestampUtcMsAtom,
     vectorSpecificationAtom,
 } from "./atoms/baseAtoms";
@@ -97,6 +98,7 @@ const useStatisticalVectorSensitivityDataQuery = () => {
     const resampleFrequency = useAtomValue(resamplingFrequencyAtom);
     const showStatistics = useAtomValue(showStatisticsAtom);
     const validEnsembleRealizationsFunction = useAtomValue(ValidEnsembleRealizationsFunctionAtom);
+    const useAtoms = useAtomValue(useAtomsAtom);
 
     const fallbackStatisticsResampleFrequency = resampleFrequency ?? Frequency_api.MONTHLY;
 
@@ -118,6 +120,6 @@ const useStatisticalVectorSensitivityDataQuery = () => {
 
     return useQuery({
         ...queryOptions,
-        enabled: !!(showStatistics && vectorSpecification),
+        enabled: !!(showStatistics && vectorSpecification && !useAtoms),
     });
 };

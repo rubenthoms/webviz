@@ -463,13 +463,27 @@ export const getStatisticalVectorDataPerSensitivityOptions = (
 ) => {
     return queryOptions({
         queryFn: async ({ queryKey, signal }) => {
-            const { data } = await getStatisticalVectorDataPerSensitivity({
-                ...options,
-                ...queryKey[0],
-                signal,
-                throwOnError: true,
+            const queryKeyStr = JSON.stringify(queryKey);
+            console.log(`[API FETCH START] queryKey: ${queryKeyStr}, signal.aborted: ${signal?.aborted}`);
+
+            // Add abort listener
+            signal?.addEventListener('abort', () => {
+                console.log(`[API FETCH ABORTED] queryKey: ${queryKeyStr}`);
             });
-            return data;
+
+            try {
+                const { data } = await getStatisticalVectorDataPerSensitivity({
+                    ...options,
+                    ...queryKey[0],
+                    signal,
+                    throwOnError: true,
+                });
+                console.log(`[API FETCH SUCCESS] queryKey: ${queryKeyStr}`);
+                return data;
+            } catch (error) {
+                console.log(`[API FETCH ERROR] queryKey: ${queryKeyStr}, error:`, error);
+                throw error;
+            }
         },
         queryKey: getStatisticalVectorDataPerSensitivityQueryKey(options),
     });

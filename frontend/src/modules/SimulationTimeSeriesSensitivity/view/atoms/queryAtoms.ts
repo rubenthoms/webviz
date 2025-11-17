@@ -65,7 +65,8 @@ export const statisticalVectorSensitivityDataQueryAtom = atomWithQuery((get) => 
             realizations_encoded_as_uint_list_str: realizationsEncodedAsUintListStr,
         },
     });
-    return { ...queryOptions, enabled: !!(showStatistics && vectorSpecification && useAtoms) };
+    const enabled = !!(showStatistics && vectorSpecification && useAtoms);
+    return { ...queryOptions, enabled };
 });
 
 export const historicalVectorDataQueryAtom = atomWithQuery((get) => {

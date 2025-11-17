@@ -7,7 +7,7 @@ import {
 } from "@tanstack/query-core";
 import { Getter, WritableAtom, atom } from "jotai";
 import { queryClientAtom } from "./_queryClientAtom";
-import { BaseAtomWithQueryOptions } from "jotai-tanstack-query/src/types";
+import { BaseAtomWithQueryOptions } from "./types";
 import { ensureStaleTime, getHasError, shouldSuspend } from "./utils";
 
 export function baseAtomWithQuery<TQueryFnData, TError, TData, TQueryData, TQueryKey extends QueryKey>(
@@ -38,11 +38,12 @@ export function baseAtomWithQuery<TQueryFnData, TError, TData, TQueryData, TQuer
 
         defaultedOptions._optimisticResults = "optimistic";
 
-        /*
         if (cachedObserver) {
+            const queryKey = JSON.stringify(defaultedOptions.queryKey);
+            const listeners = (cachedObserver as any).listeners?.size || 0;
+            console.log(`[defaultedOptionsAtom] queryKey: ${queryKey}, listeners: ${listeners}, calling setOptions`);
             cachedObserver.setOptions(defaultedOptions);
         }
-        */
 
         return ensureStaleTime(defaultedOptions);
     });
@@ -80,12 +81,32 @@ export function baseAtomWithQuery<TQueryFnData, TError, TData, TQueryData, TQuer
         }
 
         resultAtom.onMount = (set) => {
+            const queryKey = JSON.stringify(defaultedOptions.queryKey);
+            const listeners = (observer as any).listeners?.size || 0;
+            console.log(`[resultAtom.onMount] queryKey: ${queryKey}, listeners BEFORE subscribe: ${listeners}`);
+
             const unsubscribe = observer.subscribe(notifyManager.batchCalls(set));
+
+            const listenersAfter = (observer as any).listeners?.size || 0;
+            console.log(`[resultAtom.onMount] queryKey: ${queryKey}, listeners AFTER subscribe: ${listenersAfter}`);
+
             return () => {
+                const listenersBefore = (observer as any).listeners?.size || 0;
+                console.log(
+                    `[resultAtom.unmount] queryKey: ${queryKey}, listeners BEFORE unsubscribe: ${listenersBefore}`,
+                );
+
                 if (observer.getCurrentResult().isError) {
                     observer.getCurrentQuery().reset();
                 }
+
+                // This destroys the observer if it does not have any other listeners - and CANCELS ONGOING FETCHES!
                 unsubscribe();
+
+                const listenersAfterUnsub = (observer as any).listeners?.size || 0;
+                console.log(
+                    `[resultAtom.unmount] queryKey: ${queryKey}, listeners AFTER unsubscribe: ${listenersAfterUnsub}`,
+                );
             };
         };
 

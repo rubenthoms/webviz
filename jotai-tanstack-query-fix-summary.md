@@ -7,52 +7,92 @@ When using `atomWithQuery`, every time the atom's dependencies change, a **cance
 ## Root Cause Analysis
 
 ### The Issue
-In `baseAtomWithQuery.ts`, the `dataAtom` creates a **new `resultAtom` instance** on every evaluation (line 98-113 in v0.11.0). This is by design to track query state changes.
-
-However, the `resultAtom.onMount` handler has a critical issue:
+In `baseAtomWithQuery.ts`, the `defaultedOptionsAtom` (lines 54-69 in v0.11.0) calls `setOptions` on the cached observer whenever it evaluates:
 
 ```typescript
-resultAtom.onMount = (set) => {
-  observer.setOptions(defaultedOptions)  // ← PROBLEM: Observer already has listeners!
-  const unsubscribe = observer.subscribe(notifyManager.batchCalls(set))
-  return () => { /* cleanup */ }
-}
+const defaultedOptionsAtom = atom((get) => {
+  const client = get(clientAtom)
+  const options = getOptions(get)
+  const defaultedOptions = client.defaultQueryOptions(options)
+
+  const cache = get(observerCacheAtom)
+  const cachedObserver = cache.get(client)
+
+  defaultedOptions._optimisticResults = 'optimistic'
+
+  if (cachedObserver) {
+    cachedObserver.setOptions(defaultedOptions)  // ← PROBLEM: Called too early!
+  }
+
+  return ensureStaleTime(defaultedOptions)
+})
 ```
+
+**The problem:** This `setOptions` call happens BEFORE the old `resultAtom` unmounts.
 
 ### The Sequence When Dependencies Change
 
 1. **Atom re-evaluates** (e.g., user changes a filter)
-2. `defaultedOptionsAtom` computes new options with new queryKey
-3. `dataAtom` creates **new resultAtom_v2** (old resultAtom_v1 still mounted)
-4. Main atom reads new resultAtom_v2
-5. **resultAtom_v2 mounts:**
-   - Calls `observer.setOptions(newOptions)` 
-   - ⚠️ Observer still has listeners from resultAtom_v1
+2. `defaultedOptionsAtom` evaluates with new queryKey
+   - ⚠️ Calls `cachedObserver.setOptions(newOptions)`
+   - ⚠️ Observer STILL HAS LISTENERS from old resultAtom_v1
    - ⚠️ TanStack Query's `setOptions` sees: "observer has listeners + options changed"
    - ⚠️ **FIRST FETCH TRIGGERED** via `shouldFetchOptionally()`
-6. **resultAtom_v1 unmounts** (replaced by v2)
+3. `dataAtom` creates **new resultAtom_v2** (old resultAtom_v1 still mounted)
+4. Main atom reads new resultAtom_v2
+5. **resultAtom_v1 unmounts** (replaced by v2)
    - Cleanup runs: `unsubscribe()`
    - **FIRST FETCH CANCELED** (no listeners)
-7. **resultAtom_v2 continues mounting:**
+6. **resultAtom_v2 mounts:**
    - Calls `observer.subscribe()`
    - **SECOND FETCH TRIGGERED** via `shouldFetchOnMount()`
 
 Result: One canceled request, one successful request.
 
+**Key insight from console logs:**
+```
+[defaultedOptionsAtom] queryKey: ["FGIR"]
+[defaultedOptionsAtom] listeners before setOptions: 1  ← OLD ATOM STILL MOUNTED!
+[defaultedOptionsAtom] calling setOptions              ← TRIGGERS FIRST FETCH
+[resultAtom.unmount] queryKey: ["FGIP"]                ← OLD ATOM UNMOUNTS
+[resultAtom.onMount] queryKey: ["FGIR"]
+[resultAtom.onMount] listeners before subscribe: 0
+```
+
 ## The Fix
 
-Only call `setOptions` if the observer has **no active listeners**:
+**Move the `setOptions` call from `defaultedOptionsAtom` to `resultAtom.onMount`**, and only call it when the observer has no active listeners:
 
 ```typescript
+// In defaultedOptionsAtom - REMOVE the setOptions call:
+const defaultedOptionsAtom = atom((get) => {
+  const client = get(clientAtom)
+  const options = getOptions(get)
+  const defaultedOptions = client.defaultQueryOptions(options)
+
+  const cache = get(observerCacheAtom)
+  const cachedObserver = cache.get(client)
+
+  defaultedOptions._optimisticResults = 'optimistic'
+
+  // REMOVED: Don't call setOptions here - it's too early!
+  // if (cachedObserver) {
+  //   cachedObserver.setOptions(defaultedOptions)
+  // }
+
+  return ensureStaleTime(defaultedOptions)
+})
+
+// In resultAtom.onMount - ADD conditional setOptions:
 resultAtom.onMount = (set) => {
   // Only call setOptions if observer doesn't have listeners yet
   // This prevents triggering a duplicate fetch when re-mounting with the same observer
-  // which happens during React re-renders or StrictMode mount/unmount/remount cycles
+  // which happens during atom dependency changes
   const hadNoListeners = (observer as any).listeners?.size === 0
   if (hadNoListeners) {
     observer.setOptions(defaultedOptions)
   }
-  
+
   const unsubscribe = observer.subscribe(notifyManager.batchCalls(set))
   return () => {
     if (observer.getCurrentResult().isError) {
@@ -63,36 +103,43 @@ resultAtom.onMount = (set) => {
 }
 ```
 
-## Why This Fix Is Safe
+## Why This Fix Works
 
 ### 1. First Mount Behavior (UNCHANGED)
-When the observer is created for the first time:
-- `listeners.size === 0` → `hadNoListeners = true`
-- `setOptions` IS called
+When a query is used for the first time:
+- Observer is created fresh → `listeners.size === 0`
+- `resultAtom` mounts
+- `hadNoListeners = true` → `setOptions` IS called
 - Then `subscribe` is called
-- **Behavior: Identical to before**
+- **Behavior: Identical to original**
 
-### 2. Re-mount Behavior (FIXED)
-When the observer already exists (from previous resultAtom):
-- `listeners.size > 0` → `hadNoListeners = false`
-- `setOptions` is SKIPPED
-- `subscribe` is called, which internally:
-  - Adds this listener to the observer
-  - Calls `onSubscribe()` which checks `shouldFetchOnMount()`
-  - Will fetch if needed based on current state
+### 2. Dependency Change Behavior (FIXED)
+When query dependencies change (e.g., different queryKey):
 
-**Key Insight:** `subscribe()` will trigger a fetch if necessary via `shouldFetchOnMount()`. We don't need `setOptions` to trigger it when listeners already exist.
+**Before fix:**
+1. `defaultedOptionsAtom` evaluates → calls `setOptions` with `listeners = 1` → **FETCH #1**
+2. Old `resultAtom` unmounts → **FETCH #1 CANCELED**
+3. New `resultAtom` mounts → calls `subscribe` → **FETCH #2**
+4. Result: 1 canceled + 1 successful request ❌
 
-### 3. Options Update Behavior
-**Q: How do new options get applied if we skip setOptions?**
+**After fix:**
+1. `defaultedOptionsAtom` evaluates → does NOT call `setOptions`
+2. Old `resultAtom` unmounts → no fetch to cancel
+3. New `resultAtom` mounts → `listeners = 0` → calls `setOptions` → calls `subscribe` → **FETCH #1**
+4. Result: 0 canceled + 1 successful request ✅
 
-**A:** The observer still gets updated options through the natural flow:
+### 3. Why Subscribe Still Works Without Early setOptions
 
-1. When `dataAtom` re-evaluates, it calls `observer.getOptimisticResult(defaultedOptions)` with NEW options (line 96)
-2. When we call `subscribe()`, the observer is already aware of the new query state
-3. The `onSubscribe()` method internally handles the state transition
+**Q: If we don't call setOptions in defaultedOptionsAtom, how does the observer get the new query key?**
 
-The issue was that calling `setOptions` WHILE having listeners was causing a DUPLICATE fetch, not that we needed it for options propagation.
+**A:** The new `resultAtom` gets the updated observer from `observerAtom`, which already has the correct options:
+
+1. When `observerAtom` evaluates, it gets `defaultedOptions` from `defaultedOptionsAtom` (which has the NEW queryKey)
+2. If cached observer exists, it's returned as-is (without calling setOptions)
+3. When new `resultAtom` mounts and `listeners = 0`, it calls `setOptions(defaultedOptions)` with the NEW options
+4. Then `subscribe()` is called, which will fetch with the correct query key
+
+**Key Insight:** Moving `setOptions` from `defaultedOptionsAtom` to `resultAtom.onMount` (with listener check) ensures it's only called AFTER the old resultAtom unmounts, eliminating the race condition.
 
 ## Potential Edge Cases Analyzed
 
@@ -154,7 +201,9 @@ The issue was that calling `setOptions` WHILE having listeners was causing a DUP
 
 ## Files Changed
 
-- `src/baseAtomWithQuery.ts`: Lines 98-108 (onMount handler)
+- `src/baseAtomWithQuery.ts`:
+  - Lines 54-69: `defaultedOptionsAtom` - remove `setOptions` call
+  - Lines 95-113: `resultAtom.onMount` - add conditional `setOptions` call
 
 ## Migration Notes
 

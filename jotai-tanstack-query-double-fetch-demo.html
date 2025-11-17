@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jotai-tanstack-query Double Fetch Issue Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .panel h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .current-filter {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .network-log {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .fetch-start {
+            color: #4fc3f7;
+        }
+        .fetch-cancel {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .fetch-success {
+            color: #66bb6a;
+        }
+        .fetch-error {
+            color: #ef5350;
+        }
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0?dev",
+        "react/": "https://esm.sh/react@18.2.0&dev/",
+        "react-dom": "https://esm.sh/react-dom@18.2.0?dev",
+        "react-dom/": "https://esm.sh/react-dom@18.2.0&dev/",
+        "jotai": "https://esm.sh/jotai@2.6.2?dev&deps=react@18.2.0",
+        "jotai-tanstack-query": "https://esm.sh/jotai-tanstack-query@0.11.0?dev&deps=react@18.2.0,jotai@2.6.2",
+        "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.17.0?dev&deps=react@18.2.0"
+      }
+    }
+    </script>
+    <script type="module">
+        import * as React from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { atom, useAtom, Provider } from 'jotai';
+        import { atomWithQuery } from 'jotai-tanstack-query';
+        import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+        const { useState, useEffect, useRef, createElement: h } = React;
+
+        // Track network requests
+        let networkLog = [];
+        const logListeners = new Set();
+
+        const addLog = (message, type = 'info') => {
+            const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+            networkLog.push({ timestamp, message, type });
+            if (networkLog.length > 50) networkLog.shift();
+            logListeners.forEach(cb => cb([...networkLog]));
+        };
+
+        // Intercept fetch to track requests
+        const originalFetch = window.fetch;
+        const activeRequests = new Map();
+
+        window.fetch = function(...args) {
+            const url = args[0];
+            const requestId = Math.random().toString(36).substr(2, 9);
+
+            addLog(`🌐 Request started: ${url} [${requestId}]`, 'fetch-start');
+
+            const promise = originalFetch.apply(this, args);
+            activeRequests.set(requestId, { url, aborted: false });
+
+            promise.then(
+                (response) => {
+                    if (!activeRequests.get(requestId)?.aborted) {
+                        addLog(`✅ Request completed: ${url} [${requestId}]`, 'fetch-success');
+                    }
+                    activeRequests.delete(requestId);
+                    return response;
+                },
+                (error) => {
+                    if (error.name === 'AbortError') {
+                        addLog(`⚠️  Request CANCELED: ${url} [${requestId}]`, 'fetch-cancel');
+                        activeRequests.get(requestId).aborted = true;
+                    } else {
+                        addLog(`❌ Request failed: ${url} [${requestId}] - ${error.message}`, 'fetch-error');
+                    }
+                    activeRequests.delete(requestId);
+                    throw error;
+                }
+            );
+
+            return promise;
+        };
+
+        // Mock API
+        const fetchPost = async (id) => {
+            const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${id}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        };
+
+        // Component using atomWithQuery (demonstrates the bug)
+        const postIdAtom = atom(1);
+        const postQueryAtom = atomWithQuery((get) => {
+            const postId = get(postIdAtom);
+            return {
+                queryKey: ['post', postId],
+                queryFn: () => fetchPost(postId),
+            };
+        });
+
+        function AtomWithQueryDemo() {
+            const [postId, setPostId] = useAtom(postIdAtom);
+            const [result] = useAtom(postQueryAtom);
+
+            return h('div', { className: 'panel' },
+                h('h2', null, 'Using atomWithQuery (v0.11.0) ⚠️'),
+                h('div', null,
+                    h('button', {
+                        onClick: () => setPostId(id => id === 1 ? 2 : 1)
+                    }, 'Toggle Post ID'),
+                    h('span', { className: 'current-filter' }, `Post ID: ${postId}`)
+                ),
+                h('div', { className: 'status' },
+                    h('strong', null, 'Status: '),
+                    result.status,
+                    h('br'),
+                    h('strong', null, 'Fetching: '),
+                    result.isFetching ? 'Yes' : 'No'
+                ),
+                result.data && h('div', null,
+                    h('h3', null, 'Data:'),
+                    h('pre', null, JSON.stringify(result.data, null, 2))
+                ),
+                result.error && h('div', { style: { color: 'red' } },
+                    h('strong', null, 'Error: '),
+                    result.error.message
+                )
+            );
+        }
+
+        // Component using useQuery directly (works correctly)
+        function UseQueryDemo() {
+            const [postId, setPostId] = useState(1);
+
+            const result = useQuery({
+                queryKey: ['post-direct', postId],
+                queryFn: () => fetchPost(postId),
+            });
+
+            return h('div', { className: 'panel' },
+                h('h2', null, 'Using useQuery (TanStack Query) ✅'),
+                h('div', null,
+                    h('button', {
+                        onClick: () => setPostId(id => id === 1 ? 2 : 1)
+                    }, 'Toggle Post ID'),
+                    h('span', { className: 'current-filter' }, `Post ID: ${postId}`)
+                ),
+                h('div', { className: 'status' },
+                    h('strong', null, 'Status: '),
+                    result.status,
+                    h('br'),
+                    h('strong', null, 'Fetching: '),
+                    result.isFetching ? 'Yes' : 'No'
+                ),
+                result.data && h('div', null,
+                    h('h3', null, 'Data:'),
+                    h('pre', null, JSON.stringify(result.data, null, 2))
+                ),
+                result.error && h('div', { style: { color: 'red' } },
+                    h('strong', null, 'Error: '),
+                    result.error.message
+                )
+            );
+        }
+
+        // Network log display
+        function NetworkLog() {
+            const [logs, setLogs] = useState([]);
+            const [autoScroll, setAutoScroll] = useState(true);
+            const logRef = useRef(null);
+
+            useEffect(() => {
+                const callback = (newLogs) => setLogs(newLogs);
+                logListeners.add(callback);
+                setLogs([...networkLog]);
+
+                return () => logListeners.delete(callback);
+            }, []);
+
+            useEffect(() => {
+                if (autoScroll && logRef.current) {
+                    logRef.current.scrollTop = logRef.current.scrollHeight;
+                }
+            }, [logs, autoScroll]);
+
+            return h('div', null,
+                h('div', {
+                    style: {
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '10px'
+                    }
+                },
+                    h('h3', { style: { margin: 0 } }, 'Network Request Log'),
+                    h('div', null,
+                        h('button', {
+                            onClick: () => {
+                                networkLog = [];
+                                setLogs([]);
+                            }
+                        }, 'Clear Log'),
+                        h('label', { style: { marginLeft: '10px', color: '#666' } },
+                            h('input', {
+                                type: 'checkbox',
+                                checked: autoScroll,
+                                onChange: (e) => setAutoScroll(e.target.checked)
+                            }),
+                            ' Auto-scroll'
+                        )
+                    )
+                ),
+                h('div', { className: 'network-log', ref: logRef },
+                    logs.length === 0 ?
+                        h('div', { style: { color: '#888' } }, 'No requests yet. Click "Toggle Post ID" buttons above to see the issue.') :
+                        logs.map((log, i) =>
+                            h('div', { key: i, className: log.type },
+                                `[${log.timestamp}] ${log.message}`
+                            )
+                        )
+                )
+            );
+        }
+
+        const queryClient = new QueryClient({
+            defaultOptions: {
+                queries: {
+                    refetchOnWindowFocus: false,
+                    retry: false,
+                },
+            },
+        });
+
+        function App() {
+            return h('div', null,
+                h('h1', null, 'jotai-tanstack-query Double Fetch Issue Demo'),
+                h('div', { className: 'instructions' },
+                    h('h3', null, 'How to Reproduce:'),
+                    h('ol', null,
+                        h('li', null, 'Open your browser\'s Network DevTools (F12 → Network tab)'),
+                        h('li', null, 'Click "Toggle Post ID" on the LEFT panel (atomWithQuery)'),
+                        h('li', null, '⚠️ Notice TWO requests: one gets CANCELED, then a new one completes'),
+                        h('li', null, 'Click "Toggle Post ID" on the RIGHT panel (useQuery)'),
+                        h('li', null, '✅ Notice only ONE request that completes successfully')
+                    ),
+                    h('p', null,
+                        h('strong', null, 'Expected: '),
+                        'Only one network request per query key change (like useQuery)'
+                    ),
+                    h('p', null,
+                        h('strong', null, 'Actual: '),
+                        'atomWithQuery triggers two requests - first one gets canceled'
+                    )
+                ),
+                h('div', { className: 'container' },
+                    h(AtomWithQueryDemo),
+                    h(UseQueryDemo)
+                ),
+                h(NetworkLog)
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(
+            h(QueryClientProvider, { client: queryClient },
+                h(Provider, null,
+                    h(App)
+                )
+            )
+        );
+    </script>
+</body>
+</html>

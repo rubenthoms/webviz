@@ -22,6 +22,8 @@ import type { DataProvider } from "./DataProvider";
 
 export type DataProviderComponentProps = {
     dataProvider: DataProvider<any, any>;
+    isLastItemInParent?: boolean;
+    nestingLevel?: number;
 };
 
 export function DataProviderComponent(props: DataProviderComponentProps): React.ReactNode {
@@ -52,9 +54,11 @@ export function DataProviderComponent(props: DataProviderComponentProps): React.
             title={<EditName item={props.dataProvider} />}
             startAdornment={<StartActions dataProvider={props.dataProvider} />}
             endAdornment={<EndActions dataProvider={props.dataProvider} />}
+            isLastItemInParent={props.isLastItemInParent}
+            nestingLevel={props.nestingLevel}
         >
             <div
-                className={resolveClassNames("grid grid-cols-[auto_1fr] items-center text-xs border", {
+                className={resolveClassNames("py-1 grid grid-cols-[auto_1fr] items-center text-xs", {
                     hidden: !isExpanded,
                 })}
             >

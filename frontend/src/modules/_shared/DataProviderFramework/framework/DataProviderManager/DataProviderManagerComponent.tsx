@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Add } from "@mui/icons-material";
+import { Add, Link } from "@mui/icons-material";
 
 import { SortableList } from "@lib/components/SortableList";
 import type { IsMoveAllowedArgs } from "@lib/components/SortableList";
@@ -12,6 +12,7 @@ import { GroupDelegateTopic } from "@modules/_shared/DataProviderFramework/deleg
 
 import type { ActionGroup } from "../../Actions";
 import { Actions } from "../../Actions";
+import { FixedGroup } from "../../components/fixedGroup";
 import { View } from "../../groups/implementations/View";
 import type { Item, ItemGroup } from "../../interfacesAndTypes/entities";
 import { instanceofItemGroup } from "../../interfacesAndTypes/entities";
@@ -38,6 +39,22 @@ export function DataProviderManagerComponent(props: DataProviderManagerComponent
 
     const groupDelegate = props.dataProviderManager.getGroupDelegate();
     const items = usePublishSubscribeTopicValue(groupDelegate, GroupDelegateTopic.CHILDREN);
+
+    const sharedSettingsAndOtherItems = React.useMemo(() => {
+        const sharedSettings: Item[] = [];
+        const otherItems: Item[] = [];
+        for (const item of items) {
+            if (item instanceof SharedSetting) {
+                sharedSettings.push(item);
+            } else {
+                otherItems.push(item);
+            }
+        }
+        return {
+            sharedSettings,
+            otherItems,
+        };
+    }, [items]);
 
     function handleActionClick(identifier: string, group?: ItemGroup) {
         let groupDelegate = props.dataProviderManager.getGroupDelegate();
@@ -146,6 +163,9 @@ export function DataProviderManagerComponent(props: DataProviderManagerComponent
         return groupActions;
     };
 
+    const sharedSettings = sharedSettingsAndOtherItems.sharedSettings;
+    const otherItems = sharedSettingsAndOtherItems.otherItems;
+
     return (
         <div className="grow flex flex-col min-h-0">
             <div className="w-full grow flex flex-col min-h-0" ref={listRef}>
@@ -166,15 +186,34 @@ export function DataProviderManagerComponent(props: DataProviderManagerComponent
                     >
                         <SortableList.Content>
                             <SortableList.ScrollContainer>
-                                <div className="grow overflow-auto min-h-0 bg-slate-200 relative h-full">
+                                <div className="grow overflow-auto min-h-0 border relative h-full pl-4 pr-2 bg-slate-300">
                                     {items.length === 0 && (
                                         <div className="flex -mt-1 justify-center text-sm items-center gap-1 h-40">
                                             Click on <Add fontSize="inherit" /> to add an item.
                                         </div>
                                     )}
-                                    {items.map((item: Item) =>
-                                        makeSortableListItemComponent(item, makeActionsForGroup, handleActionClick),
-                                    )}
+                                    <div className="h-auto relative">
+                                        {sharedSettings.length > 0 && (
+                                            <FixedGroup icon={<Link fontSize="inherit" />} title="Shared Settings">
+                                                {sharedSettings.map((setting: Item, index: number) =>
+                                                    makeSortableListItemComponent(
+                                                        setting,
+                                                        index === sharedSettings.length - 1,
+                                                        makeActionsForGroup,
+                                                        handleActionClick,
+                                                    ),
+                                                )}
+                                            </FixedGroup>
+                                        )}
+                                        {otherItems.map((item: Item, index: number) =>
+                                            makeSortableListItemComponent(
+                                                item,
+                                                index === otherItems.length - 1,
+                                                makeActionsForGroup,
+                                                handleActionClick,
+                                            ),
+                                        )}
+                                    </div>
                                 </div>
                             </SortableList.ScrollContainer>
                         </SortableList.Content>

@@ -20,8 +20,10 @@ import type { DeltaSurface } from "./DeltaSurface";
 
 export type DeltaSurfaceComponentProps = {
     deltaSurface: DeltaSurface;
+    isLastItemInParent?: boolean;
     makeActionsForGroup: (group: ItemGroup) => ActionGroup[];
     onActionClick?: (actionIdentifier: string, group: ItemGroup) => void;
+    nestingLevel?: number;
 };
 
 export function DeltaSurfaceComponent(props: DeltaSurfaceComponentProps): React.ReactNode {
@@ -72,9 +74,17 @@ export function DeltaSurfaceComponent(props: DeltaSurfaceComponentProps): React.
                 <EmptyContent>Drag two surface layers inside to calculate the difference between them.</EmptyContent>
             }
             expanded={isExpanded}
+            isLastItemInParent={props.isLastItemInParent}
+            nestingLevel={props.nestingLevel ?? 0}
         >
-            {children.map((child: Item) =>
-                makeSortableListItemComponent(child, props.makeActionsForGroup, props.onActionClick),
+            {children.map((child: Item, index: number) =>
+                makeSortableListItemComponent(
+                    child,
+                    index === children.length - 1,
+                    props.makeActionsForGroup,
+                    props.onActionClick,
+                    (props.nestingLevel ?? 0) + 1,
+                ),
             )}
         </SortableListGroup>
     );

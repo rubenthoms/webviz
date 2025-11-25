@@ -215,7 +215,7 @@ export function DataProviderManagerWrapper(props: LayerManagerComponentWrapperPr
 
     return (
         <DataProviderManagerComponent
-            title={"Layers"}
+            title={"Views & Data layers"}
             dataProviderManager={props.dataProviderManager}
             additionalHeaderComponents={
                 <Dropdown>

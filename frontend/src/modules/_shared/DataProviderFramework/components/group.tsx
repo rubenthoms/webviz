@@ -7,10 +7,15 @@ import { DenseIconButton } from "@lib/components/DenseIconButton";
 import { SortableList } from "@lib/components/SortableList";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
+import { getContrastingTextColor } from "../framework/utils/makeContrastingTextColor";
+
+import { TreeBranchLine, TreeContentLine, TreeHeaderLine } from "./treeComponents";
+
 export type SortableListGroupProps = {
     id: string;
     title: React.ReactNode;
     expanded?: boolean;
+    color?: string;
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
     headerStyle?: React.CSSProperties;
@@ -18,6 +23,8 @@ export type SortableListGroupProps = {
     contentStyle?: React.CSSProperties;
     contentWhenEmpty?: React.ReactNode;
     children?: React.ReactElement[];
+    isLastItemInParent?: boolean;
+    nestingLevel?: number;
 };
 
 /**
@@ -51,13 +58,30 @@ export function SortableListGroup(props: SortableListGroupProps): React.ReactNod
 
     const hasContent = props.children !== undefined && props.children.length > 0;
 
+    const textColor = getContrastingTextColor(props.color ?? "");
+    const nestingLevel = props.nestingLevel ?? 0;
+
     return (
         <SortableList.Group id={props.id}>
-            <div className={resolveClassNames("bg-gray-200")}>
-                <Header {...props} onToggleExpanded={handleToggleExpanded} expanded={isExpanded} hovered={false} />
+            <div className="relative py-1">
+                {props.isLastItemInParent ? null : <TreeContentLine />}
+                <Header
+                    title={props.title}
+                    startAdornment={props.startAdornment}
+                    endAdornment={props.endAdornment}
+                    headerStyle={{
+                        backgroundColor: props.color,
+                        color: textColor,
+                        ...props.headerStyle,
+                    }}
+                    onToggleExpanded={handleToggleExpanded}
+                    expanded={isExpanded}
+                    hovered={false}
+                    nestingLevel={nestingLevel}
+                />
                 <SortableList.GroupContent>
                     <div
-                        className={resolveClassNames("pl-1 bg-white shadow-inner border-b border-b-gray-300", {
+                        className={resolveClassNames("pl-4", {
                             hidden: !isExpanded,
                         })}
                         style={props.contentStyle}
@@ -80,20 +104,23 @@ type HeaderProps = {
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
     headerStyle?: React.CSSProperties;
+    nestingLevel: number;
 };
 
 function Header(props: HeaderProps): React.ReactNode {
+    const topOffset = props.nestingLevel * 32; // 32px = h-8 (2rem)
     return (
         <div
             className={resolveClassNames(
-                "sortable-list-item-header flex w-full items-center gap-1 h-8 text-sm border-b border-b-gray-400 px-2",
+                "sortable-list-item-header flex w-full items-center gap-0.5 h-8 text-sm sticky px-2 hover:bg-blue-100 bg-slate-300 rounded-sm shadow-sm",
                 {
                     "bg-blue-300!": props.hovered,
-                    "bg-slate-300": !props.hovered,
                 },
             )}
-            style={props.headerStyle}
+            style={{ ...props.headerStyle, top: `${topOffset}px`, zIndex: 2 * (20 - props.nestingLevel) }}
         >
+            <TreeHeaderLine />
+            <TreeBranchLine />
             <SortableList.DragHandle>
                 <DragIndicator fontSize="inherit" className="pointer-events-none" />
             </SortableList.DragHandle>

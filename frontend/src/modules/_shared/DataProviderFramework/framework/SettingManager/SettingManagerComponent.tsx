@@ -21,6 +21,7 @@ export type SettingComponentProps<
     setting: SettingManager<TSetting, TValue, TCategory>;
     manager: DataProviderManager;
     sharedSetting: boolean;
+    hideLabel?: boolean;
 };
 
 export function SettingManagerComponent<
@@ -94,7 +95,7 @@ export function SettingManagerComponent<
 
     return (
         <React.Fragment key={props.setting.getId()}>
-            <div className="p-0.5 px-2 w-32">{props.setting.getLabel()}</div>
+            {!props.hideLabel && <div className="p-0.5 px-2 w-32">{props.setting.getLabel()}</div>}
             <div className="p-0.5 px-2 w-full">
                 <PendingWrapper isPending={actuallyLoading}>
                     <div className="flex flex-col gap-1 min-w-0">

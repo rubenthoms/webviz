@@ -5,6 +5,8 @@ import { DragIndicator } from "@mui/icons-material";
 import { SortableList } from "@lib/components/SortableList";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
+import { TreeBranchLine, TreeContentLine, TreeHeaderLine } from "./treeComponents";
+
 export type SortableListItemProps = {
     id: string;
     title: React.ReactNode;
@@ -12,6 +14,8 @@ export type SortableListItemProps = {
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
     children?: React.ReactNode;
+    isLastItemInParent?: boolean;
+    nestingLevel?: number;
 };
 
 /**
@@ -26,13 +30,23 @@ export type SortableListItemProps = {
  * @returns {React.ReactNode} A sortable list item component.
  */
 export function SortableListItem(props: SortableListItemProps): React.ReactNode {
+    const nestingLevel = props.nestingLevel ?? 0;
     return (
-        <SortableList.Item id={props.id}>
-            <div className={resolveClassNames("flex flex-col relative")}>
-                <Header {...props} />
-                <div className={resolveClassNames("bg-white border-b shadow-sm")}>{props.children}</div>
-            </div>
-        </SortableList.Item>
+        <div className={resolveClassNames("flex flex-col relative group pt-1")}>
+            {props.isLastItemInParent ? null : <TreeContentLine />}
+            <SortableList.Item id={props.id}>
+                <div>
+                    <Header
+                        title={props.title}
+                        startAdornment={props.startAdornment}
+                        endAdornment={props.endAdornment}
+                        headerClassNames={props.headerClassNames}
+                        nestingLevel={nestingLevel}
+                    />
+                    <div className="ml-2 mr-1 pl-1 group-hover:bg-blue-50 bg-white">{props.children}</div>
+                </div>
+            </SortableList.Item>
+        </div>
     );
 }
 
@@ -41,16 +55,21 @@ type HeaderProps = {
     startAdornment?: React.ReactNode;
     endAdornment?: React.ReactNode;
     headerClassNames?: string;
+    nestingLevel: number;
 };
 
 function Header(props: HeaderProps): React.ReactNode {
+    const topOffset = props.nestingLevel * 32; // 32px = h-8 (2rem)
     return (
         <div
             className={resolveClassNames(
-                "w-full flex gap-1 h-8 bg-slate-100 text-sm items-center border-b border-b-gray-300 px-2",
+                "w-full flex gap-1 min-h-8 text-sm items-center px-2 sticky z-10 bg-slate-200 group-hover:bg-blue-100 rounded-sm shadow-sm",
                 props.headerClassNames ?? "",
             )}
+            style={{ top: `${topOffset}px`, zIndex: 2 * (20 - props.nestingLevel) }}
         >
+            <TreeHeaderLine />
+            <TreeBranchLine />
             <SortableList.DragHandle>
                 <DragIndicator fontSize="inherit" className="pointer-events-none" />
             </SortableList.DragHandle>

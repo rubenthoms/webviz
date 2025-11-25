@@ -19,6 +19,8 @@ export type SettingsGroupComponentProps = {
     group: ItemGroup;
     makeActionsForGroup: (group: ItemGroup) => ActionGroup[];
     onActionClick?: (actionIdentifier: string, group: ItemGroup) => void;
+    isLastItemInParent?: boolean;
+    nestingLevel?: number;
 };
 
 export function SettingsGroupComponent(props: SettingsGroupComponentProps): React.ReactNode {
@@ -55,19 +57,21 @@ export function SettingsGroupComponent(props: SettingsGroupComponentProps): Reac
                     {props.group.getItemDelegate().getName()}
                 </div>
             }
-            contentStyle={{
-                backgroundColor: color ?? undefined,
-            }}
-            headerStyle={{
-                backgroundColor: "rgb(196 181 253)",
-            }}
             startAdornment={<SettingsApplications fontSize="inherit" />}
             endAdornment={<>{makeEndAdornment()}</>}
             contentWhenEmpty={<EmptyContent>Drag an item inside to add it to this settings group.</EmptyContent>}
             expanded={isExpanded}
+            isLastItemInParent={props.isLastItemInParent}
+            nestingLevel={props.nestingLevel ?? 0}
         >
-            {children.map((child: Item) =>
-                makeSortableListItemComponent(child, props.makeActionsForGroup, props.onActionClick),
+            {children.map((child: Item, index: number) =>
+                makeSortableListItemComponent(
+                    child,
+                    index === children.length - 1,
+                    props.makeActionsForGroup,
+                    props.onActionClick,
+                    (props.nestingLevel ?? 0) + 1,
+                ),
             )}
         </SortableListGroup>
     );

@@ -13,11 +13,22 @@ import { SharedSettingComponent } from "../SharedSetting/SharedSettingComponent"
 
 export function makeSortableListItemComponent(
     item: Item,
+    lastItem: boolean,
     makeActionsForGroup: (group: ItemGroup) => ActionGroup[],
     onActionClick?: (identifier: string, group: ItemGroup) => void,
+    nestingLevel?: number,
 ): React.ReactElement {
+    const level = nestingLevel ?? 0;
+
     if (isDataProvider(item)) {
-        return <DataProviderComponent key={item.getItemDelegate().getId()} dataProvider={item} />;
+        return (
+            <DataProviderComponent
+                key={item.getItemDelegate().getId()}
+                dataProvider={item}
+                isLastItemInParent={lastItem}
+                nestingLevel={level}
+            />
+        );
     }
     if (isSettingsGroup(item)) {
         return (
@@ -26,6 +37,8 @@ export function makeSortableListItemComponent(
                 group={item}
                 makeActionsForGroup={makeActionsForGroup}
                 onActionClick={onActionClick}
+                isLastItemInParent={lastItem}
+                nestingLevel={level}
             />
         );
     }
@@ -36,6 +49,8 @@ export function makeSortableListItemComponent(
                 group={item}
                 makeActionsForGroup={makeActionsForGroup}
                 onActionClick={onActionClick}
+                isLastItemInParent={lastItem}
+                nestingLevel={level}
             />
         );
     }
@@ -46,11 +61,20 @@ export function makeSortableListItemComponent(
                 deltaSurface={item}
                 makeActionsForGroup={makeActionsForGroup}
                 onActionClick={onActionClick}
+                isLastItemInParent={lastItem}
+                nestingLevel={level}
             />
         );
     }
     if (isSharedSetting(item)) {
-        return <SharedSettingComponent key={item.getItemDelegate().getId()} sharedSetting={item} />;
+        return (
+            <SharedSettingComponent
+                key={item.getItemDelegate().getId()}
+                sharedSetting={item}
+                isLastItemInParent={lastItem}
+                nestingLevel={level}
+            />
+        );
     }
 
     throw new Error(`Unsupported item type: ${item.constructor.name}`);

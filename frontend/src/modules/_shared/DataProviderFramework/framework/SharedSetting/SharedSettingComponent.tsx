@@ -1,36 +1,26 @@
 import type React from "react";
 
-import { Delete, ExpandLess, ExpandMore, Link } from "@mui/icons-material";
+import { Delete } from "@mui/icons-material";
 
 import { DenseIconButton } from "@lib/components/DenseIconButton";
 import { DenseIconButtonColorScheme } from "@lib/components/DenseIconButton/denseIconButton";
-import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
-import { resolveClassNames } from "@lib/utils/resolveClassNames";
-
-
 
 import { SortableListItem } from "../../components/item";
-import { ItemDelegateTopic } from "../../delegates/ItemDelegate";
 import { SettingManagerComponent } from "../SettingManager/SettingManagerComponent";
 
 import type { SharedSetting } from "./SharedSetting";
 
 export type SharedSettingComponentProps = {
     sharedSetting: SharedSetting<any>;
+    isLastItemInParent?: boolean;
+    nestingLevel?: number;
 };
 
 export function SharedSettingComponent(props: SharedSettingComponentProps): React.ReactNode {
-    const isExpanded = usePublishSubscribeTopicValue(props.sharedSetting.getItemDelegate(), ItemDelegateTopic.EXPANDED);
-
     const manager = props.sharedSetting.getItemDelegate().getDataProviderManager();
     if (!manager) {
         return null;
     }
-
-    function handleToggleExpanded() {
-        props.sharedSetting.getItemDelegate().setExpanded(!isExpanded);
-    }
-
     return (
         <SortableListItem
             key={props.sharedSetting.getItemDelegate().getId()}
@@ -40,32 +30,21 @@ export function SharedSettingComponent(props: SharedSettingComponentProps): Reac
                     {props.sharedSetting.getItemDelegate().getName()}
                 </div>
             }
-            startAdornment={
-                <div className="flex gap-1 items-center">
-                    <DenseIconButton
-                        onClick={handleToggleExpanded}
-                        title={isExpanded ? "Hide settings" : "Show settings"}
-                    >
-                        {isExpanded ? <ExpandLess fontSize="inherit" /> : <ExpandMore fontSize="inherit" />}
-                    </DenseIconButton>
-                    <Link fontSize="inherit" />
+            endAdornment={
+                <div className="min-w-0 flex items-center gap-1">
+                    <SettingManagerComponent
+                        setting={props.sharedSetting.getWrappedSetting()}
+                        manager={manager}
+                        sharedSetting
+                        hideLabel
+                    />
+                    <Actions sharedSetting={props.sharedSetting} />
                 </div>
             }
-            endAdornment={<Actions sharedSetting={props.sharedSetting} />}
-            headerClassNames="bg-teal-200!"
-        >
-            <div
-                className={resolveClassNames("grid grid-cols-[auto_1fr] items-center text-xs border", {
-                    hidden: !isExpanded,
-                })}
-            >
-                <SettingManagerComponent
-                    setting={props.sharedSetting.getWrappedSetting()}
-                    manager={manager}
-                    sharedSetting
-                />
-            </div>
-        </SortableListItem>
+            isLastItemInParent={props.isLastItemInParent}
+            nestingLevel={props.nestingLevel}
+            headerClassNames="bg-white!"
+        ></SortableListItem>
     );
 }
 
@@ -86,7 +65,7 @@ function Actions(props: ActionProps): React.ReactNode {
         <>
             <DenseIconButton
                 onClick={handleRemove}
-                title="Remove group"
+                title="Remove shared setting"
                 colorScheme={DenseIconButtonColorScheme.DANGER}
             >
                 <Delete fontSize="inherit" />

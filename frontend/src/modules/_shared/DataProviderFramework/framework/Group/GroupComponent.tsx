@@ -1,10 +1,10 @@
 import React from "react";
 
-import { ColorSelect } from "@lib/components/ColorSelect";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 
 import type { ActionGroup } from "../../Actions";
 import { Actions } from "../../Actions";
+import { ColorSelector } from "../../components/colorSelector";
 import { SortableListGroup } from "../../components/group";
 import { GroupDelegateTopic } from "../../delegates/GroupDelegate";
 import { ItemDelegateTopic } from "../../delegates/ItemDelegate";
@@ -22,8 +22,10 @@ import type { Group } from "./Group";
 
 export type GroupComponentProps = {
     group: Group<any, any>;
+    isLastItemInParent?: boolean;
     makeActionsForGroup: (group: ItemGroup) => ActionGroup[];
     onActionClick?: (actionIdentifier: string, group: ItemGroup) => void;
+    nestingLevel?: number;
 };
 
 export function GroupComponent(props: GroupComponentProps): React.ReactNode {
@@ -81,29 +83,35 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
             id={props.group.getItemDelegate().getId()}
             title={
                 <div className="flex gap-1 items-center relative min-w-0">
-                    {color && <ColorSelect onChange={handleColorChange} value={color} dense />}
+                    {color && <ColorSelector onChange={handleColorChange} color={color} />}
                     <div className="grow min-w-0">
                         <EditName item={props.group} />
                     </div>
                 </div>
             }
-            contentStyle={{
-                backgroundColor: color ?? undefined,
-            }}
             expanded={isExpanded}
             startAdornment={<VisibilityToggle item={props.group} />}
             endAdornment={<>{makeEndAdornment()}</>}
             contentWhenEmpty={<EmptyContent>{emptyContentMessage}</EmptyContent>}
             content={
                 props.group.getSharedSettingsDelegate() ? (
-                    <div className="!bg-slate-100 border text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
+                    <div className="text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
                         {makeSettings(Object.values(props.group.getWrappedSettings()))}
                     </div>
                 ) : undefined
             }
+            isLastItemInParent={props.isLastItemInParent}
+            color={color ?? ""}
+            nestingLevel={props.nestingLevel ?? 0}
         >
-            {children.map((child: Item) =>
-                makeSortableListItemComponent(child, props.makeActionsForGroup, props.onActionClick),
+            {children.map((child: Item, index: number) =>
+                makeSortableListItemComponent(
+                    child,
+                    index === children.length - 1,
+                    props.makeActionsForGroup,
+                    props.onActionClick,
+                    (props.nestingLevel ?? 0) + 1,
+                ),
             )}
         </SortableListGroup>
     );

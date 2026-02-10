@@ -4,11 +4,12 @@ import type { Template } from "@framework/TemplateRegistry";
 import { PublishSubscribeDelegate, type PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
 import { UnsubscribeFunctionsManagerDelegate } from "@lib/utils/UnsubscribeFunctionsManagerDelegate";
 
-import type { AtomStoreMaster } from "../AtomStoreMaster";
-import { ModuleInstanceTopic, type ModuleInstance } from "../ModuleInstance";
-import { ModuleRegistry } from "../ModuleRegistry";
+import type { AtomStoreMaster } from "../../AtomStoreMaster";
+import { ModuleInstanceTopic, type ModuleInstance } from "../../ModuleInstance";
+import { ModuleRegistry } from "../../ModuleRegistry";
 
 import type { SerializedDashboardState } from "./Dashboard.schema";
+import type { DashboardActiveModuleHistoryState, DashboardLayoutHistoryState } from "./types";
 
 export type LayoutElement = {
     moduleInstanceId?: string;
@@ -182,6 +183,54 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
         this.handleStateChange();
     }
 
+    applyLayoutFromHistory(history: DashboardLayoutHistoryState): void {
+        const nextLayout = normalizeLayout(history.layout);
+
+        if (areLayoutsEqual(this._layout, nextLayout)) return;
+
+        // 1) Sync module instances to match layout
+        const nextIds = new Set(
+            nextLayout.map((el) => el.moduleInstanceId).filter((id): id is string => typeof id === "string"),
+        );
+
+        // Remove module instances that are no longer present
+        for (const mi of [...this._moduleInstances]) {
+            if (!nextIds.has(mi.getId())) {
+                this.unregisterAndUnloadModuleInstance(mi.getId());
+            }
+        }
+
+        // Add any missing module instances required by layout
+        for (const el of nextLayout) {
+            if (!el.moduleInstanceId) {
+                throw new Error("History layout element is missing moduleInstanceId");
+            }
+            if (!this.getModuleInstance(el.moduleInstanceId)) {
+                this.makeAndRegisterModuleInstance(el.moduleName, el.moduleInstanceId);
+            }
+        }
+
+        // If active module got removed, clear it (or choose a fallback)
+        if (this._activeModuleInstanceId !== null && !this.getModuleInstance(this._activeModuleInstanceId)) {
+            this._activeModuleInstanceId = null;
+            this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.ACTIVE_MODULE_INSTANCE_ID);
+        }
+
+        // 2) Apply layout (this notifies + serialized state)
+        this.setLayout(nextLayout);
+        this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.MODULE_INSTANCES);
+    }
+
+    applyActiveModuleInstanceIdFromHistory(history: DashboardActiveModuleHistoryState): void {
+        if (history.activeModuleInstanceId !== null && !this.getModuleInstance(history.activeModuleInstanceId)) {
+            // If the target doesn’t exist in current dashboard structure, ignore or throw.
+            // I recommend ignoring to keep undo robust across structural changes.
+            return;
+        }
+        if (this._activeModuleInstanceId === history.activeModuleInstanceId) return;
+        this.setActiveModuleInstanceId(history.activeModuleInstanceId);
+    }
+
     private handleStateChange(): void {
         this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.SERIALIZED_STATE);
     }
@@ -235,7 +284,6 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
         this._activeModuleInstanceId = moduleInstance.getId();
 
         this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.MODULE_INSTANCES);
-        this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.LAYOUT);
 
         return moduleInstance;
     }
@@ -400,4 +448,34 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
 
         return dashboard;
     }
+}
+
+function normalizeLayout(layout: LayoutElement[]): LayoutElement[] {
+    // Copy + stable ordering (prevents hash churn from array order changes)
+    const copy = layout.map((el) => ({ ...el }));
+    copy.sort((a, b) => (a.moduleInstanceId ?? "").localeCompare(b.moduleInstanceId ?? ""));
+    return copy;
+}
+
+function areLayoutsEqual(a: LayoutElement[], b: LayoutElement[]): boolean {
+    if (a === b) return true;
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i++) {
+        const x = a[i]!;
+        const y = b[i]!;
+        if (
+            x.moduleInstanceId !== y.moduleInstanceId ||
+            x.moduleName !== y.moduleName ||
+            x.relX !== y.relX ||
+            x.relY !== y.relY ||
+            x.relWidth !== y.relWidth ||
+            x.relHeight !== y.relHeight ||
+            (x.minimized ?? false) !== (y.minimized ?? false) ||
+            (x.maximized ?? false) !== (y.maximized ?? false)
+        ) {
+            return false;
+        }
+    }
+    return true;
 }

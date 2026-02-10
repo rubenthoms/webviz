@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { Dashboard } from "@framework/internal/Dashboard";
+import type { Dashboard } from "@framework/internal/Dashboard/Dashboard";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 

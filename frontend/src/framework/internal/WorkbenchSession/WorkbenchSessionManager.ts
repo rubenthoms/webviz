@@ -12,16 +12,19 @@ import {
 import { ConfirmationService } from "@framework/ConfirmationService";
 import type { GuiMessageBroker } from "@framework/GuiMessageBroker";
 import { GuiState, LeftDrawerContent, RightDrawerContent } from "@framework/GuiMessageBroker";
+import { UndoRedoCoordinator } from "@framework/internal/UndoRedo/UndoRedoCoordinator";
 import type { Template } from "@framework/TemplateRegistry";
 import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
 import type { Workbench } from "@framework/Workbench";
 import { PublishSubscribeDelegate, type PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
 import { truncateString } from "@lib/utils/strings";
 
-import { Dashboard } from "../Dashboard";
+import { Dashboard } from "../Dashboard/Dashboard";
+import { DashboardUndoRedoGeneratorImpl } from "../Dashboard/DashboardUndoRedoGenerator";
 import { EnsembleUpdateMonitor } from "../EnsembleUpdateMonitor";
 import { MAX_DESCRIPTION_LENGTH, MAX_TITLE_LENGTH } from "../persistence/constants";
 import { PersistenceOrchestrator, PersistFailureReason } from "../persistence/core/PersistenceOrchestrator";
+import { ModuleInstanceUndoRedoGeneratorImpl } from "../UndoRedo/ModuleInstanceUndoRedoGeneratorImpl";
 
 import { PrivateWorkbenchSession } from "./PrivateWorkbenchSession";
 import { removeSessionQueryData, removeSnapshotQueryData, replaceSessionQueryData } from "./utils/crudHelpers";
@@ -70,6 +73,7 @@ export class WorkbenchSessionManager implements PublishSubscribe<WorkbenchSessio
     private readonly _queryClient: QueryClient;
     private readonly _guiMessageBroker: GuiMessageBroker;
     private readonly _ensembleUpdateMonitor: EnsembleUpdateMonitor;
+    private _undoRedoCoordinator: UndoRedoCoordinator | null = null;
 
     private _activeSession: PrivateWorkbenchSession | null = null;
     private _persistenceOrchestrator: PersistenceOrchestrator | null = null;
@@ -595,6 +599,15 @@ export class WorkbenchSessionManager implements PublishSubscribe<WorkbenchSessio
             // Update GUI states based on possible loading errors
             this.applyActiveSessionEnsembleLoadErrorsToGuiState();
 
+            this._undoRedoCoordinator?.detach();
+
+            this._undoRedoCoordinator = new UndoRedoCoordinator(this._workbench.getUndoRedoManager(), session, {
+                moduleInstance: (moduleInstance) => new ModuleInstanceUndoRedoGeneratorImpl(moduleInstance),
+                dashboard: (dashboard) => new DashboardUndoRedoGeneratorImpl(dashboard),
+            });
+
+            this._undoRedoCoordinator.attach();
+
             this._publishSubscribeDelegate.notifySubscribers(WorkbenchSessionManagerTopic.HAS_ACTIVE_SESSION);
             this._publishSubscribeDelegate.notifySubscribers(WorkbenchSessionManagerTopic.ACTIVE_SESSION);
         } catch (error) {
@@ -621,6 +634,9 @@ export class WorkbenchSessionManager implements PublishSubscribe<WorkbenchSessio
         }
 
         this._ensembleUpdateMonitor.stopPolling();
+
+        this._undoRedoCoordinator?.detach();
+        this._undoRedoCoordinator = null;
 
         this._activeSession = null;
     }

@@ -12,7 +12,7 @@ import {
     useGuiState,
     type GuiEventPayloads,
 } from "@framework/GuiMessageBroker";
-import { DashboardTopic, type LayoutElement } from "@framework/internal/Dashboard";
+import { DashboardTopic, type LayoutElement } from "@framework/internal/Dashboard/Dashboard";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import { type Workbench } from "@framework/Workbench";
 import { Button } from "@lib/components/Button";

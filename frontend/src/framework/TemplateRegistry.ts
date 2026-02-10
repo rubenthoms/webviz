@@ -1,6 +1,6 @@
 import type { ModuleSerializedStateMap } from "@modules/ModuleSerializedStateMap";
 
-import type { LayoutElement } from "./internal/Dashboard";
+import type { LayoutElement } from "./internal/Dashboard/Dashboard";
 import type { SyncSettingKey } from "./SyncSettings";
 import type { KeyKind } from "./types/dataChannnel";
 

@@ -27,6 +27,57 @@ export interface PublishSubscribe<TTopicPayloads extends TopicPayloads> {
 export class PublishSubscribeDelegate<TTopicPayloads extends TopicPayloads> {
     private _subscribers = new Map<keyof TTopicPayloads, Set<() => void>>();
 
+    // Transaction state
+    private _transactionDepth = 0;
+    private _pendingNotifications: Set<keyof TTopicPayloads> | null = null;
+
+    beginTransaction(): void {
+        this._transactionDepth++;
+        if (this._transactionDepth === 1) {
+            this._pendingNotifications = new Set();
+        }
+    }
+
+    endTransaction(): void {
+        if (this._transactionDepth === 0) {
+            throw new Error("PublishSubscribeDelegate.endTransaction called without a matching beginTransaction.");
+        }
+
+        this._transactionDepth--;
+
+        if (this._transactionDepth !== 0) return;
+
+        const pendingNotifications = this._pendingNotifications;
+        this._pendingNotifications = null;
+
+        if (!pendingNotifications || pendingNotifications.size === 0) {
+            return;
+        }
+
+        for (const topic of pendingNotifications) {
+            this.notifySubscribers(topic);
+        }
+    }
+
+    withTransaction<T>(transactionFunction: () => T): T {
+        this.beginTransaction();
+        try {
+            const result = transactionFunction();
+            return result;
+        } finally {
+            this.endTransaction();
+        }
+    }
+
+    async withTransactionAsync<T>(transactionFunction: () => Promise<T>): Promise<T> {
+        this.beginTransaction();
+        try {
+            return await transactionFunction();
+        } finally {
+            this.endTransaction();
+        }
+    }
+
     /**
      * Runs the topic callback for each subscriber
      * @param topic The topic to notify to

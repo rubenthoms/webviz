@@ -4,6 +4,7 @@ import { GuiMessageBroker } from "./GuiMessageBroker";
 import { HoverService } from "./HoverService";
 import { NavigationManager } from "./internal/NavigationManager";
 import { PrivateWorkbenchServices } from "./internal/PrivateWorkbenchServices";
+import { UndoRedoManager } from "./internal/UndoRedo/UndoRedoManager";
 import { WorkbenchSessionManager } from "./internal/WorkbenchSession/WorkbenchSessionManager";
 import type { WorkbenchServices } from "./WorkbenchServices";
 
@@ -24,6 +25,7 @@ export class Workbench {
     private readonly _queryClient: QueryClient;
     private readonly _sessionManager: WorkbenchSessionManager;
     private readonly _navigationManager: NavigationManager;
+    private readonly _undoRedoManager: UndoRedoManager;
     private _isInitialized: boolean = false;
 
     constructor(queryClient: QueryClient) {
@@ -32,6 +34,7 @@ export class Workbench {
         this._hoverService = new HoverService();
         this._guiMessageBroker = new GuiMessageBroker();
         this._sessionManager = new WorkbenchSessionManager(this, queryClient, this._guiMessageBroker);
+        this._undoRedoManager = new UndoRedoManager(300);
 
         // Create NavigationManager instance and register callbacks
         this._navigationManager = new NavigationManager();
@@ -61,6 +64,10 @@ export class Workbench {
 
     getNavigationManager(): NavigationManager {
         return this._navigationManager;
+    }
+
+    getUndoRedoManager(): UndoRedoManager {
+        return this._undoRedoManager;
     }
 
     /**

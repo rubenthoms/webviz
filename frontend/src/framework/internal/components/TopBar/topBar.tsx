@@ -3,12 +3,26 @@ import React from "react";
 import { Icon, Typography } from "@equinor/eds-core-react";
 import { category } from "@equinor/eds-icons";
 import { Dropdown, MenuButton } from "@mui/base";
-import { AddLink, ArrowDropDown, Category, Close, Edit, Link, Lock, Refresh, Save, SaveAs } from "@mui/icons-material";
+import {
+    AddLink,
+    ArrowDropDown,
+    Category,
+    Close,
+    Edit,
+    Link,
+    Lock,
+    Redo,
+    Refresh,
+    Save,
+    SaveAs,
+    Undo,
+} from "@mui/icons-material";
 
 import FmuLogo from "@assets/fmu.svg";
 
 import { GuiState, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { PersistenceOrchestratorTopic } from "@framework/internal/persistence/core/PersistenceOrchestrator";
+import { UndoRedoManagerTopic } from "@framework/internal/UndoRedo/UndoRedoManager";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
 import { WorkbenchSessionManagerTopic } from "@framework/internal/WorkbenchSession/WorkbenchSessionManager";
 import { type Workbench } from "@framework/Workbench";
@@ -76,6 +90,51 @@ function LogoWithText(): React.ReactNode {
             >
                 BETA
             </div>
+        </div>
+    );
+}
+
+type UndoRedoButtonsProps = {
+    workbench: Workbench;
+};
+
+function UndoRedoButtons(props: UndoRedoButtonsProps): React.ReactNode {
+    const state = usePublishSubscribeTopicValue(props.workbench.getUndoRedoManager(), UndoRedoManagerTopic.STATE);
+
+    const handleUndo = React.useCallback(
+        function handleUndo() {
+            props.workbench.getUndoRedoManager().undo();
+        },
+        [props.workbench],
+    );
+
+    const handleRedo = React.useCallback(
+        function handleRedo() {
+            props.workbench.getUndoRedoManager().redo();
+        },
+        [props.workbench],
+    );
+
+    return (
+        <div className="flex gap-2 items-center">
+            <Tooltip title={state.undoLabel ? `Undo: ${state.undoLabel}` : "Nothing to undo"} placement="bottom">
+                <TopBarButton
+                    onClick={handleUndo}
+                    title={state.undoLabel ? `Undo: ${state.undoLabel}` : "Nothing to undo"}
+                    disabled={!state.canUndo}
+                >
+                    <Undo fontSize="inherit" />
+                </TopBarButton>
+            </Tooltip>
+            <Tooltip title={state.redoLabel ? `Redo: ${state.redoLabel}` : "Nothing to redo"} placement="bottom">
+                <TopBarButton
+                    onClick={handleRedo}
+                    title={state.redoLabel ? `Redo: ${state.redoLabel}` : "Nothing to redo"}
+                    disabled={!state.canRedo}
+                >
+                    <Redo fontSize="inherit" />
+                </TopBarButton>
+            </Tooltip>
         </div>
     );
 }
@@ -176,7 +235,12 @@ function Title(props: TitleProps): React.ReactNode {
         content = <SnapshotTitle workbench={props.workbench} />;
     }
 
-    return <div className="grow flex gap-2 overflow-hidden items-center">{content}</div>;
+    return (
+        <div className="grow flex gap-2 overflow-hidden items-center">
+            {content}
+            <UndoRedoButtons workbench={props.workbench} />
+        </div>
+    );
 }
 
 type SnapshotTitleProps = {

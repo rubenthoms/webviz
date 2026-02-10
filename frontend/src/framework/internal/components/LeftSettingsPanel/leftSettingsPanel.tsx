@@ -3,7 +3,7 @@ import React from "react";
 import { Tune } from "@mui/icons-material";
 
 import { GuiState, LeftDrawerContent, useGuiValue } from "@framework/GuiMessageBroker";
-import { DashboardTopic } from "@framework/internal/Dashboard";
+import { DashboardTopic } from "@framework/internal/Dashboard/Dashboard";
 import type { Workbench } from "@framework/Workbench";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";

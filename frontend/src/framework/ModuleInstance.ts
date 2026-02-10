@@ -9,7 +9,7 @@ import { UnsubscribeFunctionsManagerDelegate } from "@lib/utils/UnsubscribeFunct
 
 import type { AtomStore } from "./AtomStoreMaster";
 import type { InitialSettings } from "./InitialSettings";
-import type { Dashboard } from "./internal/Dashboard";
+import type { Dashboard } from "./internal/Dashboard/Dashboard";
 import { ChannelManager, ChannelManagerNotificationTopic } from "./internal/DataChannels/ChannelManager";
 import { ModuleInstanceSerializer } from "./internal/ModuleInstanceSerializer";
 import { ModuleInstanceStatusControllerInternal } from "./internal/ModuleInstanceStatusControllerInternal";

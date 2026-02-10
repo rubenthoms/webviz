@@ -9,7 +9,7 @@ import {
     type SerializedUserCreatedItemsState,
 } from "@framework/UserCreatedItems.schema";
 
-import { DASHBOARD_STATE_SCHEMA, type SerializedDashboardState } from "../Dashboard.schema";
+import { DASHBOARD_STATE_SCHEMA, type SerializedDashboardState } from "../Dashboard/Dashboard.schema";
 import {
     WORKBENCH_SETTINGS_STATE_SCHEMA,
     type SerializedWorkbenchSettingsState,

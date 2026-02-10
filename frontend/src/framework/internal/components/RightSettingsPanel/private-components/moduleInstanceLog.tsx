@@ -4,7 +4,7 @@ import { CheckCircle, ClearAll, CloudDone, CloudDownload, Error, History, Warnin
 
 import { GuiState, RightDrawerContent, useGuiValue } from "@framework/GuiMessageBroker";
 import { Drawer } from "@framework/internal/components/Drawer";
-import { DashboardTopic } from "@framework/internal/Dashboard";
+import { DashboardTopic } from "@framework/internal/Dashboard/Dashboard";
 import type { LogEntry } from "@framework/internal/ModuleInstanceStatusControllerInternal";
 import {
     LogEntryType,

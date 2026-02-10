@@ -1,4 +1,4 @@
-import type { LayoutElement } from "../../Dashboard";
+import type { LayoutElement } from "../../Dashboard/Dashboard";
 import type { SerializedWorkbenchSessionState } from "../PrivateWorkbenchSession.schema";
 
 export enum WorkbenchSessionSource {

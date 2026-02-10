@@ -4,7 +4,7 @@ import { Settings as SettingsIcon } from "@mui/icons-material";
 import { Provider } from "jotai";
 
 import { ErrorBoundary } from "@framework/internal/components/ErrorBoundary";
-import { DashboardTopic } from "@framework/internal/Dashboard";
+import { DashboardTopic } from "@framework/internal/Dashboard/Dashboard";
 import { ImportStatus } from "@framework/Module";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import {

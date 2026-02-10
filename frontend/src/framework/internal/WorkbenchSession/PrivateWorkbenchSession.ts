@@ -4,7 +4,7 @@ import { AtomStoreMaster } from "@framework/AtomStoreMaster";
 import { EnsembleFingerprintStore } from "@framework/EnsembleFingerprintStore";
 import { EnsembleSet } from "@framework/EnsembleSet";
 import { EnsembleSetAtom, RealizationFilterSetAtom } from "@framework/GlobalAtoms";
-import { Dashboard, DashboardTopic } from "@framework/internal/Dashboard";
+import { Dashboard, DashboardTopic } from "@framework/internal/Dashboard/Dashboard";
 import { RealizationFilterSet } from "@framework/RealizationFilterSet";
 import { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { UserCreatedItems, UserCreatedItemsEvent } from "@framework/UserCreatedItems";
@@ -229,52 +229,54 @@ export class PrivateWorkbenchSession implements WorkbenchSession {
         this._isPersisted = this._id !== null;
         this._activeDashboardId = contentState.activeDashboardId;
 
-        this.clearDashboards();
+        this._publishSubscribeDelegate.withTransactionAsync(async () => {
+            this.clearDashboards();
 
-        // We first have to load and setup the ensemble set before deserializing dashboards and modules.
-        // This is because modules may depend on ensembles being present in the EnsembleFinterprintStore when
-        // initiating requests to the backend.
-        const userEnsembleSettings: UserEnsembleSetting[] = contentState.ensembleSet.regularEnsembles.map((e) => ({
-            ensembleIdent: RegularEnsembleIdent.fromString(e.ensembleIdent),
-            customName: e.name,
-            caseName: e.caseName,
-            color: e.color,
-        }));
-
-        const userDeltaEnsembleSettings: UserDeltaEnsembleSetting[] = contentState.ensembleSet.deltaEnsembles.map(
-            (e) => ({
-                comparisonEnsembleIdent: RegularEnsembleIdent.fromString(e.comparisonEnsembleIdent),
-                referenceEnsembleIdent: RegularEnsembleIdent.fromString(e.referenceEnsembleIdent),
-                comparisonEnsembleCaseName: e.comparisonEnsembleCaseName,
-                referenceEnsembleCaseName: e.referenceEnsembleCaseName,
+            // We first have to load and setup the ensemble set before deserializing dashboards and modules.
+            // This is because modules may depend on ensembles being present in the EnsembleFinterprintStore when
+            // initiating requests to the backend.
+            const userEnsembleSettings: UserEnsembleSetting[] = contentState.ensembleSet.regularEnsembles.map((e) => ({
+                ensembleIdent: RegularEnsembleIdent.fromString(e.ensembleIdent),
                 customName: e.name,
+                caseName: e.caseName,
                 color: e.color,
-            }),
-        );
+            }));
 
-        const { ensembleSet: newSet, ensembleLoadingErrorInfoMap: ensembleLoadingErrorInfoMap } =
-            await loadMetadataFromBackendAndCreateEnsembleSet(
-                this._queryClient,
-                userEnsembleSettings,
-                userDeltaEnsembleSettings,
+            const userDeltaEnsembleSettings: UserDeltaEnsembleSetting[] = contentState.ensembleSet.deltaEnsembles.map(
+                (e) => ({
+                    comparisonEnsembleIdent: RegularEnsembleIdent.fromString(e.comparisonEnsembleIdent),
+                    referenceEnsembleIdent: RegularEnsembleIdent.fromString(e.referenceEnsembleIdent),
+                    comparisonEnsembleCaseName: e.comparisonEnsembleCaseName,
+                    referenceEnsembleCaseName: e.referenceEnsembleCaseName,
+                    customName: e.name,
+                    color: e.color,
+                }),
             );
-        this.setEnsembleSet(newSet);
-        this._ensembleLoadingErrorInfoMap = ensembleLoadingErrorInfoMap;
 
-        // This has to be done after loading the ensemble set
-        // in order to guarantee that all realization filters for the ensembles exist
-        this._realizationFilterSet.deserializeState(contentState.ensembleRealizationFilterSet);
+            const { ensembleSet: newSet, ensembleLoadingErrorInfoMap: ensembleLoadingErrorInfoMap } =
+                await loadMetadataFromBackendAndCreateEnsembleSet(
+                    this._queryClient,
+                    userEnsembleSettings,
+                    userDeltaEnsembleSettings,
+                );
+            this.setEnsembleSet(newSet);
+            this._ensembleLoadingErrorInfoMap = ensembleLoadingErrorInfoMap;
 
-        // --- Now that the ensemble set is loaded, we can deserialize dashboards and modules ---
+            // This has to be done after loading the ensemble set
+            // in order to guarantee that all realization filters for the ensembles exist
+            this._realizationFilterSet.deserializeState(contentState.ensembleRealizationFilterSet);
 
-        for (const dashboard of contentState.dashboards) {
-            const newDashboard = new Dashboard(this._atomStoreMaster);
-            this.registerDashboard(newDashboard);
-            newDashboard.deserializeState(dashboard);
-        }
+            // --- Now that the ensemble set is loaded, we can deserialize dashboards and modules ---
 
-        this._settings.deserializeState(contentState.settings);
-        this._userCreatedItems.deserializeState(contentState.userCreatedItems);
+            for (const dashboard of contentState.dashboards) {
+                const newDashboard = new Dashboard(this._atomStoreMaster);
+                this.registerDashboard(newDashboard);
+                newDashboard.deserializeState(dashboard);
+            }
+
+            this._settings.deserializeState(contentState.settings);
+            this._userCreatedItems.deserializeState(contentState.userCreatedItems);
+        });
     }
 
     setEnsembleSet(set: EnsembleSet) {

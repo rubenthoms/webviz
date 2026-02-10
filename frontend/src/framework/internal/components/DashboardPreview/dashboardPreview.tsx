@@ -1,4 +1,4 @@
-import type { LayoutElement } from "@framework/internal/Dashboard";
+import type { LayoutElement } from "@framework/internal/Dashboard/Dashboard";
 import { ModuleRegistry } from "@framework/ModuleRegistry";
 
 export type DashboardPreviewProps = {

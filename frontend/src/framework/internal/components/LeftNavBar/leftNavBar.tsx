@@ -3,7 +3,7 @@ import type React from "react";
 import { Link, List, Palette, Tune } from "@mui/icons-material";
 
 import { GuiState, LeftDrawerContent, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
-import { DashboardTopic } from "@framework/internal/Dashboard";
+import { DashboardTopic } from "@framework/internal/Dashboard/Dashboard";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
 import type { Workbench } from "@framework/Workbench";
 import { WorkbenchSessionTopic } from "@framework/WorkbenchSession";

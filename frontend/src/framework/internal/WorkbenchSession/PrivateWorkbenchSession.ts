@@ -229,7 +229,7 @@ export class PrivateWorkbenchSession implements WorkbenchSession {
         this._isPersisted = this._id !== null;
         this._activeDashboardId = contentState.activeDashboardId;
 
-        this._publishSubscribeDelegate.withTransactionAsync(async () => {
+        await this._publishSubscribeDelegate.withTransactionAsync(async () => {
             this.clearDashboards();
 
             // We first have to load and setup the ensemble set before deserializing dashboards and modules.

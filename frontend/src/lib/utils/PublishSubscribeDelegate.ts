@@ -55,7 +55,10 @@ export class PublishSubscribeDelegate<TTopicPayloads extends TopicPayloads> {
         }
 
         for (const topic of pendingNotifications) {
-            this.notifySubscribers(topic);
+            const subscribers = this._subscribers.get(topic);
+            if (subscribers) {
+                subscribers.forEach((subscriber) => subscriber());
+            }
         }
     }
 
@@ -83,6 +86,14 @@ export class PublishSubscribeDelegate<TTopicPayloads extends TopicPayloads> {
      * @param topic The topic to notify to
      */
     notifySubscribers(topic: keyof TTopicPayloads): void {
+        if (this._transactionDepth > 0) {
+            if (!this._pendingNotifications) {
+                this._pendingNotifications = new Set();
+            }
+            this._pendingNotifications.add(topic);
+            return;
+        }
+
         const subscribers = this._subscribers.get(topic);
         if (subscribers) {
             subscribers.forEach((subscriber) => subscriber());

@@ -1,58 +1,97 @@
+import type { SerializedModuleInstanceState } from "@framework/ModuleInstance.schema";
+
 import type {
     UndoRedoGeneratorContext,
     UndoRedoGeneratorImpl,
     UndoRedoGeneratorTools,
 } from "../UndoRedo/UndoRedoGenerator";
 
-import { DashboardTopic, type Dashboard } from "./Dashboard";
+import { DashboardTopic, type Dashboard, type LayoutElement } from "./Dashboard";
 import { DashboardActiveModuleCommand } from "./DashboardActiveModuleCommand";
-import { DashboardLayoutCommand } from "./DashboardLayoutCommand";
-import type { DashboardActiveModuleHistoryState, DashboardLayoutHistoryState } from "./types";
+import { DashboardLayoutPatchCommand } from "./DashboardLayoutPatchCommand";
+import { diffLayout, isEmptyPatch } from "./helpers";
+import type { DashboardActiveModuleHistoryState } from "./types";
+
+export type RemovedModuleCache = Map<
+    string,
+    { moduleState: SerializedModuleInstanceState; layoutBefore: LayoutElement }
+>;
 
 export class DashboardUndoRedoGeneratorImpl implements UndoRedoGeneratorImpl {
     private _dashboard: Dashboard;
-    private _layoutBaseline: DashboardLayoutHistoryState | null = null;
+
+    private _layoutBaseline: LayoutElement[] | null = null;
     private _activeBaseline: DashboardActiveModuleHistoryState | null = null;
 
     private _layoutDebounce: ReturnType<typeof setTimeout> | null = null;
+
+    private _removedStateCache: RemovedModuleCache = new Map(); // moduleInstanceId -> state/layout before removal, used to enrich the patch with moduleState for removed instances
 
     constructor(dashboard: Dashboard) {
         this._dashboard = dashboard;
     }
 
     onAttach(context: UndoRedoGeneratorContext, tools: UndoRedoGeneratorTools) {
+        const isBlocked = () => tools.isPaused() || context.isReplaying();
+
         // Prime baselines
-        this._layoutBaseline = this.captureLayout();
+        this._layoutBaseline = this.captureLayoutOnly();
         this._activeBaseline = this.captureActive();
 
-        // Layout changes (includes add/remove *if* those update layout)
+        const scheduleLayoutCheck = () => {
+            if (isBlocked()) return;
+
+            if (this._layoutDebounce) clearTimeout(this._layoutDebounce);
+            this._layoutDebounce = setTimeout(() => {
+                this._layoutDebounce = null;
+                if (isBlocked()) return; // <- critical for debounce-after-replay
+                this.maybePushLayoutPatch(tools.push);
+            }, 150);
+        };
+
         tools.unsubs.registerUnsubscribeFunction(
             `dash-${this._dashboard.getId()}-layout`,
-            this._dashboard.getPublishSubscribeDelegate().makeSubscriberFunction(DashboardTopic.LAYOUT)(() => {
-                if (tools.isPaused() || context.isReplaying()) return;
+            this._dashboard.getPublishSubscribeDelegate().makeSubscriberFunction(DashboardTopic.LAYOUT)(
+                scheduleLayoutCheck,
+            ),
+        );
 
-                if (this._layoutDebounce) clearTimeout(this._layoutDebounce);
-                this._layoutDebounce = setTimeout(() => {
-                    this._layoutDebounce = null;
-                    this.maybePushLayout(tools.push.bind(tools));
-                }, 150);
+        tools.unsubs.registerUnsubscribeFunction(
+            `dash-${this._dashboard.getId()}-about-to-remove`,
+            this._dashboard
+                .getPublishSubscribeDelegate()
+                .makeSubscriberFunction(DashboardTopic.MODULE_INSTANCE_ABOUT_TO_BE_REMOVED)(() => {
+                const id = this._dashboard.makeSnapshotGetter(DashboardTopic.MODULE_INSTANCE_ABOUT_TO_BE_REMOVED)();
+                if (!id) return;
+
+                const mi = this._dashboard.getModuleInstance(id);
+                const layoutBefore = this._dashboard.getLayout().find((el) => el.moduleInstanceId === id);
+                if (!mi || !layoutBefore) return;
+
+                this._removedStateCache.set(id, {
+                    moduleState: mi.serializeState(),
+                    layoutBefore: { ...layoutBefore },
+                });
             }),
         );
 
-        // Active module changes (no debounce)
+        // Optional robustness: structural changes
+        tools.unsubs.registerUnsubscribeFunction(
+            `dash-${this._dashboard.getId()}-modules`,
+            this._dashboard.getPublishSubscribeDelegate().makeSubscriberFunction(DashboardTopic.MODULE_INSTANCES)(
+                scheduleLayoutCheck,
+            ),
+        );
+
         tools.unsubs.registerUnsubscribeFunction(
             `dash-${this._dashboard.getId()}-active`,
             this._dashboard
                 .getPublishSubscribeDelegate()
                 .makeSubscriberFunction(DashboardTopic.ACTIVE_MODULE_INSTANCE_ID)(() => {
-                if (tools.isPaused() || context.isReplaying()) return;
-                this.maybePushActive(tools.push.bind(tools));
+                if (isBlocked()) return;
+                this.maybePushActive(tools.push);
             }),
         );
-
-        // Optional: if you later discover module add/remove can happen before layout is updated,
-        // you can also subscribe to MODULE_INSTANCES to trigger maybePushLayout.
-        // (Often not needed if layout is updated as part of add/remove.)
     }
 
     onDetach() {
@@ -62,62 +101,51 @@ export class DashboardUndoRedoGeneratorImpl implements UndoRedoGeneratorImpl {
         }
     }
 
-    private captureLayout(): DashboardLayoutHistoryState {
-        // IMPORTANT: copy elements so future mutations don’t mutate baseline
-        const layout = this._dashboard.getLayout().map((el) => ({ ...el }));
-        return { layout };
+    private captureLayoutOnly(): LayoutElement[] {
+        // Clone to avoid mutation issues
+        return this._dashboard.getLayout().map((el) => ({
+            ...el,
+            minimized: el.minimized ?? false,
+            maximized: el.maximized ?? false,
+        }));
     }
 
     private captureActive(): DashboardActiveModuleHistoryState {
         return { activeModuleInstanceId: this._dashboard.getActiveModuleInstanceId() };
     }
 
-    private maybePushLayout(push: (cmd: any) => void) {
-        const next = this.captureLayout();
+    private maybePushLayoutPatch(push: (cmd: any) => void) {
+        const nextLayout = this.captureLayoutOnly();
+
         if (!this._layoutBaseline) {
-            this._layoutBaseline = next;
+            this._layoutBaseline = nextLayout;
             return;
         }
 
-        // Cheap compare: if same length and all elements equal => skip
-        if (isSameLayout(this._layoutBaseline.layout, next.layout)) return;
+        // Generate minimal patch + capture moduleState only for removed ids
+        const patch = diffLayout(this._layoutBaseline, nextLayout, this._dashboard);
 
-        push(new DashboardLayoutCommand(this._dashboard, this._layoutBaseline, next));
-        this._layoutBaseline = next;
+        if (isEmptyPatch(patch)) {
+            // Still update baseline so we don’t re-diff against stale refs/order
+            this._layoutBaseline = nextLayout;
+            return;
+        }
+
+        push(new DashboardLayoutPatchCommand(this._dashboard, patch));
+        this._layoutBaseline = nextLayout;
     }
 
     private maybePushActive(push: (cmd: any) => void) {
         const next = this.captureActive();
+
         if (!this._activeBaseline) {
             this._activeBaseline = next;
             return;
         }
+
         if (this._activeBaseline.activeModuleInstanceId === next.activeModuleInstanceId) return;
 
         push(new DashboardActiveModuleCommand(this._dashboard, this._activeBaseline, next));
         this._activeBaseline = next;
     }
-}
-
-function isSameLayout(a: any[], b: any[]): boolean {
-    if (a === b) return true;
-    if (a.length !== b.length) return false;
-
-    for (let i = 0; i < a.length; i++) {
-        const x = a[i]!;
-        const y = b[i]!;
-        if (
-            x.moduleInstanceId !== y.moduleInstanceId ||
-            x.moduleName !== y.moduleName ||
-            x.relX !== y.relX ||
-            x.relY !== y.relY ||
-            x.relWidth !== y.relWidth ||
-            x.relHeight !== y.relHeight ||
-            (x.minimized ?? false) !== (y.minimized ?? false) ||
-            (x.maximized ?? false) !== (y.maximized ?? false)
-        ) {
-            return false;
-        }
-    }
-    return true;
 }

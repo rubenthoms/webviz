@@ -1,20 +1,18 @@
+import { getDeltaSurfaceDataOptions } from "@api";
 import { SurfaceAddressBuilder } from "@modules/_shared/Surface";
-import {
-    DepthSurfaceProvider,
-    SurfaceProviderMeta,
-} from "../../dataProviders/implementations/surfaceProviders/DepthSurfaceProvider";
+import { transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
+import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
+
+import type { SurfaceProviderMeta } from "../../dataProviders/implementations/surfaceProviders/DepthSurfaceProvider";
+import { DepthSurfaceProvider } from "../../dataProviders/implementations/surfaceProviders/DepthSurfaceProvider";
+import { SurfaceDataFormat, type SurfaceData } from "../../dataProviders/implementations/surfaceProviders/types";
+import type { ProviderSnapshot } from "../../interfacesAndTypes/customDataProviderImplementation";
 import type {
     CustomOperationGroupImplementation,
     FetchParams,
     OperationGroupInformationAccessors,
 } from "../../interfacesAndTypes/customOperationGroupImplementation";
 import { Representation } from "../../settings/implementations/RepresentationSetting";
-import { encodeSurfAddrStr } from "@modules/_shared/Surface/surfaceAddress";
-import { getDeltaSurfaceDataOptions } from "@api";
-import { transformSurfaceData } from "@modules/_shared/Surface/queryDataTransforms";
-import { SurfaceDataFormat, type SurfaceData } from "../../dataProviders/implementations/surfaceProviders/types";
-import { ColorScaleSpecification } from "@framework/components/ColorScaleSelector/colorScaleSelector";
-import { ProviderSnapshot } from "../../interfacesAndTypes/customDataProviderImplementation";
 
 const SUPPORTED_DATA_PROVIDER_IMPLEMENTATIONS = [DepthSurfaceProvider];
 type SupportedDataProviderImplementations = typeof SUPPORTED_DATA_PROVIDER_IMPLEMENTATIONS;

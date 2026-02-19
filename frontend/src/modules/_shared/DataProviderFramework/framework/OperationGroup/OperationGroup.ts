@@ -32,8 +32,8 @@ import type { DataProvider } from "../DataProvider/DataProvider";
 import { isDataProvider } from "../DataProvider/DataProvider";
 import type { DataProviderManager } from "../DataProviderManager/DataProviderManager";
 import type { SettingManager } from "../SettingManager/SettingManager";
-import { makeSettings } from "../utils/makeSettings";
 import { isSharedSetting } from "../SharedSetting/SharedSetting";
+import { makeSettings } from "../utils/makeSettings";
 
 export enum OperationGroupTopic {
     OPERATION = "operation",
@@ -471,7 +471,7 @@ export class OperationGroup<
                 continue;
             }
 
-            const prefix = index === 0 ? "(Minuend) " : "(Subtrahend)";
+            const prefix = index === 0 ? "(A) " : "(B)";
 
             child.setIsSubordinated(true, prefix);
             this._childrenDataProviderArray.push(child);

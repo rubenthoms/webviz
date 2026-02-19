@@ -215,7 +215,12 @@ export function OperationGroupComponent(props: OperationGroupComponentProps): Re
                     <VisibilityToggle item={props.operationGroup} />
                 </div>
             }
-            endAdornment={<>{makeEndAdornment()}</>}
+            endAdornment={
+                <>
+                    <span className="whitespace-nowrap">(A-B)</span>
+                    {makeEndAdornment()}
+                </>
+            }
             contentWhenEmpty={<EmptyContent>{makePlaceholder()}</EmptyContent>}
             expanded={isExpanded}
             content={

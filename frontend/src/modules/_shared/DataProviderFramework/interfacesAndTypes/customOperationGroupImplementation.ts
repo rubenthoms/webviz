@@ -168,6 +168,8 @@ export interface CustomOperationGroupImplementation<
 
     getName(): string;
 
+    makeReadableOperationString(elems: string[]): string;
+
     fetchData(params: FetchParams<TSupportedDataProviderImplementations>): Promise<TData>;
 
     /**

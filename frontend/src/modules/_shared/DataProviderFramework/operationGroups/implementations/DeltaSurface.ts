@@ -28,6 +28,13 @@ export class DeltaSurface
         return "Delta Surface";
     }
 
+    makeReadableOperationString(elems: string[]): string {
+        if (elems.length !== 2) {
+            return "";
+        }
+        return `${elems[0]} - ${elems[1]}`;
+    }
+
     async fetchData(params: FetchParams<SupportedDataProviderImplementations>): Promise<SurfaceData> {
         const addresses: string[] = [];
         const addrBuilder = new SurfaceAddressBuilder();

@@ -49,6 +49,10 @@ export function OperationGroupComponent(props: OperationGroupComponentProps): Re
     const status = usePublishSubscribeTopicValue(props.operationGroup, OperationGroupTopic.STATUS);
     const progressMessage = usePublishSubscribeTopicValue(props.operationGroup, OperationGroupTopic.PROGRESS_MESSAGE);
     const errorMessage = usePublishSubscribeTopicValue(props.operationGroup, OperationGroupTopic.ERROR_MESSAGE);
+    const readableOperationString = usePublishSubscribeTopicValue(
+        props.operationGroup,
+        OperationGroupTopic.READABLE_OPERATION_STRING,
+    );
 
     let color = props.operationGroup.getGroupDelegate().getColor();
     if (status === OperationGroupStatus.ERROR) {
@@ -217,7 +221,7 @@ export function OperationGroupComponent(props: OperationGroupComponentProps): Re
             }
             endAdornment={
                 <>
-                    <span className="whitespace-nowrap">(A-B)</span>
+                    <span className="whitespace-nowrap">{readableOperationString}</span>
                     {makeEndAdornment()}
                 </>
             }

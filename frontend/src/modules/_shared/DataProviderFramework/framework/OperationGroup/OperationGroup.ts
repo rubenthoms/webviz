@@ -1,6 +1,7 @@
 import type { FetchQueryOptions, QueryKey } from "@tanstack/query-core";
 
 import type { StatusMessage } from "@framework/ModuleInstanceStatusController";
+import { getAlphabetLetter } from "@lib/utils/alphabet";
 import { isDevMode } from "@lib/utils/devMode";
 import { PublishSubscribeDelegate, type PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
 import { ScopedQueryController } from "@lib/utils/ScopedQueryController";
@@ -40,6 +41,7 @@ export enum OperationGroupTopic {
     STATUS = "status",
     ERROR_MESSAGE = "error-message",
     PROGRESS_MESSAGE = "progress-message",
+    READABLE_OPERATION_STRING = "readable-operation-string",
 }
 
 export enum OperationGroupStatus {
@@ -59,6 +61,7 @@ export type OperationGroupPayloads = {
     [OperationGroupTopic.STATUS]: OperationGroupStatus;
     [OperationGroupTopic.ERROR_MESSAGE]: StatusMessage | string | null;
     [OperationGroupTopic.PROGRESS_MESSAGE]: string | null;
+    [OperationGroupTopic.READABLE_OPERATION_STRING]: string;
 };
 
 export function isOperationGroup(obj: any): obj is OperationGroup<any, any> {
@@ -117,6 +120,7 @@ export class OperationGroup<
     private _type: OperationGroupType;
     private _operation: Operation;
     private _status: OperationGroupStatus = OperationGroupStatus.IDLE;
+    private _readableOperationString: string = "";
 
     private _error: StatusMessage | string | null = null;
     private _currentTransactionId: number = 0;
@@ -341,6 +345,9 @@ export class OperationGroup<
             if (topic === OperationGroupTopic.ERROR_MESSAGE) {
                 return this.getError();
             }
+            if (topic === OperationGroupTopic.READABLE_OPERATION_STRING) {
+                return this._readableOperationString;
+            }
             throw new Error(`Unknown topic: ${topic}`);
         };
 
@@ -456,9 +463,15 @@ export class OperationGroup<
         return false;
     }
 
+    private updateReadableOperationString(children: string[]): void {
+        this._readableOperationString = this._customOperationGroupImplementation.makeReadableOperationString(children);
+        this._publishSubscribeDelegate.notifySubscribers(OperationGroupTopic.READABLE_OPERATION_STRING);
+    }
+
     private handleChildrenChange(): void {
         this.clear();
         let index = 0;
+        const childPrefixes: string[] = [];
 
         for (const child of this._groupDelegate.getChildren()) {
             if (!isDataProvider(child) && !isSharedSetting(child)) {
@@ -471,7 +484,8 @@ export class OperationGroup<
                 continue;
             }
 
-            const prefix = index === 0 ? "(A) " : "(B)";
+            const prefix = getAlphabetLetter(index);
+            childPrefixes.push(prefix);
 
             child.setIsSubordinated(true, prefix);
             this._childrenDataProviderArray.push(child);
@@ -516,6 +530,7 @@ export class OperationGroup<
             index++;
         }
 
+        this.updateReadableOperationString(childPrefixes);
         this.handleSettingsAndStoredDataChange();
     }
 

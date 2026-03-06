@@ -6,6 +6,7 @@ import { NavigationManager } from "./internal/NavigationManager";
 import { PrivateWorkbenchServices } from "./internal/PrivateWorkbenchServices";
 import { WorkbenchSessionManager } from "./internal/WorkbenchSession/WorkbenchSessionManager";
 import type { WorkbenchServices } from "./WorkbenchServices";
+import { ActionBarService } from "./internal/ActionBarService";
 
 /**
  * Main workbench coordinator.
@@ -24,6 +25,7 @@ export class Workbench {
     private readonly _queryClient: QueryClient;
     private readonly _sessionManager: WorkbenchSessionManager;
     private readonly _navigationManager: NavigationManager;
+    private readonly _actionBarService: ActionBarService;
     private _isInitialized: boolean = false;
 
     constructor(queryClient: QueryClient) {
@@ -32,6 +34,7 @@ export class Workbench {
         this._hoverService = new HoverService();
         this._guiMessageBroker = new GuiMessageBroker();
         this._sessionManager = new WorkbenchSessionManager(this, queryClient, this._guiMessageBroker);
+        this._actionBarService = new ActionBarService();
 
         // Create NavigationManager instance and register callbacks
         this._navigationManager = new NavigationManager();
@@ -57,6 +60,10 @@ export class Workbench {
 
     getGuiMessageBroker(): GuiMessageBroker {
         return this._guiMessageBroker;
+    }
+
+    getActionBarService(): ActionBarService {
+        return this._actionBarService;
     }
 
     getNavigationManager(): NavigationManager {

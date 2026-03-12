@@ -57,24 +57,6 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
         [props.group],
     );
 
-    function makeSetting(setting: SettingManager<any>) {
-        const manager = props.group.getItemDelegate().getDataProviderManager();
-        if (!manager) {
-            return null;
-        }
-        return (
-            <SettingManagerComponent key={setting.getId()} setting={setting} manager={manager} sharedSetting={false} />
-        );
-    }
-
-    function makeSettings(settings: SettingManager<any>[]): React.ReactNode[] {
-        const settingNodes: React.ReactNode[] = [];
-        for (const setting of settings) {
-            settingNodes.push(makeSetting(setting));
-        }
-        return settingNodes;
-    }
-
     function makeEndAdornment() {
         const adornments: React.ReactNode[] = [];
         adornments.push(<GroupErrorBadge key="error-badge" group={props.group} />);
@@ -116,12 +98,18 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
             endAdornment={<>{makeEndAdornment()}</>}
             contentWhenEmpty={<EmptyContent>{emptyContentMessage}</EmptyContent>}
             content={
+<<<<<<< Updated upstream
                 sharedSettingsDelegate ? (
                     <div className="relative">
                         <ErrorOverlay itemDelegate={props.group.getItemDelegate()} isExpanded={isExpanded} />
                         <div className="!bg-slate-100 border text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
                             {makeSettings(Object.values(props.group.getWrappedSettings()))}
                         </div>
+=======
+                props.group.getSharedSettingsDelegate() ? (
+                    <div className="!bg-slate-100 border text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
+                        <GroupSettingsContent group={props.group} />
+>>>>>>> Stashed changes
                     </div>
                 ) : undefined
             }
@@ -131,6 +119,23 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
             )}
         </SortableListGroup>
     );
+}
+
+function GroupSettingsContent(props: { group: Group<any, any> }): React.ReactNode {
+    const sharedSettingsDelegate = props.group.getSharedSettingsDelegate()!;
+    const isDependencyTreeSetupDone = usePublishSubscribeTopicValue(
+        sharedSettingsDelegate,
+        SharedSettingsDelegateTopic.DEPENDENCY_TREE_SETUP_DONE,
+    );
+
+    const manager = props.group.getItemDelegate().getDataProviderManager();
+    if (!manager || !isDependencyTreeSetupDone) {
+        return null;
+    }
+
+    return Object.values(props.group.getWrappedSettings()).map((setting: SettingManager<any>) => (
+        <SettingManagerComponent key={setting.getId()} setting={setting} manager={manager} sharedSetting={false} />
+    ));
 }
 
 function StatusMessagesWrapper(props: { settingsDelegate: SharedSettingsDelegate<any, any> }) {

@@ -22,11 +22,13 @@ import { Dependency } from "./_utils/Dependency";
 export enum SharedSettingsDelegateTopic {
     SETTINGS_CHANGED = "SETTINGS_CHANGED",
     STATUS_MESSAGES = "STATUS_MESSAGES",
+    DEPENDENCY_TREE_SETUP_DONE = "DEPENDENCY_TREE_SETUP_DONE",
 }
 
 export type SharedSettingsDelegatePayloads = {
     [SharedSettingsDelegateTopic.SETTINGS_CHANGED]: void;
     [SharedSettingsDelegateTopic.STATUS_MESSAGES]: readonly StatusMessage[];
+    [SharedSettingsDelegateTopic.DEPENDENCY_TREE_SETUP_DONE]: boolean;
 };
 
 export class SharedSettingsDelegate<
@@ -47,6 +49,7 @@ export class SharedSettingsDelegate<
     private _unsubscribeFunctionsManagerDelegate: UnsubscribeFunctionsManagerDelegate =
         new UnsubscribeFunctionsManagerDelegate();
     private _dependencies: Dependency<any, TSettings, any, any>[] = [];
+    private _dependencyTreeSetupDone: boolean = false;
     private _parentItem: Item;
     private _customDependenciesDefinition:
         | ((args: DefineBasicDependenciesArgs<TSettings, TSettingTypes, TSettingKey>) => void)
@@ -101,6 +104,10 @@ export class SharedSettingsDelegate<
         return this._dependencyStatusMessages;
     }
 
+    isDependencyTreeSetupDone(): boolean {
+        return this._dependencyTreeSetupDone;
+    }
+
     makeSnapshotGetter<T extends SharedSettingsDelegateTopic>(topic: T): () => SharedSettingsDelegatePayloads[T] {
         const snapshotGetter = (): any => {
             if (topic === SharedSettingsDelegateTopic.SETTINGS_CHANGED) {
@@ -108,6 +115,9 @@ export class SharedSettingsDelegate<
             }
             if (topic === SharedSettingsDelegateTopic.STATUS_MESSAGES) {
                 return this._dependencyStatusMessages;
+            }
+            if (topic === SharedSettingsDelegateTopic.DEPENDENCY_TREE_SETUP_DONE) {
+                return this._dependencyTreeSetupDone;
             }
         };
 
@@ -306,7 +316,6 @@ export class SharedSettingsDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -333,7 +342,6 @@ export class SharedSettingsDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -350,7 +358,6 @@ export class SharedSettingsDelegate<
             this._dependencies.push(dependency);
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -365,6 +372,19 @@ export class SharedSettingsDelegate<
                 workbenchSession: dataProviderManager.getWorkbenchSession(),
                 workbenchSettings: dataProviderManager.getWorkbenchSettings(),
                 queryClient: dataProviderManager.getQueryClient(),
+            });
+        }
+
+        if (this._dependencies.length === 0) {
+            this._dependencyTreeSetupDone = true;
+            this._publishSubscribeDelegate.notifySubscribers(SharedSettingsDelegateTopic.DEPENDENCY_TREE_SETUP_DONE);
+        } else {
+            const initPromises = this._dependencies.map((d) => d.initialize());
+            Promise.all(initPromises).then(() => {
+                this._dependencyTreeSetupDone = true;
+                this._publishSubscribeDelegate.notifySubscribers(
+                    SharedSettingsDelegateTopic.DEPENDENCY_TREE_SETUP_DONE,
+                );
             });
         }
     }

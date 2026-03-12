@@ -33,12 +33,14 @@ export enum SettingsContextDelegateTopic {
     SETTINGS_AND_STORED_DATA_CHANGED = "SETTINGS_AND_STORED_DATA_CHANGED",
     STATUS = "STATUS",
     STATUS_MESSAGES = "STATUS_MESSAGES",
+    DEPENDENCY_TREE_SETUP_DONE = "DEPENDENCY_TREE_SETUP_DONE",
 }
 
 export type SettingsContextDelegatePayloads = {
     [SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED]: void;
     [SettingsContextDelegateTopic.STATUS]: SettingsContextStatus;
     [SettingsContextDelegateTopic.STATUS_MESSAGES]: readonly StatusMessage[];
+    [SettingsContextDelegateTopic.DEPENDENCY_TREE_SETUP_DONE]: boolean;
 };
 
 export interface FetchDataFunction<TSettings extends Settings, TKey extends keyof TSettings> {
@@ -87,6 +89,7 @@ export class SettingsContextDelegate<
         [K in TStoredDataKey]: boolean;
     };
     private _dependencies: Dependency<any, TSettings, any, any>[] = [];
+    private _dependencyTreeSetupDone: boolean = false;
 
     private _dependencyStatusMessages: StatusMessage[] = [];
 
@@ -265,6 +268,10 @@ export class SettingsContextDelegate<
         return this._storedData[key];
     }
 
+    isDependencyTreeSetupDone(): boolean {
+        return this._dependencyTreeSetupDone;
+    }
+
     makeSnapshotGetter<T extends SettingsContextDelegateTopic>(topic: T): () => SettingsContextDelegatePayloads[T] {
         const snapshotGetter = (): any => {
             if (topic === SettingsContextDelegateTopic.SETTINGS_AND_STORED_DATA_CHANGED) {
@@ -275,6 +282,9 @@ export class SettingsContextDelegate<
             }
             if (topic === SettingsContextDelegateTopic.STATUS_MESSAGES) {
                 return this._dependencyStatusMessages;
+            }
+            if (topic === SettingsContextDelegateTopic.DEPENDENCY_TREE_SETUP_DONE) {
+                return this._dependencyTreeSetupDone;
             }
         };
 
@@ -433,7 +443,6 @@ export class SettingsContextDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -464,7 +473,6 @@ export class SettingsContextDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -506,7 +514,6 @@ export class SettingsContextDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -527,7 +534,6 @@ export class SettingsContextDelegate<
             });
 
             this.subscribeToDependencyStatusMessages(dependency);
-            dependency.initialize();
 
             return dependency;
         };
@@ -541,6 +547,19 @@ export class SettingsContextDelegate<
                 workbenchSession: this.getDataProviderManager().getWorkbenchSession(),
                 workbenchSettings: this.getDataProviderManager().getWorkbenchSettings(),
                 queryClient: this.getDataProviderManager().getQueryClient(),
+            });
+        }
+
+        if (this._dependencies.length === 0) {
+            this._dependencyTreeSetupDone = true;
+            this._publishSubscribeDelegate.notifySubscribers(SettingsContextDelegateTopic.DEPENDENCY_TREE_SETUP_DONE);
+        } else {
+            const initPromises = this._dependencies.map((d) => d.initialize());
+            Promise.all(initPromises).then(() => {
+                this._dependencyTreeSetupDone = true;
+                this._publishSubscribeDelegate.notifySubscribers(
+                    SettingsContextDelegateTopic.DEPENDENCY_TREE_SETUP_DONE,
+                );
             });
         }
     }

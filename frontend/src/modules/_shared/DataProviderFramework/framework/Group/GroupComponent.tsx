@@ -98,18 +98,12 @@ export function GroupComponent(props: GroupComponentProps): React.ReactNode {
             endAdornment={<>{makeEndAdornment()}</>}
             contentWhenEmpty={<EmptyContent>{emptyContentMessage}</EmptyContent>}
             content={
-<<<<<<< Updated upstream
                 sharedSettingsDelegate ? (
                     <div className="relative">
                         <ErrorOverlay itemDelegate={props.group.getItemDelegate()} isExpanded={isExpanded} />
                         <div className="!bg-slate-100 border text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
-                            {makeSettings(Object.values(props.group.getWrappedSettings()))}
+                            <GroupSettingsContent group={props.group} />
                         </div>
-=======
-                props.group.getSharedSettingsDelegate() ? (
-                    <div className="!bg-slate-100 border text-xs gap-2 grid grid-cols-[auto_1fr] items-center">
-                        <GroupSettingsContent group={props.group} />
->>>>>>> Stashed changes
                     </div>
                 ) : undefined
             }

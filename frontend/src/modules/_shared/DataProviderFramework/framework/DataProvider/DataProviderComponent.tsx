@@ -62,7 +62,6 @@ export function DataProviderComponent(props: DataProviderComponentProps): React.
             startAdornment={<StartActions dataProvider={props.dataProvider} />}
             endAdornment={<EndActions dataProvider={props.dataProvider} />}
         >
-<<<<<<< Updated upstream
             <div className="relative">
                 <ErrorOverlay itemDelegate={props.dataProvider.getItemDelegate()} isExpanded={isExpanded} />
                 <div
@@ -73,19 +72,9 @@ export function DataProviderComponent(props: DataProviderComponentProps): React.
                         },
                     )}
                 >
-                    {makeSettings(props.dataProvider.getSettingsContextDelegate().getSettings())}
+                    {isDependencyTreeSetupDone &&
+                        makeSettings(props.dataProvider.getSettingsContextDelegate().getSettings())}
                 </div>
-=======
-            <div
-                className={resolveClassNames(
-                    "grid grid-cols-[auto_1fr] items-stretch text-xs border [&>*:nth-child(4n-3)]:bg-slate-50 [&>*:nth-child(4n-2)]:bg-slate-50",
-                    {
-                        hidden: !isExpanded,
-                    },
-                )}
-            >
-                {isDependencyTreeSetupDone && makeSettings(props.dataProvider.getSettingsContextDelegate().getSettings())}
->>>>>>> Stashed changes
             </div>
         </SortableListItem>
     );

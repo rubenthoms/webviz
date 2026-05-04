@@ -49,7 +49,8 @@ export function Settings(): React.ReactNode {
     const isPercentileRange = plotType === PlotType.PercentileRange;
     const supportsStatisticalMarkers = plotType === PlotType.Bar;
     const supportsBarLabels = plotType === PlotType.Bar;
-    const supportsMemberPoints = isHistogram || isPercentileRange || plotType === PlotType.Density || plotType === PlotType.Exceedance;
+    const supportsMemberPoints =
+        isHistogram || isPercentileRange || plotType === PlotType.Density || plotType === PlotType.Exceedance;
     const supportsColorByParameter = isTimeseries || isScatter;
     const supportsDistributionColorByParameter = supportsMemberPoints;
 
@@ -106,7 +107,7 @@ export function Settings(): React.ReactNode {
                     <Label text={`Timesteps: ${numTimesteps}`}>
                         <Slider
                             min={50}
-                            max={1000}
+                            max={20000}
                             step={50}
                             value={numTimesteps}
                             onChange={(_, v) => setDataConfig((prev) => ({ ...prev, numTimesteps: v as number }))}

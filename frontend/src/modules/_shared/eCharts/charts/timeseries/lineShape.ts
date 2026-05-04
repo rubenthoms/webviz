@@ -49,3 +49,37 @@ export function makeSteppedCategoryCoords(values: number[], step: "start" | "end
     }
     return points;
 }
+
+/**
+ * Generate `[timestamp, value]` coordinate pairs for a time axis, equivalent
+ * to `makeSteppedCategoryCoords` but using actual timestamps as the x coordinate.
+ */
+export function makeSteppedTimeCoords(timestamps: number[], values: number[], step: "start" | "end" | null): number[][] {
+    const numValues = values.length;
+    const points: number[][] = [];
+    if (numValues === 0) return points;
+
+    if (step === null) {
+        for (let index = 0; index < numValues; index++) {
+            points.push([timestamps[index], values[index]]);
+        }
+        return points;
+    }
+
+    if (step === "end") {
+        points.push([timestamps[0], values[0]]);
+        for (let index = 1; index < numValues; index++) {
+            points.push([timestamps[index], values[index - 1]]);
+            points.push([timestamps[index], values[index]]);
+        }
+        return points;
+    }
+
+    // step === "start"
+    points.push([timestamps[0], values[0]]);
+    for (let index = 1; index < numValues; index++) {
+        points.push([timestamps[index - 1], values[index]]);
+        points.push([timestamps[index], values[index]]);
+    }
+    return points;
+}

@@ -23,11 +23,12 @@ import { generateTimeseriesGroups, generateTimeseriesOverlays } from "../../util
 import { createHoveredSeriesStore, HoveredSeriesReadout } from "../hoveredSeriesReadout";
 
 import { makeBaseOptions, type RecipeProps } from "./types";
+import { buildTimeseriesTimeChart } from "@modules/_shared/eCharts/charts/timeseries";
 
 const MEMBER_LABEL = "Member";
 const ROW_HEIGHT_PX = 350;
 
-export function TimeseriesRecipe({
+export function TimeseriesTimeRecipe({
     viewContext,
     scrollMode,
     numSubplots,
@@ -73,11 +74,12 @@ export function TimeseriesRecipe({
             showReferenceLines: tsConfig.showReferenceLines,
             showPointAnnotations: tsConfig.showPointAnnotations,
             selectedStatistics: tsConfig.selectedStatistics,
+            largeMemberPointBudget: 10000000000,
         };
         const base = makeBaseOptions({ layoutConfig, appliedZoomState });
 
         return {
-            echartsOptions: buildTimeseriesChart(groups, {
+            echartsOptions: buildTimeseriesTimeChart(groups, {
                 ...base,
                 subplotOverlays: overlays,
                 displayConfig,

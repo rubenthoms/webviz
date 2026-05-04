@@ -108,6 +108,13 @@ export interface TimeseriesDisplayConfig {
      * (no per-line interaction). Defaults to 100 000.
      */
     largeMemberPointBudget?: number;
+    /**
+     * Maximum number of timestamps rendered in the visible window.
+     * When the visible range has more points than this limit the data is
+     * LTTB-resampled before being passed to ECharts, keeping the visual
+     * shape of every line intact. Defaults to 500.
+     */
+    resampleTargetCount?: number;
 }
 
 export interface MemberScatterTrace {

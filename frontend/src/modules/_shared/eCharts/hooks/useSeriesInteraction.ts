@@ -255,7 +255,7 @@ function handlePointerMove(
 
     applyHighlight(instance, target.matchingSeriesIndices);
 
-    if (interactionIndex.resolutionMode === "timeseries" && timestampUtcMs !== undefined) {
+    if ((interactionIndex.resolutionMode === "timeseries" || interactionIndex.resolutionMode === "timeseries-time") && timestampUtcMs !== undefined) {
         instance.dispatchAction({ type: "updateAxisPointer", currTrigger: "mousemove", x: pixelX, y: pixelY });
         instance.dispatchAction({
             type: "showTip",
@@ -289,7 +289,7 @@ function resolveTimeseriesTimestampUtcMs(
     entry: InteractionSeriesEntry,
     dataIndex: number,
 ): number | undefined {
-    if (interactionIndex.resolutionMode !== "timeseries") return undefined;
+    if (interactionIndex.resolutionMode !== "timeseries" && interactionIndex.resolutionMode !== "timeseries-time") return undefined;
     const timestampUtcMs = entry.xValues[dataIndex];
     return Number.isFinite(timestampUtcMs) ? timestampUtcMs : undefined;
 }

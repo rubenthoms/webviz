@@ -8,11 +8,12 @@ import type {
 import { makeInteractionLookupKey } from "../../interaction";
 import type { SubplotGroup, TimeseriesDisplayConfig, TimeseriesSubplotOverlays, TimeseriesTrace } from "../../types";
 
-import { buildMemberSeries } from "./memberSeries";
+import { buildMemberSeries, buildMemberSeriesTime } from "./memberSeries";
 import { buildMemberSeriesLarge } from "./memberSeriesLarge";
+import { buildMemberSeriesLargeTime } from "./memberSeriesLargeTime";
 import { buildPointAnnotationSeries } from "./pointAnnotationSeries";
 import { buildReferenceLineSeries } from "./referenceLineSeries";
-import { buildFanchartSeries, buildStatisticsSeries, formatStatisticLabel, getOrderedStatisticKeys } from "./statisticsSeries";
+import { buildFanchartSeries, buildFanchartSeriesTime, buildStatisticsSeries, buildStatisticsSeriesTime, formatStatisticLabel, getOrderedStatisticKeys } from "./statisticsSeries";
 
 type InteractionSeriesEntryWithoutMatches =
     | Omit<MemberSeriesInteractionEntry, "matchingSeriesIndices">
@@ -125,6 +126,88 @@ export function buildTimeseriesSubplotArtifacts(
         legendData,
         series,
     };
+}
+
+/** Time-axis variant: calls time-aware series builders; interaction entries are identical. */
+export function buildTimeseriesTimeSubplotArtifacts(
+    group: SubplotGroup<TimeseriesTrace>,
+    subplotOverlays: TimeseriesSubplotOverlays,
+    axisIndex: number,
+    config: TimeseriesDisplayConfig,
+    useLargeMemberSeries = false,
+): TimeseriesSubplotArtifacts {
+    const series: ChartSeriesOption[] = [];
+    const legendData: string[] = [];
+    const seenLegend = new Set<string>();
+    const interactionEntries: InteractionSeriesEntryDraft[] = [];
+    const axisTimestamps = group.traces.find((trace) => trace.timestamps.length > 0)?.timestamps ?? [];
+
+    let nextRelativeSeriesIndex = 0;
+
+    for (const trace of group.traces) {
+        if (config.showMembers && trace.memberValues) {
+            const memberResult = useLargeMemberSeries
+                ? buildMemberSeriesLargeTime(trace, axisIndex)
+                : buildMemberSeriesTime(trace, axisIndex);
+            appendSeriesBuildResult(series, legendData, seenLegend, memberResult);
+
+            if (!useLargeMemberSeries) {
+                appendMemberInteractionEntries(interactionEntries, trace, axisIndex, nextRelativeSeriesIndex);
+            }
+            nextRelativeSeriesIndex += memberResult.series.length;
+        }
+
+        if (config.showStatistics && trace.statistics) {
+            const statisticsResult = buildStatisticsSeriesTime(trace, config.selectedStatistics, axisIndex);
+            appendSeriesBuildResult(series, legendData, seenLegend, statisticsResult);
+            appendStatisticInteractionEntries(
+                interactionEntries,
+                trace,
+                axisIndex,
+                nextRelativeSeriesIndex,
+                config.selectedStatistics,
+            );
+            nextRelativeSeriesIndex += statisticsResult.series.length;
+        }
+
+        if (config.showFanchart && trace.statistics) {
+            const fanchartResult = buildFanchartSeriesTime(trace, config.selectedStatistics, axisIndex);
+            appendSeriesBuildResult(series, legendData, seenLegend, fanchartResult);
+            nextRelativeSeriesIndex += fanchartResult.series.length;
+        }
+    }
+
+    if (config.showReferenceLines) {
+        for (const referenceLineTrace of subplotOverlays.referenceLineTraces) {
+            const referenceLineResult = buildReferenceLineSeries(referenceLineTrace, axisIndex);
+            appendSeriesBuildResult(series, legendData, seenLegend, referenceLineResult);
+            appendReferenceLineInteractionEntry(
+                interactionEntries,
+                referenceLineTrace,
+                axisIndex,
+                nextRelativeSeriesIndex,
+                axisTimestamps,
+            );
+            nextRelativeSeriesIndex += referenceLineResult.series.length;
+        }
+    }
+
+    if (config.showPointAnnotations) {
+        for (const pointAnnotationTrace of subplotOverlays.pointAnnotationTraces) {
+            const pointAnnotationResult = buildPointAnnotationSeries(pointAnnotationTrace, axisIndex);
+            appendSeriesBuildResult(series, legendData, seenLegend, pointAnnotationResult);
+            appendPointAnnotationInteractionEntries(
+                interactionEntries,
+                pointAnnotationTrace,
+                axisIndex,
+                nextRelativeSeriesIndex,
+                axisTimestamps,
+            );
+            nextRelativeSeriesIndex += pointAnnotationResult.series.length;
+        }
+    }
+
+    return { axisTimestamps, interactionEntries, legendData, series };
 }
 
 function appendSeriesBuildResult(

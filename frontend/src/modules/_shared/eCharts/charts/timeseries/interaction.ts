@@ -2,7 +2,7 @@ import type { InteractionSeries, InteractionSeriesEntry } from "../../interactio
 import type { SubplotGroup, TimeseriesDisplayConfig, TimeseriesSubplotOverlays, TimeseriesTrace } from "../../types";
 
 import { shouldUseLargeMemberSeries } from "./builder";
-import { buildTimeseriesSubplotArtifacts } from "./subplotArtifacts";
+import { buildTimeseriesSubplotArtifacts, buildTimeseriesTimeSubplotArtifacts } from "./subplotArtifacts";
 
 type TimeseriesInteractionSeriesOptions = {
     displayConfig: TimeseriesDisplayConfig;
@@ -49,4 +49,39 @@ export function buildTimeseriesInteractionSeries(
     });
 
     return { matchingSeriesIndicesByKey, resolutionMode: "timeseries", seriesByAxisIndex };
+}
+
+export function buildTimeseriesTimeInteractionSeries(
+    subplotGroups: SubplotGroup<TimeseriesTrace>[],
+    options: TimeseriesInteractionSeriesOptions,
+): InteractionSeries {
+    const { displayConfig, subplotOverlays } = options;
+    const useLargeMemberSeries = shouldUseLargeMemberSeries(subplotGroups, displayConfig);
+    const matchingSeriesIndicesByKey = new Map<string, number[]>();
+    const seriesByAxisIndex = new Map<number, InteractionSeriesEntry[]>();
+    const nonEmptyGroupedData = subplotGroups
+        .map((group, index) => ({ group, overlays: subplotOverlays[index] }))
+        .filter((entry) => entry.group.traces.length > 0);
+
+    let nextSeriesIndex = 0;
+
+    nonEmptyGroupedData.forEach(function buildAxisInteractionSeries(entry, axisIndex) {
+        const subplotArtifacts = buildTimeseriesTimeSubplotArtifacts(entry.group, entry.overlays, axisIndex, displayConfig, useLargeMemberSeries);
+        const axisEntries: InteractionSeriesEntry[] = [];
+
+        subplotArtifacts.interactionEntries.forEach(function appendAxisInteractionEntry(draftEntry) {
+            const matchingSeriesIndices = matchingSeriesIndicesByKey.get(draftEntry.entry.interactionKey) ?? [];
+            const absoluteSeriesIndices = draftEntry.relativeSeriesIndices.map((seriesIndex) => nextSeriesIndex + seriesIndex);
+
+            matchingSeriesIndices.push(...absoluteSeriesIndices);
+            matchingSeriesIndicesByKey.set(draftEntry.entry.interactionKey, matchingSeriesIndices);
+
+            axisEntries.push({ ...draftEntry.entry, matchingSeriesIndices });
+        });
+
+        nextSeriesIndex += subplotArtifacts.series.length;
+        seriesByAxisIndex.set(axisIndex, axisEntries);
+    });
+
+    return { matchingSeriesIndicesByKey, resolutionMode: "timeseries-time", seriesByAxisIndex };
 }

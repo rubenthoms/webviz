@@ -44,7 +44,7 @@ export function resolveClosestSeriesEntry(
             }
 
             const closestPointAnnotation = findClosestPointAnnotationEntry(
-                instance, series, axisIndex, categoryIndex, pixelX, pixelY,
+                instance, series, axisIndex, categoryIndex, categoryIndex, pixelX, pixelY,
             );
             if (closestPointAnnotation) {
                 return {
@@ -60,6 +60,38 @@ export function resolveClosestSeriesEntry(
             return {
                 entry: closest,
                 dataIndex: categoryIndex,
+                matchingSeriesIndices: getMatchingSeriesIndices(interactionIndex, closest.interactionKey),
+            };
+        }
+
+        if (interactionIndex.resolutionMode === "timeseries-time") {
+            const timestampMs = Number(dataPoint[0]);
+            const cursorValue = Number(dataPoint[1]);
+            if (!Number.isFinite(timestampMs) || !Number.isFinite(cursorValue)) {
+                continue;
+            }
+            if (series.length === 0) continue;
+
+            const nearestIdx = findNearestTimestampIndex(series[0].xValues, timestampMs);
+            if (nearestIdx === null || nearestIdx >= series[0].values.length) continue;
+
+            const closestPointAnnotation = findClosestPointAnnotationEntry(
+                instance, series, axisIndex, nearestIdx, series[0].xValues[nearestIdx], pixelX, pixelY,
+            );
+            if (closestPointAnnotation) {
+                return {
+                    entry: closestPointAnnotation,
+                    dataIndex: nearestIdx,
+                    matchingSeriesIndices: getMatchingSeriesIndices(interactionIndex, closestPointAnnotation.interactionKey),
+                };
+            }
+
+            const closest = findClosestSeriesEntryByValue(series, nearestIdx, cursorValue);
+            if (!closest) continue;
+
+            return {
+                entry: closest,
+                dataIndex: nearestIdx,
                 matchingSeriesIndices: getMatchingSeriesIndices(interactionIndex, closest.interactionKey),
             };
         }
@@ -104,7 +136,8 @@ function findClosestPointAnnotationEntry(
     instance: ECharts,
     series: InteractionSeriesEntry[],
     axisIndex: number,
-    categoryIndex: number,
+    valuesIndex: number,
+    xAxisValue: number,
     pixelX: number,
     pixelY: number,
 ): InteractionSeriesEntry | null {
@@ -114,10 +147,10 @@ function findClosestPointAnnotationEntry(
     for (const candidate of series) {
         if (candidate.kind !== "point-annotation") continue;
 
-        const value = candidate.values[categoryIndex];
+        const value = candidate.values[valuesIndex];
         if (!Number.isFinite(value)) continue;
 
-        const pointPixel = instance.convertToPixel({ gridIndex: axisIndex }, [categoryIndex, value]);
+        const pointPixel = instance.convertToPixel({ gridIndex: axisIndex }, [xAxisValue, value]);
         if (!Array.isArray(pointPixel)) continue;
 
         const dx = pointPixel[0] - pixelX;
@@ -160,6 +193,20 @@ function findClosestScatterEntry(
     }
 
     return closest;
+}
+
+/** Binary search for the index of the timestamp in xValues closest to targetMs. */
+function findNearestTimestampIndex(xValues: number[], targetMs: number): number | null {
+    if (xValues.length === 0) return null;
+    let lo = 0;
+    let hi = xValues.length - 1;
+    while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (xValues[mid] <= targetMs) lo = mid;
+        else hi = mid - 1;
+    }
+    const right = Math.min(lo + 1, xValues.length - 1);
+    return Math.abs(xValues[right] - targetMs) < Math.abs(xValues[lo] - targetMs) ? right : lo;
 }
 
 function getMatchingSeriesIndices(

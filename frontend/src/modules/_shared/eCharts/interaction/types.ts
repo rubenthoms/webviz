@@ -75,7 +75,7 @@ export type InteractionSeriesEntry =
 
 export type InteractionSeries = {
     matchingSeriesIndicesByKey: Map<string, number[]>;
-    resolutionMode: "scatter" | "timeseries";
+    resolutionMode: "scatter" | "timeseries" | "timeseries-time";
     seriesByAxisIndex: Map<number, InteractionSeriesEntry[]>;
 };
 

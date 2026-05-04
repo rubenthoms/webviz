@@ -4,7 +4,7 @@ import type { SeriesBuildResult } from "../../core/composeChartOption";
 import type { StatisticKey, TimeseriesTrace } from "../../types";
 
 import { makeTimeseriesBandSeriesId, makeTimeseriesStatisticSeriesId } from "./ids";
-import { makeSteppedCategoryCoords, mapLineShapeToStep } from "./lineShape";
+import { makeSteppedCategoryCoords, makeSteppedTimeCoords, mapLineShapeToStep } from "./lineShape";
 
 type StatSeriesEntry = {
     key: StatisticKey;
@@ -132,6 +132,129 @@ function createBandRenderItem(
             shape: { points },
             style: { fill: fillColor, opacity: fillOpacity },
         };
+    };
+}
+
+export function buildStatisticsSeriesTime(
+    trace: TimeseriesTrace,
+    selectedStatistics: StatisticKey[],
+    axisIndex = 0,
+): SeriesBuildResult {
+    if (!trace.statistics) return { series: [], legendData: [] };
+
+    const series: LineSeriesOption[] = [];
+    const step = mapLineShapeToStep(trace.lineShape);
+    const { timestamps } = trace;
+
+    for (const def of STAT_SERIES_DEFS) {
+        if (selectedStatistics.includes(def.key)) {
+            const values = trace.statistics[def.key];
+            series.push({
+                id: makeTimeseriesStatisticSeriesId(trace.name, def.key, axisIndex),
+                name: trace.name,
+                type: "line",
+                data: timestamps.map((ts, i) => [ts, values[i] ?? null]),
+                xAxisIndex: axisIndex,
+                yAxisIndex: axisIndex,
+                itemStyle: { color: trace.color },
+                lineStyle: { color: trace.color, width: def.width, type: def.dash },
+                symbol: "none",
+                emphasis: { disabled: true },
+                blur: { lineStyle: { opacity: 1 } },
+                ...(step ? { step } : {}),
+            });
+        }
+    }
+
+    return { series, legendData: series.length > 0 ? [trace.name] : [] };
+}
+
+export function buildFanchartSeriesTime(
+    trace: TimeseriesTrace,
+    selectedStatistics: StatisticKey[],
+    axisIndex = 0,
+): SeriesBuildResult {
+    if (!trace.statistics) return { series: [], legendData: [] };
+
+    const { p10, p90, min, max } = trace.statistics;
+    const { timestamps } = trace;
+    const series: CustomSeriesOption[] = [];
+    const step = mapLineShapeToStep(trace.lineShape);
+
+    const hasPercentiles = selectedStatistics.includes("p10") && selectedStatistics.includes("p90");
+    const hasMinMax = selectedStatistics.includes("min") && selectedStatistics.includes("max");
+
+    if (hasMinMax && hasPercentiles) {
+        series.push(
+            createBandSeriesTime(timestamps, p10, min, trace.color, 0.08, `${trace.name} _fan_low`, axisIndex, makeTimeseriesBandSeriesId(trace.name, "low", axisIndex), step),
+            createBandSeriesTime(timestamps, p90, p10, trace.color, 0.3, `${trace.name} _fan_mid`, axisIndex, makeTimeseriesBandSeriesId(trace.name, "mid", axisIndex), step),
+            createBandSeriesTime(timestamps, max, p90, trace.color, 0.08, `${trace.name} _fan_high`, axisIndex, makeTimeseriesBandSeriesId(trace.name, "high", axisIndex), step),
+        );
+    } else if (hasMinMax) {
+        series.push(
+            createBandSeriesTime(timestamps, max, min, trace.color, 0.1, `${trace.name} _fan_band`, axisIndex, makeTimeseriesBandSeriesId(trace.name, "band", axisIndex), step),
+        );
+    } else if (hasPercentiles) {
+        series.push(
+            createBandSeriesTime(timestamps, p90, p10, trace.color, 0.3, `${trace.name} _fan_band`, axisIndex, makeTimeseriesBandSeriesId(trace.name, "band", axisIndex), step),
+        );
+    }
+
+    return { series, legendData: [] };
+}
+
+function createBandSeriesTime(
+    timestamps: number[],
+    upperValues: number[],
+    lowerValues: number[],
+    fillColor: string,
+    fillOpacity: number,
+    name: string,
+    axisIndex: number,
+    seriesId: string,
+    step: "start" | "end" | null,
+): CustomSeriesOption {
+    return {
+        type: "custom",
+        id: seriesId,
+        name,
+        xAxisIndex: axisIndex,
+        yAxisIndex: axisIndex,
+        clip: true,
+        data: timestamps.map((ts, index) => [ts, lowerValues[index], upperValues[index]]),
+        encode: { x: 0, y: [1, 2] },
+        tooltip: { show: false },
+        silent: true,
+        z: 1,
+        renderItem: createBandRenderItemTime(timestamps, upperValues, lowerValues, fillColor, fillOpacity, step),
+    };
+}
+
+function createBandRenderItemTime(
+    timestamps: number[],
+    upperValues: number[],
+    lowerValues: number[],
+    fillColor: string,
+    fillOpacity: number,
+    step: "start" | "end" | null,
+): CustomSeriesOption["renderItem"] {
+    const upperCoords = makeSteppedTimeCoords(timestamps, upperValues, step);
+    const lowerCoords = makeSteppedTimeCoords(timestamps, lowerValues, step);
+    return function renderStatisticsBandTime(params, api) {
+        const bandParams = params as typeof params & { dataIndexInside?: number };
+        if (bandParams.dataIndexInside !== 0) {
+            return { type: "group", children: [] };
+        }
+
+        const points: number[][] = [];
+        for (let index = 0; index < upperCoords.length; index++) {
+            points.push(api.coord(upperCoords[index]));
+        }
+        for (let index = lowerCoords.length - 1; index >= 0; index--) {
+            points.push(api.coord(lowerCoords[index]));
+        }
+
+        return { type: "polygon", shape: { points }, style: { fill: fillColor, opacity: fillOpacity } };
     };
 }
 

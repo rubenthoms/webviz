@@ -1,4 +1,5 @@
 export { computePointStatistics, computeTimeseriesStatistics } from "./statistics";
+export { lttbIndices, resampleSubplotGroupsForZoom } from "./resampleTimeseries";
 export { computeHistogramLayout, computeHistogramTraceData } from "./histogram";
 
 

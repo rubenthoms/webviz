@@ -88,9 +88,17 @@ function resolveTimestampFromPixel(
             const dataPoint = chart.convertFromPixel({ gridIndex: gridIdx }, [pixelX, pixelY]);
             if (dataPoint == null) continue;
 
-            const categoryIdx = Math.round(dataPoint[0]);
+            const x = dataPoint[0];
+            const categoryIdx = Math.round(x);
+
+            // Category axis: dataPoint[0] is an integer index into the timestamps array.
             if (categoryIdx >= 0 && categoryIdx < timestamps.length) {
                 return timestamps[categoryIdx] ?? null;
+            }
+
+            // Time axis: dataPoint[0] is a timestamp in ms — find the nearest entry.
+            if (typeof x === "number" && Number.isFinite(x) && timestamps.length > 0) {
+                return findNearestTimestamp(timestamps, x);
             }
         } catch {
             continue;
@@ -98,4 +106,18 @@ function resolveTimestampFromPixel(
     }
 
     return null;
+}
+
+function findNearestTimestamp(timestamps: number[], targetMs: number): number {
+    let lo = 0;
+    let hi = timestamps.length - 1;
+    while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (timestamps[mid] <= targetMs) lo = mid;
+        else hi = mid - 1;
+    }
+    const right = Math.min(lo + 1, timestamps.length - 1);
+    return Math.abs(timestamps[right] - targetMs) < Math.abs(timestamps[lo] - targetMs)
+        ? timestamps[right]
+        : timestamps[lo];
 }

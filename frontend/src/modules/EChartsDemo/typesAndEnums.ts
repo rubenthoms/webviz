@@ -1,5 +1,6 @@
 export enum PlotType {
     Timeseries = "timeseries",
+    TimeseriesTime = "timeseries-time",
     Histogram = "histogram",
     PercentileRange = "percentile-range",
     Exceedance = "exceedance",
@@ -13,6 +14,7 @@ export enum PlotType {
 
 export const PLOT_TYPE_LABELS: Record<PlotType, string> = {
     [PlotType.Timeseries]: "Timeseries",
+    [PlotType.TimeseriesTime]: "Timeseries (Time Axis)",
     [PlotType.Histogram]: "Histogram",
     [PlotType.PercentileRange]: "Percentile Range Plot",
     [PlotType.Exceedance]: "Exceedance (1-CDF)",

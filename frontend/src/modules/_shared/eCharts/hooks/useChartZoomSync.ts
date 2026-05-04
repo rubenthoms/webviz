@@ -18,48 +18,58 @@ type DataZoomEvent = {
  */
 export function useChartZoomSync(
     zoomState: ChartZoomState,
-    setZoomState: React.Dispatch<React.SetStateAction<ChartZoomState>>
+    setZoomState: React.Dispatch<React.SetStateAction<ChartZoomState>>,
 ) {
     const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleDataZoom = useCallback(function handleDataZoomEvent(params: unknown) {
-        const updates = extractZoomUpdates(params);
-        if (updates.length === 0) {
-            return;
-        }
+    const handleDataZoom = useCallback(
+        function handleDataZoomEvent(params: unknown) {
+            const updates = extractZoomUpdates(params);
+            if (updates.length === 0) {
+                return;
+            }
 
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+            const xUpdate = updates.find((u) => u.axisKey === "x");
+            if (xUpdate) {
+                // xUpdate.zoom.start / .end  → percentage (0–100)
+                // xUpdate.zoom.startValue / .endValue → actual axis values (if available)
+                console.log(xUpdate.zoom);
+            }
 
-        debounceTimer.current = setTimeout(function applyDebouncedZoomUpdate() {
-            setZoomState(function mergeZoomState(prev) {
-                const next = mergeZoomUpdates(prev, updates);
-                return areZoomStatesEqual(prev, next) ? prev : next;
-            });
-        }, 150);
-    }, [setZoomState]);
+            if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-    const handleRestore = useCallback(function handleRestoreEvent() {
-        if (debounceTimer.current) {
-            clearTimeout(debounceTimer.current);
-            debounceTimer.current = null;
-        }
-
-        setZoomState(function clearZoomState(prev) {
-            return hasAnyZoomState(prev) ? {} : prev;
-        });
-    }, [setZoomState]);
-
-    useEffect(
-        function cleanupDebounceTimerEffect() {
-            return function cleanupDebounceTimer() {
-                if (debounceTimer.current) {
-                    clearTimeout(debounceTimer.current);
-                    debounceTimer.current = null;
-                }
-            };
+            debounceTimer.current = setTimeout(function applyDebouncedZoomUpdate() {
+                setZoomState(function mergeZoomState(prev) {
+                    const next = mergeZoomUpdates(prev, updates);
+                    return areZoomStatesEqual(prev, next) ? prev : next;
+                });
+            }, 150);
         },
-        [],
+        [setZoomState],
     );
+
+    const handleRestore = useCallback(
+        function handleRestoreEvent() {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+                debounceTimer.current = null;
+            }
+
+            setZoomState(function clearZoomState(prev) {
+                return hasAnyZoomState(prev) ? {} : prev;
+            });
+        },
+        [setZoomState],
+    );
+
+    useEffect(function cleanupDebounceTimerEffect() {
+        return function cleanupDebounceTimer() {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+                debounceTimer.current = null;
+            }
+        };
+    }, []);
 
     const appliedZoomState = useMemo(
         function computeAppliedZoomState() {
@@ -68,9 +78,12 @@ export function useChartZoomSync(
         [zoomState],
     );
 
-    return useMemo(function buildZoomSyncResult() {
-        return { appliedZoomState, handleDataZoom, handleRestore };
-    }, [appliedZoomState, handleDataZoom, handleRestore]);
+    return useMemo(
+        function buildZoomSyncResult() {
+            return { appliedZoomState, handleDataZoom, handleRestore };
+        },
+        [appliedZoomState, handleDataZoom, handleRestore],
+    );
 }
 
 function hasAnyZoomState(zoomState: ChartZoomState | null | undefined): boolean {
@@ -133,7 +146,10 @@ function isFullRangeZoom(zoom: AxisZoomState): boolean {
     return zoom.start === 0 && zoom.end === 100;
 }
 
-function areZoomStatesEqual(left: ChartZoomState | null | undefined, right: ChartZoomState | null | undefined): boolean {
+function areZoomStatesEqual(
+    left: ChartZoomState | null | undefined,
+    right: ChartZoomState | null | undefined,
+): boolean {
     return areAxisZoomStatesEqual(left?.x, right?.x) && areAxisZoomStatesEqual(left?.y, right?.y);
 }
 

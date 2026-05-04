@@ -16,6 +16,7 @@ import { HeatmapRecipe } from "./recipes/HeatmapRecipe";
 import { ScatterRecipe } from "./recipes/ScatterRecipe";
 import { TimeseriesRecipe } from "./recipes/TimeseriesRecipe";
 import type { RecipeProps } from "./recipes/types";
+import { TimeseriesTimeRecipe } from "./recipes/TimeseriesTimeRecipe";
 
 const DISTRIBUTION_PLOT_TYPES = new Set([
     PlotType.Histogram,
@@ -58,11 +59,12 @@ export function View(props: ModuleViewProps<Interfaces>): React.ReactNode {
 }
 
 function RecipeSwitch({ plotType, recipeProps }: { plotType: PlotType; recipeProps: RecipeProps }): React.ReactNode {
-    if (plotType === PlotType.Timeseries)       return <TimeseriesRecipe {...recipeProps} />;
-    if (plotType === PlotType.Bar)               return <BarRecipe {...recipeProps} />;
-    if (plotType === PlotType.Heatmap)           return <HeatmapRecipe {...recipeProps} />;
-    if (plotType === PlotType.MemberScatter)     return <ScatterRecipe {...recipeProps} />;
-    if (plotType === PlotType.Custom)            return <CustomRecipe {...recipeProps} />;
-    if (DISTRIBUTION_PLOT_TYPES.has(plotType))   return <DistributionRecipe {...recipeProps} />;
+    if (plotType === PlotType.Timeseries) return <TimeseriesRecipe {...recipeProps} />;
+    if (plotType === PlotType.TimeseriesTime) return <TimeseriesTimeRecipe {...recipeProps} />;
+    if (plotType === PlotType.Bar) return <BarRecipe {...recipeProps} />;
+    if (plotType === PlotType.Heatmap) return <HeatmapRecipe {...recipeProps} />;
+    if (plotType === PlotType.MemberScatter) return <ScatterRecipe {...recipeProps} />;
+    if (plotType === PlotType.Custom) return <CustomRecipe {...recipeProps} />;
+    if (DISTRIBUTION_PLOT_TYPES.has(plotType)) return <DistributionRecipe {...recipeProps} />;
     return null;
 }

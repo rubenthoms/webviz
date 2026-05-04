@@ -13,9 +13,10 @@ import type {
     TimeseriesTrace,
 } from "../../types";
 
+import { resampleSubplotGroupsForZoom } from "../../utils/resampleTimeseries";
+
 import { buildTimeseriesSubplotArtifacts } from "./subplotArtifacts";
 import { buildTimeseriesTooltip } from "./tooltips";
-
 
 export type TimeseriesChartOptions = BaseChartOptions & {
     subplotOverlays: TimeseriesSubplotOverlays[];
@@ -36,11 +37,7 @@ export function buildTimeseriesChart(
     subplotGroups: SubplotGroup<TimeseriesTrace>[],
     options: TimeseriesChartOptions,
 ): EChartsOption {
-    const {
-        subplotOverlays,
-        displayConfig,
-        memberLabel,
-    } = options;
+    const { subplotOverlays, displayConfig, memberLabel } = options;
     const yAxisLabel = options.yAxisLabel ?? "Value";
 
     if (subplotOverlays.length !== subplotGroups.length) {
@@ -58,12 +55,25 @@ export function buildTimeseriesChart(
     const nonEmptySubplotGroups = nonEmptyGroupedData.map((entry) => entry.group);
     const nonEmptySubplotOverlays = nonEmptyGroupedData.map((entry) => entry.overlays);
 
-    const categoryData = buildCategoryData(nonEmptySubplotGroups);
+    // Resample traces to the visible window before building the chart. When a
+    // zoom state is present the data is filtered to [start%, end%] of the full
+    // x-range and LTTB-resampled to at most `resampleTargetCount` points. This
+    // keeps the visual shape intact at every zoom level while bounding the
+    // number of points ECharts must render. We then reset the ECharts dataZoom
+    // to [0, 100] because the returned data already represents the visible window.
+    const hasXZoom = options.zoomState?.x != null;
+    const resampledSubplotGroups = resampleSubplotGroupsForZoom(
+        nonEmptySubplotGroups,
+        options.zoomState,
+        displayConfig.resampleTargetCount,
+    );
+
+    const categoryData = buildCategoryData(resampledSubplotGroups);
     if (categoryData.length === 0) return {};
 
-    const useLargeMemberSeries = shouldUseLargeMemberSeries(nonEmptySubplotGroups, displayConfig);
+    const useLargeMemberSeries = shouldUseLargeMemberSeries(resampledSubplotGroups, displayConfig);
     const realtimePointer = buildRealtimeAxisPointer(displayConfig);
-    const numSubplots = nonEmptySubplotGroups.length;
+    const numSubplots = resampledSubplotGroups.length;
     const enableZoom = options.zoomable === true || options.zoomState != null;
 
     const buildSubplot = function buildTimeseriesSubplotForAxis(
@@ -78,23 +88,20 @@ export function buildTimeseriesChart(
             categoryData,
             yAxisLabel,
             realtimePointer,
-            useLargeMemberSeries,
+            false, //useLargeMemberSeries,
         );
     };
 
-    return buildCartesianSubplotChart(
-        nonEmptySubplotGroups,
-        buildSubplot,
-        {
-            ...options,
-            ...buildTimeseriesComposeOverrides(
-                numSubplots,
-                displayConfig,
-                memberLabel,
-                enableZoom,
-            ),
-        },
-    );
+    // When the x-zoom has been consumed into the data, pass an empty zoom state
+    // so ECharts renders 0-100 % of the already-filtered category axis. The y-zoom
+    // (if any) is forwarded unchanged so the y-axis viewport is preserved.
+    const effectiveZoomState = hasXZoom ? { y: options.zoomState?.y } : options.zoomState;
+
+    return buildCartesianSubplotChart(resampledSubplotGroups, buildSubplot, {
+        ...options,
+        zoomState: effectiveZoomState,
+        ...buildTimeseriesComposeOverrides(numSubplots, displayConfig, memberLabel, enableZoom),
+    });
 }
 
 function buildCategoryData(subplotGroups: SubplotGroup<TimeseriesTrace>[]): string[] {
@@ -148,7 +155,13 @@ function buildTimeseriesSubplot(
 ): CartesianSubplotBuildResult {
     // The subplot artifact builder owns the emitted series order so visual rendering
     // and interaction index generation stay coupled through a single path.
-    const subplotArtifacts = buildTimeseriesSubplotArtifacts(group, subplotOverlays, axisIndex, config, useLargeMemberSeries);
+    const subplotArtifacts = buildTimeseriesSubplotArtifacts(
+        group,
+        subplotOverlays,
+        axisIndex,
+        config,
+        useLargeMemberSeries,
+    );
 
     return {
         series: subplotArtifacts.series,
@@ -167,12 +180,12 @@ function buildTimeseriesComposeOverrides(
 ) {
     const toolboxFeature = enableZoom
         ? {
-            dataZoom: { yAxisIndex: "none" as const, title: { zoom: "Box zoom", back: "Reset zoom" } },
-            restore: { title: "Reset" },
-        }
+              dataZoom: { yAxisIndex: "none" as const, title: { zoom: "Box zoom", back: "Reset zoom" } },
+              restore: { title: "Reset" },
+          }
         : {
-            restore: { title: "Reset" },
-        };
+              restore: { title: "Reset" },
+          };
 
     return {
         tooltip: buildTimeseriesTooltip(config, { memberLabel }),
@@ -193,9 +206,7 @@ function buildTimeseriesComposeOverrides(
     };
 }
 
-function buildTimeseriesDataZoom(
-    numSubplots: number
-): NonNullable<ComposeChartConfig["dataZoom"]> {
+function buildTimeseriesDataZoom(numSubplots: number): NonNullable<ComposeChartConfig["dataZoom"]> {
     const allAxisIndices = Array.from({ length: numSubplots }, (_, index) => index);
 
     return [

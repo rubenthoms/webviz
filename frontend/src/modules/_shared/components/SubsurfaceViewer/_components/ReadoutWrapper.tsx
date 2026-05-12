@@ -71,6 +71,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
     const mainDivSize = useElementSize(mainDivRef);
     const deckGlRef = React.useRef<DeckGLRef | null>(null);
     const clickTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastCursorRef = React.useRef<{ x: number; y: number } | null>(null);
 
     const userPickingDepth = ctx.visualizationMode === "3D" ? 1 : USER_PICKING_DEPTH;
 
@@ -104,6 +105,49 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
         },
         [onPickingInfoChange],
     );
+
+    const applySnappyHover = React.useCallback(function applySnappyHover(event: MapMouseEvent): MapMouseEvent {
+        const deck = deckGlRef.current?.deck;
+        if (!deck?.isInitialized) return event;
+
+        // event.x/event.y are world (UTM) coordinates — use PickingInfo.x/y for CSS pixels
+        const pixelX = event.infos[0]?.x;
+        const pixelY = event.infos[0]?.y;
+        if (pixelX !== undefined && pixelY !== undefined) {
+            lastCursorRef.current = { x: pixelX, y: pixelY };
+        }
+
+        const cursorX = lastCursorRef.current?.x;
+        const cursorY = lastCursorRef.current?.y;
+        if (cursorX === undefined || cursorY === undefined) return event;
+
+        const allLayers = (deck.props.layers ?? []) as any[];
+        const snappyLayers = allLayers.filter((l) => l?.props?.isSnappy);
+        if (!snappyLayers.length) return event;
+
+        console.debug(
+            "Applying snappy hover with layers",
+            snappyLayers.map((l) => l.id),
+        );
+
+        // Pick per snappy layer using its own snapRadius — pickObject handles the circular distance check
+        let snappyHit: PickingInfo | null = null;
+        for (const snappyLayer of snappyLayers) {
+            const snapRadius: number = snappyLayer.props?.snapRadius ?? 0;
+            if (snapRadius <= 0) continue;
+            snappyHit = deck.pickObject({ x: cursorX, y: cursorY, radius: snapRadius, layerIds: [snappyLayer.id], unproject3D: true });
+            if (snappyHit) break;
+        }
+
+        if (!snappyHit) return event;
+
+        console.debug("Snappy hover found hit", snappyHit);
+
+        const otherInfos = event.infos.filter(
+            (i) => i.sourceLayer?.id !== snappyHit.sourceLayer?.id && i.layer?.id !== snappyHit.layer?.id,
+        );
+        return { ...event, infos: [snappyHit, ...otherInfos] };
+    }, []);
 
     const pickAtWorldCoordinates = React.useCallback(
         function pickAtWorldCoordinates(
@@ -191,11 +235,13 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
     );
 
     const handleHoverEvent = React.useCallback(
-        function handleHoverEvent(event: MapMouseEvent): void {
+        function handleHoverEvent(rawEvent: MapMouseEvent): void {
             // We have switched to click mode - ignore hover events
             if (readoutMode === "click") {
                 return;
             }
+
+            const event = applySnappyHover(rawEvent);
 
             // No picks - clear readout
             if (!event.infos.length) {
@@ -258,7 +304,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
                 DEBOUNCED_HOVER_PICKING_DEPTH,
             );
         },
-        [onViewerHover, onViewportHover, debouncedMultiViewPicking, clearReadout, readoutMode],
+        [onViewerHover, onViewportHover, debouncedMultiViewPicking, clearReadout, readoutMode, applySnappyHover],
     );
 
     const processClickEvent = React.useCallback(
@@ -453,7 +499,6 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
                             height={((mainDivSize.height / 3) * 2) / numRows - 20}
                             position="left"
                         />
-
                         <ReadoutBoxWrapper
                             compact={props.views.viewports.length > 1}
                             viewportPicks={pickingInfoPerView[viewport.id]}

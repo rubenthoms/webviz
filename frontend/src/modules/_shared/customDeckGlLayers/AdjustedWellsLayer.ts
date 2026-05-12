@@ -4,12 +4,21 @@ import type { GeoJsonLayerProps } from "@deck.gl/layers";
 import { GeoJsonLayer } from "@deck.gl/layers";
 import type { BoundingBox3D } from "@webviz/subsurface-viewer";
 import { WellsLayer } from "@webviz/subsurface-viewer/dist/layers";
+import type { WellsLayerProps } from "@webviz/subsurface-viewer/dist/layers";
 import type { WellsPickInfo } from "@webviz/subsurface-viewer/dist/layers/wells/types";
 import { GetBoundingBox } from "@webviz/subsurface-viewer/dist/layers/wells/utils/spline";
 import { SubLayerId } from "@webviz/subsurface-viewer/dist/layers/wells/wellsLayer";
 
+import type { SnappyLayerProps } from "@modules/_shared/types/deckgl";
+
+export type AdjustedWellsLayerProps = WellsLayerProps & SnappyLayerProps;
+
 export class AdjustedWellsLayer extends WellsLayer {
     static layerName: string = "AdjustedWellsLayer";
+    static defaultProps = {
+        isSnappy: { type: "boolean", value: true },
+        snapRadius: { type: "number", value: 20 },
+    };
 
     filterSubLayer(context: FilterContext): boolean {
         if (context.layer.id.includes("labels")) {

@@ -2,31 +2,42 @@ import type React from "react";
 
 import { useAtom } from "jotai";
 
+import { ColorScaleSelector } from "@framework/components/ColorScaleSelector/colorScaleSelector";
+import type { ModuleSettingsProps } from "@framework/Module";
 import { Dropdown } from "@lib/components/Dropdown";
 import { Label } from "@lib/components/Label";
 import { Slider } from "@lib/components/Slider";
+import { Switch } from "@lib/components/Switch";
 
 import type { ColorPreset, DatasetType } from "./atoms";
 import {
     colorPresetAtom,
+    colorScaleSpecificationAtom,
     datasetTypeAtom,
     lineWidthAtom,
+    magnitudeOpacityAtom,
     maxAgeAtom,
     numParticlesAtom,
     opacityAtom,
+    showMagnitudeOverlayAtom,
     speedFactorAtom,
+    timeAtom,
     trailLengthAtom,
     trailStepsAtom,
 } from "./atoms";
+import type { Interfaces } from "./interfaces";
 
 const DATASET_OPTIONS = [
     { value: "vortex", label: "2D · Vortex (uniform speed)" },
     { value: "spiral", label: "2D · Spiral (speed ∝ radius)" },
     { value: "saddle", label: "2D · Saddle point" },
     { value: "convergent", label: "2D · Convergent (speed ∝ radius)" },
-    { value: "helix", label: "3D · Helix (corkscrew)" },
+    { value: "helix", label: "3D · Helix (time = pitch wave)" },
     { value: "sphere", label: "3D · Spherical divergence" },
-    { value: "abc", label: "3D · ABC flow (chaotic)" },
+    { value: "abc", label: "3D · ABC flow (time = phase morph)" },
+    { value: "wave", label: "3D · Traveling wave (time = phase)" },
+    { value: "lorenz", label: "3D · Lorenz attractor flow" },
+    { value: "tornado", label: "3D · Tornado (time = precession)" },
 ];
 
 const COLOR_OPTIONS = [
@@ -37,7 +48,7 @@ const COLOR_OPTIONS = [
     { value: "white", label: "White" },
 ];
 
-export function Settings(): React.ReactNode {
+export function Settings({ workbenchSettings }: ModuleSettingsProps<Interfaces>): React.ReactNode {
     const [datasetType, setDatasetType] = useAtom(datasetTypeAtom);
     const [numParticles, setNumParticles] = useAtom(numParticlesAtom);
     const [maxAge, setMaxAge] = useAtom(maxAgeAtom);
@@ -47,6 +58,10 @@ export function Settings(): React.ReactNode {
     const [trailSteps, setTrailSteps] = useAtom(trailStepsAtom);
     const [trailLength, setTrailLength] = useAtom(trailLengthAtom);
     const [colorPreset, setColorPreset] = useAtom(colorPresetAtom);
+    const [time, setTime] = useAtom(timeAtom);
+    const [showMagnitudeOverlay, setShowMagnitudeOverlay] = useAtom(showMagnitudeOverlayAtom);
+    const [magnitudeOpacity, setMagnitudeOpacity] = useAtom(magnitudeOpacityAtom);
+    const [colorScaleSpecification, setColorScaleSpecification] = useAtom(colorScaleSpecificationAtom);
 
     return (
         <div className="flex flex-col gap-4 p-2">
@@ -55,6 +70,17 @@ export function Settings(): React.ReactNode {
                     value={datasetType}
                     options={DATASET_OPTIONS}
                     onChange={(val) => setDatasetType(val as DatasetType)}
+                />
+            </Label>
+
+            <Label text={`Time phase: ${time.toFixed(2)}`}>
+                <Slider
+                    value={time}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    valueLabelDisplay="auto"
+                    onChange={(_, val) => setTime(val as number)}
                 />
             </Label>
 
@@ -142,6 +168,36 @@ export function Settings(): React.ReactNode {
                     onChange={(_, val) => setTrailLength(val as number)}
                 />
             </Label>
+
+            <Label text="Show magnitude overlay" position="left">
+                <Switch
+                    checked={showMagnitudeOverlay}
+                    onChange={(e) => setShowMagnitudeOverlay(e.target.checked)}
+                />
+            </Label>
+
+            {showMagnitudeOverlay && (
+                <>
+                    <Label text={`Magnitude opacity: ${magnitudeOpacity.toFixed(2)}`}>
+                        <Slider
+                            value={magnitudeOpacity}
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            valueLabelDisplay="auto"
+                            onChange={(_, val) => setMagnitudeOpacity(val as number)}
+                        />
+                    </Label>
+
+                    <Label text="Magnitude color scale">
+                        <ColorScaleSelector
+                            workbenchSettings={workbenchSettings}
+                            colorScaleSpecification={colorScaleSpecification ?? undefined}
+                            onChange={setColorScaleSpecification}
+                        />
+                    </Label>
+                </>
+            )}
         </div>
     );
 }

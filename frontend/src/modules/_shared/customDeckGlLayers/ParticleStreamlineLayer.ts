@@ -378,6 +378,7 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
         lastTimestamp: number | null;
         autoStepSize: number;
         autoArrowSize: number;
+        meanStreamlineLength: number;
         speedFactor: number;
         maxAge: number;
     };
@@ -385,12 +386,13 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
     private _animationFrame: number | null = null;
 
     initializeState(): void {
-        const { streamlines, autoStepSize, autoArrowSize } = this._computeStreamlines();
+        const { streamlines, autoStepSize, autoArrowSize, meanStreamlineLength } = this._computeStreamlines();
         const maxAge = this.props.maxAge ?? 2;
         this.setState({
             streamlines,
             autoStepSize,
             autoArrowSize,
+            meanStreamlineLength,
             particles: initParticles(streamlines, this.props.numParticles ?? 200, maxAge),
             lastTimestamp: null,
             speedFactor: this.props.speedFactor ?? 1,
@@ -409,11 +411,12 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
             props.numSteps !== oldProps.numSteps;
 
         if (integrationChanged) {
-            const { streamlines, autoStepSize, autoArrowSize } = this._computeStreamlines();
+            const { streamlines, autoStepSize, autoArrowSize, meanStreamlineLength } = this._computeStreamlines();
             this.setState({
                 streamlines,
                 autoStepSize,
                 autoArrowSize,
+                meanStreamlineLength,
                 particles: initParticles(streamlines, props.numParticles ?? 200, props.maxAge ?? 2),
             });
             return;
@@ -435,9 +438,14 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
         this._stopAnimation();
     }
 
-    private _computeStreamlines(): { streamlines: Streamline[]; autoStepSize: number; autoArrowSize: number } {
+    private _computeStreamlines(): {
+        streamlines: Streamline[];
+        autoStepSize: number;
+        autoArrowSize: number;
+        meanStreamlineLength: number;
+    } {
         const { vectors, stepSize, numSteps } = this.props;
-        if (!vectors?.length) return { streamlines: [], autoStepSize: 1, autoArrowSize: 10 };
+        if (!vectors?.length) return { streamlines: [], autoStepSize: 1, autoArrowSize: 10, meanStreamlineLength: 1 };
 
         let minX = Infinity,
             minY = Infinity;
@@ -455,11 +463,12 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
         const autoStepSize = stepSize ?? avgSpacing * 0.5;
         const autoArrowSize = avgSpacing * 0.1;
 
-        return {
-            streamlines: computeStreamlines(vectors, autoStepSize, numSteps ?? 100),
-            autoStepSize,
-            autoArrowSize,
-        };
+        const streamlines = computeStreamlines(vectors, autoStepSize, numSteps ?? 100);
+        const validLengths = streamlines.filter((sl) => sl.totalLength > 1e-10).map((sl) => sl.totalLength);
+        const meanStreamlineLength =
+            validLengths.length > 0 ? validLengths.reduce((a, b) => a + b, 0) / validLengths.length : autoStepSize;
+
+        return { streamlines, autoStepSize, autoArrowSize, meanStreamlineLength };
     }
 
     private _startAnimation(): void {
@@ -471,14 +480,14 @@ export class ParticleStreamlineLayer extends CompositeLayer<ParticleStreamlineLa
                     : 0;
 
             if (dt > 0 && particles.length && streamlines.length) {
-                const { speedFactor, maxAge } = this.state;
+                const { speedFactor, maxAge, meanStreamlineLength } = this.state;
+                const baseSpeed = meanStreamlineLength / maxAge;
 
                 const updatedParticles = particles.map((p): Particle => {
                     const sl = streamlines[p.streamlineIdx];
                     if (!sl || sl.totalLength < 1e-10) return p;
 
                     const { normMag } = sampleStreamline(sl, p.arcLength);
-                    const baseSpeed = sl.totalLength / maxAge;
                     const newArcLength = p.arcLength + dt * baseSpeed * speedFactor * normMag;
                     const newAge = p.age + dt;
 

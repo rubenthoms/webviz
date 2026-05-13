@@ -1,14 +1,18 @@
 import type { InterfaceInitialization } from "@framework/UniDirectionalModuleComponentsInterface";
 
-import type { ColorPreset, DatasetType } from "./atoms";
+import type { ColorPreset, ColorScaleSpecification, DatasetType } from "./atoms";
 import {
     colorPresetAtom,
+    colorScaleSpecificationAtom,
     datasetTypeAtom,
     lineWidthAtom,
+    magnitudeOpacityAtom,
     maxAgeAtom,
     numParticlesAtom,
     opacityAtom,
+    showMagnitudeOverlayAtom,
     speedFactorAtom,
+    timeAtom,
     trailLengthAtom,
     trailStepsAtom,
 } from "./atoms";
@@ -23,6 +27,10 @@ type SettingsToViewInterface = {
     trailSteps: number;
     trailLength: number;
     colorPreset: ColorPreset;
+    showMagnitudeOverlay: boolean;
+    magnitudeOpacity: number;
+    colorScaleSpecification: ColorScaleSpecification | null;
+    time: number;
 };
 
 export type Interfaces = {
@@ -39,4 +47,8 @@ export const settingsToViewInterfaceInitialization: InterfaceInitialization<Sett
     trailSteps: (get) => get(trailStepsAtom),
     trailLength: (get) => get(trailLengthAtom),
     colorPreset: (get) => get(colorPresetAtom),
+    showMagnitudeOverlay: (get) => get(showMagnitudeOverlayAtom),
+    magnitudeOpacity: (get) => get(magnitudeOpacityAtom),
+    colorScaleSpecification: (get) => get(colorScaleSpecificationAtom),
+    time: (get) => get(timeAtom),
 };

@@ -8,8 +8,9 @@ import { SmartNodeSelector } from "@lib/newComponents/SmartNodeSelector";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 // Icons placed here due to limitation of jest for testing utils (cannot import svg)
-import checkIcon from "./private-assets/check.svg";
-import segmentIcon from "./private-assets/segment.svg";
+// import checkIcon from "./private-assets/check.svg";
+// import segmentIcon from "./private-assets/segment.svg";
+
 import {
     ParameterParentNodeNames,
     createTreeDataNodeListFromParameters,
@@ -44,7 +45,7 @@ export const ParameterListFilter: React.FC<ParameterListFilterProps> = (props: P
 
     let newTreeDataNodeList: TreeDataNode[] | null = null;
     if (parameters === null || !isEqual(props.parameters, parameters)) {
-        newTreeDataNodeList = createTreeDataNodeListFromParameters(props.parameters, checkIcon, segmentIcon);
+        newTreeDataNodeList = createTreeDataNodeListFromParameters(props.parameters);
         setParameters(props.parameters);
         setPreviousTreeDataNodeList(newTreeDataNodeList);
     }
@@ -80,7 +81,7 @@ export const ParameterListFilter: React.FC<ParameterListFilterProps> = (props: P
     }
 
     return (
-        <div className={props.showTitle ? "mt-2 mb-2" : ""}>
+        <div className={props.showTitle ? "mt-2xs mb-2xs" : ""}>
             <>
                 <SmartNodeSelector
                     id={smartNodeSelectorId}
@@ -91,7 +92,7 @@ export const ParameterListFilter: React.FC<ParameterListFilterProps> = (props: P
                     placeholder="Add new filter condition..."
                     disabled={props.disabled}
                 />
-                <div className={resolveClassNames("relative mt-2 w-full text-right text-sm text-slate-600")}>
+                <div className={resolveClassNames("text-body-xs text-neutral-subtle relative w-full text-right")}>
                     Number of matches: {numberOfMatchingParameters}
                 </div>
             </>

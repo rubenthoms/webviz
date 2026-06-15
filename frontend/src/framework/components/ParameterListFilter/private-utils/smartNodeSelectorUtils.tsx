@@ -1,6 +1,7 @@
 import type { Parameter } from "@framework/EnsembleParameters";
 import { ParameterIdent, ParameterType } from "@framework/EnsembleParameters";
 import type { TreeDataNode } from "@lib/newComponents/SmartNodeSelector";
+import { Check, Segment } from "@mui/icons-material";
 
 export const ParameterParentNodeNames = {
     NAME: "Name",
@@ -13,33 +14,36 @@ export const ParameterParentNodeNames = {
     IS_LINEAR: "Linear", // For Parameter.isLogarithmic === false
 } as const;
 
-export function createAndAddNode(treeNodeDataList: TreeDataNode[], nodeName: string, icon?: string): TreeDataNode {
-    const newNode: TreeDataNode = { name: nodeName, description: "", icon: icon };
+export function createAndAddNode(
+    treeNodeDataList: TreeDataNode[],
+    nodeName: string,
+    icon?: React.ReactNode,
+): TreeDataNode {
+    const newNode: TreeDataNode = { name: nodeName, description: "", icon };
     treeNodeDataList.push(newNode);
     return newNode;
 }
 
-export function createTreeDataNodeListFromParameters(
-    parameters: Parameter[],
-    checkIcon?: string,
-    parentIcon?: string,
-): TreeDataNode[] {
+export function createTreeDataNodeListFromParameters(parameters: Parameter[]): TreeDataNode[] {
     if (parameters.length === 0) {
         return [];
     }
+
+    const regularParameterIcon = <Check style={{ fontSize: "0.75rem" }} />;
+    const groupParameterIcon = <Segment style={{ fontSize: "0.75rem" }} />;
 
     const treeDataNodeList: TreeDataNode[] = [];
 
     const hasContinuousParameter = parameters.some((parameter) => parameter.type === ParameterType.CONTINUOUS);
 
     // Node for boolean/state properties on top level
-    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.CONTINUOUS, checkIcon);
-    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.DISCRETE, checkIcon);
-    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_CONSTANT, checkIcon);
-    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_NONCONSTANT, checkIcon);
+    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.CONTINUOUS, regularParameterIcon);
+    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.DISCRETE, regularParameterIcon);
+    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_CONSTANT, regularParameterIcon);
+    createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_NONCONSTANT, regularParameterIcon);
     if (hasContinuousParameter) {
-        createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_LOGARITHMIC, checkIcon);
-        createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_LINEAR, checkIcon);
+        createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_LOGARITHMIC, regularParameterIcon);
+        createAndAddNode(treeDataNodeList, ParameterParentNodeNames.IS_LINEAR, regularParameterIcon);
     }
 
     // Add parameter name and check for group name
@@ -55,7 +59,7 @@ export function createTreeDataNodeListFromParameters(
 
     // Add parameter names
     if (parameterNameSet.size !== 0) {
-        const nameParentNode = createAndAddNode(treeDataNodeList, ParameterParentNodeNames.NAME, parentIcon);
+        const nameParentNode = createAndAddNode(treeDataNodeList, ParameterParentNodeNames.NAME, groupParameterIcon);
         nameParentNode.children = [];
         for (const parameterName of parameterNameSet) {
             createAndAddNode(nameParentNode.children, parameterName);
@@ -64,7 +68,7 @@ export function createTreeDataNodeListFromParameters(
 
     // Add parameter groups
     if (groupNameSet.size !== 0) {
-        const groupParentNode = createAndAddNode(treeDataNodeList, ParameterParentNodeNames.GROUP, parentIcon);
+        const groupParentNode = createAndAddNode(treeDataNodeList, ParameterParentNodeNames.GROUP, groupParameterIcon);
         groupParentNode.children = [];
         for (const groupName of groupNameSet) {
             createAndAddNode(groupParentNode.children, groupName);

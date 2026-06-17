@@ -16,6 +16,7 @@ import {
     createTreeDataNodeListFromParameters,
     getParametersMatchingSelectedNodes,
 } from "./private-utils/smartNodeSelectorUtils";
+import { FilterAlt } from "@mui/icons-material";
 
 export type InitialParameterFilter = Extract<
     (typeof ParameterParentNodeNames)[keyof typeof ParameterParentNodeNames],
@@ -83,15 +84,20 @@ export const ParameterListFilter: React.FC<ParameterListFilterProps> = (props: P
     return (
         <div className={props.showTitle ? "mt-2xs mb-2xs" : ""}>
             <>
-                <SmartNodeSelector
-                    id={smartNodeSelectorId}
-                    delimiter={smartNodeSelectorDelimiter}
-                    data={treeDataNodeList}
-                    selectedTags={selectedTags}
-                    onValueChange={handleSmartNodeSelectorChange}
-                    placeholder="Add new filter condition..."
-                    disabled={props.disabled}
-                />
+                <div className="gap-xs flex items-center">
+                    <FilterAlt fontSize="small" />
+                    <div className="grow">
+                        <SmartNodeSelector
+                            id={smartNodeSelectorId}
+                            delimiter={smartNodeSelectorDelimiter}
+                            data={treeDataNodeList}
+                            selectedTags={selectedTags}
+                            onValueChange={handleSmartNodeSelectorChange}
+                            placeholder="Add new filter condition..."
+                            disabled={props.disabled}
+                        />
+                    </div>
+                </div>
                 <div className={resolveClassNames("text-body-xs text-neutral-subtle relative w-full text-right")}>
                     Number of matches: {numberOfMatchingParameters}
                 </div>

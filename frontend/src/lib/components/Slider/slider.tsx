@@ -4,7 +4,6 @@ import type { BaseUIEvent } from "@base-ui/react";
 import { Tooltip } from "@base-ui/react";
 import type { SliderRootProps as SliderRootBaseProps, SliderRootState } from "@base-ui/react/slider";
 import { Slider as SliderBase } from "@base-ui/react/slider";
-import { Lock, LockOpen } from "@mui/icons-material";
 import { chain, clamp, clone, isEqual, minBy } from "lodash";
 import { Key } from "ts-key-enum";
 
@@ -21,7 +20,6 @@ import {
     type SelectableSize,
 } from "../_shared/utils/size";
 import { resolveWrapperProps, type ComponentWrapperProps } from "../_shared/utils/wrapperProps";
-import { Button } from "../Button";
 import { Typography } from "../Typography";
 
 type SnapTarget = "nearest" | "next" | "prev";
@@ -35,6 +33,14 @@ const TRACK_HEIGHT_CLASS_NAMES = {
     default: "h-1",
     large: "h-1.5",
 } as const;
+
+// Max visual scale applied to a thumb while it's being dragged towards a lock target, right before it engages
+const THUMB_GROW_PEAK_SCALE = 2.1;
+// Resting scale once a thumb is locked; smaller than the peak so settling into it reads as a "snap"
+const THUMB_LOCKED_SCALE = 1.7;
+// Minimal pointer movement required before we start growing/(un)locking thumbs, so that a plain click on an
+// already-locked thumb (which unlocks it) doesn't get immediately re-locked by the pointer sitting still in the zone
+const LOCK_DRAG_THRESHOLD_PX = 3;
 
 export type SliderChangeEventDetails =
     | SliderBase.Root.ChangeEventDetails
@@ -214,9 +220,14 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
     const inputRefs = [React.useRef<HTMLInputElement | null>(null), React.useRef<HTMLInputElement | null>(null)];
 
     const wrapperRef = React.useRef<HTMLDivElement>(null);
-    const minGutterDotRef = React.useRef<HTMLDivElement | null>(null);
-    const maxGutterDotRef = React.useRef<HTMLDivElement | null>(null);
+    const minGutterRef = React.useRef<HTMLDivElement | null>(null);
+    const maxGutterRef = React.useRef<HTMLDivElement | null>(null);
     const controllerRef = React.useRef<HTMLDivElement | null>(null);
+    const dragStartXRef = React.useRef<number | null>(null);
+    const hasMovedPastThresholdRef = React.useRef(false);
+    // Which side's thumb was pressed while locked, if any - only unlocked on pointer-up if this turns out
+    // to have been a plain click (no meaningful movement), rather than the start of a drag
+    const clickUnlockSideRef = React.useRef<"min" | "max" | null>(null);
 
     React.useImperativeHandle(ref, () => controllerRef.current as HTMLDivElement);
 
@@ -227,6 +238,8 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
     const [isHovered, setIsHovered] = React.useState(false);
     const [isFocused, setIsFocused] = React.useState(false);
     const [isDragging, setIsDragging] = React.useState(false);
+    const [minGrowFactor, setMinGrowFactor] = React.useState(0);
+    const [maxGrowFactor, setMaxGrowFactor] = React.useState(0);
 
     const showMinLock = [true, "both", "min"].includes(defaultedProps.showRangeLocks);
     const showMaxLock = [true, "both", "max"].includes(defaultedProps.showRangeLocks);
@@ -257,6 +270,11 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
 
     const thumbSize = React.useMemo(() => ({ small: 6, default: 8, large: 10 })[componentSize], [componentSize]);
     const markSize = React.useMemo(() => ({ small: 4, default: 6, large: 8 })[componentSize], [componentSize]);
+
+    // Floor scales with the thumb size so smaller slider sizes still get enough room to grow/travel into
+    const lockGutterSize = clamp(wrapperSize.width * 0.07, thumbSize * 3.5, 28);
+    // How far (in px) a thumb's center needs to travel from the track edge to land exactly on the lock target
+    const lockOffsetMagnitude = lockGutterSize - thumbSize / 2;
 
     if (props.value !== undefined && props.value !== internalValue) {
         setInternalValue(props.value);
@@ -397,11 +415,11 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
             style={
                 {
                     gridTemplateColumns: `
-                        ${showMinLock ? "auto var(--lock-gutter-size) " : ""}
+                        ${showMinLock ? "var(--lock-gutter-size) " : ""}
                         1fr
-                        ${showMaxLock ? " var(--lock-gutter-size) auto" : ""}
+                        ${showMaxLock ? " var(--lock-gutter-size)" : ""}
                     `,
-                    "--lock-gutter-size": `${clamp(wrapperSize.width * 0.1, 20, 40)}px`,
+                    "--lock-gutter-size": `${lockGutterSize}px`,
 
                     // Couldn't find any EDS variable for these sizes; these pixels sizes are used in the design doc
                     "--thumb-size": `${thumbSize}px`,
@@ -414,16 +432,6 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
             }
             render={(rootProps, state) => (
                 <div {...rootProps}>
-                    {showMinLock && (
-                        <LimitLockSwitch
-                            layoutClassName="mr-2xs"
-                            size={componentSize}
-                            disabled={state.disabled}
-                            isLocked={minLocked}
-                            onSetLocked={setMinLocked}
-                        />
-                    )}
-
                     <SliderBase.Control
                         ref={controllerRef}
                         className={resolveClassNames(
@@ -444,29 +452,55 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
                             if (props.disabled) return;
 
                             evt.currentTarget.setPointerCapture(evt.pointerId);
+                            dragStartXRef.current = evt.pageX;
+                            hasMovedPastThresholdRef.current = false;
                             setIsDragging(true);
                         }}
                         onPointerUpCapture={(evt) => {
                             evt.currentTarget.releasePointerCapture(evt.pointerId);
                             setIsDragging(false);
+                            dragStartXRef.current = null;
+                            setMinGrowFactor(0);
+                            setMaxGrowFactor(0);
+
+                            // Only unlock on a plain click (no meaningful movement in between) - dragging away
+                            // already unlocks via the value-change handling further below
+                            if (clickUnlockSideRef.current && !hasMovedPastThresholdRef.current) {
+                                if (clickUnlockSideRef.current === "min") setMinLocked(false);
+                                else setMaxLocked(false);
+                            }
+                            clickUnlockSideRef.current = null;
                         }}
                         onPointerMove={(evt) => {
                             if (!isDragging) return;
 
-                            if (showMinLock && minGutterDotRef.current && !minLocked) {
-                                const rect = minGutterDotRef.current.getBoundingClientRect();
-                                setMinLocked(evt.pageX <= rect.x + rect.width / 2);
+                            // Ignore tiny jitters so a plain click-to-unlock on an already-locked thumb doesn't
+                            // immediately get re-locked by the pointer sitting still inside the lock zone
+                            const hasMovedEnough =
+                                dragStartXRef.current !== null &&
+                                Math.abs(evt.pageX - dragStartXRef.current) > LOCK_DRAG_THRESHOLD_PX;
+                            if (hasMovedEnough) hasMovedPastThresholdRef.current = true;
+                            if (!hasMovedEnough) return;
+
+                            if (showMinLock && minGutterRef.current && !minLocked) {
+                                const rect = minGutterRef.current.getBoundingClientRect();
+                                const factor = clamp(rect.width === 0 ? 0 : (rect.right - evt.pageX) / rect.width, 0, 1);
+                                setMinGrowFactor(factor);
+                                if (factor >= 1) setMinLocked(true);
                             }
-                            if (showMaxLock && maxGutterDotRef.current && !maxLocked) {
-                                const rect = maxGutterDotRef.current.getBoundingClientRect();
-                                setMaxLocked(evt.pageX >= rect.x + rect.width / 2);
+                            if (showMaxLock && maxGutterRef.current && !maxLocked) {
+                                const rect = maxGutterRef.current.getBoundingClientRect();
+                                const factor = clamp(rect.width === 0 ? 0 : (evt.pageX - rect.left) / rect.width, 0, 1);
+                                setMaxGrowFactor(factor);
+                                if (factor >= 1) setMaxLocked(true);
                             }
                         }}
                     >
                         {showMinLock && (
                             <SliderLockGutter
-                                ref={minGutterDotRef}
+                                ref={minGutterRef}
                                 locked={minLocked}
+                                growFactor={minGrowFactor}
                                 size={componentSize}
                                 placement="start"
                                 inverse={isDualSlider !== !props.inverted}
@@ -501,10 +535,23 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
                                 max={defaultedProps.max}
                                 lockedToMin={minLocked}
                                 lockedToMax={!isDualSlider && maxLocked}
+                                // Thumb 0 is the only thumb that can ever grow towards min; for a single-value slider
+                                // it can also grow towards max, so it takes whichever proximity is relevant
+                                growFactor={isDualSlider ? minGrowFactor : Math.max(minGrowFactor, maxGrowFactor)}
+                                // Negative -> travelling towards the min lock, positive -> towards the max lock (single-value sliders only)
+                                lockOffsetFactor={
+                                    (!isDualSlider && maxLocked ? 1 : !isDualSlider ? maxGrowFactor : 0) -
+                                    (minLocked ? 1 : minGrowFactor)
+                                }
+                                lockOffsetMagnitude={lockOffsetMagnitude}
+                                isDragging={isDragging}
                                 valueLabelFormat={defaultedProps.valueLabelFormat}
                                 getAriaLabel={getThumbAriaLabel}
                                 onSetMinLocked={setMinLocked}
                                 onSetMaxLocked={setMaxLocked}
+                                onPressWhileLocked={(side) => {
+                                    clickUnlockSideRef.current = side;
+                                }}
                             />
 
                             <Thumb
@@ -519,10 +566,17 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
                                 // ! This can never be locked to min, since it's either hidden or the rightmost thumb
                                 lockedToMin={false}
                                 lockedToMax={maxLocked}
+                                growFactor={maxGrowFactor}
+                                lockOffsetFactor={maxLocked ? 1 : maxGrowFactor}
+                                lockOffsetMagnitude={lockOffsetMagnitude}
+                                isDragging={isDragging}
                                 valueLabelFormat={defaultedProps.valueLabelFormat}
                                 getAriaLabel={getThumbAriaLabel}
                                 onSetMinLocked={setMinLocked}
                                 onSetMaxLocked={setMaxLocked}
+                                onPressWhileLocked={(side) => {
+                                    clickUnlockSideRef.current = side;
+                                }}
                             />
 
                             {allMarkers.map((v, i) => (
@@ -537,26 +591,17 @@ export const Slider = React.forwardRef<HTMLDivElement, SliderProps<number | numb
 
                         {showMaxLock && (
                             <SliderLockGutter
-                                ref={maxGutterDotRef}
+                                ref={maxGutterRef}
                                 inverse={!!props.inverted}
                                 size={componentSize}
                                 locked={maxLocked}
+                                growFactor={maxGrowFactor}
                                 placement="end"
                                 sliderState={state}
                                 onSetLocked={setMaxLocked}
                             />
                         )}
                     </SliderBase.Control>
-
-                    {showMaxLock && (
-                        <LimitLockSwitch
-                            layoutClassName="ml-2xs"
-                            size={componentSize}
-                            disabled={state.disabled}
-                            isLocked={maxLocked}
-                            onSetLocked={setMaxLocked}
-                        />
-                    )}
 
                     {/* Row 2, for marker labels */}
                     {defaultedProps.markerLabels && (
@@ -618,11 +663,24 @@ function Thumb(props: {
     lockedToMax: boolean;
     disabled: boolean;
 
+    /** 0 (not near a lock) to 1 (right at the lock target); drives the live "growing while approaching" animation */
+    growFactor: number;
+    /**
+     * -1 (fully travelled to the min lock target) to 1 (fully travelled to the max lock target), continuously
+     * tracking pointer proximity while dragging. Drives how far the thumb slides from the track edge into the gutter.
+     */
+    lockOffsetFactor: number;
+    /** Distance in px a thumb travels from the track edge to sit exactly on a lock target, at |lockOffsetFactor| === 1 */
+    lockOffsetMagnitude: number;
+    isDragging: boolean;
+
     valueLabelFormat: undefined | ((value: number, thumbIndex: number) => React.ReactNode);
     getAriaLabel?: (index: number) => string;
 
     onSetMinLocked: (newValue: boolean) => void;
     onSetMaxLocked: (newValue: boolean) => void;
+    /** Called on pointerdown when the thumb is locked; the slider only actually unlocks it if this turns out to be a plain click */
+    onPressWhileLocked: (side: "min" | "max") => void;
 }) {
     if (props.lockedToMin && props.lockedToMax) {
         throw new Error("Thumb cannot be locked to both min and max");
@@ -631,12 +689,27 @@ function Thumb(props: {
     const thumbHidden = !isDualSliderValue(props.sliderValue) && props.index === 1;
     const thumbValue = isDualSliderValue(props.sliderValue) ? props.sliderValue[props.index] : props.sliderValue;
 
-    let positionStyle: React.CSSProperties | undefined = undefined;
+    const locked = props.lockedToMin || props.lockedToMax;
+    // While actively growing towards a lock target, track the pointer 1:1 (no transition). Everywhere else
+    // (idle, locked, or springing back after letting go) ease with a slight overshoot for a "snap" feeling.
+    const isLiveTracking = props.isDragging && !locked && props.growFactor > 0;
+    // Ease in: stay close to normal size/position through most of the approach, so the thumb doesn't start
+    // covering the (still unlocked and clickable) lock target until it's genuinely close, then ramp up fast
+    const easedFactor = props.growFactor * props.growFactor;
+    const scale = locked ? THUMB_LOCKED_SCALE : 1 + easedFactor * (THUMB_GROW_PEAK_SCALE - 1);
+    const offsetPx = Math.sign(props.lockOffsetFactor) * (locked ? 1 : easedFactor) * props.lockOffsetMagnitude;
 
-    if (props.lockedToMin) {
-        positionStyle = { insetInlineStart: "calc(-1 * var(--lock-gutter-size) + var(--thumb-size)/2)" };
-    } else if (props.lockedToMax) {
-        positionStyle = { insetInlineStart: "calc(100% + var(--lock-gutter-size) - var(--thumb-size)/2)" };
+    const positionStyle: React.CSSProperties = {
+        transform: `translateX(${offsetPx}px) scale(${scale})`,
+        transition: isLiveTracking ? "none" : "transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+    };
+
+    function onThumbPointerDown() {
+        // Only flags this as a candidate to unlock - the slider decides on pointer-up whether this ended up
+        // being a plain click (unlock) or the start of a drag (which already unlocks via the value-change
+        // handling once the value actually moves away, so nothing further is needed for that case here).
+        if (props.lockedToMin) props.onPressWhileLocked("min");
+        if (props.lockedToMax) props.onPressWhileLocked("max");
     }
 
     function onThumbInputKeyDown(event: BaseUIEvent<React.KeyboardEvent<HTMLDivElement>>) {
@@ -679,6 +752,7 @@ function Thumb(props: {
                         getAriaLabel={props.getAriaLabel}
                         style={positionStyle}
                         onKeyDownCapture={onThumbInputKeyDown}
+                        onPointerDown={onThumbPointerDown}
                     />
                 }
             />
@@ -692,7 +766,9 @@ function Thumb(props: {
                                 as="div"
                                 variant="subtle"
                                 size={getNextTextSize(getTextSizeForSelectableSize(props.size), -1)}
+                                layoutClassName={locked ? "flex items-center gap-4xs" : undefined}
                             >
+                                {locked && <AnimatedLockIcon progress={1} style={{ fontSize: "1em" }} />}
                                 {props.valueLabelFormat ? props.valueLabelFormat(thumbValue, props.index) : thumbValue}
                             </Typography>
                         }
@@ -703,28 +779,68 @@ function Thumb(props: {
     );
 }
 
-function LimitLockSwitch(props: {
-    layoutClassName?: string;
-    size: SelectableSize;
-    disabled: boolean;
-    isLocked: boolean;
-    onSetLocked: (newValue: boolean) => void;
+/**
+ * A padlock icon whose shackle rotates open/closed based on `progress`, rather than swapping between two
+ * unrelated icon glyphs. Lets the icon animate continuously as it's dragged towards (or away from) a lock target.
+ */
+function AnimatedLockIcon(props: {
+    /** 0 = fully open/unlocked, 1 = fully closed/locked */
+    progress: number;
+    /** Skip the transition for 1:1 pointer tracking while actively dragging towards the lock */
+    live?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
 }) {
-    const ButtonIcon = props.isLocked ? Lock : LockOpen;
+    // Unlocked should read as clearly lighter/less prominent than an actively locked target
+    const iconOpacity = 0.4 + props.progress * 0.6;
+
+    // Two-phase motion: the right side of the shackle is fixed (always seated in the body, never moves)
+    // and is also the pivot the rest of the shackle flips around. The left side - the part that actually
+    // locks in - first flips around that fixed right anchor (rotateY), then drops straight down to seat
+    // into the body for the remainder. Locking = flip completes, then it falls into place; unlocking is
+    // the reverse. Because only the free (left) end's position changes, the right side always reads as
+    // connected to the body.
+    // Callers cap the live (dragged) progress at 0.6, so the flip finishes as the thumb approaches but the
+    // drop (dropPhase) only plays out via the transition once actually locked - keeping it in sync with,
+    // rather than finishing well ahead of, the thumb's own snap-into-place animation
+    const rotatePhase = clamp(props.progress / 0.6, 0, 1);
+    const dropPhase = clamp((props.progress - 0.6) / 0.4, 0, 1);
+    const shackleAngle = 180 * (1 - rotatePhase);
+    // How far the free (left) end lifts above the body when fully open
+    const liftAmount = 3;
+    const leftFootY = 10 - liftAmount * (1 - dropPhase);
 
     return (
-        <Button
-            layoutClassName={props.layoutClassName}
-            variant="ghost"
-            tone="accent"
-            size={props.size}
-            compact
-            pressed={props.isLocked}
-            disabled={props.disabled}
-            onClick={() => props.onSetLocked(!props.isLocked)}
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden
+            className={props.className}
+            style={{
+                width: "1em",
+                height: "1em",
+                overflow: "visible",
+                ...props.style,
+                opacity: iconOpacity,
+                transition: props.live ? "none" : "opacity 260ms ease-out",
+            }}
         >
-            <ButtonIcon className="text-accent-subtle text" fontSize="inherit" />
-        </Button>
+            <rect x="5" y="10" width="14" height="11" rx="2.5" fill="currentColor" />
+            {/* Right leg: fixed hinge side, always seated in the body */}
+            <path d="M15,7 V11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            {/* Arc + left leg: pivots around the fixed right leg's top, then its free end drops to lock in */}
+            <path
+                d={`M15,7 A3,3 0 0 0 9,7 V${leftFootY}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                style={{
+                    transformOrigin: "15px 7px",
+                    transform: `perspective(40px) rotateY(${shackleAngle}deg)`,
+                    transition: props.live ? "none" : "transform 200ms ease, d 220ms ease",
+                }}
+            />
+        </svg>
     );
 }
 
@@ -732,6 +848,8 @@ type SliderLockGutterProps = {
     placement: "start" | "end";
     inverse: boolean;
     locked: boolean;
+    /** 0 (not near this lock) to 1 (thumb right at the target); animates the icon in sync while dragging */
+    growFactor: number;
     size: SelectableSize;
     sliderState: SliderRootState;
     onSetLocked: (locked: boolean) => void;
@@ -741,6 +859,7 @@ const SliderLockGutter = React.forwardRef<HTMLDivElement, SliderLockGutterProps>
     const isFilled = props.inverse !== props.locked;
     const isDragging = props.sliderState.dragging;
     const isDisabled = props.sliderState.disabled;
+    const isLiveTracking = isDragging && !props.locked && props.growFactor > 0;
 
     function getGutterColorVariable(disabled: boolean, isFilled: boolean, dragging: boolean) {
         // The gutter tracks are mimicking the look of the slider track, except using a gradient to have it appear as a dashed line.
@@ -760,17 +879,49 @@ const SliderLockGutter = React.forwardRef<HTMLDivElement, SliderLockGutterProps>
 
     return (
         <div
+            ref={ref}
             className={resolveClassNames("flex w-(--lock-gutter-size) items-center", {
                 "-ml-(--lock-gutter-size)": props.placement === "start",
                 "-mr-(--lock-gutter-size)": props.placement === "end",
                 "flex-row-reverse": props.placement === "end",
             })}
         >
-            <div
-                ref={ref}
-                className="border-neutral bg-surface mx-(--mark-thumb-diff) box-content size-(--mark-size) shrink-0 rounded-full border"
-                onPointerDownCapture={() => !props.sliderState.disabled && props.onSetLocked(true)}
-            />
+            {/* Kept as a single persistent element (never swapped for a different tag) across the
+                locked/unlocked toggle, so the icon inside never unmounts - otherwise its animation would
+                just snap instantly instead of playing out. */}
+            <button
+                type="button"
+                aria-pressed={props.locked}
+                aria-label={props.locked ? "Unlock" : "Lock to this end"}
+                disabled={isDisabled}
+                data-disabled={isDisabled ? "" : undefined}
+                // Once locked, the (larger) thumb grows over this exact spot, so this becomes a purely
+                // decorative overlay - pointer-events-none lets clicks/drags fall straight through to the
+                // thumb underneath, which already unlocks on a plain click (onThumbPointerDown) and drags
+                // away normally, so nothing is lost by no longer being interactive here once covered.
+                className={resolveClassNames(
+                    "text-accent-strong not-data-disabled:hover:opacity-80 data-disabled:text-disabled relative z-3 flex shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 outline-2 outline-offset-2 outline-transparent focus-visible:outline-focus data-disabled:cursor-not-allowed",
+                    props.locked ? "pointer-events-none" : "cursor-pointer",
+                )}
+                style={{ width: "var(--thumb-size)", height: "var(--thumb-size)" }}
+                // The slider control has its own pointerdown handling that starts a drag/value-jump on any
+                // descendant press; stop it from bubbling there so a plain click just toggles the lock
+                // (same pattern as the marker labels below). Only matters while unlocked - once locked this
+                // element no longer receives pointer events at all (see pointer-events-none above).
+                onPointerDown={(evt) => {
+                    if (isDisabled) return;
+                    evt.stopPropagation();
+                }}
+                onClick={() => props.onSetLocked(!props.locked)}
+            >
+                <AnimatedLockIcon
+                    // Cap the live-dragged progress so the drop phase is reserved for the transition that
+                    // plays once actually locked, in sync with the thumb's own snap-into-place animation
+                    progress={props.locked ? 1 : Math.min(props.growFactor, 0.6)}
+                    live={isLiveTracking}
+                    style={{ fontSize: "calc(var(--thumb-size) * 1.6)" }}
+                />
+            </button>
 
             <div
                 className={resolveClassNames("w-full", TRACK_HEIGHT_CLASS_NAMES[props.size])}

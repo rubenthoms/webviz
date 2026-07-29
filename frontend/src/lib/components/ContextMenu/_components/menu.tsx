@@ -8,6 +8,7 @@ import { PortalContainerContext } from "@lib/components/_shared/contexts/portalC
 import { withDefaults } from "@lib/components/_shared/utils/defaultProps";
 import { getTextSizeForSelectableSize, type SelectableSize } from "@lib/components/_shared/utils/size";
 import { Typography } from "@lib/components/Typography";
+import type { Vec2 } from "@lib/utils/vec2";
 
 export type MenuProps = Omit<ContextMenuPopupProps, "className" | "style"> & {
     children: React.ReactNode;
@@ -17,6 +18,10 @@ export type MenuProps = Omit<ContextMenuPopupProps, "className" | "style"> & {
     side?: ContextMenuPositionerProps["side"];
     /** Alignment of the menu relative to the anchor. */
     align?: ContextMenuPositionerProps["align"];
+    /** The element to anchor the menu to. Only used if `position` is not set. */
+    anchor?: ContextMenuPositionerProps["anchor"];
+    /** The position of the menu. If set, the menu will be positioned at this point instead of relative to the anchor. */
+    position?: Vec2;
 };
 
 const DEFAULT_PROPS = {
@@ -29,9 +34,25 @@ export const Menu = React.forwardRef<HTMLDivElement, MenuProps>(function Menu(pr
 
     const portalContainer = React.useContext(PortalContainerContext);
 
+    let anchor: ContextMenuPositionerProps["anchor"] = defaultedProps.anchor;
+    if (props.position) {
+        anchor = {
+            getBoundingClientRect: () => ({
+                top: props.position!.y,
+                left: props.position!.x,
+                right: props.position!.x,
+                bottom: props.position!.y,
+                width: 0,
+                height: 0,
+                x: props.position!.x,
+                y: props.position!.y,
+            }),
+        };
+    }
+
     return (
         <ContextMenuBase.Portal container={portalContainer}>
-            <ContextMenuBase.Positioner side={side} align={align}>
+            <ContextMenuBase.Positioner side={side} align={align} anchor={anchor}>
                 <Typography
                     {...otherProps}
                     as={ContextMenuBase.Popup}

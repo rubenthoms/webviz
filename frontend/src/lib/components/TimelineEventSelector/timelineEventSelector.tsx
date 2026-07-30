@@ -93,6 +93,9 @@ export type TimelineEventSelectorProps = ComponentWrapperProps<React.HTMLAttribu
     disabled?: boolean;
     /** Enables arrow-left/arrow-right navigation to the previous/next event while focused. @default true */
     enableKeyboardNav?: boolean;
+
+    /** Extra controls (e.g. a `TimelineAutoplayButton`) rendered in the same row as the built-in prev/next/zoom controls, before them. */
+    extraControls?: React.ReactNode;
 };
 
 const DEFAULT_PROPS = {
@@ -129,6 +132,7 @@ export const TimelineEventSelector = React.forwardRef<HTMLDivElement, TimelineEv
             "size",
             "disabled",
             "enableKeyboardNav",
+            "extraControls",
         );
 
         const componentSize = useComponentSize(props);
@@ -186,6 +190,33 @@ export const TimelineEventSelector = React.forwardRef<HTMLDivElement, TimelineEv
             setInternalViewport(props.viewport);
         }
         const viewport = internalViewport;
+
+        // `fullRange` only changes reference when the underlying data actually changes (see its
+        // useMemo deps above) - this re-derives an uncontrolled viewport whenever that happens after
+        // mount, since otherwise a viewport computed once against events that hadn't loaded yet (a
+        // common case with async data sources) would never get corrected once the real data arrives.
+        const isInitialFullRangeRef = React.useRef(true);
+        React.useEffect(
+            function rederiveViewportWhenFullRangeChanges() {
+                if (isInitialFullRangeRef.current) {
+                    isInitialFullRangeRef.current = false;
+                    return;
+                }
+                if (props.viewport !== undefined) return;
+
+                setInternalViewport((current) => {
+                    const stillOverlapsData =
+                        current.start.getTime() < fullRange.end.getTime() && current.end.getTime() > fullRange.start.getTime();
+                    if (stillOverlapsData) return clampViewportToRange(current, fullRange);
+
+                    const currentEvent = selectedEventId ? sortedEvents.find((e) => e.id === selectedEventId) : undefined;
+                    if (currentEvent) return computeNeighbourhoodViewport(sortedEvents, currentEvent.id, fullRange, neighbourhoodOptions);
+                    return fullRange;
+                });
+            },
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+            [fullRange],
+        );
 
         function updateViewport(vp: TimeViewport, reason: ViewportChangeReason) {
             setInternalViewport(vp);
@@ -349,7 +380,8 @@ export const TimelineEventSelector = React.forwardRef<HTMLDivElement, TimelineEv
                     />
                 </div>
 
-                <div className="flex justify-end">
+                <div className="gap-xs flex items-center justify-end">
+                    {props.extraControls}
                     <NavControls
                         size={componentSize}
                         canGoPrev={canGoPrev}

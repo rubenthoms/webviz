@@ -17,10 +17,10 @@ export type ViewportRectProps = {
     onPan: (newViewport: TimeViewport) => void;
     onResizeEdge: (edge: "start" | "end", newViewport: TimeViewport) => void;
     /**
-     * Called with the click's pixel offset (within `containerRef`) when the body is clicked
-     * without being dragged. The rect otherwise sits on top of the ribbon and would silently
-     * swallow clicks meant to select the nearest event - this keeps that behavior working even
-     * when a click lands inside the current viewport's highlighted region.
+     * Called with the click's pixel offset (within `containerRef`) when the body - or an edge handle -
+     * is clicked without being dragged. The rect otherwise sits on top of the ribbon and would silently
+     * swallow clicks meant to select the nearest event - this keeps that behavior working even when a
+     * click lands inside the current viewport's highlighted region or right on one of its edge handles.
      */
     onBodyClick: (pixel: number) => void;
 };
@@ -31,9 +31,15 @@ type BodyDragState = {
     dragging: boolean;
 };
 
+type EdgeDragState = {
+    edge: "start" | "end";
+    startClientX: number;
+    dragging: boolean;
+};
+
 export function ViewportRect(props: ViewportRectProps): React.ReactNode {
     const dragStateRef = React.useRef<BodyDragState | null>(null);
-    const resizingEdgeRef = React.useRef<"start" | "end" | null>(null);
+    const edgeDragStateRef = React.useRef<EdgeDragState | null>(null);
 
     const left = timeToPixel(props.viewport.start, props.overviewRange, props.overviewPixelWidth);
     const right = timeToPixel(props.viewport.end, props.overviewRange, props.overviewPixelWidth);
@@ -80,13 +86,18 @@ export function ViewportRect(props: ViewportRectProps): React.ReactNode {
             if (props.disabled) return;
             evt.currentTarget.setPointerCapture(evt.pointerId);
             evt.stopPropagation();
-            resizingEdgeRef.current = edge;
+            edgeDragStateRef.current = { edge, startClientX: evt.clientX, dragging: false };
         };
     }
 
     function handleEdgePointerMove(evt: React.PointerEvent) {
-        const edge = resizingEdgeRef.current;
-        if (!edge) return;
+        const state = edgeDragStateRef.current;
+        if (!state) return;
+
+        if (!state.dragging) {
+            if (Math.abs(evt.clientX - state.startClientX) < CLICK_DRAG_THRESHOLD_PX) return;
+            state.dragging = true;
+        }
 
         const rect = props.containerRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -94,7 +105,7 @@ export function ViewportRect(props: ViewportRectProps): React.ReactNode {
         const newTimeMs = pixelToTime(evt.clientX - rect.left, props.overviewRange, props.overviewPixelWidth).getTime();
 
         let newViewport: TimeViewport;
-        if (edge === "start") {
+        if (state.edge === "start") {
             const maxStartMs = props.viewport.end.getTime() - props.minViewportDurationMs;
             newViewport = { start: new Date(Math.min(newTimeMs, maxStartMs)), end: props.viewport.end };
         } else {
@@ -102,12 +113,18 @@ export function ViewportRect(props: ViewportRectProps): React.ReactNode {
             newViewport = { start: props.viewport.start, end: new Date(Math.max(newTimeMs, minEndMs)) };
         }
 
-        props.onResizeEdge(edge, clampViewportToRange(newViewport, props.fullRange));
+        props.onResizeEdge(state.edge, clampViewportToRange(newViewport, props.fullRange));
     }
 
     function handleEdgePointerUp(evt: React.PointerEvent) {
         evt.currentTarget.releasePointerCapture(evt.pointerId);
-        resizingEdgeRef.current = null;
+
+        const state = edgeDragStateRef.current;
+        edgeDragStateRef.current = null;
+        if (!state || state.dragging) return;
+
+        const rect = props.containerRef.current?.getBoundingClientRect();
+        props.onBodyClick(rect ? evt.clientX - rect.left : 0);
     }
 
     return (

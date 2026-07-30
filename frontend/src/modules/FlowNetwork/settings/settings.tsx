@@ -12,7 +12,13 @@ import { Combobox } from "@lib/components/Combobox";
 import { Select } from "@lib/components/Select";
 import { Setting } from "@lib/components/Setting";
 import { TextInput } from "@lib/components/TextInput";
-import { TimelineEventSelector } from "@lib/components/TimelineEventSelector";
+import {
+    TimelineAutoplayButton,
+    TimelineAutoplayDelaySelect,
+    TimelineAutoplayLoopToggle,
+    TimelineEventSelector,
+    useTimelineAutoplay,
+} from "@lib/components/TimelineEventSelector";
 import type { TimelineEvent } from "@lib/components/TimelineEventSelector";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { usePropagateQueryErrorToStatusWriter } from "@modules/_shared/hooks/usePropagateApiErrorToStatusWriter";
@@ -99,6 +105,16 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
             })),
         [availableDateTimes],
     );
+
+    const [timeStepAutoplayLoop, setTimeStepAutoplayLoop] = React.useState(false);
+    const [timeStepAutoplayDelayMs, setTimeStepAutoplayDelayMs] = React.useState(3000);
+    const timeStepAutoplay = useTimelineAutoplay({
+        events: dateTimeEvents,
+        selectedEventId: selectedDateTime.value,
+        onSelectedEventChange: handleSelectedDateTimeChange,
+        delayMs: timeStepAutoplayDelayMs,
+        loop: timeStepAutoplayLoop,
+    });
 
     const selectedEnsembleIdentAnnotations = useMakePersistableFixableAtomAnnotations(selectedEnsembleIdentAtom);
     const selectedTreeTypeAnnotations = useMakePersistableFixableAtomAnnotations(selectedTreeTypeAtom);
@@ -205,10 +221,33 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                         <div className="gap-sm flex flex-col">
                             <TimelineEventSelector
                                 layoutClassName="w-full"
+                                size="small"
                                 disabled={!availableDateTimes.length}
                                 events={dateTimeEvents}
                                 selectedEventId={selectedDateTime.value}
                                 onSelectedEventChange={handleSelectedDateTimeChange}
+                                extraControls={
+                                    <>
+                                        <TimelineAutoplayDelaySelect
+                                            size="small"
+                                            disabled={!availableDateTimes.length}
+                                            delayMs={timeStepAutoplayDelayMs}
+                                            onDelayChange={setTimeStepAutoplayDelayMs}
+                                        />
+                                        <TimelineAutoplayButton
+                                            size="small"
+                                            disabled={!availableDateTimes.length}
+                                            isPlaying={timeStepAutoplay.isPlaying}
+                                            onToggle={timeStepAutoplay.toggle}
+                                        />
+                                        <TimelineAutoplayLoopToggle
+                                            size="small"
+                                            disabled={!availableDateTimes.length}
+                                            loop={timeStepAutoplayLoop}
+                                            onToggle={() => setTimeStepAutoplayLoop((l) => !l)}
+                                        />
+                                    </>
+                                }
                             />
                             <TextInput
                                 value={selectedDateTime.value ?? ""}

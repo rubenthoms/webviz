@@ -6,7 +6,13 @@ import { Button } from "../Button";
 
 import type { TimeViewport, TimelineEvent } from "./types";
 
-import { TimelineEventSelector } from "./index";
+import {
+    TimelineAutoplayButton,
+    TimelineAutoplayDelaySelect,
+    TimelineAutoplayLoopToggle,
+    TimelineEventSelector,
+    useTimelineAutoplay,
+} from "./index";
 
 const BASE_DATE = new Date("2026-01-01T00:00:00Z");
 
@@ -164,6 +170,59 @@ export const ControlledViewport: Story = {
         });
 
         return <TimelineEventSelector events={mixedDatasetEvents} viewport={viewport} onViewportChange={(vp) => setViewport(vp)} />;
+    },
+};
+
+export const WithAutoplay: Story = {
+    render: function WithAutoplayStory() {
+        const [selectedEventId, setSelectedEventId] = React.useState<string | null>(sparseDataset[0].id);
+        const [loop, setLoop] = React.useState(false);
+        const [delayMs, setDelayMs] = React.useState(1000);
+        const autoplay = useTimelineAutoplay({
+            events: sparseDataset,
+            selectedEventId,
+            onSelectedEventChange: setSelectedEventId,
+            delayMs,
+            loop,
+        });
+
+        return (
+            <TimelineEventSelector
+                events={sparseDataset}
+                selectedEventId={selectedEventId}
+                onSelectedEventChange={(id) => setSelectedEventId(id)}
+                extraControls={
+                    <>
+                        <TimelineAutoplayDelaySelect delayMs={delayMs} onDelayChange={setDelayMs} size="small" />
+                        <TimelineAutoplayButton isPlaying={autoplay.isPlaying} onToggle={autoplay.toggle} />
+                        <TimelineAutoplayLoopToggle loop={loop} onToggle={() => setLoop((l) => !l)} />
+                    </>
+                }
+            />
+        );
+    },
+};
+
+export const AsyncEvents: Story = {
+    parameters: {
+        docs: {
+            description: {
+                story:
+                    "Events start empty (as with a query still loading) and arrive 1.5s later - the " +
+                    "viewport re-derives once real data shows up, instead of staying stuck at the " +
+                    "placeholder computed when the component first mounted with nothing to show.",
+            },
+        },
+    },
+    render: function AsyncEventsStory() {
+        const [events, setEvents] = React.useState<TimelineEvent[]>([]);
+
+        React.useEffect(() => {
+            const timeoutId = setTimeout(() => setEvents(mixedDatasetEvents), 1500);
+            return () => clearTimeout(timeoutId);
+        }, []);
+
+        return <TimelineEventSelector events={events} disabled={events.length === 0} />;
     },
 };
 

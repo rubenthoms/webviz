@@ -286,6 +286,16 @@ function pickNiceTickStepMs(rawStepMs: number): number {
     return NICE_TICK_STEPS_MS.find((step) => step >= rawStepMs) ?? NICE_TICK_STEPS_MS[NICE_TICK_STEPS_MS.length - 1];
 }
 
+// formatAxisTick's own granularity thresholds - a tick step finer than what the format for a given
+// span actually displays (e.g. a 12h step under the day-only format used for 2-90 day spans) would
+// render two adjacent ticks with identical-looking text. Both values are themselves present in
+// NICE_TICK_STEPS_MS, so clamping a picked step up to this floor always yields another valid step.
+function minMeaningfulTickStepMs(durationMs: number): number {
+    if (durationMs < 2 * 24 * 60 * 60 * 1000) return 0; // time-of-day format - any step reads fine
+    if (durationMs < 90 * 24 * 60 * 60 * 1000) return 24 * 60 * 60 * 1000; // day-only format needs >= 1 day steps
+    return 30 * 24 * 60 * 60 * 1000; // month/year format needs >= ~1 month steps
+}
+
 /**
  * Returns "nice" tick timestamps spanning `range`, spaced at least `minTickSpacingPx` apart. The
  * range's own start/end are always included (so the ribbon's extremes are always labeled), with
@@ -296,7 +306,7 @@ export function getAxisTicks(range: TimeViewport, pixelWidth: number, minTickSpa
     if (durationMs <= 0 || pixelWidth <= 0) return [range.start];
 
     const maxTickCount = Math.max(2, Math.floor(pixelWidth / minTickSpacingPx));
-    const stepMs = pickNiceTickStepMs(durationMs / maxTickCount);
+    const stepMs = Math.max(pickNiceTickStepMs(durationMs / maxTickCount), minMeaningfulTickStepMs(durationMs));
     const edgeExclusionMs = (minTickSpacingPx / pixelWidth) * durationMs;
 
     const startMs = range.start.getTime();

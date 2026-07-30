@@ -20,6 +20,7 @@ import { AxisTicks } from "./axisTicks";
 import { ClusterMarker } from "./clusterMarker";
 import { EventMarker } from "./eventMarker";
 import { HoverIndicator } from "./hoverIndicator";
+import { SelectedMarkerIndicator } from "./selectedMarkerIndicator";
 
 export type DetailRibbonProps = {
     sortedEvents: TimelineEvent[];
@@ -62,6 +63,14 @@ export function DetailRibbon(props: DetailRibbonProps): React.ReactNode {
             ),
         [props.sortedEvents, props.viewport, size.width, props.clusterPixelThreshold],
     );
+
+    // Only shown when the selected event is individually visible (not merged into a cluster badge)
+    // at the current zoom - dragging it only makes sense once there's an exact pixel to grab.
+    const selectedEventEntry = clusters.find((cluster) => cluster.events.some((e) => e.id === props.selectedEventId));
+    const selectedMarkerPixelLeft =
+        selectedEventEntry && !selectedEventEntry.isCluster
+            ? timeToPixel(selectedEventEntry.events[0].timestamp, props.viewport, size.width)
+            : null;
 
     const { selectedEventId, onSelectedEventStillClustered } = props;
     const prevSelectedEventIdRef = React.useRef(selectedEventId);
@@ -244,7 +253,8 @@ export function DetailRibbon(props: DetailRibbonProps): React.ReactNode {
     });
 
     function handlePointerDown(evt: React.PointerEvent<HTMLDivElement>) {
-        isScrubDragRef.current = evt.shiftKey;
+        const startedOnSelectedMarker = (evt.target as HTMLElement).closest('[data-selected-marker="true"]') !== null;
+        isScrubDragRef.current = startedOnSelectedMarker || evt.shiftKey;
         onDragPointerDown(evt);
     }
 
@@ -277,8 +287,14 @@ export function DetailRibbon(props: DetailRibbonProps): React.ReactNode {
     function handlePointerMove(evt: React.PointerEvent<HTMLDivElement>) {
         onDragPointerMove(evt);
         if (props.disabled) return;
+
+        // Pointer capture (held during any drag) keeps delivering move events targeted at this
+        // element even once the cursor has physically left its bounds - checked explicitly so the
+        // hover crosshair/readout don't keep rendering outside the ribbon while that's happening.
         const rect = containerRef.current?.getBoundingClientRect();
-        setHoveredPixel(rect ? evt.clientX - rect.left : null);
+        const isInsideBounds =
+            !!rect && evt.clientX >= rect.left && evt.clientX <= rect.right && evt.clientY >= rect.top && evt.clientY <= rect.bottom;
+        setHoveredPixel(isInsideBounds ? evt.clientX - rect.left : null);
     }
 
     function handlePointerLeave() {
@@ -337,6 +353,10 @@ export function DetailRibbon(props: DetailRibbonProps): React.ReactNode {
                             showTooltip={false}
                         />
                     ),
+                )}
+
+                {selectedMarkerPixelLeft !== null && (
+                    <SelectedMarkerIndicator pixelLeft={selectedMarkerPixelLeft} disabled={props.disabled} />
                 )}
             </div>
 

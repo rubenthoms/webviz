@@ -11,8 +11,9 @@ import { useEnsembleRealizationFilterFunc, useEnsembleSet } from "@framework/Wor
 import { Combobox } from "@lib/components/Combobox";
 import { Select } from "@lib/components/Select";
 import { Setting } from "@lib/components/Setting";
-import { Slider } from "@lib/components/Slider";
 import { TextInput } from "@lib/components/TextInput";
+import { TimelineEventSelector } from "@lib/components/TimelineEventSelector";
+import type { TimelineEvent } from "@lib/components/TimelineEventSelector";
 import { useMakePersistableFixableAtomAnnotations } from "@modules/_shared/hooks/useMakePersistableFixableAtomAnnotations";
 import { usePropagateQueryErrorToStatusWriter } from "@modules/_shared/hooks/usePropagateApiErrorToStatusWriter";
 
@@ -62,12 +63,12 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     usePropagateQueryErrorToStatusWriter(flowNetworkQuery, statusWriter);
 
     const ensembleRealizationFilterFunction = useEnsembleRealizationFilterFunc(workbenchSession);
-    const timeStepSliderDebounceTimeMs = 10;
-    const timeStepSliderDebounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const timeStepDebounceTimeMs = 10;
+    const timeStepDebounceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     React.useEffect(() => {
-        if (timeStepSliderDebounceTimerRef.current) {
-            clearTimeout(timeStepSliderDebounceTimerRef.current);
+        if (timeStepDebounceTimerRef.current) {
+            clearTimeout(timeStepDebounceTimerRef.current);
         }
     });
 
@@ -75,30 +76,29 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
         setSelectedEnsembleIdent(ensembleIdent);
     }
 
-    function handleSelectedTimeStepIndexChange(value: number | readonly number[]) {
-        const singleValue = typeof value === "number" ? value : value.length > 0 ? value[0] : 0;
-        const validIndex = singleValue >= 0 && singleValue < availableDateTimes.length ? singleValue : null;
-        const newDateTime = validIndex !== null ? availableDateTimes[validIndex] : null;
-
-        if (timeStepSliderDebounceTimerRef.current) {
-            clearTimeout(timeStepSliderDebounceTimerRef.current);
+    function handleSelectedDateTimeChange(dateTime: string | null) {
+        if (timeStepDebounceTimerRef.current) {
+            clearTimeout(timeStepDebounceTimerRef.current);
         }
 
-        timeStepSliderDebounceTimerRef.current = setTimeout(() => {
-            setSelectedDateTime(newDateTime);
-        }, timeStepSliderDebounceTimeMs);
+        timeStepDebounceTimerRef.current = setTimeout(() => {
+            setSelectedDateTime(dateTime);
+        }, timeStepDebounceTimeMs);
     }
 
-    const createValueLabelFormat = React.useCallback(
-        function createValueLabelFormat(value: number): string {
-            if (!availableDateTimes || availableDateTimes.length === 0 || value >= availableDateTimes.length) return "";
-
-            return availableDateTimes[value];
-        },
+    // The event's own id is the date string itself, so selection round-trips without an index lookup.
+    // A bare "YYYY-MM-DD" string parses as UTC midnight, which can display as the wrong calendar day
+    // depending on the browser's timezone offset - appending a bare time forces local-time parsing
+    // instead. Left as-is for strings that already carry a time/offset component.
+    const dateTimeEvents: TimelineEvent[] = React.useMemo(
+        () =>
+            availableDateTimes.map((dateTime) => ({
+                id: dateTime,
+                timestamp: new Date(dateTime.includes("T") ? dateTime : `${dateTime}T00:00:00`),
+                label: dateTime,
+            })),
         [availableDateTimes],
     );
-
-    const selectedDateTimeIndex = selectedDateTime.value ? availableDateTimes.indexOf(selectedDateTime.value) : -1;
 
     const selectedEnsembleIdentAnnotations = useMakePersistableFixableAtomAnnotations(selectedEnsembleIdentAtom);
     const selectedTreeTypeAnnotations = useMakePersistableFixableAtomAnnotations(selectedTreeTypeAtom);
@@ -202,35 +202,20 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                         annotations={selectedDateTimeAnnotations}
                         errorOverlay={selectedDateTime.depsHaveError ? "Could not load time steps." : undefined}
                     >
-                        <div className="gap-sm flex">
-                            <Slider
-                                layoutClassName="grow w-full"
-                                valueLabelDisplay="auto"
+                        <div className="gap-sm flex flex-col">
+                            <TimelineEventSelector
+                                layoutClassName="w-full"
                                 disabled={!availableDateTimes.length}
-                                min={0}
-                                max={availableDateTimes.length ? availableDateTimes.length - 1 : 0}
-                                markers={availableDateTimes.map((_, index) => index)}
-                                markerLabels={(v, i) => {
-                                    if (i === 0 || i === availableDateTimes.length - 1) {
-                                        return createValueLabelFormat(v);
-                                    }
-                                }}
-                                value={selectedDateTimeIndex !== -1 ? selectedDateTimeIndex : 0}
-                                valueLabelFormat={createValueLabelFormat}
-                                onValueChange={handleSelectedTimeStepIndexChange}
+                                events={dateTimeEvents}
+                                selectedEventId={selectedDateTime.value}
+                                onSelectedEventChange={handleSelectedDateTimeChange}
                             />
-                            <div className="relative flex shrink">
-                                <span className="px-sm pointer-events-none invisible whitespace-nowrap">
-                                    {selectedDateTime.value ?? "No time step selected"}
-                                </span>
-                                <TextInput
-                                    layoutClassName="absolute! inset-0"
-                                    value={selectedDateTime.value ?? ""}
-                                    placeholder="No time step selected"
-                                    size="small"
-                                    readOnly
-                                />
-                            </div>
+                            <TextInput
+                                value={selectedDateTime.value ?? ""}
+                                placeholder="No time step selected"
+                                size="small"
+                                readOnly
+                            />
                         </div>
                     </Setting.Field>
                 </Setting.Section>

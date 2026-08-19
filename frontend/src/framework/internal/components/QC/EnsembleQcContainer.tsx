@@ -417,7 +417,7 @@ function CheckRuntimeContainer(props: CheckRuntimeContainerProps) {
                 </div>
                 {isRunning && (
                     <div className="p-2xs">
-                        <Button tone="accent" size="small" variant="ghost" iconOnly onClick={handleCancelRunClick}>
+                        <Button tone="danger" size="small" variant="ghost" iconOnly onClick={handleCancelRunClick}>
                             <Stop style={{ fontSize: 16 }} />
                         </Button>
                     </div>
@@ -521,7 +521,11 @@ function useMatrixEntriesStatus(
                 cacheRef.current.entries !== entries ||
                 cacheRef.current.allRealizations !== allRealizations
             ) {
-                cacheRef.current = { entries, allRealizations, status: computeMatrixEntriesStatus(entries, allRealizations) };
+                cacheRef.current = {
+                    entries,
+                    allRealizations,
+                    status: computeMatrixEntriesStatus(entries, allRealizations),
+                };
             }
             return cacheRef.current.status;
         },

@@ -69,6 +69,8 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
 
     const [storedDeckGlViews, setStoredDeckGlViews] =
         React.useState<SubsurfaceViewerWithCameraStateProps["views"]>(undefined);
+    const [storedLayers, setStoredLayers] =
+        React.useState<SubsurfaceViewerWithCameraStateProps["layers"]>(undefined);
 
     const mainDivRef = React.useRef<HTMLDivElement>(null);
     const mainDivSize = useElementSize(mainDivRef);
@@ -163,7 +165,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
     // readout, so callers that only want to suppress the pick information can keep the coordinate visible.
     const clearPicks = React.useCallback(
         function clearPicks() {
-            setPickingInfoPerView({});
+            setPickingInfoPerView((prev) => (Object.keys(prev).length === 0 ? prev : {}));
             onViewerHover?.(null);
             onViewportHover?.(null);
             onPickingInfoChange?.({});
@@ -429,6 +431,13 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
         setStoredDeckGlViews(deckGlProps.views);
     }
 
+    // Avoid handing SubsurfaceViewer a new `layers` array reference (forcing it to re-clone every
+    // layer, resetting async-loaded state) on renders where the layer set didn't actually change,
+    // e.g. a hover-driven readout update.
+    if (!areLayerArraysEqual(layersWithOverlay, storedLayers)) {
+        setStoredLayers(layersWithOverlay);
+    }
+
     const handleCloseReadout = React.useCallback(
         function handleCloseReadout() {
             setReadoutMode("hover");
@@ -462,7 +471,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
             <PositionReadout coordinates={pickingCoordinate} visible={!hideReadout} />
             <SubsurfaceViewerWithCameraState
                 {...deckGlProps}
-                layers={layersWithOverlay}
+                layers={storedLayers}
                 views={storedDeckGlViews}
                 getCameraPosition={ctx.onViewStateChange}
                 initialCameraPosition={ctx.viewState}
@@ -514,6 +523,16 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
             )}
         </div>
     );
+}
+
+function areLayerArraysEqual(
+    a: SubsurfaceViewerWithCameraStateProps["layers"],
+    b: SubsurfaceViewerWithCameraStateProps["layers"],
+): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    return a.every((layer, index) => layer === b[index]);
 }
 
 const LIGHTS: LightsType = {

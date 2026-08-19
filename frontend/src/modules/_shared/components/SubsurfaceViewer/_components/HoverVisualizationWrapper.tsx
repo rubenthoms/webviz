@@ -152,7 +152,13 @@ export function HoverVisualizationWrapper(props: HoverVisualizationWrapperProps)
                     .filter((coord): coord is number[] => Array.isArray(coord) && coord.length === 3)
                     .map((coord): [number, number, number] => [coord[0], coord[1], coord[2] / props.verticalScale]);
             }
-            setUnscaledCoordinatesPerView(unscaled);
+            // Bail out when nothing actually changed, to avoid a new {} reference on every no-pick hover event
+            setUnscaledCoordinatesPerView((prev) => {
+                if (Object.keys(prev).length === 0 && Object.keys(unscaled).length === 0) {
+                    return prev;
+                }
+                return unscaled;
+            });
         },
         [props.verticalScale],
     );

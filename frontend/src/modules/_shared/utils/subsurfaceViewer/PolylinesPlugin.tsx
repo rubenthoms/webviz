@@ -84,6 +84,12 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
     private _visiblePolylineIds: string[] = [];
     private _colorGenerator: Generator<[number, number, number]>;
 
+    // Cache so getLayers() (called on every render of the SubsurfaceViewer chain, including on
+    // hover-driven readout updates) does not create brand-new layer instances - and thus a new
+    // layers-array reference - unless something plugin-relevant actually changed.
+    private _cachedLayersSignature: unknown[] | null = null;
+    private _cachedLayers: Layer<any>[] | null = null;
+
     private _publishSubscribeDelegate = new PublishSubscribeDelegate<PolylinesPluginTopicPayloads>();
 
     private setCurrentEditingPolylineId(id: string | null, shouldRedraw = false): void {
@@ -556,6 +562,27 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
     }
 
     getLayers(): Layer<any>[] {
+        const activePolyline = this.getActivePolyline();
+        const signature: unknown[] = [
+            this._polylines,
+            this._currentEditingPolylineId,
+            this._visiblePolylineIds,
+            this._selectedPolylineId,
+            this._editingMode,
+            this._hoverPoint,
+            this._currentEditingPolylinePathReferencePointIndex,
+            activePolyline,
+            activePolyline?.version,
+        ];
+        if (
+            this._cachedLayers &&
+            this._cachedLayersSignature &&
+            signature.length === this._cachedLayersSignature.length &&
+            signature.every((value, index) => value === this._cachedLayersSignature![index])
+        ) {
+            return this._cachedLayers;
+        }
+
         const layers: Layer<any>[] = [
             new PolylinesLayer({
                 id: super.makeLayerId("polylines-layer"),
@@ -582,7 +609,6 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
             allowHoveringOf = AllowHoveringOf.POINTS;
         }
 
-        const activePolyline = this.getActivePolyline();
         layers.push(
             new EditablePolylineLayer({
                 id: super.makeLayerId("editable-polyline-layer"),
@@ -603,6 +629,8 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
             }),
         );
 
+        this._cachedLayersSignature = signature;
+        this._cachedLayers = layers;
         return layers;
     }
 

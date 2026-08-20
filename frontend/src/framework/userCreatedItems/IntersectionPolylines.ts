@@ -89,20 +89,14 @@ export class IntersectionPolylines {
         this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 
-    updatePolylines(polylines: IntersectionPolyline[]): void {
-        // Creating a new array to avoid mutation wrt reference checks
-        const newPolylinesArray: IntersectionPolyline[] = [...this._polylines];
-        for (const updatedPolyline of polylines) {
-            const index = newPolylinesArray.findIndex((p) => p.id === updatedPolyline.id);
-            if (index === -1) {
-                // New polyline, add it
-                newPolylinesArray.push(updatedPolyline);
-            } else {
-                // Existing polyline, update it
-                newPolylinesArray[index] = { ...updatedPolyline };
-            }
-        }
-        this._polylines = newPolylinesArray;
+    /*
+        Replaces all polylines belonging to the given field with the provided set, so that
+        polylines removed from the field (e.g. by deletion) are dropped from the store rather
+        than being left behind and later resurrected by a subsequent sync.
+    */
+    updatePolylines(fieldId: string, polylines: IntersectionPolyline[]): void {
+        const otherFieldsPolylines = this._polylines.filter((p) => p.fieldId !== fieldId);
+        this._polylines = [...otherFieldsPolylines, ...polylines.map((p) => ({ ...p }))];
         this.notifySubscribers(IntersectionPolylinesEvent.CHANGE);
     }
 

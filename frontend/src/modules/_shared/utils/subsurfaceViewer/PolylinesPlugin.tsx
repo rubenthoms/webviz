@@ -197,6 +197,7 @@ export class PolylinesPlugin extends DeckGlPlugin implements PublishSubscribe<Po
                 if (this._selectedPolylineId) {
                     this._polylines = this._polylines.filter((polyline) => polyline.id !== this._selectedPolylineId);
                     this._selectedPolylineId = null;
+                    this._publishSubscribeDelegate.notifySubscribers(PolylinesPluginTopic.POLYLINES);
                     this.requireRedraw();
                 }
                 return;

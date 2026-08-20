@@ -42,12 +42,12 @@ export function ContextMenu(props: ContextMenuProps): React.ReactNode {
     return (
         <div
             style={{ top: contextMenu.position.y, left: contextMenu.position.x }}
-            className="border-neutral-subtle z-elevated py-3xs absolute rounded border bg-white shadow-lg"
+            className="border-neutral-subtle z-elevated py-3xs bg-surface absolute rounded border shadow-lg"
         >
             {contextMenu.items.map((item, index) => (
                 <div
                     key={index}
-                    className="hover:bg-info-surface gap-2xs px-2xs text-body-sm p-3xs flex cursor-pointer items-center"
+                    className="hover:bg-accent gap-2xs px-2xs text-body-sm p-3xs flex cursor-pointer items-center"
                     onClick={() => {
                         item.onClick();
                         setVisible(false);

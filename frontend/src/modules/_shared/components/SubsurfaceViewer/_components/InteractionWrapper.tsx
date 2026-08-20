@@ -128,6 +128,7 @@ export function InteractionWrapper(props: InteractionWrapperProps): React.ReactN
                 if (editingId === null) {
                     // We haven't changed all polylines, only the ones related to this field
                     intersectionPolylines.updatePolylines(
+                        props.fieldId,
                         convertPolylinesToIntersectionPolylines(polylinesPlugin.getPolylines(), props.fieldId),
                     );
                 } else {

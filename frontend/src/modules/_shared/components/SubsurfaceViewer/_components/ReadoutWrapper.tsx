@@ -450,6 +450,10 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
         [onPickingInfoChange],
     );
 
+    const handleContextMenu = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        event.preventDefault();
+    }, []);
+
     return (
         <div
             ref={mainDivRef}
@@ -457,6 +461,7 @@ export function ReadoutWrapper(props: ReadoutWrapperProps): React.ReactNode {
             onMouseEnter={handleMainDivEnter}
             onMouseLeave={handleMainDivLeave}
             onKeyDown={handleKeyDown}
+            onContextMenu={handleContextMenu}
         >
             {props.children}
             <PositionReadout coordinates={pickingCoordinate} visible={!hideReadout} />

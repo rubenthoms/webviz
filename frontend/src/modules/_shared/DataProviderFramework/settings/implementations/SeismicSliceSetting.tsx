@@ -72,27 +72,18 @@ export class SeismicSliceSetting implements CustomSettingImplementation<ValueTyp
         const v = parsed as Record<string, unknown>;
 
         // Check 'value' property - must be [number, number, number]
-        if (!Array.isArray(v.value) || v.value.length !== 3) {
+        if (!Array.isArray(v.value) || v.value.length !== 3 || !v.value.every((item) => typeof item === "number")) {
             throw new Error("Expected 'value' to be array of 3 numbers");
         }
-        if (!v.value.every((item) => typeof item === "number")) {
-            throw new Error("Expected 'value' array elements to be numbers");
-        }
 
-        // Check 'visible' property - must be [boolean, boolean, boolean]
-        if (!Array.isArray(v.visible) || v.visible.length !== 3) {
-            throw new Error("Expected 'visible' to be array of 3 booleans");
-        }
-        if (!v.visible.every((item) => typeof item === "boolean")) {
-            throw new Error("Expected 'visible' array elements to be booleans");
-        }
+        const visible: [boolean, boolean, boolean] =
+            Array.isArray(v.visible) && v.visible.length === 3 && v.visible.every((item) => typeof item === "boolean")
+                ? (v.visible as [boolean, boolean, boolean])
+                : [true, true, true];
 
-        // Check 'applied' property - must be boolean
-        if (typeof v.applied !== "boolean") {
-            throw new Error("Expected 'applied' to be boolean");
-        }
-
-        return parsed as ValueType;
+        // A restored session's slice configuration is meant to be shown, not left as a pending edit
+        // waiting for "Apply" - so it is always applied, regardless of how it was serialized.
+        return { value: v.value as [number, number, number], visible, applied: true };
     }
 
     fixupValue(currentValue: ValueType, valueConstraints: ValueConstraintsType): ValueType {
@@ -109,7 +100,11 @@ export class SeismicSliceSetting implements CustomSettingImplementation<ValueTyp
             return Math.max(min, Math.min(max, Math.round(val / step) * step));
         }) as [number, number, number];
 
-        return { value: fixedValue, visible: [true, true, true], applied: currentValue.applied };
+        const visible: [boolean, boolean, boolean] = Array.isArray(currentValue.visible)
+            ? currentValue.visible
+            : [true, true, true];
+
+        return { value: fixedValue, visible, applied: currentValue.applied };
     }
 
     isValueValid(value: ValueType, valueConstraints: ValueConstraintsType): boolean {
@@ -118,7 +113,16 @@ export class SeismicSliceSetting implements CustomSettingImplementation<ValueTyp
         }
         return value.value.every((val, index) => {
             const [min, max, step] = valueConstraints[index];
-            return val >= min && val <= max && (val - min) % step === 0;
+            if (val < Math.min(min, max) || val > Math.max(min, max)) {
+                return false;
+            }
+            if (!step) {
+                return true;
+            }
+            // Tolerant step alignment: the depth axis uses a fractional step, so the exact
+            // `(val - min) % step === 0` check never holds and would reject every restored value.
+            const snapped = Math.round((val - min) / step) * step + min;
+            return Math.abs(snapped - val) <= Math.abs(step) * 1e-3;
         });
     }
 

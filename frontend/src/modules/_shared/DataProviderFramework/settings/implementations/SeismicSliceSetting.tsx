@@ -159,7 +159,13 @@ export class SeismicSliceSetting implements CustomSettingImplementation<ValueTyp
                 setPrevVisible(props.value?.visible ?? null);
             }
 
-            function handleSliderChange(index: number, val: number) {
+            function handleSliderChange(index: number, val: number, reason?: string) {
+                // When the value constraints load (e.g. on session restore) the Slider re-clamps its
+                // value to the new min/max and emits a "clamp-value" change. That is not a user edit,
+                // so it must not flip the setting into a pending "Apply" state.
+                if (reason === "clamp-value") {
+                    return;
+                }
                 const newValue: [number, number, number] = [...(internalValue ?? [0, 0, 0])];
                 newValue[index] = val;
                 setInternalValue(newValue);
@@ -240,7 +246,9 @@ export class SeismicSliceSetting implements CustomSettingImplementation<ValueTyp
                                     <Slider
                                         min={valueConstraints[index][0]}
                                         max={valueConstraints[index][1]}
-                                        onValueChange={(value) => handleSliderChange(index, value as number)}
+                                        onValueChange={(value, eventDetails) =>
+                                            handleSliderChange(index, value as number, eventDetails.reason)
+                                        }
                                         value={props.value?.value[index] ?? valueConstraints[index][0]}
                                         valueLabelDisplay="auto"
                                         step={valueConstraints[index][2]}

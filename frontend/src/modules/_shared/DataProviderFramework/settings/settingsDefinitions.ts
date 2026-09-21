@@ -12,6 +12,8 @@ import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import type { ProductionPhase, InjectionPhase } from "@framework/types/wellbore";
 import type { ColorSet } from "@lib/utils/ColorSet";
 
+import type { FluxDirectionsShown } from "./implementations/FluxDirectionsShownSetting";
+import type { FluxPhasesShown } from "./implementations/FluxPhasesShownSetting";
 import type { IntersectionSettingOption, IntersectionSettingValue } from "./implementations/IntersectionSetting";
 import type { PolygonVisualizationSpec } from "./implementations/PolygonVisualizationSetting";
 import type { Representation } from "./implementations/RepresentationSetting";
@@ -54,6 +56,10 @@ export enum Setting {
     SEISMIC_SLICES = "seismicSlices",
     SENSITIVITY = "sensitivity",
     SHOW_GRID_LINES = "showGridLines",
+    FLUX_PHASES_SHOWN = "fluxPhasesShown",
+    FLUX_DIRECTIONS_SHOWN = "fluxDirectionsShown",
+    SHOW_GRID_POINTS = "showGridPoints",
+    SHOW_GRID_PILLARS = "showGridPillars",
     SMDA_INTERPRETER = "smdaInterpreter",
     WELLBORES = "wellbores",
     SMDA_WELLBORE_HEADERS = "smdaWellboresHeaders",
@@ -99,6 +105,26 @@ export type SettingTypeDefinitions = {
         valueConstraints: null;
     };
     [Setting.SHOW_GRID_LINES]: {
+        internalValue: boolean;
+        externalValue: boolean;
+        valueConstraints: null;
+    };
+    [Setting.FLUX_PHASES_SHOWN]: {
+        internalValue: FluxPhasesShown;
+        externalValue: FluxPhasesShown;
+        valueConstraints: null;
+    };
+    [Setting.FLUX_DIRECTIONS_SHOWN]: {
+        internalValue: FluxDirectionsShown;
+        externalValue: FluxDirectionsShown;
+        valueConstraints: null;
+    };
+    [Setting.SHOW_GRID_POINTS]: {
+        internalValue: boolean;
+        externalValue: boolean;
+        valueConstraints: null;
+    };
+    [Setting.SHOW_GRID_PILLARS]: {
         internalValue: boolean;
         externalValue: boolean;
         valueConstraints: null;

@@ -2,10 +2,11 @@ import logging
 from typing import List, Optional
 import asyncio
 
+import xtgeo
 from pydantic import BaseModel
 from fmu.sumo.explorer import TimeFilter, TimeType
 from fmu.sumo.explorer.explorer import SumoClient, SearchContext
-from fmu.sumo.explorer.objects import CPGrid
+from fmu.sumo.explorer.objects import CPGrid, CPGridProperty
 
 from webviz_core_utils.timestamp_utils import iso_str_to_date_str, timestamp_utc_ms_to_iso_str
 from webviz_services.service_exceptions import InvalidDataError, Service
@@ -86,6 +87,68 @@ class Grid3dAccess:
         grid_meta_arr: list[Grid3dInfo] = [task.result() for task in tasks]
 
         return grid_meta_arr
+
+    async def get_grid_async(self, grid_name: str, realization: int) -> xtgeo.Grid:
+        """Get a 3D grid geometry as an xtgeo.Grid, direct from Sumo (no ResInsight involved)"""
+
+        cpgrid = await self._get_cpgrid_object_async(grid_name, realization)
+        return await cpgrid.to_cpgrid_async()
+
+    async def get_grid_properties_async(
+        self,
+        grid_name: str,
+        property_names: list[str],
+        realization: int,
+        time_or_interval_str: str | None = None,
+    ) -> dict[str, xtgeo.GridProperty]:
+        """Get several named 3D grid properties (same grid/realization/time) as xtgeo.GridProperty objects, direct
+        from Sumo (no ResInsight involved). The CPGrid metadata lookup is shared across the whole batch; the
+        per-property searches and blob downloads run concurrently."""
+
+        cpgrid = await self._get_cpgrid_object_async(grid_name, realization)
+        time_filter = _make_time_filter(time_or_interval_str)
+
+        async def _get_one_property_async(property_name: str) -> tuple[str, xtgeo.GridProperty]:
+            property_search_context = cpgrid.grid_properties.filter(name=property_name, time=time_filter)
+            sumo_property_uuids: list[str] = await property_search_context.uuids_async
+            if not sumo_property_uuids:
+                raise InvalidDataError(
+                    f"No grid property found for {property_name=}, {time_or_interval_str=}", Service.SUMO
+                )
+            if len(sumo_property_uuids) > 1:
+                raise InvalidDataError(
+                    f"Multiple grid properties found for {property_name=}, {time_or_interval_str=}", Service.SUMO
+                )
+
+            sumo_property_object = await property_search_context.get_object_async(sumo_property_uuids[0])
+            if not isinstance(sumo_property_object, CPGridProperty):
+                raise InvalidDataError(
+                    f"Did not get expected CPGridProperty object type for {property_name=}", Service.SUMO
+                )
+
+            return property_name, await sumo_property_object.to_cpgrid_property_async()
+
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(_get_one_property_async(name)) for name in property_names]
+
+        return dict(task.result() for task in tasks)
+
+    async def _get_cpgrid_object_async(self, grid_name: str, realization: int) -> CPGrid:
+        """Cheap metadata-only lookup, shared by get_grid_async and get_grid_property_async -- does not
+        download/parse the grid blob itself (that only happens on .to_cpgrid_async())."""
+
+        grid3d_search_context = self._ensemble_context.grids.filter(name=grid_name, realization=realization)
+        sumo_grid_uuids: list[str] = await grid3d_search_context.uuids_async
+        if not sumo_grid_uuids:
+            raise InvalidDataError(f"No grid found for {grid_name=}, {realization=}", Service.SUMO)
+        if len(sumo_grid_uuids) > 1:
+            raise InvalidDataError(f"Multiple grids found for {grid_name=}, {realization=}", Service.SUMO)
+
+        sumo_grid_object = await grid3d_search_context.get_object_async(sumo_grid_uuids[0])
+        if not isinstance(sumo_grid_object, CPGrid):
+            raise InvalidDataError(f"Did not get expected CPGrid object type for {grid_name=}", Service.SUMO)
+
+        return sumo_grid_object
 
 
 async def _get_grid_model_meta_async(sumo_grid3d_search_context: SearchContext, grid_uuid: str) -> Grid3dInfo:
@@ -192,3 +255,14 @@ async def _get_grid_properties_info_async(cpgrid: CPGrid) -> List[Grid3dProperty
         )
 
     return property_info_arr
+
+
+def _make_time_filter(time_or_interval_str: str | None) -> TimeFilter:
+    if time_or_interval_str is None:
+        return TimeFilter(time_type=TimeType.NONE)
+
+    if "/" in time_or_interval_str:
+        start_str, end_str = time_or_interval_str.split("/")
+        return TimeFilter(time_type=TimeType.INTERVAL, start=start_str, end=end_str, exact=True)
+
+    return TimeFilter(time_type=TimeType.TIMESTAMP, start=time_or_interval_str, end=time_or_interval_str, exact=True)

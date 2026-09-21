@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Body
 
 from webviz_core_utils.perf_metrics import PerfMetrics
 from webviz_core_utils.b64 import b64_encode_float_array_as_float32, b64_decode_int_array
+from webviz_core_utils.b64 import b64_encode_uint_array_as_uint32, b64_encode_uint_array_as_uint8
 from webviz_core_utils.b64 import B64FloatArray, B64IntArray
 from webviz_services.sumo_access.grid3d_access import Grid3dAccess
 from webviz_services.utils.authenticated_user import AuthenticatedUser
@@ -13,6 +14,11 @@ from webviz_services.user_grid3d_service.user_grid3d_service import (
     UserGrid3dService,
     IJKIndexFilter,
     PolylineIntersection,
+)
+from webviz_services.grid3d_pillar_geometry import (
+    extract_grid_pillar_geometry,
+    extract_layer_cell_property,
+    extract_layer_corner_geometry,
 )
 
 from primary.auth.auth_helper import AuthHelper
@@ -155,6 +161,115 @@ async def get_grid_parameter(
     )
 
     LOGGER.debug(f"------------------ GRID3D - grid_parameter took: {perf_metrics.to_string_s()}")
+
+    return response
+
+
+@router.get("/grid_pillar_geometry")
+@cache_time(CacheTime.LONG)
+async def get_grid_pillar_geometry(
+    authenticated_user: Annotated[AuthenticatedUser, Depends(AuthHelper.get_authenticated_user)],
+    case_uuid: Annotated[str, Query(description="Sumo case uuid")],
+    ensemble_name: Annotated[str, Query(description="Ensemble name")],
+    grid_name: Annotated[str, Query(description="Grid name")],
+    realization_num: Annotated[int, Query(description="Realization")],
+) -> schemas.Grid3dPillarGeometry:
+    """Get compact, pillar-shared grid geometry (shared across all K layers). Direct from Sumo, no ResInsight."""
+
+    perf_metrics = PerfMetrics()
+
+    access = Grid3dAccess.from_ensemble_name(authenticated_user.get_sumo_access_token(), case_uuid, ensemble_name)
+    grid = await access.get_grid_async(grid_name=grid_name, realization=realization_num)
+    perf_metrics.record_lap("get-grid")
+
+    pillar_geometry = extract_grid_pillar_geometry(grid)
+    perf_metrics.record_lap("extract-geometry")
+
+    response = schemas.Grid3dPillarGeometry(
+        i_count=pillar_geometry.nx,
+        j_count=pillar_geometry.ny,
+        k_count=pillar_geometry.nz,
+        origin_utm_x=pillar_geometry.origin_utm_x,
+        origin_utm_y=pillar_geometry.origin_utm_y,
+        pillars_b64arr=b64_encode_float_array_as_float32(pillar_geometry.pillars),
+    )
+
+    LOGGER.debug(f"------------------ GRID3D - grid_pillar_geometry took: {perf_metrics.to_string_s()}")
+
+    return response
+
+
+@router.get("/grid_layer_corner_geometry")
+@cache_time(CacheTime.LONG)
+async def get_grid_layer_corner_geometry(
+    authenticated_user: Annotated[AuthenticatedUser, Depends(AuthHelper.get_authenticated_user)],
+    case_uuid: Annotated[str, Query(description="Sumo case uuid")],
+    ensemble_name: Annotated[str, Query(description="Ensemble name")],
+    grid_name: Annotated[str, Query(description="Grid name")],
+    realization_num: Annotated[int, Query(description="Realization")],
+    k: Annotated[int, Query(description="K layer index (0-based)")],
+) -> schemas.Grid3dLayerCornerGeometry:
+    """Get the geometry specific to one K layer, to be combined with grid_pillar_geometry."""
+
+    perf_metrics = PerfMetrics()
+
+    access = Grid3dAccess.from_ensemble_name(authenticated_user.get_sumo_access_token(), case_uuid, ensemble_name)
+    grid = await access.get_grid_async(grid_name=grid_name, realization=realization_num)
+    perf_metrics.record_lap("get-grid")
+
+    layer_geometry = extract_layer_corner_geometry(grid, k)
+    perf_metrics.record_lap("extract-geometry")
+
+    response = schemas.Grid3dLayerCornerGeometry(
+        k=layer_geometry.k,
+        corner_t_b64arr=b64_encode_float_array_as_float32(layer_geometry.corner_t),
+        split_indices_b64arr=b64_encode_uint_array_as_uint32(layer_geometry.split_indices),
+        split_corner_t_b64arr=b64_encode_float_array_as_float32(layer_geometry.split_corner_t),
+        active_b64arr=b64_encode_uint_array_as_uint8(layer_geometry.active),
+    )
+
+    LOGGER.debug(f"------------------ GRID3D - grid_layer_corner_geometry took: {perf_metrics.to_string_s()}")
+
+    return response
+
+
+@router.get("/grid_layer_cell_properties")
+@cache_time(CacheTime.LONG)
+async def get_grid_layer_cell_properties(
+    authenticated_user: Annotated[AuthenticatedUser, Depends(AuthHelper.get_authenticated_user)],
+    case_uuid: Annotated[str, Query(description="Sumo case uuid")],
+    ensemble_name: Annotated[str, Query(description="Ensemble name")],
+    grid_name: Annotated[str, Query(description="Grid name")],
+    property_names: Annotated[list[str], Query(description="Grid property names")],
+    realization_num: Annotated[int, Query(description="Realization")],
+    k: Annotated[int, Query(description="K layer index (0-based)")],
+    property_time_or_interval_str: Annotated[
+        Optional[str], Query(description="Time point or time interval string")
+    ] = None,
+) -> schemas.Grid3dLayerCellProperties:
+    """Get several named properties' values for one K layer, one value per cell per property. Direct from Sumo,
+    no ResInsight -- values come straight from xtgeo.GridProperty, no poly/skin-mesh indirection involved."""
+
+    perf_metrics = PerfMetrics()
+
+    access = Grid3dAccess.from_ensemble_name(authenticated_user.get_sumo_access_token(), case_uuid, ensemble_name)
+    grid_properties_by_name = await access.get_grid_properties_async(
+        grid_name=grid_name,
+        property_names=property_names,
+        realization=realization_num,
+        time_or_interval_str=property_time_or_interval_str,
+    )
+    perf_metrics.record_lap("get-grid-properties")
+
+    cell_props_b64arr_by_name = {
+        name: b64_encode_float_array_as_float32(extract_layer_cell_property(grid_property, k))
+        for name, grid_property in grid_properties_by_name.items()
+    }
+    perf_metrics.record_lap("extract-properties")
+
+    response = schemas.Grid3dLayerCellProperties(k=k, cell_props_b64arr_by_name=cell_props_b64arr_by_name)
+
+    LOGGER.debug(f"------------------ GRID3D - grid_layer_cell_properties took: {perf_metrics.to_string_s()}")
 
     return response
 

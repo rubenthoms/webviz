@@ -740,6 +740,36 @@ export type Grid3dInfo_api = {
 };
 
 /**
+ * Grid3dLayerCellProperties
+ */
+export type Grid3dLayerCellProperties_api = {
+    /**
+     * K
+     */
+    k: number;
+    /**
+     * Cell Props B64Arr By Name
+     */
+    cell_props_b64arr_by_name: {
+        [key: string]: B64FloatArray_api;
+    };
+};
+
+/**
+ * Grid3dLayerCornerGeometry
+ */
+export type Grid3dLayerCornerGeometry_api = {
+    /**
+     * K
+     */
+    k: number;
+    corner_t_b64arr: B64FloatArray_api;
+    split_indices_b64arr: B64UintArray_api;
+    split_corner_t_b64arr: B64FloatArray_api;
+    active_b64arr: B64UintArray_api;
+};
+
+/**
  * Grid3dMappedProperty
  */
 export type Grid3dMappedProperty_api = {
@@ -752,6 +782,33 @@ export type Grid3dMappedProperty_api = {
      * Max Grid Prop Value
      */
     max_grid_prop_value: number;
+};
+
+/**
+ * Grid3dPillarGeometry
+ */
+export type Grid3dPillarGeometry_api = {
+    /**
+     * I Count
+     */
+    i_count: number;
+    /**
+     * J Count
+     */
+    j_count: number;
+    /**
+     * K Count
+     */
+    k_count: number;
+    /**
+     * Origin Utm X
+     */
+    origin_utm_x: number;
+    /**
+     * Origin Utm Y
+     */
+    origin_utm_y: number;
+    pillars_b64arr: B64FloatArray_api;
 };
 
 /**
@@ -4997,6 +5054,188 @@ export type GetGridParameterResponses_api = {
 };
 
 export type GetGridParameterResponse_api = GetGridParameterResponses_api[keyof GetGridParameterResponses_api];
+
+export type GetGridPillarGeometryData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Case Uuid
+         *
+         * Sumo case uuid
+         */
+        case_uuid: string;
+        /**
+         * Ensemble Name
+         *
+         * Ensemble name
+         */
+        ensemble_name: string;
+        /**
+         * Grid Name
+         *
+         * Grid name
+         */
+        grid_name: string;
+        /**
+         * Realization Num
+         *
+         * Realization
+         */
+        realization_num: number;
+        zCacheBust?: string;
+    };
+    url: "/grid3d/grid_pillar_geometry";
+};
+
+export type GetGridPillarGeometryErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError_api;
+};
+
+export type GetGridPillarGeometryError_api = GetGridPillarGeometryErrors_api[keyof GetGridPillarGeometryErrors_api];
+
+export type GetGridPillarGeometryResponses_api = {
+    /**
+     * Successful Response
+     */
+    200: Grid3dPillarGeometry_api;
+};
+
+export type GetGridPillarGeometryResponse_api =
+    GetGridPillarGeometryResponses_api[keyof GetGridPillarGeometryResponses_api];
+
+export type GetGridLayerCornerGeometryData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Case Uuid
+         *
+         * Sumo case uuid
+         */
+        case_uuid: string;
+        /**
+         * Ensemble Name
+         *
+         * Ensemble name
+         */
+        ensemble_name: string;
+        /**
+         * Grid Name
+         *
+         * Grid name
+         */
+        grid_name: string;
+        /**
+         * Realization Num
+         *
+         * Realization
+         */
+        realization_num: number;
+        /**
+         * K
+         *
+         * K layer index (0-based)
+         */
+        k: number;
+        zCacheBust?: string;
+    };
+    url: "/grid3d/grid_layer_corner_geometry";
+};
+
+export type GetGridLayerCornerGeometryErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError_api;
+};
+
+export type GetGridLayerCornerGeometryError_api =
+    GetGridLayerCornerGeometryErrors_api[keyof GetGridLayerCornerGeometryErrors_api];
+
+export type GetGridLayerCornerGeometryResponses_api = {
+    /**
+     * Successful Response
+     */
+    200: Grid3dLayerCornerGeometry_api;
+};
+
+export type GetGridLayerCornerGeometryResponse_api =
+    GetGridLayerCornerGeometryResponses_api[keyof GetGridLayerCornerGeometryResponses_api];
+
+export type GetGridLayerCellPropertiesData_api = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Case Uuid
+         *
+         * Sumo case uuid
+         */
+        case_uuid: string;
+        /**
+         * Ensemble Name
+         *
+         * Ensemble name
+         */
+        ensemble_name: string;
+        /**
+         * Grid Name
+         *
+         * Grid name
+         */
+        grid_name: string;
+        /**
+         * Property Names
+         *
+         * Grid property names
+         */
+        property_names: Array<string>;
+        /**
+         * Realization Num
+         *
+         * Realization
+         */
+        realization_num: number;
+        /**
+         * K
+         *
+         * K layer index (0-based)
+         */
+        k: number;
+        /**
+         * Property Time Or Interval Str
+         *
+         * Time point or time interval string
+         */
+        property_time_or_interval_str?: string | null;
+        zCacheBust?: string;
+    };
+    url: "/grid3d/grid_layer_cell_properties";
+};
+
+export type GetGridLayerCellPropertiesErrors_api = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError_api;
+};
+
+export type GetGridLayerCellPropertiesError_api =
+    GetGridLayerCellPropertiesErrors_api[keyof GetGridLayerCellPropertiesErrors_api];
+
+export type GetGridLayerCellPropertiesResponses_api = {
+    /**
+     * Successful Response
+     */
+    200: Grid3dLayerCellProperties_api;
+};
+
+export type GetGridLayerCellPropertiesResponse_api =
+    GetGridLayerCellPropertiesResponses_api[keyof GetGridLayerCellPropertiesResponses_api];
 
 export type PostGetPolylineIntersectionData_api = {
     body: BodyPostGetPolylineIntersection_api;

@@ -6,6 +6,35 @@ from webviz_core_utils.b64 import B64FloatArray, B64UintArray
 from .._shared.schemas import BoundingBox3d
 
 
+# Provisional wire format -- both this shape and the xtgeo access path behind it
+# (see webviz_services.grid3d_pillar_geometry) are expected to change. Frontend
+# consumers should decode these into their own stable internal types rather than
+# depending on this shape directly, so this can change without touching downstream
+# trace/rendering code.
+class Grid3dPillarGeometry(BaseModel):
+    i_count: int
+    j_count: int
+    k_count: int
+    origin_utm_x: float
+    origin_utm_y: float
+    pillars_b64arr: B64FloatArray
+
+
+class Grid3dLayerCornerGeometry(BaseModel):
+    k: int
+    corner_t_b64arr: B64FloatArray
+    split_indices_b64arr: B64UintArray
+    split_corner_t_b64arr: B64FloatArray
+    active_b64arr: B64UintArray
+
+
+class Grid3dLayerCellProperties(BaseModel):
+    k: int
+    # One entry per requested property name. Each value: one float per cell, flat index
+    # j * nx + i -- matches Grid3dLayerCornerGeometry's active_b64arr layout.
+    cell_props_b64arr_by_name: dict[str, B64FloatArray]
+
+
 # Rename?
 class Grid3dGeometry(BaseModel):
     polys_b64arr: B64UintArray

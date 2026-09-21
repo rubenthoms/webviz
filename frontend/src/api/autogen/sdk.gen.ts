@@ -55,12 +55,21 @@ import type {
     GetFieldScreensData_api,
     GetFieldScreensErrors_api,
     GetFieldScreensResponses_api,
+    GetGridLayerCellPropertiesData_api,
+    GetGridLayerCellPropertiesErrors_api,
+    GetGridLayerCellPropertiesResponses_api,
+    GetGridLayerCornerGeometryData_api,
+    GetGridLayerCornerGeometryErrors_api,
+    GetGridLayerCornerGeometryResponses_api,
     GetGridModelsInfoData_api,
     GetGridModelsInfoErrors_api,
     GetGridModelsInfoResponses_api,
     GetGridParameterData_api,
     GetGridParameterErrors_api,
     GetGridParameterResponses_api,
+    GetGridPillarGeometryData_api,
+    GetGridPillarGeometryErrors_api,
+    GetGridPillarGeometryResponses_api,
     GetGridSurfaceData_api,
     GetGridSurfaceErrors_api,
     GetGridSurfaceResponses_api,
@@ -905,6 +914,57 @@ export const getGridParameter = <ThrowOnError extends boolean = false>(
     (options.client ?? client).get<GetGridParameterResponses_api, GetGridParameterErrors_api, ThrowOnError>({
         responseType: "json",
         url: "/grid3d/grid_parameter",
+        ...options,
+    });
+
+/**
+ * Get Grid Pillar Geometry
+ *
+ * Get compact, pillar-shared grid geometry (shared across all K layers). Direct from Sumo, no ResInsight.
+ */
+export const getGridPillarGeometry = <ThrowOnError extends boolean = false>(
+    options: Options<GetGridPillarGeometryData_api, ThrowOnError>,
+): RequestResult<GetGridPillarGeometryResponses_api, GetGridPillarGeometryErrors_api, ThrowOnError> =>
+    (options.client ?? client).get<GetGridPillarGeometryResponses_api, GetGridPillarGeometryErrors_api, ThrowOnError>({
+        responseType: "json",
+        url: "/grid3d/grid_pillar_geometry",
+        ...options,
+    });
+
+/**
+ * Get Grid Layer Corner Geometry
+ *
+ * Get the geometry specific to one K layer, to be combined with grid_pillar_geometry.
+ */
+export const getGridLayerCornerGeometry = <ThrowOnError extends boolean = false>(
+    options: Options<GetGridLayerCornerGeometryData_api, ThrowOnError>,
+): RequestResult<GetGridLayerCornerGeometryResponses_api, GetGridLayerCornerGeometryErrors_api, ThrowOnError> =>
+    (options.client ?? client).get<
+        GetGridLayerCornerGeometryResponses_api,
+        GetGridLayerCornerGeometryErrors_api,
+        ThrowOnError
+    >({
+        responseType: "json",
+        url: "/grid3d/grid_layer_corner_geometry",
+        ...options,
+    });
+
+/**
+ * Get Grid Layer Cell Properties
+ *
+ * Get several named properties' values for one K layer, one value per cell per property. Direct from Sumo,
+ * no ResInsight -- values come straight from xtgeo.GridProperty, no poly/skin-mesh indirection involved.
+ */
+export const getGridLayerCellProperties = <ThrowOnError extends boolean = false>(
+    options: Options<GetGridLayerCellPropertiesData_api, ThrowOnError>,
+): RequestResult<GetGridLayerCellPropertiesResponses_api, GetGridLayerCellPropertiesErrors_api, ThrowOnError> =>
+    (options.client ?? client).get<
+        GetGridLayerCellPropertiesResponses_api,
+        GetGridLayerCellPropertiesErrors_api,
+        ThrowOnError
+    >({
+        responseType: "json",
+        url: "/grid3d/grid_layer_cell_properties",
         ...options,
     });
 

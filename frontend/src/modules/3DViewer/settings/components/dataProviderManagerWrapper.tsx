@@ -127,6 +127,14 @@ export function DataProviderManagerWrapper(props: LayerManagerComponentWrapperPr
                     ),
                 );
                 return;
+            case "realization-grid-cell-flux":
+                groupDelegate.prependChild(
+                    DataProviderRegistry.makeDataProvider(
+                        CustomDataProviderType.REALIZATION_GRID_CELL_FLUX,
+                        props.dataProviderManager,
+                    ),
+                );
+                return;
             case "seismic-slices":
                 groupDelegate.prependChild(
                     DataProviderRegistry.makeDataProvider(
@@ -284,6 +292,11 @@ const ACTIONS: ActionGroup[] = [
                         identifier: "intersection-realization-grid",
                         icon: <Icon data={grid_layer} fontSize="small" />,
                         label: "Grid Model Fence",
+                    },
+                    {
+                        identifier: "realization-grid-cell-flux",
+                        icon: <Icon data={grid_layer} fontSize="small" />,
+                        label: "Grid Model Cell Flux",
                     },
                 ],
             },

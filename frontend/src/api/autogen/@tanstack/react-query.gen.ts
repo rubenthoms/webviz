@@ -30,8 +30,11 @@ import {
     getFieldIdentifiers,
     getFieldPerforations,
     getFieldScreens,
+    getGridLayerCellProperties,
+    getGridLayerCornerGeometry,
     getGridModelsInfo,
     getGridParameter,
+    getGridPillarGeometry,
     getGridSurface,
     getHistoricalVectorData,
     getInitialFluidContactSurfacesMetadata,
@@ -148,12 +151,21 @@ import type {
     GetFieldScreensData_api,
     GetFieldScreensError_api,
     GetFieldScreensResponse_api,
+    GetGridLayerCellPropertiesData_api,
+    GetGridLayerCellPropertiesError_api,
+    GetGridLayerCellPropertiesResponse_api,
+    GetGridLayerCornerGeometryData_api,
+    GetGridLayerCornerGeometryError_api,
+    GetGridLayerCornerGeometryResponse_api,
     GetGridModelsInfoData_api,
     GetGridModelsInfoError_api,
     GetGridModelsInfoResponse_api,
     GetGridParameterData_api,
     GetGridParameterError_api,
     GetGridParameterResponse_api,
+    GetGridPillarGeometryData_api,
+    GetGridPillarGeometryError_api,
+    GetGridPillarGeometryResponse_api,
     GetGridSurfaceData_api,
     GetGridSurfaceError_api,
     GetGridSurfaceResponse_api,
@@ -1515,6 +1527,88 @@ export const getGridParameterOptions = (options: Options<GetGridParameterData_ap
             return data;
         },
         queryKey: getGridParameterQueryKey(options),
+    });
+
+export const getGridPillarGeometryQueryKey = (options: Options<GetGridPillarGeometryData_api>) =>
+    createQueryKey("getGridPillarGeometry", options);
+
+/**
+ * Get Grid Pillar Geometry
+ *
+ * Get compact, pillar-shared grid geometry (shared across all K layers). Direct from Sumo, no ResInsight.
+ */
+export const getGridPillarGeometryOptions = (options: Options<GetGridPillarGeometryData_api>) =>
+    queryOptions<
+        GetGridPillarGeometryResponse_api,
+        AxiosError<GetGridPillarGeometryError_api>,
+        GetGridPillarGeometryResponse_api,
+        ReturnType<typeof getGridPillarGeometryQueryKey>
+    >({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getGridPillarGeometry({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getGridPillarGeometryQueryKey(options),
+    });
+
+export const getGridLayerCornerGeometryQueryKey = (options: Options<GetGridLayerCornerGeometryData_api>) =>
+    createQueryKey("getGridLayerCornerGeometry", options);
+
+/**
+ * Get Grid Layer Corner Geometry
+ *
+ * Get the geometry specific to one K layer, to be combined with grid_pillar_geometry.
+ */
+export const getGridLayerCornerGeometryOptions = (options: Options<GetGridLayerCornerGeometryData_api>) =>
+    queryOptions<
+        GetGridLayerCornerGeometryResponse_api,
+        AxiosError<GetGridLayerCornerGeometryError_api>,
+        GetGridLayerCornerGeometryResponse_api,
+        ReturnType<typeof getGridLayerCornerGeometryQueryKey>
+    >({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getGridLayerCornerGeometry({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getGridLayerCornerGeometryQueryKey(options),
+    });
+
+export const getGridLayerCellPropertiesQueryKey = (options: Options<GetGridLayerCellPropertiesData_api>) =>
+    createQueryKey("getGridLayerCellProperties", options);
+
+/**
+ * Get Grid Layer Cell Properties
+ *
+ * Get several named properties' values for one K layer, one value per cell per property. Direct from Sumo,
+ * no ResInsight -- values come straight from xtgeo.GridProperty, no poly/skin-mesh indirection involved.
+ */
+export const getGridLayerCellPropertiesOptions = (options: Options<GetGridLayerCellPropertiesData_api>) =>
+    queryOptions<
+        GetGridLayerCellPropertiesResponse_api,
+        AxiosError<GetGridLayerCellPropertiesError_api>,
+        GetGridLayerCellPropertiesResponse_api,
+        ReturnType<typeof getGridLayerCellPropertiesQueryKey>
+    >({
+        queryFn: async ({ queryKey, signal }) => {
+            const { data } = await getGridLayerCellProperties({
+                ...options,
+                ...queryKey[0],
+                signal,
+                throwOnError: true,
+            });
+            return data;
+        },
+        queryKey: getGridLayerCellPropertiesQueryKey(options),
     });
 
 export const postGetPolylineIntersectionQueryKey = (options: Options<PostGetPolylineIntersectionData_api>) =>

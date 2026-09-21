@@ -12,6 +12,8 @@ import { DropdownNumberSetting } from "../implementations/DropdownNumberSetting"
 import { DropdownStringSetting } from "../implementations/DropdownStringSetting";
 import { EnsembleSetting } from "../implementations/EnsembleSetting";
 import { FlowFilterSetting } from "../implementations/FlowFilterSetting";
+import { FluxDirectionsShownSetting } from "../implementations/FluxDirectionsShownSetting";
+import { FluxPhasesShownSetting } from "../implementations/FluxPhasesShownSetting";
 import { GridLayerRangeSetting } from "../implementations/GridLayerRangeSetting";
 import { InputNumberSetting } from "../implementations/InputNumberSetting";
 import { IntersectionSetting } from "../implementations/IntersectionSetting";
@@ -131,6 +133,10 @@ SettingRegistry.registerSetting(Setting.REALIZATIONS, "Realizations", SelectNumb
 SettingRegistry.registerSetting(Setting.SEISMIC_SLICES, "Seismic Slices", SeismicSliceSetting);
 SettingRegistry.registerSetting(Setting.SENSITIVITY, "Sensitivity", SensitivitySetting);
 SettingRegistry.registerSetting(Setting.SHOW_GRID_LINES, "Show Grid Lines", BooleanSetting);
+SettingRegistry.registerSetting(Setting.FLUX_PHASES_SHOWN, "Flux Phases Shown", FluxPhasesShownSetting);
+SettingRegistry.registerSetting(Setting.FLUX_DIRECTIONS_SHOWN, "Flux Directions Shown", FluxDirectionsShownSetting);
+SettingRegistry.registerSetting(Setting.SHOW_GRID_POINTS, "Show Grid Points", BooleanSetting);
+SettingRegistry.registerSetting(Setting.SHOW_GRID_PILLARS, "Show Grid Pillars", BooleanSetting);
 SettingRegistry.registerSetting(Setting.SMDA_INTERPRETER, "SMDA Interpreter", DropdownStringSetting);
 SettingRegistry.registerSetting(Setting.WELLBORES, "Wellbores", DrilledWellboresSetting);
 SettingRegistry.registerSetting(Setting.STATISTIC_FUNCTION, "Statistic Function", StatisticFunctionSetting);

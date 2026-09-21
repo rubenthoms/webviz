@@ -34,6 +34,16 @@ export function b64DecodeUintArrayToUint32(base64Arr: B64UintArray_api): Uint32A
     }
 }
 
+export function b64DecodeUintArrayToUint8(base64Arr: B64UintArray_api): Uint8Array {
+    const typedArray = b64DecodeUintArray(base64Arr);
+
+    if (typedArray instanceof Uint8Array) {
+        return typedArray;
+    }
+
+    throw new Error(`Expected uint8 element_type, got ${base64Arr.element_type}`);
+}
+
 export function b64DecodeUintArrayToUint32OrLess(base64Arr: B64UintArray_api): Uint32Array | Uint16Array | Uint8Array {
     const typedArray = b64DecodeUintArray(base64Arr);
 

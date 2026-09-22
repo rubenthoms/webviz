@@ -1,6 +1,8 @@
-import { CompositeLayer, type CompositeLayerProps, type Layer } from "@deck.gl/core";
+import { CompositeLayer, type CompositeLayerProps, type Layer, type UpdateParameters } from "@deck.gl/core";
 import { LineLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from "@deck.gl/layers";
+import type { ReportBoundingBoxAction } from "@webviz/subsurface-viewer/dist/layers/utils/layerTools";
 
+import type { BBox } from "@lib/utils/bbox";
 import type { GridCellFluxData, GridCellFluxPhaseFlux } from "@modules/_shared/DataProviderFramework/visualization/utils/types";
 
 type Phase = "oil" | "gas" | "water";
@@ -31,6 +33,11 @@ export type GridCellFluxLayerProps = CompositeLayerProps & {
     // to a size derived from the grid's own cell dimensions (see estimateDefaultArrowLengthRange).
     minArrowLength?: number;
     maxArrowLength?: number;
+
+    // Non-public property: injected by subsurface-viewer's Map component (see Map.js's
+    // layer.clone({reportBoundingBox: dispatchBoundingBox})) so this layer can report its
+    // own extent for 3D-mode camera homing, same pattern as WellborePicksLayer/WellsLayer.
+    reportBoundingBox?: React.Dispatch<ReportBoundingBoxAction>;
 };
 
 // Corner order: 0 SW-top, 1 SE-top, 2 NW-top, 3 NE-top, 4 SW-base, 5 SE-base, 6 NW-base, 7 NE-base
@@ -340,8 +347,67 @@ function buildCellLabels(data: GridCellFluxData): LabelDatum[] {
     return labels;
 }
 
+// The single source of truth for this layer's world-space extent, computed from the same
+// arrays renderLayers() draws from -- kept here (rather than re-derived from raw fetched
+// data elsewhere) so it can't drift out of sync with what's actually rendered.
+export function computeGridCellFluxBoundingBox(data: GridCellFluxData): BBox | null {
+    const { cellCornersFloat32Arr, pillarsFloat32Arr, originUtmX, originUtmY } = data;
+    if (cellCornersFloat32Arr.length === 0 && pillarsFloat32Arr.length === 0) {
+        return null;
+    }
+
+    let xmin = Infinity;
+    let ymin = Infinity;
+    let zmin = Infinity;
+    let xmax = -Infinity;
+    let ymax = -Infinity;
+    let zmax = -Infinity;
+
+    function extend(x: number, y: number, z: number): void {
+        if (x < xmin) xmin = x;
+        if (x > xmax) xmax = x;
+        if (y < ymin) ymin = y;
+        if (y > ymax) ymax = y;
+        if (z < zmin) zmin = z;
+        if (z > zmax) zmax = z;
+    }
+
+    // Already absolute UTM coordinates (reconstructCellCorners bakes the pillar origin in),
+    // covers only this k-layer.
+    for (let i = 0; i < cellCornersFloat32Arr.length; i += 3) {
+        extend(cellCornersFloat32Arr[i], cellCornersFloat32Arr[i + 1], cellCornersFloat32Arr[i + 2]);
+    }
+
+    // Origin-relative, and fetched without a k filter -- pillars span the grid's full
+    // vertical extent, taller than the single k-layer of cell corners above. showPillars/
+    // showPillarPoints render this full extent, so it has to be included here too, or the
+    // reported box is too tight and any camera fit to it makes the actually-rendered
+    // geometry look oversized.
+    for (let i = 0; i < pillarsFloat32Arr.length; i += 6) {
+        extend(pillarsFloat32Arr[i] + originUtmX, pillarsFloat32Arr[i + 1] + originUtmY, pillarsFloat32Arr[i + 2]);
+        extend(pillarsFloat32Arr[i + 3] + originUtmX, pillarsFloat32Arr[i + 4] + originUtmY, pillarsFloat32Arr[i + 5]);
+    }
+
+    // Z convention here is depth (increasing downward, TVD-style); negate for a Z-up
+    // bounding box, same convention as getCellCorner/buildPillarLines above.
+    return {
+        min: { x: xmin, y: ymin, z: -zmax },
+        max: { x: xmax, y: ymax, z: -zmin },
+    };
+}
+
 export class GridCellFluxLayer extends CompositeLayer<GridCellFluxLayerProps> {
     static layerName = "GridCellFluxLayer";
+
+    // Mirrors the reportBoundingBox/computeBoundingBox getter pattern used by
+    // @webviz/subsurface-viewer's own layers (e.g. PointsLayer, Grid3DLayer): the layer
+    // that builds the geometry is also the one that knows its true extent.
+    static getBoundingBox(data: GridCellFluxData | null): BBox | null {
+        if (!data) {
+            return null;
+        }
+        return computeGridCellFluxBoundingBox(data);
+    }
 
     static defaultProps = {
         showPillars: { type: "boolean" as const, value: true },
@@ -360,6 +426,20 @@ export class GridCellFluxLayer extends CompositeLayer<GridCellFluxLayerProps> {
         // minArrowLength/maxArrowLength deliberately have no default here -- undefined
         // means "derive from the grid's own cell size" (see estimateDefaultArrowLengthRange).
     };
+
+    updateState({
+        props,
+        changeFlags,
+    }: UpdateParameters<Layer<GridCellFluxLayerProps & Required<CompositeLayerProps>>>): void {
+        if (props.reportBoundingBox && changeFlags.dataChanged && props.data) {
+            const bbox = computeGridCellFluxBoundingBox(props.data);
+            if (bbox) {
+                props.reportBoundingBox({
+                    layerBoundingBox: [bbox.min.x, bbox.min.y, bbox.min.z, bbox.max.x, bbox.max.y, bbox.max.z],
+                });
+            }
+        }
+    }
 
     renderLayers(): Layer[] {
         const {

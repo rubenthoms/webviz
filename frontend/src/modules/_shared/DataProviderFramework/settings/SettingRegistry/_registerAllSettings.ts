@@ -137,6 +137,7 @@ SettingRegistry.registerSetting(Setting.FLUX_PHASES_SHOWN, "Flux Phases Shown", 
 SettingRegistry.registerSetting(Setting.FLUX_DIRECTIONS_SHOWN, "Flux Directions Shown", FluxDirectionsShownSetting);
 SettingRegistry.registerSetting(Setting.SHOW_GRID_POINTS, "Show Grid Points", BooleanSetting);
 SettingRegistry.registerSetting(Setting.SHOW_GRID_PILLARS, "Show Grid Pillars", BooleanSetting);
+SettingRegistry.registerSetting(Setting.SHOW_CELL_INDICES, "Show Cell Indices", BooleanSetting);
 SettingRegistry.registerSetting(Setting.SMDA_INTERPRETER, "SMDA Interpreter", DropdownStringSetting);
 SettingRegistry.registerSetting(Setting.WELLBORES, "Wellbores", DrilledWellboresSetting);
 SettingRegistry.registerSetting(Setting.STATISTIC_FUNCTION, "Statistic Function", StatisticFunctionSetting);

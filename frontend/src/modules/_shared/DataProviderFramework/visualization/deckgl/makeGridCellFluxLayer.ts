@@ -10,6 +10,7 @@ const gridCellFluxSettings = [
     Setting.FLUX_DIRECTIONS_SHOWN,
     Setting.SHOW_GRID_POINTS,
     Setting.SHOW_GRID_PILLARS,
+    Setting.SHOW_CELL_INDICES,
 ] as const;
 type GridCellFluxLayerSettings = typeof gridCellFluxSettings;
 
@@ -22,6 +23,7 @@ export function makeGridCellFluxLayer(
     const directionsShown = getSetting(Setting.FLUX_DIRECTIONS_SHOWN);
     const showGridPoints = getSetting(Setting.SHOW_GRID_POINTS) ?? false;
     const showGridPillars = getSetting(Setting.SHOW_GRID_PILLARS) ?? false;
+    const showCellIndices = getSetting(Setting.SHOW_CELL_INDICES) ?? false;
 
     if (!data) {
         return null;
@@ -35,6 +37,6 @@ export function makeGridCellFluxLayer(
         showCellCornerPoints: showGridPoints,
         showPillarPoints: showGridPoints,
         showPillars: showGridPillars,
-        showCellIndices: true,
+        showCellIndices: showCellIndices,
     });
 }

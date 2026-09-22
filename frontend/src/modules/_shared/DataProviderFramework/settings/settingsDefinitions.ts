@@ -60,6 +60,7 @@ export enum Setting {
     FLUX_DIRECTIONS_SHOWN = "fluxDirectionsShown",
     SHOW_GRID_POINTS = "showGridPoints",
     SHOW_GRID_PILLARS = "showGridPillars",
+    SHOW_CELL_INDICES = "showCellIndices",
     SMDA_INTERPRETER = "smdaInterpreter",
     WELLBORES = "wellbores",
     SMDA_WELLBORE_HEADERS = "smdaWellboresHeaders",
@@ -125,6 +126,11 @@ export type SettingTypeDefinitions = {
         valueConstraints: null;
     };
     [Setting.SHOW_GRID_PILLARS]: {
+        internalValue: boolean;
+        externalValue: boolean;
+        valueConstraints: null;
+    };
+    [Setting.SHOW_CELL_INDICES]: {
         internalValue: boolean;
         externalValue: boolean;
         valueConstraints: null;

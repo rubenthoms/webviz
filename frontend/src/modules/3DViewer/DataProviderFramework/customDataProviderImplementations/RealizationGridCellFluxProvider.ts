@@ -42,6 +42,7 @@ const gridCellFluxSettings = [
     Setting.FLUX_DIRECTIONS_SHOWN,
     Setting.SHOW_GRID_POINTS,
     Setting.SHOW_GRID_PILLARS,
+    Setting.SHOW_CELL_INDICES,
 ] as const;
 export type GridCellFluxSettings = typeof gridCellFluxSettings;
 type SettingsWithTypes = MakeSettingTypesMap<GridCellFluxSettings>;
@@ -63,6 +64,7 @@ export class RealizationGridCellFluxProvider
         return {
             [Setting.SHOW_GRID_POINTS]: true,
             [Setting.SHOW_GRID_PILLARS]: true,
+            [Setting.SHOW_CELL_INDICES]: true,
         };
     }
 
@@ -70,10 +72,10 @@ export class RealizationGridCellFluxProvider
         if (prevSettings === null) {
             return true;
         }
-        // Note: FLUX_PHASES_SHOWN, FLUX_DIRECTIONS_SHOWN, SHOW_GRID_POINTS and
-        // SHOW_GRID_PILLARS deliberately excluded -- all phases and directions are always
-        // fetched, and these settings only gate what the layer renders, not what data
-        // is fetched.
+        // Note: FLUX_PHASES_SHOWN, FLUX_DIRECTIONS_SHOWN, SHOW_GRID_POINTS,
+        // SHOW_GRID_PILLARS and SHOW_CELL_INDICES deliberately excluded -- all phases and
+        // directions are always fetched, and these settings only gate what the layer
+        // renders, not what data is fetched.
         return (
             prevSettings[Setting.ENSEMBLE] !== newSettings[Setting.ENSEMBLE] ||
             prevSettings[Setting.REALIZATION] !== newSettings[Setting.REALIZATION] ||
@@ -86,12 +88,16 @@ export class RealizationGridCellFluxProvider
     areCurrentSettingsValid({
         getSetting,
     }: DataProviderAccessors<GridCellFluxSettings, GridCellFluxData, StoredData>): boolean {
+        // Note: TIME_OR_INTERVAL deliberately excluded -- it only constrains which flux
+        // dates are available, and resolves to no options at all when the case has no
+        // flux properties. The geometry itself is not time-dependent, so it must still be
+        // able to load in that case; fetchData() treats a missing time/interval as "no
+        // flux data" rather than an error.
         return (
             getSetting(Setting.ENSEMBLE) !== null &&
             getSetting(Setting.REALIZATION) !== null &&
             getSetting(Setting.GRID_NAME) !== null &&
-            getSetting(Setting.GRID_LAYER_K) !== null &&
-            getSetting(Setting.TIME_OR_INTERVAL) !== null
+            getSetting(Setting.GRID_LAYER_K) !== null
         );
     }
 
@@ -137,6 +143,8 @@ export class RealizationGridCellFluxProvider
             }),
         ).then(transformGridLayerCornerGeometry);
 
+        // Phases are optional -- if the flux properties fail to load (e.g. not present
+        // in this case), fall back to no flux data instead of failing the whole provider.
         const fluxPropertiesPromise = fetchQuery(
             getGridLayerCellPropertiesOptions({
                 query: {
@@ -150,7 +158,9 @@ export class RealizationGridCellFluxProvider
                     ...cacheBust,
                 },
             }),
-        ).then(transformGridLayerCellProperties);
+        )
+            .then(transformGridLayerCellProperties)
+            .catch(() => null);
 
         const [pillarGeometry, layerGeometry, fluxProperties] = await Promise.all([
             pillarGeometryPromise,
@@ -164,12 +174,14 @@ export class RealizationGridCellFluxProvider
         const cellCornersFloat32Arr = reconstructCellCorners(pillarGeometry, layerGeometry);
 
         const phaseFlux: Partial<Record<Phase, GridCellFluxPhaseFlux>> = {};
-        for (const phase of PHASES) {
-            const iFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].i];
-            const jFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].j];
-            const kFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].k];
-            if (iFaceFlux && jFaceFlux && kFaceFlux) {
-                phaseFlux[phase] = { iFaceFlux, jFaceFlux, kFaceFlux };
+        if (fluxProperties) {
+            for (const phase of PHASES) {
+                const iFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].i];
+                const jFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].j];
+                const kFaceFlux = fluxProperties.cellPropsFloat32ArrByName[FLUX_PROPERTY_NAMES[phase].k];
+                if (iFaceFlux && jFaceFlux && kFaceFlux) {
+                    phaseFlux[phase] = { iFaceFlux, jFaceFlux, kFaceFlux };
+                }
             }
         }
 
@@ -281,11 +293,15 @@ export class RealizationGridCellFluxProvider
                 };
             },
             resolve({ gridName, gridData }) {
+                // Fall back to a single "NO_TIME" option when the flux properties are not
+                // present in this case at all -- an empty options list would leave this
+                // setting permanently unresolvable/invalid, which blocks the whole provider
+                // (including geometry) even though flux is meant to be optional.
                 if (!gridName || !gridData) {
-                    return [];
+                    return ["NO_TIME"];
                 }
                 const gridAttributeArr = gridData.find((g) => g.grid_name === gridName)?.property_info_arr ?? [];
-                return sortTimeOrIntervalArray(
+                const timeOrIntervals = sortTimeOrIntervalArray(
                     Array.from(
                         new Set(
                             gridAttributeArr
@@ -294,6 +310,7 @@ export class RealizationGridCellFluxProvider
                         ),
                     ),
                 );
+                return timeOrIntervals.length > 0 ? timeOrIntervals : ["NO_TIME"];
             },
         });
 

@@ -1,3 +1,4 @@
+import { ElevatedSettingDefinition } from "@framework/ElevatedSettings/ElevatedSettingDefinition";
 import { SettingManager } from "../../framework/SettingManager/SettingManager";
 import type {
     CustomSettingImplementation,
@@ -5,6 +6,48 @@ import type {
     StaticSettingImplementation,
 } from "../../interfacesAndTypes/customSettingImplementation";
 import type { Setting, SettingTypeDefinitions } from "../settingsDefinitions";
+
+export type DpfElevatedSettingAdapter<TExternalValue, TValueConstraints, TElevatedValue, TElevatedConstraints> = {
+    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
+
+    mapValueConstraintsToElevatedConstraints: (valueConstraints: TValueConstraints) => TElevatedConstraints;
+
+    mapElevatedValueToExternalValue: (
+        elevatedValue: TElevatedValue,
+        valueConstraints: TValueConstraints,
+    ) => TExternalValue;
+
+    /**
+     * Optional formatter producing a UI representation of the elevated value directly.
+     * Falls back to a generic primitive-based representation of the mapped external value when omitted.
+     */
+    mapElevatedValueToRepresentation?: (
+        elevatedValue: TElevatedValue,
+        valueConstraints: TValueConstraints,
+    ) => React.ReactNode;
+};
+
+export function makeDpfElevatedSettingAdapter<TElevatedValue, TElevatedConstraints, TExternalValue, TValueConstraints>(
+    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>,
+    adapter: {
+        mapValueConstraintsToElevatedConstraints: (valueConstraints: TValueConstraints) => TElevatedConstraints;
+
+        mapElevatedValueToExternalValue: (
+            elevatedValue: TElevatedValue,
+            valueConstraints: TValueConstraints,
+        ) => TExternalValue;
+
+        mapElevatedValueToRepresentation?: (
+            elevatedValue: TElevatedValue,
+            valueConstraints: TValueConstraints,
+        ) => React.ReactNode;
+    },
+) {
+    return {
+        definition,
+        ...adapter,
+    };
+}
 
 export class SettingRegistry {
     private static _registeredSettings: Map<

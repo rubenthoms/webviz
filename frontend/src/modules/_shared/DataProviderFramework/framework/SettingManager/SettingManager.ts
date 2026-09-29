@@ -418,6 +418,41 @@ export class SettingManager<
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
     }
 
+    /*
+     * This method attempts to repair an invalid value using the custom setting implementation's
+     * fixup function. Unlike the automatic fixup applied in applyValueConstraints(), this is not
+     * gated on initialization state - it is the manual-repair path triggered by the user.
+     */
+    fixupValue(): void {
+        if (this._externalController) {
+            this._externalController.getSetting().fixupValue();
+            return;
+        }
+        if (this.checkIfValueIsValid(this._internalValue)) {
+            return;
+        }
+        if (this._valueConstraints === null) {
+            return;
+        }
+        const customFixupFunction = this._customSettingImplementation.fixupValue;
+        if (!customFixupFunction) {
+            return;
+        }
+        const candidate = customFixupFunction.bind(this._customSettingImplementation)(
+            this._internalValue,
+            this._valueConstraints as any,
+        );
+
+        this._currentValueFromPersistence = null;
+        this.setPersistedValueIsValid(true);
+
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE_ABOUT_TO_BE_CHANGED);
+        this.setInternalValueAndInvalidateCache(candidate);
+        this.setValueValid(this.checkIfValueIsValid(this._internalValue));
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
+    }
+
     setValueValid(isValueValid: boolean): void {
         if (this._isValueValid === isValueValid) {
             return;
@@ -607,7 +642,8 @@ export class SettingManager<
 
     private applyValueConstraints(): boolean {
         let valueChanged = false;
-        const isValueFixedUp = !this.checkIfValueIsValid(this.getInternalValue()) && this.maybeFixupValue();
+        const isValueFixedUp =
+            !this._initialized && !this.checkIfValueIsValid(this.getInternalValue()) && this.maybeFixupValue();
         const isPersistedValueReset = this.maybeResetPersistedValue();
         if (isValueFixedUp || isPersistedValueReset) {
             valueChanged = true;

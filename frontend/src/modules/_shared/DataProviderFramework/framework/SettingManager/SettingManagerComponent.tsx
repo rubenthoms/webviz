@@ -150,6 +150,17 @@ export function SettingManagerComponent<
                                 </span>
                             </span>
                         )}
+                        {!isPersisted && !isValid && !actuallyLoading && (
+                            <span
+                                className="gap-x-3xs text-body-xs text-danger-strong flex items-center"
+                                title="This setting's value is no longer valid, likely because a dependency changed. Use a fix-up action to repair it, or adjust the value manually."
+                            >
+                                <Warning fontSize="inherit" />
+                                <span className="min-w-0 grow overflow-hidden text-ellipsis whitespace-nowrap">
+                                    Your selection is no longer available.
+                                </span>
+                            </span>
+                        )}
                     </div>
                 </StatusWrapper>
             </div>

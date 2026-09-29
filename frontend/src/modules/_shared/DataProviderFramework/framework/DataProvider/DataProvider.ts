@@ -63,6 +63,10 @@ export function isDataProvider(obj: any): obj is DataProvider<any, any> {
     return typeof obj === "object" && obj !== null && DATA_PROVIDER_BRAND in obj;
 }
 
+export function isDataProviderWithInvalidSettings(item: Item): item is DataProvider<any, any> {
+    return isDataProvider(item) && item.getStatus() === DataProviderStatus.INVALID_SETTINGS;
+}
+
 export type DataProviderParams<
     TSettings extends Settings,
     TData,

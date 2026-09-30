@@ -7,6 +7,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 import { Annotations } from "./Annotations";
 import { Overlay, type OverlayProps } from "./Overlay";
 import { LayoutContext } from "./Panel";
+import { SectionAnnotationsContext } from "./SectionAnnotationsContext";
 
 export type SettingAnnotation = {
     /** The severity level that determines the icon and color of the annotation. */
@@ -124,6 +125,17 @@ export function Field(props: SettingFieldProps) {
 
     const isInvalid = annotations.some((a) => a.type === "error");
     const isWarning = annotations.some((a) => a.type === "warning");
+
+    const sectionAnnotationsContext = React.useContext(SectionAnnotationsContext);
+    React.useEffect(() => {
+        if (!sectionAnnotationsContext) {
+            return;
+        }
+        sectionAnnotationsContext.reportField(generatedInputId, { hasError: isInvalid, hasWarning: isWarning });
+        return () => {
+            sectionAnnotationsContext.unregisterField(generatedInputId);
+        };
+    }, [sectionAnnotationsContext, generatedInputId, isInvalid, isWarning]);
 
     if (!props.label) {
         return (

@@ -92,7 +92,70 @@ function isInternalState<T>(value: T | PersistableAtomState<T>): value is Persis
     );
 }
 
-export type PersistableAtomDependenciesState = "loading" | "error" | "loaded";
+/**
+ * - "loading": dependencies are actively being resolved (e.g. a query is genuinely fetching).
+ * - "blocked": dependencies are not yet resolved, but nothing is actively happening either - e.g. a
+ *   query that's currently disabled because it's gated on another, invalid upstream
+ *   persistableFixableAtom (see the query-gating convention used across modules). Behaves exactly
+ *   like "loading" for settle/promotion purposes (see below), but is exposed separately so a
+ *   consumer can tell "actually fetching, show a spinner" apart from "blocked on something else,
+ *   don't show a spinner that won't resolve on its own" - without every call site having to work
+ *   that distinction out itself.
+ * - "error": one or more dependencies have an error.
+ * - "loaded": all dependencies are ready.
+ */
+export type PersistableAtomDependenciesState = "loading" | "blocked" | "error" | "loaded";
+
+type QueryLikeResult = {
+    isFetching: boolean;
+    isError: boolean;
+    isPending: boolean;
+};
+
+/**
+ * Standard way to derive a persistableFixableAtom's `computeDependenciesState` from a single
+ * TanStack Query result - including a currently-disabled query (e.g. one gated on an invalid
+ * upstream persistableFixableAtom's validity, per the query-gating convention used across modules).
+ *
+ * A disabled query never fetches, so `isFetching`/`isError` are both false on it, same as a query
+ * that genuinely finished successfully - but it must NOT be reported as "loaded". `dependenciesState`
+ * gates `dependenciesResolved` in persistableFixableAtom's lifecycle effect, which in turn gates BOTH
+ * the one-time settle-fixup and the PERSISTENCE/TEMPLATE -> USER promotion. Reporting "loaded" while
+ * disabled would let either of those fire against an empty/meaningless options set that has nothing
+ * to do with the setting's real availability, corrupting or discarding a perfectly good persisted
+ * value. `isPending` (true for both "disabled" and "genuinely still fetching") is what correctly
+ * keeps this unresolved until the query has actually had a chance to run - reported as "blocked"
+ * rather than "loading" specifically when there's no real fetch in progress, so consumers don't need
+ * to separately work out whether to show a loading spinner.
+ */
+export function computeQueryDependenciesState(query: QueryLikeResult): PersistableAtomDependenciesState {
+    if (query.isError) {
+        return "error";
+    }
+    if (query.isFetching) {
+        return "loading";
+    }
+    if (query.isPending) {
+        return "blocked";
+    }
+    return "loaded";
+}
+
+/**
+ * Same as {@link computeQueryDependenciesState}, for the `atomWithQueries` (one-query-per-item) case.
+ */
+export function computeQueriesDependenciesState(queries: QueryLikeResult[]): PersistableAtomDependenciesState {
+    if (queries.some((query) => query.isError)) {
+        return "error";
+    }
+    if (queries.some((query) => query.isFetching)) {
+        return "loading";
+    }
+    if (queries.some((query) => query.isPending)) {
+        return "blocked";
+    }
+    return "loaded";
+}
 
 type PersistableFixableAtomOptionsWithPrecompute<TValue, TPrecomputedValue> = {
     /**
@@ -256,6 +319,7 @@ export type PersistableFixableRead<TValue> = {
     value: TValue;
     isValidInContext: boolean;
     isLoading: boolean;
+    isBlocked: boolean;
     depsHaveError: boolean;
     _source: Source;
 };
@@ -339,6 +403,7 @@ export function persistableFixableAtom<TValue, TPrecomputedValue>(
             const settled = get(settledAtom);
             const { dependenciesState, isValid, computeFixup } = deriveState(get, internalState.value);
             const isLoading = dependenciesState === "loading";
+            const isBlocked = dependenciesState === "blocked";
             const depsHaveError = dependenciesState === "error";
 
             if (internalState._source === Source.PERSISTENCE || internalState._source === Source.TEMPLATE) {
@@ -349,6 +414,7 @@ export function persistableFixableAtom<TValue, TPrecomputedValue>(
                     value: internalState.value,
                     isValidInContext: isValid,
                     isLoading,
+                    isBlocked,
                     depsHaveError,
                     _source: internalState._source,
                 };
@@ -360,6 +426,7 @@ export function persistableFixableAtom<TValue, TPrecomputedValue>(
                     value: isValid ? (internalState.value as TValue) : computeFixup(),
                     isValidInContext: true,
                     isLoading,
+                    isBlocked,
                     depsHaveError,
                     _source: internalState._source,
                 };
@@ -371,6 +438,7 @@ export function persistableFixableAtom<TValue, TPrecomputedValue>(
                 value: internalState.value as TValue,
                 isValidInContext: isValid,
                 isLoading,
+                isBlocked,
                 depsHaveError,
                 _source: internalState._source,
             };
@@ -426,42 +494,41 @@ export function persistableFixableAtom<TValue, TPrecomputedValue>(
     // the corresponding fixed-up internal value already in place.
     const lifecycleEffect = atomEffect((get, set) => {
         const currentRead = get(fixableAtom);
-        const internalState = get(internalStateAtom);
-        const settled = get(settledAtom);
+        const dependenciesResolved = !currentRead.isLoading && !currentRead.isBlocked && !currentRead.depsHaveError;
 
-        const dependenciesResolved = !currentRead.isLoading && !currentRead.depsHaveError;
-        const shouldSettleNow = !settled && dependenciesResolved;
-        const shouldPromoteToUser =
-            (internalState._source === Source.PERSISTENCE || internalState._source === Source.TEMPLATE) &&
-            currentRead.isValidInContext &&
-            dependenciesResolved;
-
-        if (!shouldSettleNow && !shouldPromoteToUser) {
+        if (!dependenciesResolved) {
             return;
         }
 
-        // First-ever resolution of this atom's dependencies, with an invalid USER value: compute (but
-        // do not yet write) the one-time fixup here, synchronously, using the effect's own `get`.
-        let settleFixupValue: { value: TValue } | null = null;
-        if (shouldSettleNow && internalState._source === Source.USER) {
-            const { isValid, computeFixup } = deriveState(get, internalState.value);
-            if (!isValid) {
-                settleFixupValue = { value: computeFixup() };
-            }
-        }
-
-        // Defer the actual writes: (1) to avoid synchronous state updates while this effect is itself
-        // being (re-)triggered as part of a get(fixableAtom) read chain, and (2) so that both writes
-        // land together in the same microtask - a consumer can never observe settledAtom === true
-        // without the corresponding fixed-up internal value already in place.
+        // Defer to a microtask (to avoid synchronous state updates while this effect is itself being
+        // (re-)triggered as part of a get(fixableAtom) read chain), and - critically - re-derive
+        // everything from a FRESH read at that point rather than trusting this synchronous pass's
+        // snapshot. Another write (e.g. a deserialize write racing with this atom's first
+        // mount/subscribe, which can happen in either order depending on the caller) can land in the
+        // gap between this effect running and the microtask firing; using a stale snapshot there would
+        // silently overwrite whatever landed in that gap with outdated data.
         queueMicrotask(() => {
-            if (settleFixupValue) {
-                set(internalStateAtom, { value: settleFixupValue.value, _source: Source.USER });
+            const settled = get(settledAtom);
+            const internalState = get(internalStateAtom);
+            const { dependenciesState, isValid, computeFixup } = deriveState(get, internalState.value);
+            const nowResolved = dependenciesState !== "loading" && dependenciesState !== "blocked";
+
+            if (!nowResolved) {
+                // Dependencies regressed since this was queued - nothing to do now, a future
+                // resolution of the (now-changed) dependency will re-trigger this effect.
+                return;
             }
-            if (shouldPromoteToUser) {
+
+            if (!settled && internalState._source === Source.USER && !isValid) {
+                set(internalStateAtom, { value: computeFixup(), _source: Source.USER });
+            } else if (
+                (internalState._source === Source.PERSISTENCE || internalState._source === Source.TEMPLATE) &&
+                isValid
+            ) {
                 set(internalStateAtom, { value: internalState.value, _source: Source.USER });
             }
-            if (shouldSettleNow) {
+
+            if (!settled) {
                 set(settledAtom, true);
             }
         });

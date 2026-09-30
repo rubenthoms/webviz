@@ -4,9 +4,18 @@ import { Source, type PersistableFixableAtom } from "@framework/utils/atomUtils"
 import type { SettingAnnotation } from "@lib/components/Setting";
 
 export function useMakePersistableFixableAtomAnnotations(atom: PersistableFixableAtom<any>): SettingAnnotation[] {
-    const { isValidInContext, _source, isLoading, depsHaveError } = useAtomValue(atom);
+    const { isValidInContext, _source, isLoading, isBlocked, depsHaveError } = useAtomValue(atom);
 
-    if (!isValidInContext && _source && !isLoading && !depsHaveError) {
+    if (isBlocked) {
+        return [
+            {
+                type: "info",
+                message: "Unavailable until another invalid setting on this page is fixed.",
+            },
+        ];
+    }
+
+    if (!isValidInContext && _source && !isLoading && !isBlocked && !depsHaveError) {
         switch (_source) {
             case Source.PERSISTENCE:
                 return [
@@ -26,7 +35,7 @@ export function useMakePersistableFixableAtomAnnotations(atom: PersistableFixabl
                 return [
                     {
                         type: "error",
-                        message: "Your selection is no longer available. Please choose a valid value.",
+                        message: "The current value is invalid. Please choose a valid value.",
                     },
                 ];
             default:

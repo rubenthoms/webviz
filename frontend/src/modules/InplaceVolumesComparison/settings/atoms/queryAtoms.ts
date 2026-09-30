@@ -15,19 +15,26 @@ export type TableDefinitionsQueryResult = {
 };
 
 export const tableDefinitionsQueryAtom = atomWithQueries((get) => {
-    const referenceEnsembleIdent = get(selectedReferenceEnsembleIdentAtom).value;
-    const comparisonEnsembleIdent = get(selectedComparisonEnsembleIdentAtom).value;
+    const { value: referenceEnsembleIdent, isValidInContext: referenceEnsembleIdentValid } = get(
+        selectedReferenceEnsembleIdentAtom,
+    );
+    const { value: comparisonEnsembleIdent, isValidInContext: comparisonEnsembleIdentValid } = get(
+        selectedComparisonEnsembleIdentAtom,
+    );
 
     // Always exactly these two sources, so fetch each ensemble once even when both sides match.
     const ensembleIdents: RegularEnsembleIdent[] = [];
+    const ensembleIdentValidFlags: boolean[] = [];
     if (referenceEnsembleIdent) {
         ensembleIdents.push(referenceEnsembleIdent);
+        ensembleIdentValidFlags.push(referenceEnsembleIdentValid);
     }
     if (comparisonEnsembleIdent && !comparisonEnsembleIdent.equals(referenceEnsembleIdent)) {
         ensembleIdents.push(comparisonEnsembleIdent);
+        ensembleIdentValidFlags.push(comparisonEnsembleIdentValid);
     }
 
-    const queries = ensembleIdents.map((ensembleIdent) => {
+    const queries = ensembleIdents.map((ensembleIdent, index) => {
         const options = getInplaceTableDefinitionsOptions({
             query: {
                 case_uuid: ensembleIdent.getCaseUuid(),
@@ -35,7 +42,10 @@ export const tableDefinitionsQueryAtom = atomWithQueries((get) => {
                 ...makeCacheBustingQueryParam(ensembleIdent),
             },
         });
-        return () => ({ ...options });
+        return () => ({
+            ...options,
+            enabled: ensembleIdentValidFlags[index],
+        });
     });
 
     return {

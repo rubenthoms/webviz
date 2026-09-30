@@ -9,10 +9,11 @@ export const availableFieldsQueryAtom = atomWithQuery(() => {
 });
 
 export const drilledWellboreHeadersQueryAtom = atomWithQuery((get) => {
-    const fieldId = get(selectedFieldIdentAtom).value ?? "";
+    const { value: fieldIdValue, isValidInContext: fieldIdValid } = get(selectedFieldIdentAtom);
+    const fieldId = fieldIdValue ?? "";
 
     return {
         ...getDrilledWellboreHeadersOptions({ query: { field_identifier: fieldId } }),
-        enabled: Boolean(fieldId),
+        enabled: Boolean(fieldId) && fieldIdValid,
     };
 });

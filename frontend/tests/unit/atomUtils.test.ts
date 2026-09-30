@@ -1,7 +1,7 @@
 import { createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 
-import { persistableFixableAtom, Source } from "../../src/framework/utils/atomUtils";
+import { FIXUP, persistableFixableAtom, Source } from "../../src/framework/utils/atomUtils";
 
 describe("persistableFixableAtom - auto-transition logic", () => {
     it("should transition PERSISTENCE source to USER when atom becomes valid", async () => {
@@ -216,10 +216,18 @@ describe("persistableFixableAtom - auto-transition logic", () => {
         // User changes atom A to a larger value
         store.set(atomA, 25);
 
-        // Now atom B becomes invalid (20 is not > 25)
+        // Now atom B becomes invalid (20 is not > 25). Both A and B already settled above, so masking
+        // no longer applies: B is kept as-is and reported invalid instead of being silently auto-fixed.
         resultB = store.get(atomB);
-        expect(resultB.isValidInContext).toBe(true); // Still true because source is USER, so it auto-fixes
-        expect(resultB.value).toBe(26); // Auto-fixed to 25 + 1
+        expect(resultB.isValidInContext).toBe(false); // Kept + reported invalid, not masked
+        expect(resultB.value).toBe(20); // Unchanged - no longer auto-fixed on every read
+        expect(resultB._source).toBe(Source.USER);
+
+        // Manually triggering fixup repairs it
+        store.set(atomB, FIXUP);
+        resultB = store.get(atomB);
+        expect(resultB.isValidInContext).toBe(true);
+        expect(resultB.value).toBe(26); // Fixed up to 25 + 1
         expect(resultB._source).toBe(Source.USER);
     });
 

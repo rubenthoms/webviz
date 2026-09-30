@@ -46,18 +46,13 @@ import {
     availableSaturationAxisNamesAtom,
     availableSatnumsAtom,
     availableTableNamesAtom,
+} from "./atoms/derivedAtoms";
+import {
     selectedCurveNamesAtom,
     selectedEnsembleIdentsAtom,
     selectedSaturationAxisNameAtom,
     selectedSatnumsAtom,
     selectedTableNameAtom,
-} from "./atoms/derivedAtoms";
-import {
-    userSelectedCurveNamesAtom,
-    userSelectedEnsembleIdentsAtom,
-    userSelectedSaturationAxisNameAtom,
-    userSelectedSatnumsAtom,
-    userSelectedTableNameAtom,
 } from "./atoms/persistableFixableAtoms";
 import { relPermTableDefinitionQueriesAtom, relPermTableNamesQueriesAtom } from "./atoms/queryAtoms";
 
@@ -111,8 +106,8 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     const statusWriter = useSettingsStatusWriter(settingsContext);
     const filterEnsembleRealizationsFunc = useEnsembleRealizationFilterFunc(workbenchSession);
 
-    const selectedEnsembleIdents = useAtomValue(selectedEnsembleIdentsAtom);
-    const setUserSelectedEnsembleIdents = useSetAtom(userSelectedEnsembleIdentsAtom);
+    const selectedEnsembleIdents = useAtomValue(selectedEnsembleIdentsAtom).value;
+    const setSelectedEnsembleIdents = useSetAtom(selectedEnsembleIdentsAtom);
     const setValidRealizationNumbers = useSetAtom(validRealizationNumbersAtom);
 
     const [selectedCurveType, setSelectedCurveType] = useAtom(selectedCurveTypeAtom);
@@ -124,13 +119,13 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     const [selectedGroupBy, setSelectedGroupBy] = useAtom(selectedGroupByAtom);
     const [selectedYAxisScale, setSelectedYAxisScale] = useAtom(selectedYAxisScaleAtom);
 
-    const selectedEnsembleIdentsAnnotations = useMakePersistableFixableAtomAnnotations(userSelectedEnsembleIdentsAtom);
-    const selectedTableNameAnnotations = useMakePersistableFixableAtomAnnotations(userSelectedTableNameAtom);
+    const selectedEnsembleIdentsAnnotations = useMakePersistableFixableAtomAnnotations(selectedEnsembleIdentsAtom);
+    const selectedTableNameAnnotations = useMakePersistableFixableAtomAnnotations(selectedTableNameAtom);
     const selectedSaturationAxisNameAnnotations = useMakePersistableFixableAtomAnnotations(
-        userSelectedSaturationAxisNameAtom,
+        selectedSaturationAxisNameAtom,
     );
-    const selectedCurveNamesAnnotations = useMakePersistableFixableAtomAnnotations(userSelectedCurveNamesAtom);
-    const selectedSatnumsAnnotations = useMakePersistableFixableAtomAnnotations(userSelectedSatnumsAtom);
+    const selectedCurveNamesAnnotations = useMakePersistableFixableAtomAnnotations(selectedCurveNamesAtom);
+    const selectedSatnumsAnnotations = useMakePersistableFixableAtomAnnotations(selectedSatnumsAtom);
 
     const tableNameQueries = useAtomValue(relPermTableNamesQueriesAtom);
     const tableDefinitionQueries = useAtomValue(relPermTableDefinitionQueriesAtom);
@@ -138,20 +133,20 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     propagateQueryErrorsToStatusWriter(tableDefinitionQueries, statusWriter);
 
     const availableTableNames = useAtomValue(availableTableNamesAtom);
-    const selectedTableName = useAtomValue(selectedTableNameAtom);
-    const setUserSelectedTableName = useSetAtom(userSelectedTableNameAtom);
+    const selectedTableName = useAtomValue(selectedTableNameAtom).value;
+    const setSelectedTableName = useSetAtom(selectedTableNameAtom);
 
     const availableSaturationAxisNames = useAtomValue(availableSaturationAxisNamesAtom);
-    const selectedSaturationAxisName = useAtomValue(selectedSaturationAxisNameAtom);
-    const setUserSelectedSaturationAxisName = useSetAtom(userSelectedSaturationAxisNameAtom);
+    const selectedSaturationAxisName = useAtomValue(selectedSaturationAxisNameAtom).value;
+    const setSelectedSaturationAxisName = useSetAtom(selectedSaturationAxisNameAtom);
 
     const availableCurveNames = useAtomValue(availableCurveNamesAtom);
-    const selectedCurveNames = useAtomValue(selectedCurveNamesAtom);
-    const setUserSelectedCurveNames = useSetAtom(userSelectedCurveNamesAtom);
+    const selectedCurveNames = useAtomValue(selectedCurveNamesAtom).value;
+    const setSelectedCurveNames = useSetAtom(selectedCurveNamesAtom);
 
     const availableSatnums = useAtomValue(availableSatnumsAtom);
-    const selectedSatnums = useAtomValue(selectedSatnumsAtom);
-    const setUserSelectedSatnums = useSetAtom(userSelectedSatnumsAtom);
+    const selectedSatnums = useAtomValue(selectedSatnumsAtom).value;
+    const setSelectedSatnums = useSetAtom(selectedSatnumsAtom);
 
     const validRealizations = React.useMemo(() => {
         const realizationSet = new Set<number>();
@@ -168,23 +163,23 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     }, [setValidRealizationNumbers, validRealizations]);
 
     function handleEnsembleSelectionChange(ensembleIdents: RegularEnsembleIdent[]) {
-        setUserSelectedEnsembleIdents(ensembleIdents);
+        setSelectedEnsembleIdents(ensembleIdents);
     }
 
     function handleTableNameChange(tableNames: string[]) {
-        setUserSelectedTableName(tableNames[0] ?? null);
+        setSelectedTableName(tableNames[0] ?? null);
     }
 
     function handleSaturationAxisChange(saturationAxisName: string) {
-        setUserSelectedSaturationAxisName(saturationAxisName);
+        setSelectedSaturationAxisName(saturationAxisName);
     }
 
     function handleCurveNamesChange(curveNames: string[]) {
-        setUserSelectedCurveNames(curveNames);
+        setSelectedCurveNames(curveNames);
     }
 
     function handleSatnumsChange(satnums: number[]) {
-        setUserSelectedSatnums(satnums);
+        setSelectedSatnums(satnums);
         if (satnums.length > 1 && selectedGroupBy !== GroupBy.SATNUM) {
             setSelectedColorBy(ColorBy.SATNUM);
         }

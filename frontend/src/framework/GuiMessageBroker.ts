@@ -47,6 +47,7 @@ export enum GuiState {
     EnsemblesLoadingWarningInfoMap = "ensemblesLoadingWarningInfoMap",
     EnsembleLoadingWarningInfoDialogOpen = "ensembleLoadingWarningInfoDialogOpen",
     IsActionBarVisible = "isActionBarVisible",
+    ElevatedSettingsPanelVisible = "elevatedSettingsPanelVisible",
 }
 
 export enum GuiEvent {
@@ -144,6 +145,7 @@ type GuiStateValueTypes = {
     [GuiState.EnsemblesLoadingWarningInfoMap]: EnsembleLoadingWarningInfoMap;
     [GuiState.EnsembleLoadingWarningInfoDialogOpen]: boolean;
     [GuiState.IsActionBarVisible]: boolean;
+    [GuiState.ElevatedSettingsPanelVisible]: boolean;
 };
 
 const defaultStates: Map<GuiState, any> = new Map();
@@ -175,6 +177,7 @@ defaultStates.set(GuiState.EnsembleLoadingErrorInfoDialogOpen, false);
 defaultStates.set(GuiState.EnsemblesLoadingWarningInfoMap, {});
 defaultStates.set(GuiState.EnsembleLoadingWarningInfoDialogOpen, false);
 defaultStates.set(GuiState.IsActionBarVisible, true);
+defaultStates.set(GuiState.ElevatedSettingsPanelVisible, false);
 defaultStates.set(GuiState.IsSwitchingDashboard, false);
 
 const persistentStates: GuiState[] = [
@@ -185,6 +188,7 @@ const persistentStates: GuiState[] = [
     GuiState.RightSettingsPanelWidthInPercent,
     GuiState.RightDrawerContent,
     GuiState.IsActionBarVisible,
+    GuiState.ElevatedSettingsPanelVisible,
 ];
 
 export class GuiMessageBroker {

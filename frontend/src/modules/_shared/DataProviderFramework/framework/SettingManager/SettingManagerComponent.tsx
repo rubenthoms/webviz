@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Link, Warning } from "@mui/icons-material";
+import { Link, PublicOutlined, Warning } from "@mui/icons-material";
 
 import { Field } from "@lib/components/Field";
 import { StatusWrapper } from "@lib/components/StatusWrapper";
@@ -36,6 +36,7 @@ export function SettingManagerComponent<
     const isValidPersistedValue = usePublishSubscribeTopicValue(props.setting, SettingTopic.IS_PERSISTED_VALUE_VALID);
     const valueConstraints = usePublishSubscribeTopicValue(props.setting, SettingTopic.VALUE_CONSTRAINTS);
     const isExternallyControlled = usePublishSubscribeTopicValue(props.setting, SettingTopic.IS_EXTERNALLY_CONTROLLED);
+    const isElevated = usePublishSubscribeTopicValue(props.setting, SettingTopic.IS_ELEVATED);
     const externalControllerProvider = usePublishSubscribeTopicValue(
         props.setting,
         SettingTopic.EXTERNAL_CONTROLLER_PROVIDER,
@@ -96,6 +97,39 @@ export function SettingManagerComponent<
                 </div>
                 <div className="gap-x-2xs py-4xs px-2xs flex w-full items-center">
                     {isValid ? valueAsString : <i className="text-warning-subtle">No valid shared setting value</i>}
+                </div>
+            </React.Fragment>
+        );
+    }
+
+    if (isElevated) {
+        const elevatedSettingLabel = props.setting.getElevatedSettingLabel();
+
+        return (
+            <React.Fragment key={props.setting.getId()}>
+                <div className="gap-x-2xs py-4xs px-2xs text-accent-subtle flex w-32 items-center">
+                    <span>{props.setting.getLabel()}</span>
+                    <span className="mb-2xs text-body-base">
+                        <PublicOutlined
+                            style={{ fontSize: 16 }}
+                            titleAccess={`Controlled by the dashboard setting "${elevatedSettingLabel}"`}
+                        />
+                    </span>
+                </div>
+                <div className="gap-x-2xs py-4xs px-2xs flex w-full items-center">
+                    <StatusWrapper isPending={actuallyLoading}>
+                        {isValid || actuallyLoading ? (
+                            props.setting.valueToRepresentation(
+                                value,
+                                props.manager.getWorkbenchSession(),
+                                props.manager.getWorkbenchSettings(),
+                            )
+                        ) : (
+                            <i className="text-warning-subtle">
+                                The dashboard&apos;s {elevatedSettingLabel?.toLowerCase()} is not available here
+                            </i>
+                        )}
+                    </StatusWrapper>
                 </div>
             </React.Fragment>
         );

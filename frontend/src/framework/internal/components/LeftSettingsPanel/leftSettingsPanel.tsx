@@ -2,7 +2,7 @@ import React from "react";
 
 import { Settings, Link } from "@mui/icons-material";
 
-import { GuiState, useGuiState } from "@framework/GuiMessageBroker";
+import { GuiState, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { DashboardTopic } from "@framework/internal/Dashboard";
 import type { Workbench } from "@framework/Workbench";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
@@ -10,6 +10,7 @@ import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
 import { useActiveDashboard } from "../ActiveDashboardBoundary";
 
+import { ElevatedSettingsPanel } from "./private-components/elevatedSettingsPanel";
 import { EmptySettingsPlaceholder } from "./private-components/emptySettingsPlaceholder";
 import { ModuleSettingsHeader } from "./private-components/moduleSettingsHeader";
 import { ModuleSettingsStack } from "./private-components/moduleSettingsStack";
@@ -28,6 +29,10 @@ export function LeftSettingsPanel(props: LeftSettingsPanelProps): React.ReactNod
     const [isCollapsed, setIsCollapsed] = useGuiState(
         props.workbench.getGuiMessageBroker(),
         GuiState.LeftSettingsPanelIsCollapsed,
+    );
+    const isElevatedSettingsPanelVisible = useGuiValue(
+        props.workbench.getGuiMessageBroker(),
+        GuiState.ElevatedSettingsPanelVisible,
     );
     const [drawerContent, setDrawerContent] = React.useState<DrawerContent>(DrawerContent.ModuleSettings);
 
@@ -53,6 +58,7 @@ export function LeftSettingsPanel(props: LeftSettingsPanelProps): React.ReactNod
 
     return (
         <div className="bg-surface flex h-full flex-col overflow-hidden">
+            {isElevatedSettingsPanelVisible && !isCollapsed && <ElevatedSettingsPanel />}
             <ModuleSettingsHeader
                 activeTab={drawerContent}
                 availableTabs={{

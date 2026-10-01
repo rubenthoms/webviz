@@ -1,50 +1,91 @@
 import { isEqual } from "lodash-es";
 
-import { PublishSubscribeDelegate } from "@lib/utils/PublishSubscribeDelegate";
+import { PublishSubscribeDelegate, type PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
 
-import type { ElevatedSettingDefinition } from "./ElevatedSettingDefinition";
+import { ElevatedSettingConstraintMode, type ElevatedSettingDefinition } from "./ElevatedSettingDefinition";
 
 export enum ElevatedSettingInstanceTopic {
     VALUE = "VALUE",
+    VALUE_SOURCE = "VALUE_SOURCE",
+    IS_VALUE_VALID = "IS_VALUE_VALID",
     CONSTRAINTS = "CONSTRAINTS",
+    IS_SETTLING = "IS_SETTLING",
+    SOURCE_COUNT = "SOURCE_COUNT",
+}
+
+// Where the current value came from. Follows the same fix-up strategy as `persistableFixableAtom` and
+// DPF settings: an invalid value is never replaced automatically once the setting has settled - it is
+// kept and reported via `IS_VALUE_VALID` until the user picks a valid one.
+export enum ElevatedSettingValueSource {
+    // Chosen by the user or still the default. The default gets a one-time fixup the first time the
+    // setting settles, so a freshly elevated setting lands on a sensible value.
+    USER = "USER",
+    // Restored from a persisted session or applied by a template. Never fixed up, not even on the first
+    // settle - it turns into a `USER` value as soon as it is valid in the current context.
+    RESTORED = "RESTORED",
 }
 
 export type ElevatedSettingInstanceTopicPayloads<TValue, TConstraints> = {
     [ElevatedSettingInstanceTopic.VALUE]: TValue;
+    [ElevatedSettingInstanceTopic.VALUE_SOURCE]: ElevatedSettingValueSource;
+    [ElevatedSettingInstanceTopic.IS_VALUE_VALID]: boolean;
     [ElevatedSettingInstanceTopic.CONSTRAINTS]: TConstraints;
+    [ElevatedSettingInstanceTopic.IS_SETTLING]: boolean;
+    [ElevatedSettingInstanceTopic.SOURCE_COUNT]: number;
 };
 
-export type ElevatedSettingConsumerHandle<TConstraints> = {
+// A constraint source is anything contributing options to an elevated setting - currently the consumer
+// adapters (modules, DPF settings), which also read its value. The instance doesn't care which kind.
+export type ElevatedSettingConstraintSourceHandle<TConstraints> = {
+    // The source has settled, and these are the options it contributes.
     updateConstraints(constraints: TConstraints): void;
+    // The source is recomputing its options (e.g. an upstream value changed and data is being fetched).
+    // Its last contribution keeps counting, but the setting isn't considered settled until it is done.
+    markPending(): void;
+    // The source currently has no opinion - its contribution is withdrawn without unregistering.
+    clearConstraints(): void;
     unregister(): void;
 };
 
+export type ElevatedSettingConstraintSourceOptions = {
+    mode?: ElevatedSettingConstraintMode;
+};
+
 export type ElevatedSettingInstanceOptions<TValue, TConstraints> = {
-    // Seeds the value/constraint override atomically at construction. `ElevatedSettingsService.
-    // addSetting` synchronously notifies already-connected consumers before returning - seeding
-    // afterward via `setValue`/`setConstraintOverride` leaves a window where a consumer can react to
-    // the instance's plain defaults (e.g. contribute its own constraints into a union) before the
-    // caller's intended override is applied.
     value?: TValue;
+    valueSource?: ElevatedSettingValueSource;
     constraintOverride?: TConstraints;
 };
 
-export class ElevatedSettingInstance<TValue, TConstraints> {
-    private _value: TValue;
+type ConstraintSourceState<TConstraints> = {
+    mode: ElevatedSettingConstraintMode;
+    constraints: TConstraints | null;
+    isPending: boolean;
+};
 
+export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSubscribe<
+    ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>
+> {
     private readonly _definition: ElevatedSettingDefinition<TValue, TConstraints>;
 
-    private readonly _consumerConstraints = new Map<string, TConstraints>();
+    private _value: TValue;
+    private _valueSource: ElevatedSettingValueSource;
+    private _isValueValid = true;
 
-    // Set via `setConstraintOverride` to force the aggregated constraints to a fixed set (e.g. a
-    // dashboard-level filter), bypassing whatever consumers contribute until cleared again.
-    private _constraintOverride: TConstraints | null = null;
+    private readonly _constraintSources = new Map<string, ConstraintSourceState<TConstraints>>();
+
+    // Forces the aggregated constraints to a fixed set (e.g. from a template), bypassing whatever the
+    // sources contribute until cleared again.
+    private _constraintOverride: TConstraints | null;
 
     private _aggregatedConstraints: TConstraints;
+    private _isSettling = false;
 
-    // Whether `_definition.fixupValue` has already run once. Guards it to the first real constraints
-    // change only - see `RegisterElevatedSettingOptions.fixupValue`.
-    private _hasAppliedInitialFixup = false;
+    // One-way latch: becomes true the first time no source is pending and constraint information is
+    // available. Gates the one-time fixup of the default value.
+    private _hasSettled = false;
+
+    private _isDestroyed = false;
 
     private readonly _publishSubscribeDelegate = new PublishSubscribeDelegate<
         ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>
@@ -55,138 +96,347 @@ export class ElevatedSettingInstance<TValue, TConstraints> {
         options?: ElevatedSettingInstanceOptions<TValue, TConstraints>,
     ) {
         this._definition = definition;
-        this._value = options?.value ?? definition.defaultValue;
+        this._value = options && "value" in options ? (options.value as TValue) : definition.defaultValue;
+        this._valueSource = options?.valueSource ?? ElevatedSettingValueSource.USER;
         this._constraintOverride = options?.constraintOverride ?? null;
         this._aggregatedConstraints = this._constraintOverride ?? definition.initialConstraints;
+        this._isValueValid = this.computeIsValueValid();
     }
 
     getDefinition(): ElevatedSettingDefinition<TValue, TConstraints> {
         return this._definition;
     }
 
-    isValueValid(value: TValue): boolean {
-        return this._definition.isValueValid(value, this._aggregatedConstraints);
-    }
-
     getValue(): TValue {
         return this._value;
     }
 
-    setValue(value: TValue): void {
-        if (isEqual(this._value, value)) {
-            return;
-        }
+    getValueSource(): ElevatedSettingValueSource {
+        return this._valueSource;
+    }
 
-        this._value = value;
-
-        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.VALUE);
+    // Validity is only known once some source has contributed constraints (or an override is set) -
+    // until then the value is considered valid rather than flagged against the empty initial constraints.
+    isValueValid(): boolean {
+        return this._isValueValid;
     }
 
     getConstraints(): TConstraints {
         return this._aggregatedConstraints;
     }
 
+    isSettling(): boolean {
+        return this._isSettling;
+    }
+
+    getSourceCount(): number {
+        return this._constraintSources.size;
+    }
+
     getConstraintOverride(): TConstraints | null {
         return this._constraintOverride;
     }
 
-    // Forces the aggregated constraints to `override` regardless of what consumers contribute, like
-    // a fixed filter - pass `null` to go back to combining consumer contributions normally.
+    setValue(value: TValue, valueSource: ElevatedSettingValueSource = ElevatedSettingValueSource.USER): void {
+        this.setValueSource(valueSource);
+        this.applyValue(value);
+
+        if (valueSource === ElevatedSettingValueSource.RESTORED) {
+            // A restored value that already fits the current context is a regular value from here on.
+            this.maybePromoteRestoredValue();
+        }
+    }
+
+    // Manual repair of an invalid value, regardless of its source - the counterpart of
+    // `persistableFixableAtom`'s `FIXUP` command. A no-op while sources are pending or the value is valid.
+    fixupValue(): void {
+        if (!this.isSettled() || this._definition.isValueValid(this._value, this._aggregatedConstraints)) {
+            return;
+        }
+
+        this.setValueSource(ElevatedSettingValueSource.USER);
+        this.applyValue(this._definition.fixupValue(this._value, this._aggregatedConstraints));
+    }
+
+    // Pass `null` to go back to aggregating the sources' contributions.
     setConstraintOverride(override: TConstraints | null): void {
         if (isEqual(this._constraintOverride, override)) {
             return;
         }
 
         this._constraintOverride = override;
-
-        this.recomputeConstraints();
+        this.recompute();
     }
 
-    registerConsumer(consumerId: string): ElevatedSettingConsumerHandle<TConstraints> {
-        if (this._consumerConstraints.has(consumerId)) {
+    registerConstraintSource(
+        sourceId: string,
+        options?: ElevatedSettingConstraintSourceOptions,
+    ): ElevatedSettingConstraintSourceHandle<TConstraints> {
+        if (this._constraintSources.has(sourceId)) {
             throw new Error(
-                `Consumer with ID '${consumerId}' is already registered for elevated setting '${this._definition.key}'.`,
+                `Constraint source with ID '${sourceId}' is already registered for elevated setting '${this._definition.key}'.`,
             );
         }
 
+        const state: ConstraintSourceState<TConstraints> = {
+            mode: options?.mode ?? this._definition.defaultConstraintMode,
+            constraints: null,
+            isPending: false,
+        };
+        this._constraintSources.set(sourceId, state);
+        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.SOURCE_COUNT);
+
         let registered = true;
 
+        const assertRegistered = () => {
+            if (!registered) {
+                throw new Error(
+                    `Constraint source with ID '${sourceId}' has already been unregistered from elevated setting '${this._definition.key}'.`,
+                );
+            }
+        };
+
+        // Calls arriving after the instance has been removed from the dashboard are ignored - adapters
+        // learn about the removal asynchronously and may still be wrapping up.
         return {
             updateConstraints: (constraints: TConstraints) => {
-                if (!registered) {
-                    throw new Error(
-                        `Consumer with ID '${consumerId}' has already been unregistered for elevated setting '${this._definition.key}'.`,
-                    );
+                assertRegistered();
+                if (this._isDestroyed) {
+                    return;
                 }
-
-                this._consumerConstraints.set(consumerId, constraints);
-
-                this.recomputeConstraints();
+                state.constraints = constraints;
+                state.isPending = false;
+                this.recompute();
+            },
+            markPending: () => {
+                assertRegistered();
+                if (this._isDestroyed || state.isPending) {
+                    return;
+                }
+                state.isPending = true;
+                this.recompute();
+            },
+            clearConstraints: () => {
+                assertRegistered();
+                if (this._isDestroyed) {
+                    return;
+                }
+                state.constraints = null;
+                state.isPending = false;
+                this.recompute();
             },
             unregister: () => {
                 if (!registered) {
                     return;
                 }
-
                 registered = false;
 
-                this._consumerConstraints.delete(consumerId);
-                this.recomputeConstraints();
+                if (this._isDestroyed) {
+                    return;
+                }
+                this._constraintSources.delete(sourceId);
+                this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.SOURCE_COUNT);
+                this.recompute();
             },
         };
+    }
+
+    beforeDestroy(): void {
+        this._isDestroyed = true;
+        this._constraintSources.clear();
     }
 
     makeSnapshotGetter<TTopic extends ElevatedSettingInstanceTopic>(
         topic: TTopic,
     ): () => ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>[TTopic] {
-        return () => {
+        const snapshotGetter = (): any => {
             switch (topic) {
                 case ElevatedSettingInstanceTopic.VALUE:
-                    return this.getValue() as ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>[TTopic];
+                    return this._value;
+                case ElevatedSettingInstanceTopic.VALUE_SOURCE:
+                    return this._valueSource;
+                case ElevatedSettingInstanceTopic.IS_VALUE_VALID:
+                    return this._isValueValid;
                 case ElevatedSettingInstanceTopic.CONSTRAINTS:
-                    return this.getConstraints() as ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>[TTopic];
+                    return this._aggregatedConstraints;
+                case ElevatedSettingInstanceTopic.IS_SETTLING:
+                    return this._isSettling;
+                case ElevatedSettingInstanceTopic.SOURCE_COUNT:
+                    return this._constraintSources.size;
                 default:
                     throw new Error(`Unknown topic: ${topic}`);
             }
         };
+
+        return snapshotGetter;
     }
 
-    getPublishSubscribeDelegate(): PublishSubscribeDelegate<
-        ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>
-    > {
+    getPublishSubscribeDelegate(): PublishSubscribeDelegate<ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>> {
         return this._publishSubscribeDelegate;
     }
 
-    private recomputeConstraints(): void {
-        let newConstraints: TConstraints;
-
+    private hasConstraintInformation(): boolean {
         if (this._constraintOverride !== null) {
-            newConstraints = this._constraintOverride;
-        } else {
-            const contributions = [...this._consumerConstraints.values()];
+            return true;
+        }
 
-            newConstraints = this._definition.initialConstraints;
-            if (contributions.length > 0) {
-                newConstraints = contributions
-                    .slice(1)
-                    .reduce(
-                        (accumulator, current) => this._definition.combineConstraints(accumulator, current),
-                        contributions[0],
-                    );
+        for (const state of this._constraintSources.values()) {
+            if (state.constraints !== null) {
+                return true;
             }
         }
 
-        if (isEqual(newConstraints, this._aggregatedConstraints)) {
+        return false;
+    }
+
+    // Union of all UNION contributions, then restricted by every INTERSECTION contribution. Without any
+    // UNION contribution, the INTERSECTION contributions are intersected among themselves.
+    private computeAggregatedConstraints(): TConstraints {
+        if (this._constraintOverride !== null) {
+            return this._constraintOverride;
+        }
+
+        const unionContributions: TConstraints[] = [];
+        const intersectionContributions: TConstraints[] = [];
+
+        for (const state of this._constraintSources.values()) {
+            if (state.constraints === null) {
+                continue;
+            }
+
+            if (state.mode === ElevatedSettingConstraintMode.INTERSECTION) {
+                intersectionContributions.push(state.constraints);
+            } else {
+                unionContributions.push(state.constraints);
+            }
+        }
+
+        let aggregated: TConstraints;
+        let restrictions: TConstraints[];
+
+        if (unionContributions.length > 0) {
+            aggregated = unionContributions.reduce((acc, current) => this._definition.unionConstraints(acc, current));
+            restrictions = intersectionContributions;
+        } else if (intersectionContributions.length > 0) {
+            aggregated = intersectionContributions[0];
+            restrictions = intersectionContributions.slice(1);
+        } else {
+            return this._definition.initialConstraints;
+        }
+
+        return restrictions.reduce((acc, current) => this._definition.intersectConstraints(acc, current), aggregated);
+    }
+
+    private computeIsSettling(): boolean {
+        if (this._constraintOverride !== null) {
+            return false;
+        }
+
+        for (const state of this._constraintSources.values()) {
+            if (state.isPending) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private computeIsValueValid(): boolean {
+        if (!this.hasConstraintInformation()) {
+            return true;
+        }
+
+        return this._definition.isValueValid(this._value, this._aggregatedConstraints);
+    }
+
+    private recompute(): void {
+        const newConstraints = this.computeAggregatedConstraints();
+        const newIsSettling = this.computeIsSettling();
+
+        const constraintsChanged = !isEqual(newConstraints, this._aggregatedConstraints);
+        const isSettlingChanged = newIsSettling !== this._isSettling;
+
+        if (constraintsChanged) {
+            this._aggregatedConstraints = newConstraints;
+            this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.CONSTRAINTS);
+        }
+
+        if (isSettlingChanged) {
+            this._isSettling = newIsSettling;
+            this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.IS_SETTLING);
+        }
+
+        this.updateIsValueValid();
+
+        if (constraintsChanged || isSettlingChanged) {
+            this.applyValueRule();
+        }
+    }
+
+    // Settled = no source is pending, and there is something to validate against. A pending source may
+    // still change the constraints, so nothing is decided about the value before that.
+    private isSettled(): boolean {
+        return !this._isSettling && this.hasConstraintInformation();
+    }
+
+    private applyValueRule(): void {
+        if (!this.isSettled()) {
             return;
         }
 
-        this._aggregatedConstraints = newConstraints;
+        if (!this._hasSettled) {
+            this._hasSettled = true;
 
-        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.CONSTRAINTS);
-
-        if (!this._hasAppliedInitialFixup) {
-            this._hasAppliedInitialFixup = true;
-            this.setValue(this._definition.fixupValue(this._value, newConstraints));
+            // One-time fixup so a freshly elevated setting lands on a sensible value. Never applied
+            // again afterwards - from here on an invalid value is kept and reported instead.
+            if (
+                this._valueSource === ElevatedSettingValueSource.USER &&
+                !this._definition.isValueValid(this._value, this._aggregatedConstraints)
+            ) {
+                this.applyValue(this._definition.fixupValue(this._value, this._aggregatedConstraints));
+            }
         }
+
+        this.maybePromoteRestoredValue();
+    }
+
+    private maybePromoteRestoredValue(): void {
+        if (this._valueSource !== ElevatedSettingValueSource.RESTORED || !this.isSettled()) {
+            return;
+        }
+
+        if (this._definition.isValueValid(this._value, this._aggregatedConstraints)) {
+            this.setValueSource(ElevatedSettingValueSource.USER);
+        }
+    }
+
+    private applyValue(value: TValue): void {
+        if (isEqual(this._value, value)) {
+            return;
+        }
+
+        this._value = value;
+        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.VALUE);
+
+        this.updateIsValueValid();
+    }
+
+    private setValueSource(valueSource: ElevatedSettingValueSource): void {
+        if (this._valueSource === valueSource) {
+            return;
+        }
+
+        this._valueSource = valueSource;
+        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.VALUE_SOURCE);
+    }
+
+    private updateIsValueValid(): void {
+        const isValueValid = this.computeIsValueValid();
+        if (isValueValid === this._isValueValid) {
+            return;
+        }
+
+        this._isValueValid = isValueValid;
+        this._publishSubscribeDelegate.notifySubscribers(ElevatedSettingInstanceTopic.IS_VALUE_VALID);
     }
 }

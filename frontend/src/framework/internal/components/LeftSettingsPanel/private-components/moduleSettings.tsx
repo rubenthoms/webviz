@@ -125,6 +125,7 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
                                 settingsContext={props.moduleInstance.getContext()}
                                 workbenchSession={props.workbench.getSessionManager().getActiveSession()}
                                 syncSettingsService={dashboard.getSyncSettingsService()}
+                                elevatedSettingsService={dashboard.getElevatedSettingsService()}
                                 workbenchSettings={props.workbench
                                     .getSessionManager()
                                     .getActiveSession()

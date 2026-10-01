@@ -1,15 +1,12 @@
 import { ElevatedSettingRegistry } from "../ElevatedSettingRegistry";
+import { makeOptionListElevatedSettingOptions } from "../utils/optionListElevatedSetting";
 
-export const REALIZATION_ELEVATED_SETTING = ElevatedSettingRegistry.registerElevatedSetting<
-    number | null,
-    readonly number[]
->({
-    key: "realization",
-    defaultValue: 0,
-    initialConstraints: [],
-    // No `constraintMode` - defaults to union, so the selector offers every realization any
-    // consumer knows about rather than only the ones common to all of them.
-    isValueValid: (value, constraints) => {
-        return value === null || constraints.includes(value);
-    },
-});
+export const REALIZATION_ELEVATED_SETTING = ElevatedSettingRegistry.registerElevatedSetting(
+    makeOptionListElevatedSettingOptions<number, number>({
+        key: "realization",
+        label: "Realization",
+        getOptionValue: (realization) => realization,
+        getOptionLabel: (realization) => realization.toString(),
+        compareOptions: (a, b) => a - b,
+    }),
+);

@@ -1,6 +1,15 @@
 import { isEqual } from "lodash-es";
 import { v4 } from "uuid";
 
+import {
+    ElevatedSettingInstanceTopic,
+    type ElevatedSettingConstraintSourceHandle,
+    type ElevatedSettingInstance,
+} from "@framework/ElevatedSettings/ElevatedSettingInstance";
+import {
+    ElevatedSettingsServiceTopic,
+    type ElevatedSettingsService,
+} from "@framework/ElevatedSettings/ElevatedSettingsService";
 import type { WorkbenchSession } from "@framework/WorkbenchSession";
 import type { WorkbenchSettings } from "@framework/WorkbenchSettings";
 import type { PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
@@ -9,6 +18,7 @@ import { UnsubscribeFunctionsManagerDelegate } from "@lib/utils/UnsubscribeFunct
 
 import type { CustomSettingImplementation } from "../../interfacesAndTypes/customSettingImplementation";
 import type { SettingAttributes } from "../../interfacesAndTypes/customSettingsHandler";
+import type { DpfElevatedSettingAdapter } from "../../settings/SettingRegistry/elevatedSettingAdapters";
 import type { Setting, SettingTypeDefinitions } from "../../settings/settingsDefinitions";
 import type { ExternalSettingController } from "../ExternalSettingController/ExternalSettingController";
 import { Group } from "../Group/Group";
@@ -27,6 +37,7 @@ export enum SettingTopic {
     IS_PERSISTED = "IS_PERSISTED",
     ATTRIBUTES = "ATTRIBUTES",
     IS_PERSISTED_VALUE_VALID = "IS_PERSISTED_VALUE_VALID",
+    IS_ELEVATED = "IS_ELEVATED",
 }
 
 export type SettingTopicPayloads<TInternalValue, TExternalValue, TValueConstraints> = {
@@ -42,6 +53,7 @@ export type SettingTopicPayloads<TInternalValue, TExternalValue, TValueConstrain
     [SettingTopic.IS_PERSISTED]: boolean;
     [SettingTopic.ATTRIBUTES]: SettingAttributes;
     [SettingTopic.IS_PERSISTED_VALUE_VALID]: boolean;
+    [SettingTopic.IS_ELEVATED]: boolean;
 };
 
 export type SettingManagerParams<
@@ -59,6 +71,12 @@ export type SettingManagerParams<
     label: string;
     defaultValue: TInternalValue;
     customSettingImplementation: CustomSettingImplementation<TInternalValue, TExternalValue, TValueConstraints>;
+    elevatedSettingAdapter?: DpfElevatedSettingAdapter<TInternalValue, TValueConstraints, any, any>;
+};
+
+type ElevatedSettingConnection = {
+    instance: ElevatedSettingInstance<any, any>;
+    handle: ElevatedSettingConstraintSourceHandle<any>;
 };
 
 export enum ExternalControllerProviderType {
@@ -119,16 +137,25 @@ export class SettingManager<
         new UnsubscribeFunctionsManagerDelegate();
     private _cachedExternalValue: TExternalValue | null | NoCache = NO_CACHE;
 
+    // While the elevated setting is active on the dashboard, its value (mapped by the adapter) replaces
+    // this setting's own - which is kept as the local value, and used again once it is no longer active.
+    private _elevatedSettingAdapter: DpfElevatedSettingAdapter<TInternalValue, TValueConstraints, any, any> | null;
+    private _elevatedSettingsService: ElevatedSettingsService | null = null;
+    private _elevatedSettingConnection: ElevatedSettingConnection | null = null;
+    private _cachedElevatedInternalValue: TInternalValue | NoCache = NO_CACHE;
+
     constructor({
         type,
         customSettingImplementation,
         defaultValue,
         label,
+        elevatedSettingAdapter,
     }: SettingManagerParams<TSetting, TInternalValue, TExternalValue, TValueConstraints>) {
         this._id = v4();
         this._type = type;
         this._label = label;
         this._customSettingImplementation = customSettingImplementation;
+        this._elevatedSettingAdapter = elevatedSettingAdapter ?? null;
         this._internalValue = defaultValue;
         this._isStatic = customSettingImplementation.getIsStatic?.() ?? false;
         if (this._isStatic) {
@@ -148,7 +175,12 @@ export class SettingManager<
     ): void {
         this._externalController = externalController;
 
-        this.setInternalValueAndInvalidateCache(externalController.getSetting().getInternalValue());
+        // The controlling setting is the elevated setting's consumer now - this one follows it.
+        this.updateElevatedSettingConnection();
+
+        // Mirrors the controller's local value (not an elevated one), so this setting keeps a sensible
+        // value of its own once it is no longer controlled.
+        this.setInternalValueAndInvalidateCache(externalController.getSetting().getLocalInternalValue());
 
         this._unsubscribeFunctionsManagerDelegate.registerUnsubscribeFunction(
             "external-setting-controller",
@@ -156,7 +188,7 @@ export class SettingManager<
                 .getSetting()
                 .getPublishSubscribeDelegate()
                 .makeSubscriberFunction(SettingTopic.INTERNAL_VALUE)(() => {
-                this.setInternalValueAndInvalidateCache(externalController.getSetting().getInternalValue());
+                this.setInternalValueAndInvalidateCache(externalController.getSetting().getLocalInternalValue());
                 this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
             }),
         );
@@ -244,16 +276,51 @@ export class SettingManager<
     }
 
     unregisterExternalSettingController(): void {
-        const newInternalValue = this._externalController?.getSetting().getInternalValue() ?? this._internalValue;
+        const newInternalValue =
+            this._externalController?.getSetting().getLocalInternalValue() ?? this._internalValue;
         this.setInternalValueAndInvalidateCache(newInternalValue);
         this._externalController = null;
         this._unsubscribeFunctionsManagerDelegate.unsubscribe("external-setting-controller");
+        this.updateElevatedSettingConnection();
         this.applyValueConstraints();
         this.notifySnapshotSourceChange();
     }
 
     beforeDestroy(): void {
+        this.disconnectElevatedSetting();
         this._unsubscribeFunctionsManagerDelegate.unsubscribeAll();
+    }
+
+    /**
+     * Lets this setting follow the elevated setting its type is registered with (if any), whenever that
+     * is active on the dashboard - see `DpfElevatedSettingAdapter`.
+     */
+    connectElevatedSettingsService(elevatedSettingsService: ElevatedSettingsService): void {
+        if (!this._elevatedSettingAdapter || this._elevatedSettingsService === elevatedSettingsService) {
+            return;
+        }
+
+        this._elevatedSettingsService = elevatedSettingsService;
+
+        this._unsubscribeFunctionsManagerDelegate.unsubscribe("elevated-settings-service");
+        this._unsubscribeFunctionsManagerDelegate.registerUnsubscribeFunction(
+            "elevated-settings-service",
+            elevatedSettingsService
+                .getPublishSubscribeDelegate()
+                .makeSubscriberFunction(ElevatedSettingsServiceTopic.ACTIVE_SETTINGS)(() => {
+                this.updateElevatedSettingConnection();
+            }),
+        );
+
+        this.updateElevatedSettingConnection();
+    }
+
+    isElevated(): boolean {
+        return this._elevatedSettingConnection !== null;
+    }
+
+    getElevatedSettingLabel(): string | null {
+        return this._elevatedSettingConnection?.instance.getDefinition().label ?? null;
     }
 
     getId(): string {
@@ -285,9 +352,23 @@ export class SettingManager<
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.ATTRIBUTES);
     }
 
+    // The value in effect - the elevated one while the setting is elevated.
     getInternalValue(): TInternalValue {
         if (this._externalController) {
             return this._externalController.getSetting().getInternalValue();
+        }
+
+        if (this._elevatedSettingConnection) {
+            return this.getElevatedInternalValue(this._elevatedSettingConnection);
+        }
+
+        return this.getLocalInternalValue();
+    }
+
+    // The setting's own value, regardless of any elevated setting - this is what is persisted.
+    getLocalInternalValue(): TInternalValue {
+        if (this._externalController) {
+            return this._externalController.getSetting().getLocalInternalValue();
         }
 
         if (this._currentValueFromPersistence !== null) {
@@ -302,14 +383,11 @@ export class SettingManager<
             return this._externalController.getSetting().getValue();
         }
 
-        let value = this._internalValue;
-        if (this._currentValueFromPersistence !== null) {
-            value = this._currentValueFromPersistence;
-        }
-
         if (!this._isStatic && this._valueConstraints === null) {
             return null;
         }
+
+        const value = this.getInternalValue();
 
         // Return cached value if available
         if (this._cachedExternalValue !== NO_CACHE) {
@@ -336,16 +414,17 @@ export class SettingManager<
     serializeValue(): string {
         if (this._customSettingImplementation.serializeValue) {
             return this._customSettingImplementation.serializeValue.bind(this._customSettingImplementation)(
-                this.getInternalValue(),
+                this.getLocalInternalValue(),
             );
         }
 
-        return JSON.stringify(this.getInternalValue());
+        return JSON.stringify(this.getLocalInternalValue());
     }
 
     deserializeValue(serializedValue: string): void {
         // Invalidate cache since _currentValueFromPersistence affects the value returned by getValue()
-        this._cachedExternalValue = NO_CACHE;
+        // (and the local value an elevated value is mapped against)
+        this.invalidateValueCaches();
 
         try {
             const deserializedValue = this._customSettingImplementation.deserializeValue.bind(
@@ -413,7 +492,7 @@ export class SettingManager<
 
         this.setInternalValueAndInvalidateCache(value);
 
-        this.setValueValid(this.checkIfValueIsValid(this._internalValue));
+        this.setValueValid(this.checkIfValueIsValid(this.getInternalValue()));
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
     }
@@ -438,6 +517,9 @@ export class SettingManager<
         this._loading = loading;
 
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_LOADING);
+
+        // Pending while loading, settled (with the current constraints) again once done.
+        this.contributeElevatedSettingConstraints();
     }
 
     initialize(): void {
@@ -554,6 +636,8 @@ export class SettingManager<
                     return this.isInitialized();
                 case SettingTopic.ATTRIBUTES:
                     return this._attributes;
+                case SettingTopic.IS_ELEVATED:
+                    return this.isElevated();
                 default:
                     throw new Error(`Unknown topic: ${topic}`);
             }
@@ -607,8 +691,9 @@ export class SettingManager<
 
     private applyValueConstraints(): boolean {
         let valueChanged = false;
+        // The local value is still fixed up while elevated, so it is sensible once no longer elevated.
         const isValueFixedUp =
-            !this._initialized && !this.checkIfValueIsValid(this.getInternalValue()) && this.maybeFixupValue();
+            !this._initialized && !this.checkIfValueIsValid(this.getLocalInternalValue()) && this.maybeFixupValue();
         const isPersistedValueReset = this.maybeResetPersistedValue();
         if (isValueFixedUp || isPersistedValueReset) {
             valueChanged = true;
@@ -645,6 +730,8 @@ export class SettingManager<
             this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         }
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE_CONSTRAINTS);
+
+        this.contributeElevatedSettingConstraints();
     }
 
     makeComponent() {
@@ -712,23 +799,132 @@ export class SettingManager<
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_PERSISTED);
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE_CONSTRAINTS);
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_PERSISTED_VALUE_VALID);
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_ELEVATED);
     }
 
     /**
-     * Sets the internal value and invalidates the external value cache.
+     * Sets the internal value and invalidates the value caches.
      * Use this instead of directly assigning to this._internalValue.
      */
     private setInternalValueAndInvalidateCache(value: TInternalValue): void {
         this._internalValue = value;
-        this._cachedExternalValue = NO_CACHE;
+        this.invalidateValueCaches();
     }
 
     /**
-     * Sets the value constraints and invalidates the external value cache.
+     * Sets the value constraints and invalidates the value caches.
      * Use this instead of directly assigning to this._valueConstraints.
      */
     private setValueConstraintsAndInvalidateCache(valueConstraints: TValueConstraints | null): void {
         this._valueConstraints = valueConstraints;
+        this.invalidateValueCaches();
+    }
+
+    private invalidateValueCaches(): void {
         this._cachedExternalValue = NO_CACHE;
+        this._cachedElevatedInternalValue = NO_CACHE;
+    }
+
+    // Connects to the elevated setting while it is active on the dashboard - unless this setting is
+    // externally controlled, in which case the controlling setting is the one connected.
+    private updateElevatedSettingConnection(): void {
+        if (!this._elevatedSettingAdapter || !this._elevatedSettingsService) {
+            return;
+        }
+
+        const instance = this._externalController
+            ? null
+            : this._elevatedSettingsService.getSetting(this._elevatedSettingAdapter.definition);
+
+        if (instance === (this._elevatedSettingConnection?.instance ?? null)) {
+            return;
+        }
+
+        this.disconnectElevatedSetting();
+        if (instance) {
+            this.connectElevatedSetting(instance);
+        }
+
+        this.handleEffectiveValueChange();
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_ELEVATED);
+    }
+
+    private connectElevatedSetting(instance: ElevatedSettingInstance<any, any>): void {
+        if (!this._elevatedSettingAdapter) {
+            return;
+        }
+
+        const handle = instance.registerConstraintSource(this._id, { mode: this._elevatedSettingAdapter.constraintMode });
+        this._elevatedSettingConnection = { instance, handle };
+
+        this._unsubscribeFunctionsManagerDelegate.registerUnsubscribeFunction(
+            "elevated-setting-instance",
+            instance.getPublishSubscribeDelegate().makeSubscriberFunction(ElevatedSettingInstanceTopic.VALUE)(() => {
+                this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE_ABOUT_TO_BE_CHANGED);
+                this.handleEffectiveValueChange();
+            }),
+        );
+
+        this.contributeElevatedSettingConstraints();
+    }
+
+    private disconnectElevatedSetting(): void {
+        if (!this._elevatedSettingConnection) {
+            return;
+        }
+
+        this._unsubscribeFunctionsManagerDelegate.unsubscribe("elevated-setting-instance");
+        this._elevatedSettingConnection.handle.unregister();
+        this._elevatedSettingConnection = null;
+    }
+
+    private contributeElevatedSettingConstraints(): void {
+        const connection = this._elevatedSettingConnection;
+        if (!connection || !this._elevatedSettingAdapter || this._isStatic) {
+            return;
+        }
+
+        if (this._loading) {
+            connection.handle.markPending();
+            return;
+        }
+
+        if (this._valueConstraints === null) {
+            connection.handle.clearConstraints();
+            return;
+        }
+
+        connection.handle.updateConstraints(
+            this._elevatedSettingAdapter.mapValueConstraintsToElevatedConstraints(this._valueConstraints),
+        );
+    }
+
+    // Cached like the external value: snapshot getters need a stable reference, and an adapter may build
+    // a new object on every call.
+    private getElevatedInternalValue(connection: ElevatedSettingConnection): TInternalValue {
+        if (this._cachedElevatedInternalValue !== NO_CACHE) {
+            return this._cachedElevatedInternalValue;
+        }
+
+        // Dynamic settings can only map the elevated value once their own constraints are known.
+        if (!this._elevatedSettingAdapter || (!this._isStatic && this._valueConstraints === null)) {
+            return null as TInternalValue;
+        }
+
+        const elevatedInternalValue = this._elevatedSettingAdapter.mapElevatedValueToInternalValue(
+            connection.instance.getValue(),
+            this._valueConstraints as TValueConstraints,
+            this.getLocalInternalValue(),
+        );
+        this._cachedElevatedInternalValue = elevatedInternalValue;
+
+        return elevatedInternalValue;
+    }
+
+    private handleEffectiveValueChange(): void {
+        this.invalidateValueCaches();
+        this.setValueValid(this.checkIfValueIsValid(this.getInternalValue()));
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
     }
 }

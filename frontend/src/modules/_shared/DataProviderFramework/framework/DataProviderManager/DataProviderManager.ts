@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { clone, isEqual } from "lodash-es";
 
+import type { ElevatedSettingsService } from "@framework/ElevatedSettings/ElevatedSettingsService";
 import type { RegularEnsemble } from "@framework/RegularEnsemble";
 import type { IntersectionPolyline } from "@framework/userCreatedItems/IntersectionPolylines";
 import { IntersectionPolylinesEvent } from "@framework/userCreatedItems/IntersectionPolylines";
@@ -54,6 +55,7 @@ export type GlobalSettings = {
 export class DataProviderManager implements ItemGroup, PublishSubscribe<DataProviderManagerTopicPayload> {
     private _workbenchSession: WorkbenchSession;
     private _workbenchSettings: WorkbenchSettings;
+    private _elevatedSettingsService: ElevatedSettingsService;
     private _groupDelegate: GroupDelegate;
     private _queryClient: QueryClient;
     private _publishSubscribeDelegate = new PublishSubscribeDelegate<DataProviderManagerTopicPayload>();
@@ -64,9 +66,15 @@ export class DataProviderManager implements ItemGroup, PublishSubscribe<DataProv
     private _deserializing = false;
     private _groupColorGenerator: Generator<string, string>;
 
-    constructor(workbenchSession: WorkbenchSession, workbenchSettings: WorkbenchSettings, queryClient: QueryClient) {
+    constructor(
+        workbenchSession: WorkbenchSession,
+        workbenchSettings: WorkbenchSettings,
+        elevatedSettingsService: ElevatedSettingsService,
+        queryClient: QueryClient,
+    ) {
         this._workbenchSession = workbenchSession;
         this._workbenchSettings = workbenchSettings;
+        this._elevatedSettingsService = elevatedSettingsService;
         this._queryClient = queryClient;
         this._itemDelegate = new ItemDelegate("DataProviderManager", 0, this);
         this._groupDelegate = new GroupDelegate(this);
@@ -163,6 +171,11 @@ export class DataProviderManager implements ItemGroup, PublishSubscribe<DataProv
 
     getWorkbenchSettings(): WorkbenchSettings {
         return this._workbenchSettings;
+    }
+
+    // The elevated settings of the dashboard this manager's module instance belongs to.
+    getElevatedSettingsService(): ElevatedSettingsService {
+        return this._elevatedSettingsService;
     }
 
     makeSnapshotGetter<T extends DataProviderManagerTopic>(topic: T): () => DataProviderManagerTopicPayload[T] {

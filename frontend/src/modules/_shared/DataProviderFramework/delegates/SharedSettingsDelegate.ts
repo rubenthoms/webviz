@@ -73,6 +73,11 @@ export class SharedSettingsDelegate<
         // Now create external controllers, passing internal settings if they exist
         for (const key in wrappedSettings) {
             const setting = wrappedSettings[key];
+
+            // A group's own (wrapped) setting is the elevated setting's consumer on behalf of the settings it
+            // controls - those don't connect themselves while externally controlled.
+            setting.connectElevatedSettingsService(dataProviderManager.getElevatedSettingsService());
+
             const internalSetting = this._internalSettings.get(key);
             const externalSettingController = new ExternalSettingController(parentItem, setting, internalSetting);
             this._externalSettingControllers[key] = externalSettingController;

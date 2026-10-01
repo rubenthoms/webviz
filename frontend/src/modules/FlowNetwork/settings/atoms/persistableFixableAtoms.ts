@@ -1,6 +1,7 @@
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-import { persistableFixableAtom } from "@framework/utils/atomUtils";
+import type { PersistableAtomDependenciesState } from "@framework/utils/atomUtils";
+import { computeQueryDependenciesState, persistableFixableAtom } from "@framework/utils/atomUtils";
 import { areEnsembleIdentsEqual } from "@framework/utils/ensembleIdentUtils";
 import { fixupRegularEnsembleIdent } from "@framework/utils/ensembleUiHelpers";
 
@@ -125,13 +126,6 @@ function computeFlowNetworkQueryResultDependenciesState({
     get,
 }: {
     get: (atom: any) => any;
-}): "error" | "loading" | "loaded" {
-    const flowNetworkQueryResult = get(realizationFlowNetworkQueryAtom);
-    if (flowNetworkQueryResult.isError) {
-        return "error";
-    }
-    if (flowNetworkQueryResult.isFetching) {
-        return "loading";
-    }
-    return "loaded";
+}): PersistableAtomDependenciesState {
+    return computeQueryDependenciesState(get(realizationFlowNetworkQueryAtom));
 }

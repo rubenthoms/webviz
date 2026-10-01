@@ -607,7 +607,8 @@ export class SettingManager<
 
     private applyValueConstraints(): boolean {
         let valueChanged = false;
-        const isValueFixedUp = !this.checkIfValueIsValid(this.getInternalValue()) && this.maybeFixupValue();
+        const isValueFixedUp =
+            !this._initialized && !this.checkIfValueIsValid(this.getInternalValue()) && this.maybeFixupValue();
         const isPersistedValueReset = this.maybeResetPersistedValue();
         if (isValueFixedUp || isPersistedValueReset) {
             valueChanged = true;

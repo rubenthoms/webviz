@@ -18,7 +18,7 @@ export type TableDefinitionsQueryResult = {
 };
 
 export const tableDefinitionsQueryAtom = atomWithQueries((get) => {
-    const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom).value;
+    const { value: selectedEnsembleIdents, isValidInContext: ensembleIdentsValid } = get(selectedEnsembleIdentsAtom);
 
     const queries = selectedEnsembleIdents.map((ensembleIdent) => {
         const options = getInplaceTableDefinitionsOptions({
@@ -28,7 +28,7 @@ export const tableDefinitionsQueryAtom = atomWithQueries((get) => {
                 ...makeCacheBustingQueryParam(ensembleIdent),
             },
         });
-        return () => options;
+        return () => ({ ...options, enabled: ensembleIdentsValid });
     });
 
     return {

@@ -10,8 +10,8 @@ import { availableRealizationsAtom } from "./derivedAtoms";
 import { selectedEnsembleIdentAtom, selectedRealizationAtom } from "./persistableFixableAtoms";
 
 export const wellCompletionsQueryAtom = atomWithQuery((get) => {
-    const selectedEnsembleIdent = get(selectedEnsembleIdentAtom).value;
-    const selectedRealization = get(selectedRealizationAtom).value;
+    const { value: selectedEnsembleIdent, isValidInContext: ensembleIdentValid } = get(selectedEnsembleIdentAtom);
+    const { value: selectedRealization, isValidInContext: realizationValid } = get(selectedRealizationAtom);
     const realizationMode = get(realizationModeAtom);
     const validRealizationNumbers = get(availableRealizationsAtom);
 
@@ -40,7 +40,7 @@ export const wellCompletionsQueryAtom = atomWithQuery((get) => {
                 ...makeCacheBustingQueryParam(selectedEnsembleIdent),
             },
         }),
-        enabled: Boolean(caseUuid && ensembleName && hasValidRealizations),
+        enabled: Boolean(caseUuid && ensembleName && hasValidRealizations) && ensembleIdentValid && realizationValid,
     };
 
     return query;

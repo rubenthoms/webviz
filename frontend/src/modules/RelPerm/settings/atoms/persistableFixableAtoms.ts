@@ -16,7 +16,7 @@ import {
 } from "./derivedAtoms";
 import { relPermTableDefinitionQueriesAtom, relPermTableNamesQueriesAtom } from "./queryAtoms";
 
-export const userSelectedEnsembleIdentsAtom = persistableFixableAtom<RegularEnsembleIdent[]>({
+export const selectedEnsembleIdentsAtom = persistableFixableAtom<RegularEnsembleIdent[]>({
     initialValue: [],
     areEqualFunction: areEnsembleIdentListsEqual,
     isValidFunction: ({ get, value }) => {
@@ -31,7 +31,7 @@ export const userSelectedEnsembleIdentsAtom = persistableFixableAtom<RegularEnse
     },
 });
 
-export const userSelectedTableNameAtom = persistableFixableAtom<string | null, string[]>({
+export const selectedTableNameAtom = persistableFixableAtom<string | null, string[]>({
     initialValue: null,
     computeDependenciesState: computeTableNamesQueryDependenciesState,
     precomputeFunction: ({ get }) => get(availableTableNamesAtom),
@@ -44,7 +44,7 @@ export const userSelectedTableNameAtom = persistableFixableAtom<string | null, s
     },
 });
 
-export const userSelectedSaturationAxisNameAtom = persistableFixableAtom<string | null, string[]>({
+export const selectedSaturationAxisNameAtom = persistableFixableAtom<string | null, string[]>({
     initialValue: null,
     computeDependenciesState: computeTableDefinitionsQueryDependenciesState,
     precomputeFunction: ({ get }) => get(availableSaturationAxisNamesAtom),
@@ -57,7 +57,7 @@ export const userSelectedSaturationAxisNameAtom = persistableFixableAtom<string 
     },
 });
 
-export const userSelectedCurveNamesAtom = persistableFixableAtom<string[], string[]>({
+export const selectedCurveNamesAtom = persistableFixableAtom<string[], string[]>({
     initialValue: [],
     areEqualFunction: isEqual,
     computeDependenciesState: computeTableDefinitionsQueryDependenciesState,
@@ -70,7 +70,7 @@ export const userSelectedCurveNamesAtom = persistableFixableAtom<string[], strin
     },
 });
 
-export const userSelectedSatnumsAtom = persistableFixableAtom<number[], number[]>({
+export const selectedSatnumsAtom = persistableFixableAtom<number[], number[]>({
     initialValue: [],
     areEqualFunction: isEqual,
     computeDependenciesState: computeTableDefinitionsQueryDependenciesState,

@@ -10,9 +10,11 @@ import {
 } from "./persistableFixableAtoms";
 
 export const vfpTableQueryAtom = atomWithQuery((get) => {
-    const selectedEnsembleIdent = get(selectedEnsembleIdentAtom).value;
-    const selectedRealizationNumber = get(selectedRealizationNumberAtom).value;
-    const selectedVfpTableName = get(selectedVfpTableNameAtom).value;
+    const { value: selectedEnsembleIdent, isValidInContext: ensembleIdentValid } = get(selectedEnsembleIdentAtom);
+    const { value: selectedRealizationNumber, isValidInContext: realizationNumberValid } = get(
+        selectedRealizationNumberAtom,
+    );
+    const { value: selectedVfpTableName, isValidInContext: vfpTableNameValid } = get(selectedVfpTableNameAtom);
 
     const query = {
         ...getVfpTableOptions({
@@ -28,15 +30,20 @@ export const vfpTableQueryAtom = atomWithQuery((get) => {
             selectedEnsembleIdent?.getCaseUuid() &&
                 selectedEnsembleIdent?.getEnsembleName() &&
                 selectedRealizationNumber !== null &&
-                selectedVfpTableName,
+                selectedVfpTableName &&
+                ensembleIdentValid &&
+                realizationNumberValid &&
+                vfpTableNameValid,
         ),
     };
     return query;
 });
 
 export const vfpTableNamesQueryAtom = atomWithQuery((get) => {
-    const selectedEnsembleIdent = get(selectedEnsembleIdentAtom).value;
-    const selectedRealizationNumber = get(selectedRealizationNumberAtom).value;
+    const { value: selectedEnsembleIdent, isValidInContext: ensembleIdentValid } = get(selectedEnsembleIdentAtom);
+    const { value: selectedRealizationNumber, isValidInContext: realizationNumberValid } = get(
+        selectedRealizationNumberAtom,
+    );
 
     const query = {
         ...getVfpTableNamesOptions({
@@ -50,7 +57,9 @@ export const vfpTableNamesQueryAtom = atomWithQuery((get) => {
         enabled: Boolean(
             selectedEnsembleIdent?.getCaseUuid() &&
                 selectedEnsembleIdent?.getEnsembleName() &&
-                selectedRealizationNumber !== null,
+                selectedRealizationNumber !== null &&
+                ensembleIdentValid &&
+                realizationNumberValid,
         ),
     };
     return query;

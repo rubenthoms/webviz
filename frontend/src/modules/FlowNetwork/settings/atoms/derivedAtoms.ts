@@ -42,12 +42,15 @@ export const availableDateTimesAtom = atom<string[]>((get) => {
     const flowNetworkQuery = get(realizationFlowNetworkQueryAtom);
     const selectedTreeType = get(selectedTreeTypeAtom).value;
 
-    if (!flowNetworkQuery.data || !selectedTreeType) {
+    const treeTypeFlowNetwork = selectedTreeType
+        ? flowNetworkQuery.data?.tree_type_flow_network_map[selectedTreeType]
+        : undefined;
+    if (!treeTypeFlowNetwork) {
         return [];
     }
 
     const dateTimes = new Set<string>();
-    flowNetworkQuery.data.tree_type_flow_network_map[selectedTreeType].datedNetworks.forEach((datedNetwork) => {
+    treeTypeFlowNetwork.datedNetworks.forEach((datedNetwork) => {
         datedNetwork.dates.forEach((date) => {
             dateTimes.add(date);
         });
@@ -60,31 +63,31 @@ export const edgeMetadataListAtom = atom<FlowNetworkMetadata_api[]>((get) => {
     const flowNetworkQuery = get(realizationFlowNetworkQueryAtom);
     const selectedTreeType = get(selectedTreeTypeAtom).value;
 
-    if (!flowNetworkQuery.data || !selectedTreeType) {
-        return [];
-    }
+    const treeTypeFlowNetwork = selectedTreeType
+        ? flowNetworkQuery.data?.tree_type_flow_network_map[selectedTreeType]
+        : undefined;
 
-    return flowNetworkQuery.data.tree_type_flow_network_map[selectedTreeType].edgeMetadataList;
+    return treeTypeFlowNetwork?.edgeMetadataList ?? [];
 });
 
 export const nodeMetadataListAtom = atom<FlowNetworkMetadata_api[]>((get) => {
     const flowNetworkQuery = get(realizationFlowNetworkQueryAtom);
     const selectedTreeType = get(selectedTreeTypeAtom).value;
 
-    if (!flowNetworkQuery.data || !selectedTreeType) {
-        return [];
-    }
+    const treeTypeFlowNetwork = selectedTreeType
+        ? flowNetworkQuery.data?.tree_type_flow_network_map[selectedTreeType]
+        : undefined;
 
-    return flowNetworkQuery.data.tree_type_flow_network_map[selectedTreeType].nodeMetadataList;
+    return treeTypeFlowNetwork?.nodeMetadataList ?? [];
 });
 
 export const datedNetworksAtom = atom<DatedFlowNetwork_api[]>((get) => {
     const flowNetworkQuery = get(realizationFlowNetworkQueryAtom);
     const selectedTreeType = get(selectedTreeTypeAtom).value;
 
-    if (!flowNetworkQuery.data || !selectedTreeType) {
-        return [];
-    }
+    const treeTypeFlowNetwork = selectedTreeType
+        ? flowNetworkQuery.data?.tree_type_flow_network_map[selectedTreeType]
+        : undefined;
 
-    return flowNetworkQuery.data.tree_type_flow_network_map[selectedTreeType].datedNetworks;
+    return treeTypeFlowNetwork?.datedNetworks ?? [];
 });

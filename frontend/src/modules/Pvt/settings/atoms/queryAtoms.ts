@@ -10,8 +10,8 @@ import type { CombinedPvtDataResult } from "../../typesAndEnums";
 import { selectedEnsembleIdentsAtom, selectedRealizationNumbersAtom } from "./persistableFixableAtoms";
 
 export const pvtDataQueriesAtom = atomWithQueries((get) => {
-    const selectedEnsembleIdents = get(selectedEnsembleIdentsAtom).value;
-    const selectedRealizations = get(selectedRealizationNumbersAtom).value;
+    const { value: selectedEnsembleIdents, isValidInContext: ensembleIdentsValid } = get(selectedEnsembleIdentsAtom);
+    const { value: selectedRealizations, isValidInContext: realizationsValid } = get(selectedRealizationNumbersAtom);
 
     const ensembleIdentsAndRealizations: { ensembleIdent: RegularEnsembleIdent; realization: number }[] = [];
     for (const ensembleIdent of selectedEnsembleIdents) {
@@ -32,7 +32,7 @@ export const pvtDataQueriesAtom = atomWithQueries((get) => {
             });
             return () => ({
                 ...options,
-                enabled: Boolean(el.ensembleIdent && el.realization !== null),
+                enabled: Boolean(el.ensembleIdent && el.realization !== null) && ensembleIdentsValid && realizationsValid,
             });
         })
         .flat();

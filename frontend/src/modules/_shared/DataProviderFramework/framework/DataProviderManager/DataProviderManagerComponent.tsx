@@ -17,7 +17,6 @@ import type { Item, ItemGroup } from "../../interfacesAndTypes/entities";
 import { instanceofItemGroup } from "../../interfacesAndTypes/entities";
 import { SharedSetting } from "../SharedSetting/SharedSetting";
 import { ExpandCollapseAllButton } from "../utilityComponents/ExpandCollapseAllButton";
-import { FixUpAllInvalidSettingsButton } from "../utilityComponents/FixUpAllInvalidSettingsButton";
 import { makeSortableListItemComponent } from "../utils/makeSortableListItemComponent";
 
 import type { DataProviderManager } from "./DataProviderManager";
@@ -155,7 +154,6 @@ export function DataProviderManagerComponent(props: DataProviderManagerComponent
                     <div className="font-bolder text-body-sm grow">{props.title}</div>
                     <Actions actionGroups={actions} onActionClick={handleActionClick} />
                     <ExpandCollapseAllButton group={props.dataProviderManager} />
-                    <FixUpAllInvalidSettingsButton dataProviderManager={props.dataProviderManager} />
                     {props.additionalHeaderComponents}
                 </div>
                 <div

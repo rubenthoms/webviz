@@ -232,59 +232,6 @@ export class SettingsContextDelegate<
         return invalidSettings;
     }
 
-    async fixupAllInvalidSettings(): Promise<void> {
-        const maxIterations = Object.keys(this._settings).length + 1;
-        let previousInvalidKeysSignature: string | null = null;
-
-        for (let i = 0; i < maxIterations; i++) {
-            const invalidKeys: TSettingKey[] = [];
-            for (const key in this._settings) {
-                if (!this._settings[key].isValueValid()) {
-                    invalidKeys.push(key);
-                }
-            }
-
-            if (invalidKeys.length === 0) {
-                break;
-            }
-
-            const invalidKeysSignature = invalidKeys.join(",");
-            if (invalidKeysSignature === previousInvalidKeysSignature) {
-                // No progress was made in the last pass - the remaining invalid settings cannot be
-                // repaired automatically (e.g. no fixupValue implementation available for them).
-                break;
-            }
-            previousInvalidKeysSignature = invalidKeysSignature;
-
-            for (const key of invalidKeys) {
-                this._settings[key].fixupValue();
-            }
-
-            // Fixing up a setting can invalidate settings that depend on it - their value constraints
-            // are recomputed asynchronously via the dependency graph (see Dependency.ts). Wait for that
-            // to settle before re-checking which settings are still invalid.
-            await this.waitUntilNotLoading();
-        }
-
-        this.handleSettingChanged();
-    }
-
-    private waitUntilNotLoading(): Promise<void> {
-        if (this._status !== SettingsContextStatus.LOADING) {
-            return Promise.resolve();
-        }
-        return new Promise<void>((resolve) => {
-            const unsubscribe = this._publishSubscribeDelegate.makeSubscriberFunction(
-                SettingsContextDelegateTopic.STATUS,
-            )(() => {
-                if (this._status !== SettingsContextStatus.LOADING) {
-                    unsubscribe();
-                    resolve();
-                }
-            });
-        });
-    }
-
     setValueConstraints<K extends TSettingKey>(
         key: K,
         valueConstraints: SettingTypeDefinitions[K]["valueConstraints"],

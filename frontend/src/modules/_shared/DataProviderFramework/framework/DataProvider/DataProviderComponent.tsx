@@ -16,7 +16,6 @@ import { SettingManagerComponent } from "../SettingManager/SettingManagerCompone
 import { EditName } from "../utilityComponents/EditName";
 import { ErrorBadge } from "../utilityComponents/ErrorBadge";
 import { ErrorOverlay } from "../utilityComponents/ErrorOverlay";
-import { FixUpProviderSettingsButton } from "../utilityComponents/FixUpProviderSettingsButton";
 import { RemoveItemButton } from "../utilityComponents/RemoveItemButton";
 import { StatusMessages } from "../utilityComponents/StatusWriterMessages";
 import { VisibilityToggle } from "../utilityComponents/VisibilityToggle";
@@ -193,9 +192,6 @@ function EndActions(props: EndActionProps): React.ReactNode {
             {deserializationErrorBadge}
             <StatusMessages statusMessages={statusMessages} />
             {makeStatus()}
-            {status === DataProviderStatus.INVALID_SETTINGS && (
-                <FixUpProviderSettingsButton dataProvider={props.dataProvider} />
-            )}
             <RemoveItemButton item={props.dataProvider} />
         </>
     );

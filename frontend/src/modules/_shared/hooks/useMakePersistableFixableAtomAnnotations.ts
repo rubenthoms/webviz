@@ -10,7 +10,7 @@ export function useMakePersistableFixableAtomAnnotations(atom: PersistableFixabl
         return [
             {
                 type: "info",
-                message: "Unavailable until another invalid setting is fixed.",
+                message: "No valid value until another invalid setting is fixed.",
             },
         ];
     }

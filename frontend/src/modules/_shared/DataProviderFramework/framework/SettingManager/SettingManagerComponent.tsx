@@ -2,6 +2,7 @@ import React from "react";
 
 import { Link, Warning } from "@mui/icons-material";
 
+import { Field } from "@lib/components/Field";
 import { StatusWrapper } from "@lib/components/StatusWrapper";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
@@ -106,28 +107,30 @@ export function SettingManagerComponent<
             <div className="px-2xs py-4xs w-full min-w-0">
                 <StatusWrapper isPending={actuallyLoading}>
                     <div className="gap-y-3xs flex min-w-0 flex-col">
-                        <div
-                            className={resolveClassNames("relative", {
-                                "outline-danger-strong outline": !isValid && !actuallyLoading,
-                                "pointer-events-none opacity-50": !isSettingEnabled(attributes.enabled),
-                            })}
-                        >
-                            {isEnabledObject(attributes.enabled) && !attributes.enabled.enabled && (
-                                <div className="z-overlay bg-surface/80 px-2xs py-2xs absolute inset-0 flex flex-col items-center justify-center text-center">
-                                    {attributes.enabled.reason}
-                                </div>
-                            )}
-                            <componentRef.current
-                                onValueChange={handleValueChanged}
-                                value={value}
-                                isValueValid={isValid}
-                                valueConstraints={valueConstraints}
-                                globalSettings={globalSettings}
-                                disabled={!isSettingEnabled(attributes.enabled)}
-                                workbenchSession={props.manager.getWorkbenchSession()}
-                                workbenchSettings={props.manager.getWorkbenchSettings()}
-                            />
-                        </div>
+                        <Field.Root inline invalid={!isValid && !actuallyLoading}>
+                            <div
+                                className={resolveClassNames("relative", {
+                                    "outline-danger-strong outline": !isValid && !actuallyLoading,
+                                    "pointer-events-none opacity-50": !isSettingEnabled(attributes.enabled),
+                                })}
+                            >
+                                {isEnabledObject(attributes.enabled) && !attributes.enabled.enabled && (
+                                    <div className="z-overlay bg-surface/80 px-2xs py-2xs absolute inset-0 flex flex-col items-center justify-center text-center">
+                                        {attributes.enabled.reason}
+                                    </div>
+                                )}
+                                <componentRef.current
+                                    onValueChange={handleValueChanged}
+                                    value={value}
+                                    isValueValid={isValid}
+                                    valueConstraints={valueConstraints}
+                                    globalSettings={globalSettings}
+                                    disabled={!isSettingEnabled(attributes.enabled)}
+                                    workbenchSession={props.manager.getWorkbenchSession()}
+                                    workbenchSettings={props.manager.getWorkbenchSettings()}
+                                />
+                            </div>
+                        </Field.Root>
                         {isPersisted && isValidPersistedValue && !isLoading && isInitialized && !isValid && (
                             <span
                                 className="gap-x-3xs text-body-xs text-warning-subtle flex items-center"

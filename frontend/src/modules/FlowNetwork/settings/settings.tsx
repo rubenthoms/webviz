@@ -1,9 +1,12 @@
 import React from "react";
 
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 
 import { NodeType_api, Frequency_api } from "@api";
 import { EnsembleDropdown } from "@framework/components/EnsembleDropdown";
+import { ElevatedSettingIndicator } from "@framework/ElevatedSettings/components/ElevatedSettingIndicator";
+import { REALIZATION_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/realization";
+import { TIME_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/time";
 import type { ModuleSettingsProps } from "@framework/Module";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import { useSettingsStatusWriter } from "@framework/StatusWriter";
@@ -28,6 +31,10 @@ import {
     nodeMetadataListAtom,
 } from "./atoms/derivedAtoms";
 import {
+    effectiveDateTimeAtom,
+    effectiveRealizationAtom,
+    isDateTimeElevatedAtom,
+    isRealizationElevatedAtom,
     selectedDateTimeAtom,
     selectedEdgeKeyAtom,
     selectedEnsembleIdentAtom,
@@ -54,8 +61,12 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
     const [selectedEdgeKey, setSelectedEdgeKey] = useAtom(selectedEdgeKeyAtom);
     const [selectedNodeKey, setSelectedNodeKey] = useAtom(selectedNodeKeyAtom);
     const [selectedEnsembleIdent, setSelectedEnsembleIdent] = useAtom(selectedEnsembleIdentAtom);
-    const [selectedRealization, setSelectedRealization] = useAtom(selectedRealizationAtom);
-    const [selectedDateTime, setSelectedDateTime] = useAtom(selectedDateTimeAtom);
+    const effectiveRealization = useAtomValue(effectiveRealizationAtom);
+    const setSelectedRealization = useSetAtom(selectedRealizationAtom);
+    const isRealizationElevated = useAtomValue(isRealizationElevatedAtom);
+    const effectiveDateTime = useAtomValue(effectiveDateTimeAtom);
+    const setSelectedDateTime = useSetAtom(selectedDateTimeAtom);
+    const isDateTimeElevated = useAtomValue(isDateTimeElevatedAtom);
 
     const flowNetworkQuery = useAtomValue(realizationFlowNetworkQueryAtom);
 
@@ -98,7 +109,7 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
         [availableDateTimes],
     );
 
-    const selectedDateTimeIndex = selectedDateTime.value ? availableDateTimes.indexOf(selectedDateTime.value) : -1;
+    const selectedDateTimeIndex = effectiveDateTime.value ? availableDateTimes.indexOf(effectiveDateTime.value) : -1;
 
     const selectedEnsembleIdentAnnotations = useMakePersistableFixableAtomAnnotations(selectedEnsembleIdentAtom);
     const selectedTreeTypeAnnotations = useMakePersistableFixableAtomAnnotations(selectedTreeTypeAtom);
@@ -119,13 +130,27 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                             onValueChange={handleEnsembleSelectionChange}
                         />
                     </Setting.Field>
-                    <Setting.Field label="Realization" annotations={selectedRealizationAnnotations}>
+                    <Setting.Field
+                        label={
+                            <span className="gap-x-2xs flex items-center">
+                                Realization
+                                {isRealizationElevated && (
+                                    <ElevatedSettingIndicator
+                                        elevatedSettingLabel={REALIZATION_ELEVATED_SETTING.label}
+                                        isValueValidHere={effectiveRealization.isValidInContext}
+                                    />
+                                )}
+                            </span>
+                        }
+                        annotations={isRealizationElevated ? [] : selectedRealizationAnnotations}
+                    >
                         <Combobox
                             items={availableRealizations.map((real) => {
                                 return { value: real, label: real.toString() };
                             })}
-                            value={selectedRealization.value}
+                            value={effectiveRealization.value}
                             onValueChange={setSelectedRealization}
+                            disabled={isRealizationElevated}
                         />
                     </Setting.Field>
                     <Setting.Field label="Frequency">
@@ -197,16 +222,26 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                         />
                     </Setting.Field>
                     <Setting.Field
-                        label="Time step"
-                        loadingOverlay={selectedDateTime.isLoading}
-                        annotations={selectedDateTimeAnnotations}
-                        errorOverlay={selectedDateTime.depsHaveError ? "Could not load time steps." : undefined}
+                        label={
+                            <span className="gap-x-2xs flex items-center">
+                                Time step
+                                {isDateTimeElevated && (
+                                    <ElevatedSettingIndicator
+                                        elevatedSettingLabel={TIME_ELEVATED_SETTING.label}
+                                        isValueValidHere={effectiveDateTime.isValidInContext}
+                                    />
+                                )}
+                            </span>
+                        }
+                        loadingOverlay={effectiveDateTime.isLoading}
+                        annotations={isDateTimeElevated ? [] : selectedDateTimeAnnotations}
+                        errorOverlay={effectiveDateTime.depsHaveError ? "Could not load time steps." : undefined}
                     >
                         <div className="gap-sm flex">
                             <Slider
                                 layoutClassName="grow w-full"
                                 valueLabelDisplay="auto"
-                                disabled={!availableDateTimes.length}
+                                disabled={!availableDateTimes.length || isDateTimeElevated}
                                 min={0}
                                 max={availableDateTimes.length ? availableDateTimes.length - 1 : 0}
                                 markers={availableDateTimes.map((_, index) => index)}
@@ -221,11 +256,11 @@ export function Settings({ workbenchSession, settingsContext }: ModuleSettingsPr
                             />
                             <div className="relative flex shrink">
                                 <span className="px-sm pointer-events-none invisible whitespace-nowrap">
-                                    {selectedDateTime.value ?? "No time step selected"}
+                                    {effectiveDateTime.value ?? "No time step selected"}
                                 </span>
                                 <TextInput
                                     layoutClassName="absolute! inset-0"
-                                    value={selectedDateTime.value ?? ""}
+                                    value={effectiveDateTime.value ?? ""}
                                     placeholder="No time step selected"
                                     size="small"
                                     readOnly

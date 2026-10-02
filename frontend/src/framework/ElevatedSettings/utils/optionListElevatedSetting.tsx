@@ -1,4 +1,4 @@
-import { Combobox } from "@lib/components/Combobox";
+import { ComboboxCompositions } from "@lib/components/Combobox/compositions";
 import type { ComboboxItem } from "@lib/components/Combobox/types";
 
 import type {
@@ -41,9 +41,9 @@ export function makeOptionListElevatedSettingOptions<TValue extends string | num
             items.unshift({ value: props.value, label: `${props.value} (not available)`, disabled: true });
         }
 
+        // Prev/next buttons skip disabled items - such as an unavailable value kept visible above.
         return (
-            <Combobox
-                size="small"
+            <ComboboxCompositions.WithBrowseButtons
                 items={items}
                 value={props.value}
                 onValueChange={(value) => props.onValueChange(value)}
@@ -66,7 +66,8 @@ export function makeOptionListElevatedSettingOptions<TValue extends string | num
             return compareOptions ? union.sort(compareOptions) : union;
         },
         intersectConstraints: (a, b) => a.filter((option) => hasOption(b, getOptionValue(option))),
-        isValueValid: (value, constraints) => (value === null ? constraints.length === 0 : hasOption(constraints, value)),
+        isValueValid: (value, constraints) =>
+            value === null ? constraints.length === 0 : hasOption(constraints, value),
         fixupValue: (_value, constraints) => (constraints.length > 0 ? getOptionValue(constraints[0]) : null),
         Component: OptionListComponent,
     };

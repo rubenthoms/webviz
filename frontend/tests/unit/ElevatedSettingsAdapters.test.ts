@@ -1,7 +1,7 @@
 import { atom, createStore } from "jotai";
 import { describe, expect, it } from "vitest";
 
-import { atomWithElevatedSetting } from "@framework/ElevatedSettings/adapters/jotai";
+import { makeElevatedSettingAtoms } from "@framework/ElevatedSettings/adapters/jotai";
 import { ElevatedSettingDefinition } from "@framework/ElevatedSettings/ElevatedSettingDefinition";
 import { ElevatedSettingsService } from "@framework/ElevatedSettings/ElevatedSettingsService";
 import { ElevatedSettingsServiceAtom } from "@framework/ElevatedSettings/ElevatedSettingsServiceAtom";
@@ -22,7 +22,7 @@ const localValueAtom = atom<string | null>("local");
 const availableOptionsAtom = atom<string[]>(["a", "b"]);
 const isLoadingAtom = atom(false);
 
-const elevatedValueAtom = atomWithElevatedSetting(localValueAtom, {
+const { valueAtom: elevatedValueAtom, isElevatedAtom } = makeElevatedSettingAtoms(localValueAtom, {
     definition: DEFINITION,
     getConstraints: (get) => get(availableOptionsAtom),
     isLoading: (get) => get(isLoadingAtom),
@@ -33,14 +33,27 @@ function makeModuleStore(service: ElevatedSettingsService) {
     const store = createStore();
     store.set(ElevatedSettingsServiceAtom, service);
     store.sub(elevatedValueAtom, () => {});
+    store.sub(isElevatedAtom, () => {});
     return store;
 }
 
-describe("atomWithElevatedSetting", () => {
+describe("makeElevatedSettingAtoms", () => {
     it("reads the local value while the setting isn't elevated", () => {
         const store = makeModuleStore(new ElevatedSettingsService());
 
         expect(store.get(elevatedValueAtom)).toBe("local");
+        expect(store.get(isElevatedAtom)).toBe(false);
+    });
+
+    it("tells whether the setting is elevated", () => {
+        const service = new ElevatedSettingsService();
+        const store = makeModuleStore(service);
+
+        service.addSetting(DEFINITION);
+        expect(store.get(isElevatedAtom)).toBe(true);
+
+        service.removeSetting(DEFINITION);
+        expect(store.get(isElevatedAtom)).toBe(false);
     });
 
     it("contributes its options and reads the elevated value once elevated", () => {

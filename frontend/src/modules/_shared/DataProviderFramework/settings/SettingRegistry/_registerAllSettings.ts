@@ -42,7 +42,8 @@ import { Setting } from "../settingsDefinitions";
 import { SettingRegistry } from "./_SettingRegistry";
 import {
     makeIdentityDpfElevatedSettingAdapter,
-    makeIntersectionWellboreElevatedSettingAdapter,
+    makeIntersectionElevatedSettingAdapter,
+    makeTimePointDpfElevatedSettingAdapter,
 } from "./elevatedSettingAdapters";
 
 const FLUID_CONTACT_LABELS: Record<InitialFluidContactType_api, string> = {
@@ -131,7 +132,7 @@ SettingRegistry.registerSetting(Setting.FLUID_CONTACT, "Fluid Contact", Dropdown
 const INTERSECTION_EXTENSION_LENGTH_CONFIG = { min: 0, max: 5000, defaultValue: 500 };
 SettingRegistry.registerSetting(Setting.INTERSECTION, "Intersection", IntersectionSetting, {
     customConstructorParameters: [{ extensionLengthConfig: INTERSECTION_EXTENSION_LENGTH_CONFIG }],
-    elevatedSettingAdapter: makeIntersectionWellboreElevatedSettingAdapter(
+    elevatedSettingAdapter: makeIntersectionElevatedSettingAdapter(
         INTERSECTION_EXTENSION_LENGTH_CONFIG.defaultValue,
     ),
 });
@@ -159,8 +160,12 @@ SettingRegistry.registerSetting(Setting.FORMATION_NAME, "Formation Name", Dropdo
     customConstructorParameters: [{ showBrowseButtons: true }],
 });
 SettingRegistry.registerSetting(Setting.SURFACE_NAMES, "Surface Names", SelectStringSetting);
-SettingRegistry.registerSetting(Setting.TIME_OR_INTERVAL, "Time or Interval", TimeOrIntervalSetting);
-SettingRegistry.registerSetting(Setting.TIME_POINT, "Time Point", TimeOrIntervalSetting);
+SettingRegistry.registerSetting(Setting.TIME_OR_INTERVAL, "Time or Interval", TimeOrIntervalSetting, {
+    elevatedSettingAdapter: makeTimePointDpfElevatedSettingAdapter(),
+});
+SettingRegistry.registerSetting(Setting.TIME_POINT, "Time Point", TimeOrIntervalSetting, {
+    elevatedSettingAdapter: makeTimePointDpfElevatedSettingAdapter(),
+});
 SettingRegistry.registerSetting(Setting.TIME_INTERVAL, "Time Interval", TimeOrIntervalSetting);
 
 SettingRegistry.registerSetting(Setting.WELLBORE_PICKS, "Wellbore Picks", DrilledWellborePicksSetting);

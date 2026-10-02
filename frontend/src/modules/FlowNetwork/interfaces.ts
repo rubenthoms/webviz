@@ -8,7 +8,7 @@ import {
     queryStatusAtom,
 } from "./settings/atoms/derivedAtoms";
 import {
-    selectedDateTimeAtom,
+    effectiveDateTimeAtom,
     selectedEdgeKeyAtom,
     selectedNodeKeyAtom,
 } from "./settings/atoms/persistableFixableAtoms";
@@ -45,7 +45,7 @@ export const settingsToViewInterfaceInitialization: InterfaceInitialization<Sett
         return get(selectedNodeKeyAtom).value ?? "";
     },
     selectedDateTime: (get) => {
-        return get(selectedDateTimeAtom).value ?? "";
+        return get(effectiveDateTimeAtom).value ?? "";
     },
     queryStatus: (get) => {
         return get(queryStatusAtom);

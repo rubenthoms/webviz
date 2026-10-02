@@ -1,6 +1,16 @@
 import type React from "react";
 
-import { Add, Close, PublicOutlined } from "@mui/icons-material";
+import {
+    Add,
+    Close,
+    Delete,
+    DisplaySettings,
+    Hub,
+    HubOutlined,
+    PublicOutlined,
+    Remove,
+    Tune,
+} from "@mui/icons-material";
 
 import {
     useElevatedSettingInstances,
@@ -23,9 +33,13 @@ import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelega
 import { useActiveDashboard } from "../../ActiveDashboardBoundary";
 import { useActiveSession } from "../../ActiveSessionBoundary";
 
-import { EmptySettingsPlaceholder } from "./emptySettingsPlaceholder";
+import { Badge } from "@lib/components/Badge";
 
-export function ElevatedSettingsPanel(): React.ReactNode {
+export type ElevatedSettingsPanelProps = {
+    onClose: () => void;
+};
+
+export function ElevatedSettingsPanel(props: ElevatedSettingsPanelProps): React.ReactNode {
     const dashboard = useActiveDashboard();
     const workbenchSession = useActiveSession();
     const isSnapshot = usePublishSubscribeTopicValue(workbenchSession, PrivateWorkbenchSessionTopic.IS_SNAPSHOT);
@@ -34,21 +48,23 @@ export function ElevatedSettingsPanel(): React.ReactNode {
     const activeInstances = useElevatedSettingInstances(elevatedSettingsService);
 
     return (
-        <div className="border-b-neutral-subtle flex max-h-[40%] min-h-0 shrink-0 flex-col border-b-2">
-            <div className="gap-x-xs pr-2xs pl-xs bg-canvas flex h-10 shrink-0 items-center">
-                <PublicOutlined fontSize="small" />
+        <div className="border-info-subtle shadow-elevation-raised flex max-h-[40%] min-h-0 shrink-0 flex-col border-b-2">
+            <div className="gap-x-xs pr-2xs pl-xs bg-info border-b-neutral-subtle flex h-10 shrink-0 items-center border-b">
+                <HubOutlined fontSize="small" />
                 <span className="text-body-sm font-bolder grow">Dashboard settings</span>
                 <AddElevatedSettingMenu
                     elevatedSettingsService={elevatedSettingsService}
                     activeInstances={activeInstances}
                     disabled={isSnapshot}
                 />
+                <Button size="small" tone="neutral" iconOnly variant="ghost" onClick={props.onClose}>
+                    <Close />
+                </Button>
             </div>
-            <div className="min-h-0 overflow-y-auto">
+            {/* Alternating row backgrounds, like in Setting.Section - the rows are the children of Setting.Panel's grid */}
+            <div className="pt-xs [&>div>.setting-row:nth-child(even_of_.setting-row)]:bg-neutral/20 min-h-0 overflow-y-auto">
                 {activeInstances.length === 0 ? (
-                    <div className="py-sm">
-                        <EmptySettingsPlaceholder text="No dashboard settings yet - add one with +" />
-                    </div>
+                    <div className="py-sm text-center">No dashboard settings yet - add one with +</div>
                 ) : (
                     <Setting.Panel>
                         {activeInstances.map((instance) => (
@@ -145,12 +161,8 @@ function ElevatedSettingField(props: ElevatedSettingFieldProps): React.ReactNode
     }
 
     return (
-        <Setting.Field
-            label={definition.label}
-            description={sourceCount ? `Options from ${sourceCount} source${sourceCount === 1 ? "" : "s"}` : undefined}
-            annotations={annotations}
-        >
-            <div className="gap-x-2xs flex items-center">
+        <Setting.Field label={definition.label} annotations={annotations}>
+            <div className="gap-x-2xs flex min-h-8 items-center">
                 <div className="min-w-0 grow">
                     <definition.Component
                         value={value}
@@ -160,7 +172,7 @@ function ElevatedSettingField(props: ElevatedSettingFieldProps): React.ReactNode
                         onValueChange={(newValue: unknown) => props.instance.setValue(newValue)}
                     />
                 </div>
-                <Tooltip content={`Remove "${definition.label}" from the dashboard settings`} side="bottom">
+                <Tooltip content={`Remove "${definition.label}" from the dashboard settings`} side="right">
                     <Button
                         aria-label={`Remove ${definition.label}`}
                         disabled={props.removeDisabled}
@@ -168,10 +180,10 @@ function ElevatedSettingField(props: ElevatedSettingFieldProps): React.ReactNode
                         iconOnly
                         onClick={props.onRemove}
                         size="small"
-                        tone="neutral"
+                        tone="danger"
                         variant="ghost"
                     >
-                        <Close fontSize="inherit" />
+                        <Delete />
                     </Button>
                 </Tooltip>
             </div>

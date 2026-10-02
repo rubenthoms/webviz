@@ -30,7 +30,7 @@ export function LeftSettingsPanel(props: LeftSettingsPanelProps): React.ReactNod
         props.workbench.getGuiMessageBroker(),
         GuiState.LeftSettingsPanelIsCollapsed,
     );
-    const isElevatedSettingsPanelVisible = useGuiValue(
+    const [isElevatedSettingsPanelVisible, setIsElevatedSettingsPanelVisible] = useGuiState(
         props.workbench.getGuiMessageBroker(),
         GuiState.ElevatedSettingsPanelVisible,
     );
@@ -56,9 +56,18 @@ export function LeftSettingsPanel(props: LeftSettingsPanelProps): React.ReactNod
         setIsCollapsed(true);
     }
 
+    const handleCloseElevatedSettingsPanel = React.useCallback(
+        function handleCloseElevatedSettingsPanel() {
+            setIsElevatedSettingsPanelVisible(false);
+        },
+        [setIsElevatedSettingsPanelVisible],
+    );
+
     return (
         <div className="bg-surface flex h-full flex-col overflow-hidden">
-            {isElevatedSettingsPanelVisible && !isCollapsed && <ElevatedSettingsPanel />}
+            {isElevatedSettingsPanelVisible && !isCollapsed && (
+                <ElevatedSettingsPanel onClose={handleCloseElevatedSettingsPanel} />
+            )}
             <ModuleSettingsHeader
                 activeTab={drawerContent}
                 availableTabs={{

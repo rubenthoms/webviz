@@ -15,9 +15,11 @@ import { ElevatedSettingsServiceAtom } from "../ElevatedSettingsServiceAtom";
 // Module atoms are shared by every instance of a module, each of them with its own store - so all
 // connection state below lives in atoms (one value per store), never in closure variables.
 
+type InstanceAtom<TValue, TConstraints> = Atom<ElevatedSettingInstance<TValue, TConstraints> | null>;
+
 function makeElevatedSettingInstanceAtom<TValue, TConstraints>(
     definition: ElevatedSettingDefinition<TValue, TConstraints>,
-): Atom<ElevatedSettingInstance<TValue, TConstraints> | null> {
+): InstanceAtom<TValue, TConstraints> {
     const revisionAtom = atom(0);
 
     const subscriptionEffect = atomEffect((get, set) => {
@@ -40,7 +42,7 @@ function makeElevatedSettingInstanceAtom<TValue, TConstraints>(
 }
 
 function makeElevatedValueAtom<TValue, TConstraints>(
-    instanceAtom: Atom<ElevatedSettingInstance<TValue, TConstraints> | null>,
+    instanceAtom: InstanceAtom<TValue, TConstraints>,
 ): Atom<TValue | undefined> {
     const revisionAtom = atom(0);
 
@@ -76,44 +78,11 @@ function wrapAtom<TAtomValue, TArgs extends unknown[], TResult>(
     return atom(read);
 }
 
-export type AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints> = {
-    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
-    // Maps the elevated value onto the base atom's value shape (e.g. a `PersistableFixableRead`).
-    mapElevatedValue: (elevatedValue: TElevatedValue, get: Getter) => TAtomValue;
-};
-
-/**
- * Reads the elevated value (mapped onto the base atom's shape) while the setting is elevated on the
- * dashboard, and the base atom's value otherwise.
- *
- * Keep persisting the base atom rather than the wrapped one - the module's own value is what should be
- * restored, the elevated value is persisted by the dashboard.
- */
-export function atomWithElevatedSettingOverride<
-    TAtomValue,
-    TArgs extends unknown[],
-    TResult,
-    TElevatedValue,
-    TElevatedConstraints,
->(
-    baseAtom: WritableAtom<TAtomValue, TArgs, TResult>,
-    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
-): WritableAtom<TAtomValue, TArgs, TResult>;
-export function atomWithElevatedSettingOverride<TAtomValue, TElevatedValue, TElevatedConstraints>(
-    baseAtom: Atom<TAtomValue>,
-    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
-): Atom<TAtomValue>;
-export function atomWithElevatedSettingOverride<
-    TAtomValue,
-    TArgs extends unknown[],
-    TResult,
-    TElevatedValue,
-    TElevatedConstraints,
->(
+function makeOverrideAtom<TAtomValue, TArgs extends unknown[], TResult, TElevatedValue, TElevatedConstraints>(
     baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
-    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+    instanceAtom: InstanceAtom<TElevatedValue, TElevatedConstraints>,
+    mapElevatedValue: (elevatedValue: TElevatedValue, get: Getter) => TAtomValue,
 ) {
-    const instanceAtom = makeElevatedSettingInstanceAtom(options.definition);
     const elevatedValueAtom = makeElevatedValueAtom(instanceAtom);
 
     return wrapAtom(baseAtom, (get) => {
@@ -121,53 +90,19 @@ export function atomWithElevatedSettingOverride<
         // consumer's registration or a persistableFixableAtom's lifecycle) would be unmounted.
         const baseValue = get(baseAtom);
 
-        const instance = get(instanceAtom);
-        if (!instance) {
+        if (!get(instanceAtom)) {
             return baseValue;
         }
 
-        return options.mapElevatedValue(get(elevatedValueAtom) as TElevatedValue, get);
+        return mapElevatedValue(get(elevatedValueAtom) as TElevatedValue, get);
     });
 }
 
-export type AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints> = {
-    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
-    // The options this consumer offers - `null` when it has no opinion.
-    getConstraints: (get: Getter) => TElevatedConstraints | null;
-    // While true, the consumer is marked as pending - its options are being recomputed.
-    isLoading?: (get: Getter) => boolean;
-    mode?: ElevatedSettingConstraintMode;
-};
-
-/**
- * Contributes constraints to an elevated setting while the setting is elevated on the dashboard and the
- * returned atom is mounted. Reads (and writes) are passed through to the base atom unchanged.
- */
-export function atomWithElevatedSettingConsumer<
-    TAtomValue,
-    TArgs extends unknown[],
-    TResult,
-    TElevatedValue,
-    TElevatedConstraints,
->(
-    baseAtom: WritableAtom<TAtomValue, TArgs, TResult>,
-    options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
-): WritableAtom<TAtomValue, TArgs, TResult>;
-export function atomWithElevatedSettingConsumer<TAtomValue, TElevatedValue, TElevatedConstraints>(
-    baseAtom: Atom<TAtomValue>,
-    options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
-): Atom<TAtomValue>;
-export function atomWithElevatedSettingConsumer<
-    TAtomValue,
-    TArgs extends unknown[],
-    TResult,
-    TElevatedValue,
-    TElevatedConstraints,
->(
+function makeConsumerAtom<TAtomValue, TArgs extends unknown[], TResult, TElevatedValue, TElevatedConstraints>(
     baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    instanceAtom: InstanceAtom<TElevatedValue, TElevatedConstraints>,
     options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
 ) {
-    const instanceAtom = makeElevatedSettingInstanceAtom(options.definition);
     const handleAtom = atom<ElevatedSettingConstraintSourceHandle<TElevatedConstraints> | null>(null);
 
     // Owns the registration only - re-runs when the setting is elevated or removed.
@@ -214,15 +149,20 @@ export function atomWithElevatedSettingConsumer<
     });
 }
 
-export type AtomWithElevatedSettingOptions<TAtomValue, TElevatedValue, TElevatedConstraints> =
-    AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints> &
-        AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>;
+export type AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints> = {
+    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
+    // Maps the elevated value onto the base atom's value shape (e.g. a `PersistableFixableRead`).
+    mapElevatedValue: (elevatedValue: TElevatedValue, get: Getter) => TAtomValue;
+};
 
 /**
- * Both a consumer and an override in one: contributes the base atom's options to the elevated setting,
- * and reads the elevated value while the setting is elevated.
+ * Reads the elevated value (mapped onto the base atom's shape) while the setting is elevated on the
+ * dashboard, and the base atom's value otherwise.
+ *
+ * Keep persisting the base atom rather than the wrapped one - the module's own value is what should be
+ * restored, the elevated value is persisted by the dashboard.
  */
-export function atomWithElevatedSetting<
+export function atomWithElevatedSettingOverride<
     TAtomValue,
     TArgs extends unknown[],
     TResult,
@@ -230,13 +170,13 @@ export function atomWithElevatedSetting<
     TElevatedConstraints,
 >(
     baseAtom: WritableAtom<TAtomValue, TArgs, TResult>,
-    options: AtomWithElevatedSettingOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
 ): WritableAtom<TAtomValue, TArgs, TResult>;
-export function atomWithElevatedSetting<TAtomValue, TElevatedValue, TElevatedConstraints>(
+export function atomWithElevatedSettingOverride<TAtomValue, TElevatedValue, TElevatedConstraints>(
     baseAtom: Atom<TAtomValue>,
-    options: AtomWithElevatedSettingOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
 ): Atom<TAtomValue>;
-export function atomWithElevatedSetting<
+export function atomWithElevatedSettingOverride<
     TAtomValue,
     TArgs extends unknown[],
     TResult,
@@ -244,11 +184,106 @@ export function atomWithElevatedSetting<
     TElevatedConstraints,
 >(
     baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
-    options: AtomWithElevatedSettingOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+    options: AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
 ) {
-    // The branches only differ in which (writable or read-only) overloads they resolve to.
-    if ("write" in baseAtom) {
-        return atomWithElevatedSettingOverride(atomWithElevatedSettingConsumer(baseAtom, options), options);
-    }
-    return atomWithElevatedSettingOverride(atomWithElevatedSettingConsumer(baseAtom, options), options);
+    return makeOverrideAtom(
+        baseAtom,
+        makeElevatedSettingInstanceAtom(options.definition),
+        options.mapElevatedValue,
+    );
+}
+
+export type AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints> = {
+    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
+    // The options this consumer offers - `null` when it has no opinion.
+    getConstraints: (get: Getter) => TElevatedConstraints | null;
+    // While true, the consumer is marked as pending - its options are being recomputed.
+    isLoading?: (get: Getter) => boolean;
+    mode?: ElevatedSettingConstraintMode;
+};
+
+/**
+ * Contributes constraints to an elevated setting while the setting is elevated on the dashboard and the
+ * returned atom is mounted. Reads (and writes) are passed through to the base atom unchanged.
+ */
+export function atomWithElevatedSettingConsumer<
+    TAtomValue,
+    TArgs extends unknown[],
+    TResult,
+    TElevatedValue,
+    TElevatedConstraints,
+>(
+    baseAtom: WritableAtom<TAtomValue, TArgs, TResult>,
+    options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
+): WritableAtom<TAtomValue, TArgs, TResult>;
+export function atomWithElevatedSettingConsumer<TAtomValue, TElevatedValue, TElevatedConstraints>(
+    baseAtom: Atom<TAtomValue>,
+    options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
+): Atom<TAtomValue>;
+export function atomWithElevatedSettingConsumer<
+    TAtomValue,
+    TArgs extends unknown[],
+    TResult,
+    TElevatedValue,
+    TElevatedConstraints,
+>(
+    baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    options: AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>,
+) {
+    return makeConsumerAtom(baseAtom, makeElevatedSettingInstanceAtom(options.definition), options);
+}
+
+export type MakeElevatedSettingAtomsOptions<TAtomValue, TElevatedValue, TElevatedConstraints> =
+    AtomWithElevatedSettingOverrideOptions<TAtomValue, TElevatedValue, TElevatedConstraints> &
+        AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedConstraints>;
+
+export type ElevatedSettingAtoms<TValueAtom> = {
+    // Reads like the base atom: the elevated value (mapped onto the base atom's shape) while the setting
+    // is elevated, the base atom's value otherwise. Contributes the module's options while it is mounted.
+    valueAtom: TValueAtom;
+    // Whether the setting is elevated on the dashboard of the module this is read in.
+    isElevatedAtom: Atom<boolean>;
+};
+
+/**
+ * Makes a module setting atom follow an elevated setting: `valueAtom` contributes the module's options
+ * to it and reads the elevated value while it is active, `isElevatedAtom` tells whether it is. Writes go
+ * to the base atom - the module's own value, which is used again once the setting is no longer elevated.
+ *
+ * Keep persisting the base atom rather than `valueAtom` - the elevated value is persisted by the
+ * dashboard.
+ */
+export function makeElevatedSettingAtoms<
+    TAtomValue,
+    TArgs extends unknown[],
+    TResult,
+    TElevatedValue,
+    TElevatedConstraints,
+>(
+    baseAtom: WritableAtom<TAtomValue, TArgs, TResult>,
+    options: MakeElevatedSettingAtomsOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+): ElevatedSettingAtoms<WritableAtom<TAtomValue, TArgs, TResult>>;
+export function makeElevatedSettingAtoms<TAtomValue, TElevatedValue, TElevatedConstraints>(
+    baseAtom: Atom<TAtomValue>,
+    options: MakeElevatedSettingAtomsOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+): ElevatedSettingAtoms<Atom<TAtomValue>>;
+export function makeElevatedSettingAtoms<
+    TAtomValue,
+    TArgs extends unknown[],
+    TResult,
+    TElevatedValue,
+    TElevatedConstraints,
+>(
+    baseAtom: Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>,
+    options: MakeElevatedSettingAtomsOptions<TAtomValue, TElevatedValue, TElevatedConstraints>,
+): ElevatedSettingAtoms<Atom<TAtomValue> | WritableAtom<TAtomValue, TArgs, TResult>> {
+    // Shared, so all three only subscribe to the dashboard's active settings once per store.
+    const instanceAtom = makeElevatedSettingInstanceAtom(options.definition);
+
+    const consumerAtom = makeConsumerAtom(baseAtom, instanceAtom, options);
+
+    return {
+        valueAtom: makeOverrideAtom(consumerAtom, instanceAtom, options.mapElevatedValue),
+        isElevatedAtom: atom((get) => get(instanceAtom) !== null),
+    };
 }

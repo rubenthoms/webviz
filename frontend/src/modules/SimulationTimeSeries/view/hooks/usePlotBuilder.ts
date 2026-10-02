@@ -14,7 +14,7 @@ import {
     loadedVectorSpecificationsAndRealizationDataAtom,
     loadedVectorSpecificationsAndStatisticsDataAtom,
 } from "../atoms/derivedAtoms";
-import { activeTimestampUtcMsAtom } from "../atoms/persistableFixableAtoms";
+import { effectiveActiveTimestampUtcMsAtom, highlightedRealizationAtom } from "../atoms/elevatedSettingAtoms";
 import type { EnsemblesParameterColoring } from "../utils/ensemblesContinuousParameterColoring";
 import { PlotBuilder } from "../utils/PlotBuilder";
 import type { SubplotOwner } from "../utils/PlotBuilder";
@@ -47,7 +47,8 @@ export function usePlotBuilder(
         loadedRegularEnsembleVectorSpecificationsAndHistoricalDataAtom,
     );
     const colorByParameter = viewContext.useSettingsToViewInterfaceValue("colorByParameter");
-    const activeTimestampUtcMs = useAtomValue(activeTimestampUtcMsAtom).value;
+    const activeTimestampUtcMs = useAtomValue(effectiveActiveTimestampUtcMsAtom).value;
+    const highlightedRealization = useAtomValue(highlightedRealizationAtom);
 
     const makeEnsembleDisplayName = useMakeEnsembleDisplayNameFunc(viewContext);
 
@@ -75,6 +76,7 @@ export function usePlotBuilder(
         subplotLimitation.maxDirectionElements,
         scatterType,
     );
+    plotBuilder.setHighlightedRealizationNumber(highlightedRealization);
 
     // Add traces based on visualization mode
     if (

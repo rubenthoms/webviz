@@ -8,6 +8,7 @@ import { Button } from "@lib/components/Button";
 import { Tooltip } from "@lib/components/Tooltip";
 
 import { useActiveDashboard } from "../../ActiveDashboardBoundary";
+import { Toggle } from "@lib/components/Toggle";
 
 export type ElevatedSettingsToggleProps = {
     workbench: Workbench;
@@ -41,13 +42,11 @@ export function ElevatedSettingsToggle(props: ElevatedSettingsToggleProps): Reac
 
     return (
         <Tooltip content={label} side="bottom">
-            <Button
+            <Toggle.Button
                 aria-label={label}
                 aria-pressed={isPanelShown}
-                iconOnly
-                onClick={handleClick}
-                tone="accent"
-                variant={isPanelShown ? "outlined" : "ghost"}
+                onPressedChange={handleClick}
+                pressed={isPanelShown}
             >
                 <Badge
                     invisible={activeElevatedSettings.length === 0}
@@ -56,7 +55,7 @@ export function ElevatedSettingsToggle(props: ElevatedSettingsToggleProps): Reac
                 >
                     <PublicOutlined />
                 </Badge>
-            </Button>
+            </Toggle.Button>
         </Tooltip>
     );
 }

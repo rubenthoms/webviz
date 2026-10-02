@@ -1,7 +1,8 @@
 import React from "react";
 
-import { Link, PublicOutlined, Warning } from "@mui/icons-material";
+import { Link, Warning } from "@mui/icons-material";
 
+import { ElevatedSettingIndicator } from "@framework/ElevatedSettings/components/ElevatedSettingIndicator";
 import { Field } from "@lib/components/Field";
 import { StatusWrapper } from "@lib/components/StatusWrapper";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
@@ -102,32 +103,26 @@ export function SettingManagerComponent<
         );
     }
 
-    if (isElevated) {
-        const elevatedSettingLabel = props.setting.getElevatedSettingLabel();
+    const elevatedSettingIndicator = isElevated ? (
+        <ElevatedSettingIndicator
+            elevatedSettingLabel={props.setting.getElevatedSettingLabel() ?? ""}
+            isValueValidHere={isValid || actuallyLoading}
+        />
+    ) : null;
 
+    if (isElevated && !props.setting.keepsComponentEditableWhileElevated()) {
         return (
             <React.Fragment key={props.setting.getId()}>
-                <div className="gap-x-2xs py-4xs px-2xs text-accent-subtle flex w-32 items-center">
+                <div className="gap-x-2xs px-2xs py-4xs text-body-sm flex w-32 items-center">
                     <span>{props.setting.getLabel()}</span>
-                    <span className="mb-2xs text-body-base">
-                        <PublicOutlined
-                            style={{ fontSize: 16 }}
-                            titleAccess={`Controlled by the dashboard setting "${elevatedSettingLabel}"`}
-                        />
-                    </span>
+                    {elevatedSettingIndicator}
                 </div>
                 <div className="gap-x-2xs py-4xs px-2xs flex w-full items-center">
                     <StatusWrapper isPending={actuallyLoading}>
-                        {isValid || actuallyLoading ? (
-                            props.setting.valueToRepresentation(
-                                value,
-                                props.manager.getWorkbenchSession(),
-                                props.manager.getWorkbenchSettings(),
-                            )
-                        ) : (
-                            <i className="text-warning-subtle">
-                                The dashboard&apos;s {elevatedSettingLabel?.toLowerCase()} is not available here
-                            </i>
+                        {props.setting.valueToRepresentation(
+                            value,
+                            props.manager.getWorkbenchSession(),
+                            props.manager.getWorkbenchSettings(),
                         )}
                     </StatusWrapper>
                 </div>
@@ -137,7 +132,10 @@ export function SettingManagerComponent<
 
     return (
         <React.Fragment key={props.setting.getId()}>
-            <div className="px-2xs py-4xs text-body-sm flex w-32 items-center">{props.setting.getLabel()}</div>
+            <div className="gap-x-2xs px-2xs py-4xs text-body-sm flex w-32 items-center">
+                <span>{props.setting.getLabel()}</span>
+                {elevatedSettingIndicator}
+            </div>
             <div className="px-2xs py-4xs w-full min-w-0">
                 <StatusWrapper isPending={actuallyLoading}>
                     <div className="gap-y-3xs flex min-w-0 flex-col">
@@ -160,6 +158,7 @@ export function SettingManagerComponent<
                                     valueConstraints={valueConstraints}
                                     globalSettings={globalSettings}
                                     disabled={!isSettingEnabled(attributes.enabled)}
+                                    isControlledByElevatedSetting={isElevated}
                                     workbenchSession={props.manager.getWorkbenchSession()}
                                     workbenchSettings={props.manager.getWorkbenchSettings()}
                                 />

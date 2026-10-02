@@ -1,9 +1,13 @@
+import { makeElevatedSettingAtoms } from "@framework/ElevatedSettings/adapters/jotai";
+import { REALIZATION_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/realization";
+import { TIME_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/time";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
 import type { PersistableAtomDependenciesState } from "@framework/utils/atomUtils";
-import { computeQueryDependenciesState, persistableFixableAtom } from "@framework/utils/atomUtils";
+import { computeQueryDependenciesState, persistableFixableAtom, Source } from "@framework/utils/atomUtils";
 import { areEnsembleIdentsEqual } from "@framework/utils/ensembleIdentUtils";
 import { fixupRegularEnsembleIdent } from "@framework/utils/ensembleUiHelpers";
+import { isoStringToTimestampUtcMs } from "@framework/utils/timestampUtils";
 
 import {
     availableDateTimesAtom,
@@ -28,16 +32,16 @@ export const selectedEnsembleIdentAtom = persistableFixableAtom<RegularEnsembleI
     },
 });
 
+function isRealizationValid(realization: number | null, availableRealizations: number[]): boolean {
+    if (realization === null) {
+        return availableRealizations.length === 0;
+    }
+    return availableRealizations.includes(realization);
+}
+
 export const selectedRealizationAtom = persistableFixableAtom<number | null>({
     initialValue: null,
-    isValidFunction: ({ get, value }) => {
-        const availableRealizations = get(availableRealizationsAtom);
-
-        if (value === null) {
-            return availableRealizations.length === 0;
-        }
-        return availableRealizations.includes(value);
-    },
+    isValidFunction: ({ get, value }) => isRealizationValid(value, get(availableRealizationsAtom)),
     fixupFunction: ({ get, value }) => {
         const availableRealizations = get(availableRealizationsAtom);
         if (value === null || value === undefined) {
@@ -48,6 +52,29 @@ export const selectedRealizationAtom = persistableFixableAtom<number | null>({
         return null;
     },
 });
+
+/**
+ * `effectiveRealizationAtom` is the realization in effect: the dashboard's elevated realization while that
+ * is active (see `isRealizationElevatedAtom`), otherwise the module's own selection. It contributes the
+ * realizations of the selected ensemble to the elevated setting.
+ *
+ * Read `effectiveRealizationAtom` - but persist `selectedRealizationAtom`, the module's own selection,
+ * which is used again once the realization is no longer elevated.
+ */
+export const { valueAtom: effectiveRealizationAtom, isElevatedAtom: isRealizationElevatedAtom } =
+    makeElevatedSettingAtoms(selectedRealizationAtom, {
+        definition: REALIZATION_ELEVATED_SETTING,
+        // No ensemble selected yet means no opinion, rather than "no realizations available"
+        getConstraints: (get) => (get(selectedEnsembleIdentAtom).value ? get(availableRealizationsAtom) : null),
+        mapElevatedValue: (elevatedRealization, get) => ({
+            value: elevatedRealization,
+            isValidInContext: isRealizationValid(elevatedRealization, get(availableRealizationsAtom)),
+            isLoading: false,
+            isBlocked: false,
+            depsHaveError: false,
+            _source: Source.USER,
+        }),
+    });
 
 export const selectedTreeTypeAtom = persistableFixableAtom<string | null>({
     initialValue: null,
@@ -82,6 +109,47 @@ export const selectedDateTimeAtom = persistableFixableAtom<string | null>({
         return availableDateTimes[0] ?? null;
     },
 });
+
+function findDateTimeForTimestamp(timestampUtcMs: number | null, availableDateTimes: string[]): string | null {
+    if (timestampUtcMs === null) {
+        return null;
+    }
+    return availableDateTimes.find((dateTime) => isoStringToTimestampUtcMs(dateTime) === timestampUtcMs) ?? null;
+}
+
+/**
+ * `effectiveDateTimeAtom` is the time step in effect: the flow network's date matching the dashboard's
+ * elevated time while that is active (see `isDateTimeElevatedAtom`), otherwise the module's own selection.
+ * It contributes the flow network's dates to the elevated setting.
+ *
+ * Read `effectiveDateTimeAtom` - but persist `selectedDateTimeAtom`, the module's own selection.
+ */
+export const { valueAtom: effectiveDateTimeAtom, isElevatedAtom: isDateTimeElevatedAtom } = makeElevatedSettingAtoms(
+    selectedDateTimeAtom,
+    {
+        definition: TIME_ELEVATED_SETTING,
+        // No flow network loaded (yet) means no opinion, rather than "no time steps available"
+        getConstraints: (get) => {
+            const availableDateTimes = get(availableDateTimesAtom);
+            return availableDateTimes.length > 0 ? availableDateTimes.map(isoStringToTimestampUtcMs) : null;
+        },
+        isLoading: (get) => get(realizationFlowNetworkQueryAtom).isFetching,
+        mapElevatedValue: (elevatedTime, get) => {
+            const availableDateTimes = get(availableDateTimesAtom);
+            const dateTime = findDateTimeForTimestamp(elevatedTime, availableDateTimes);
+            const { isLoading, isBlocked, depsHaveError } = get(selectedDateTimeAtom);
+
+            return {
+                value: dateTime,
+                isValidInContext: dateTime !== null || availableDateTimes.length === 0,
+                isLoading,
+                isBlocked,
+                depsHaveError,
+                _source: Source.USER,
+            };
+        },
+    },
+);
 
 export const selectedEdgeKeyAtom = persistableFixableAtom<string | null>({
     initialValue: null,

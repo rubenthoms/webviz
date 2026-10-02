@@ -315,12 +315,17 @@ export class SettingManager<
         this.updateElevatedSettingConnection();
     }
 
+    // Whether the setting is currently controlled by its elevated setting - connected, and following it.
     isElevated(): boolean {
-        return this._elevatedSettingConnection !== null;
+        return this.getFollowedElevatedSettingConnection() !== null;
     }
 
     getElevatedSettingLabel(): string | null {
         return this._elevatedSettingConnection?.instance.getDefinition().label ?? null;
+    }
+
+    keepsComponentEditableWhileElevated(): boolean {
+        return this._elevatedSettingAdapter?.keepsComponentEditableWhileControlled ?? false;
     }
 
     getId(): string {
@@ -358,8 +363,9 @@ export class SettingManager<
             return this._externalController.getSetting().getInternalValue();
         }
 
-        if (this._elevatedSettingConnection) {
-            return this.getElevatedInternalValue(this._elevatedSettingConnection);
+        const followedConnection = this.getFollowedElevatedSettingConnection();
+        if (followedConnection) {
+            return this.getElevatedInternalValue(followedConnection);
         }
 
         return this.getLocalInternalValue();
@@ -495,6 +501,10 @@ export class SettingManager<
         this.setValueValid(this.checkIfValueIsValid(this.getInternalValue()));
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
+        if (this._elevatedSettingConnection) {
+            // A changed local value may change whether the setting follows its elevated setting
+            this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_ELEVATED);
+        }
     }
 
     setValueValid(isValueValid: boolean): void {
@@ -889,14 +899,17 @@ export class SettingManager<
             return;
         }
 
-        if (this._valueConstraints === null) {
+        const elevatedConstraints =
+            this._valueConstraints === null
+                ? null
+                : this._elevatedSettingAdapter.mapValueConstraintsToElevatedConstraints(this._valueConstraints);
+
+        if (elevatedConstraints === null) {
             connection.handle.clearConstraints();
             return;
         }
 
-        connection.handle.updateConstraints(
-            this._elevatedSettingAdapter.mapValueConstraintsToElevatedConstraints(this._valueConstraints),
-        );
+        connection.handle.updateConstraints(elevatedConstraints);
     }
 
     // Cached like the external value: snapshot getters need a stable reference, and an adapter may build
@@ -921,10 +934,29 @@ export class SettingManager<
         return elevatedInternalValue;
     }
 
+    // The connection, if this setting currently follows the elevated value - see
+    // `DpfElevatedSettingAdapter.followsElevatedValue`.
+    private getFollowedElevatedSettingConnection(): ElevatedSettingConnection | null {
+        const connection = this._elevatedSettingConnection;
+        if (!connection || !this._elevatedSettingAdapter) {
+            return null;
+        }
+
+        const follows =
+            this._elevatedSettingAdapter.followsElevatedValue?.(
+                connection.instance.getValue(),
+                this.getLocalInternalValue(),
+            ) ?? true;
+
+        return follows ? connection : null;
+    }
+
     private handleEffectiveValueChange(): void {
         this.invalidateValueCaches();
         this.setValueValid(this.checkIfValueIsValid(this.getInternalValue()));
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.VALUE);
         this._publishSubscribeDelegate.notifySubscribers(SettingTopic.INTERNAL_VALUE);
+        // A changed elevated value may change whether the setting follows it
+        this._publishSubscribeDelegate.notifySubscribers(SettingTopic.IS_ELEVATED);
     }
 }

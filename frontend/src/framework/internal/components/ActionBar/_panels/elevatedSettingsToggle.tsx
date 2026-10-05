@@ -1,10 +1,9 @@
-import { PublicOutlined } from "@mui/icons-material";
+import { HubOutlined } from "@mui/icons-material";
 
 import { useElevatedSettingInstances } from "@framework/ElevatedSettings/adapters/react";
 import { GuiState, useGuiState } from "@framework/GuiMessageBroker";
 import type { Workbench } from "@framework/Workbench";
 import { Badge } from "@lib/components/Badge";
-import { Button } from "@lib/components/Button";
 import { Tooltip } from "@lib/components/Tooltip";
 
 import { useActiveDashboard } from "../../ActiveDashboardBoundary";
@@ -53,7 +52,7 @@ export function ElevatedSettingsToggle(props: ElevatedSettingsToggleProps): Reac
                     tone="accent"
                     badgeContent={activeElevatedSettings.length}
                 >
-                    <PublicOutlined />
+                    <HubOutlined />
                 </Badge>
             </Toggle.Button>
         </Tooltip>

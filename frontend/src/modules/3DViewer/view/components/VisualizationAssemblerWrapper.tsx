@@ -10,7 +10,7 @@ import { makeSeismicSlicesBoundingBox } from "@modules/3DViewer/DataProviderFram
 import { RealizationGridCellFluxProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridCellFluxProvider";
 import { RealizationGridProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridProvider";
 import { CustomDataProviderType } from "@modules/3DViewer/DataProviderFramework/customDataProviderTypes";
-import { makeDrilledWellTrajectoriesLayer } from "@modules/3DViewer/DataProviderFramework/visualization/makeDrilledWellTrajectoriesLayer";
+import { makeDrilledWellTrajectoriesLayer3D } from "@modules/3DViewer/DataProviderFramework/visualization/makeDrilledWellTrajectoriesLayer3D";
 import { makeIntersectionRealizationGridLayer } from "@modules/3DViewer/DataProviderFramework/visualization/makeIntersectionRealizationGridLayer";
 import { makeIntersectionSeismicHoverVisualizationFunction } from "@modules/3DViewer/DataProviderFramework/visualization/makeIntersectionSeismicHoverVisualizationFunction";
 import { makeSeismicIntersectionMeshLayer } from "@modules/3DViewer/DataProviderFramework/visualization/makeSeismicIntersectionMeshLayer";
@@ -131,7 +131,7 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     DataProviderType.DRILLED_WELL_TRAJECTORIES,
     DrilledWellboreTrajectoriesProvider,
     {
-        transformToVisualization: makeDrilledWellTrajectoriesLayer,
+        transformToVisualization: makeDrilledWellTrajectoriesLayer3D,
         transformToBoundingBox: makeWellTrajectoriesBoundingBox,
         transformToHoverVisualization: makeWellTrajectoriesHoverVisualizationFunctions,
     },

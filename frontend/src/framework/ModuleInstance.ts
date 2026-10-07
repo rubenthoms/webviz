@@ -9,6 +9,7 @@ import { UnsubscribeFunctionsManagerDelegate } from "@lib/utils/UnsubscribeFunct
 
 import type { AtomStore } from "./AtomStoreMaster";
 import type { InitialSettings } from "./InitialSettings";
+import { ModuleActionBarRegistry } from "./internal/ActionBar/ModuleActionBarRegistry";
 import type { Dashboard } from "./internal/Dashboard";
 import { ChannelManager, ChannelManagerNotificationTopic } from "./internal/DataChannels/ChannelManager";
 import { ModuleInstanceSerializer } from "./internal/ModuleInstanceSerializer";
@@ -89,6 +90,7 @@ export class ModuleInstance<
     private _subscribers: Map<keyof ModuleInstanceTopicValueTypes, Set<() => void>> = new Map();
     private _initialSettings: InitialSettings | null = null;
     private _statusController: ModuleInstanceStatusControllerInternal = new ModuleInstanceStatusControllerInternal();
+    private _actionBarRegistry = new ModuleActionBarRegistry();
 
     // ChannelManager should be elevated to Dashboard level and shared among module instances in the dashboard
     private _channelManager: ChannelManager;
@@ -472,6 +474,10 @@ export class ModuleInstance<
         return this._statusController;
     }
 
+    getActionBarRegistry(): ModuleActionBarRegistry {
+        return this._actionBarRegistry;
+    }
+
     private setModuleInstanceState(moduleInstanceState: ModuleInstanceLifeCycleState): void {
         this._moduleInstanceState = moduleInstanceState;
         this.notifySubscribers(ModuleInstanceTopic.LIFECYCLE_STATE);
@@ -526,6 +532,7 @@ export class ModuleInstance<
         this._settingsToViewInterfaceEffectsAtom = null;
         this._viewToSettingsInterfaceEffectsAtom = null;
         this._serializer?.beforeDestroy();
+        this._actionBarRegistry.dispose();
         this._module.removeInstance(this);
     }
 }

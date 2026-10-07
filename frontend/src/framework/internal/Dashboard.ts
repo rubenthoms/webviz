@@ -13,7 +13,9 @@ import type { AtomStoreMaster } from "../AtomStoreMaster";
 import { ModuleInstanceTopic, type ModuleInstance } from "../ModuleInstance";
 import { ModuleRegistry } from "../ModuleRegistry";
 
+import { DashboardActionBarController } from "./ActionBar/DashboardActionBarController";
 import type { SerializedDashboardState } from "./Dashboard.schema";
+import { DashboardSelectionService } from "./DashboardSelectionService";
 import { DASHBOARD_ID_LENGTH, DEFAULT_DASHBOARD_NAME, MAX_DASHBOARD_NAME_LENGTH } from "./persistence/constants";
 
 export type LayoutElement = {
@@ -65,6 +67,8 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
     // kept mounted at once by the dashboard hot-cache.
     private _syncSettingsService = new SyncSettingsService();
     private _hoverService = new HoverService();
+    private _selectionService = new DashboardSelectionService();
+    private _actionBarController = new DashboardActionBarController();
 
     constructor(atomStoreMaster: AtomStoreMaster, name?: string) {
         this._id = nanoid(DASHBOARD_ID_LENGTH);
@@ -111,6 +115,14 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
 
     getHoverService(): HoverService {
         return this._hoverService;
+    }
+
+    getSelectionService(): DashboardSelectionService {
+        return this._selectionService;
+    }
+
+    getActionBarController(): DashboardActionBarController {
+        return this._actionBarController;
     }
 
     getMetadata(): DashboardMetadata {
@@ -335,6 +347,7 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
         }
 
         this._unsubscribeFunctionsManagerDelegate.unsubscribe(moduleInstanceId);
+        this._selectionService.releaseSource(moduleInstance);
 
         try {
             moduleInstance.unload();
@@ -388,6 +401,9 @@ export class Dashboard implements PublishSubscribe<DashboardTopicPayloads> {
             throw new Error(`Module instance with ID ${moduleInstanceId} not found`);
         }
         this._activeModuleInstanceId = moduleInstanceId;
+        this._actionBarController.setActiveModuleInstance(
+            moduleInstanceId !== null ? this.getModuleInstance(moduleInstanceId) : null,
+        );
         this._publishSubscribeDelegate.notifySubscribers(DashboardTopic.ACTIVE_MODULE_INSTANCE_ID);
         this.handleStateChange();
     }

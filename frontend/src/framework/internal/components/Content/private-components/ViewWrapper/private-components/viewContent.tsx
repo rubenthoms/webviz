@@ -8,6 +8,7 @@ import { useDashboard } from "@framework/internal/components/DashboardContext";
 import { DebugProfiler } from "@framework/internal/components/DebugProfiler";
 import { ErrorBoundary } from "@framework/internal/components/ErrorBoundary";
 import { HydrateQueryClientAtom } from "@framework/internal/components/HydrateQueryClientAtom";
+import { ModuleContextProviders } from "@framework/internal/components/ModuleContextProviders";
 import { ImportStatus } from "@framework/Module";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import {
@@ -161,18 +162,20 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
                     <Provider store={atomStore}>
                         <HydrateQueryClientAtom>
                             <ApplyInterfaceEffectsToView moduleInstance={props.moduleInstance}>
-                                {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
-                                <View
-                                    viewContext={props.moduleInstance.getContext()}
-                                    workbenchSession={props.workbench.getSessionManager().getActiveSession()}
-                                    syncSettingsService={dashboard.getSyncSettingsService()}
-                                    hoverService={dashboard.getHoverService()}
-                                    workbenchSettings={props.workbench
-                                        .getSessionManager()
-                                        .getActiveSession()
-                                        .getWorkbenchSettings()}
-                                    initialSettings={props.moduleInstance.getInitialSettings() || undefined}
-                                />
+                                <ModuleContextProviders moduleInstance={props.moduleInstance}>
+                                    {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
+                                    <View
+                                        viewContext={props.moduleInstance.getContext()}
+                                        workbenchSession={props.workbench.getSessionManager().getActiveSession()}
+                                        syncSettingsService={dashboard.getSyncSettingsService()}
+                                        hoverService={dashboard.getHoverService()}
+                                        workbenchSettings={props.workbench
+                                            .getSessionManager()
+                                            .getActiveSession()
+                                            .getWorkbenchSettings()}
+                                        initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                                    />
+                                </ModuleContextProviders>
                             </ApplyInterfaceEffectsToView>
                         </HydrateQueryClientAtom>
                     </Provider>

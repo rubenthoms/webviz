@@ -128,11 +128,12 @@ export function View(props: ModuleViewProps): React.ReactNode {
                             className={resolveClassNames(
                                 "flex h-16 w-16 flex-col items-center justify-center rounded border",
                                 {
-                                    "bg-accent-subtle": isSelected && highlight,
-                                    "border-accent-strong border-2": isCurrent,
+                                    "bg-accent-strong text-accent-strong-on-emphasis": isSelected && highlight,
+                                    // Outline, not border, so it stays visible on top of the highlight fill
+                                    "outline-accent-strong outline-solid": isCurrent,
                                 },
                             )}
-                            style={{ borderWidth: isCurrent ? width : undefined }}
+                            style={isCurrent ? { outlineWidth: width, outlineOffset: 2 } : undefined}
                             onClick={(event) => handleItemClick(event, item)}
                         >
                             <span>{item.id}</span>

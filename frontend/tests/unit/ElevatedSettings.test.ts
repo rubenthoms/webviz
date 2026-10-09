@@ -1,11 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { ElevatedSettingDefinition, type ElevatedSettingOptions } from "@framework/ElevatedSettings/ElevatedSettingDefinition";
 import {
-    ElevatedSettingConstraintMode,
-    ElevatedSettingDefinition,
-    type ElevatedSettingOptions,
-} from "@framework/ElevatedSettings/ElevatedSettingDefinition";
-import {
+    ElevatedSettingCombineStrategy,
     ElevatedSettingInstance,
     ElevatedSettingInstanceTopic,
     ElevatedSettingValueSource,
@@ -69,16 +66,18 @@ describe("ElevatedSettingDefinition", () => {
             intersectConstraints: (a, b) => ({ min: Math.max(a.min, b.min), max: Math.min(a.max, b.max) }),
             Component: () => null,
         });
-        const instance = new ElevatedSettingInstance(definition);
+        const unionInstance = new ElevatedSettingInstance(definition);
+        const intersectionInstance = new ElevatedSettingInstance(definition, {
+            combineStrategy: ElevatedSettingCombineStrategy.INTERSECTION,
+        });
 
-        instance.registerConstraintSource("a").updateConstraints({ min: 0, max: 10 });
-        instance.registerConstraintSource("b").updateConstraints({ min: 5, max: 20 });
-        expect(instance.getConstraints()).toEqual({ min: 0, max: 20 });
+        for (const instance of [unionInstance, intersectionInstance]) {
+            instance.registerConstraintSource("a").updateConstraints({ min: 0, max: 10 });
+            instance.registerConstraintSource("b").updateConstraints({ min: 5, max: 20 });
+        }
 
-        instance
-            .registerConstraintSource("c", { mode: ElevatedSettingConstraintMode.INTERSECTION })
-            .updateConstraints({ min: 2, max: 8 });
-        expect(instance.getConstraints()).toEqual({ min: 2, max: 8 });
+        expect(unionInstance.getConstraints()).toEqual({ min: 0, max: 20 });
+        expect(intersectionInstance.getConstraints()).toEqual({ min: 5, max: 10 });
     });
 });
 
@@ -110,14 +109,14 @@ describe("makeOptionListElevatedSettingOptions", () => {
     });
 
     it("intersects options by value", () => {
-        const instance = new ElevatedSettingInstance(definition);
+        const instance = new ElevatedSettingInstance(definition, {
+            combineStrategy: ElevatedSettingCombineStrategy.INTERSECTION,
+        });
         instance.registerConstraintSource("a").updateConstraints([
             { uuid: "1", name: "A" },
             { uuid: "2", name: "B" },
         ]);
-        instance
-            .registerConstraintSource("b", { mode: ElevatedSettingConstraintMode.INTERSECTION })
-            .updateConstraints([{ uuid: "2", name: "B" }]);
+        instance.registerConstraintSource("b").updateConstraints([{ uuid: "2", name: "B" }]);
 
         expect(instance.getConstraints()).toEqual([{ uuid: "2", name: "B" }]);
     });
@@ -165,7 +164,7 @@ describe("ElevatedSettingDefinition - settings without constraints", () => {
 });
 
 describe("ElevatedSettingInstance - aggregation", () => {
-    it("unions UNION contributions", () => {
+    it("unions all contributions by default", () => {
         const instance = makeInstance();
         instance.registerConstraintSource("a").updateConstraints(["x", "y"]);
         instance.registerConstraintSource("b").updateConstraints(["y", "z"]);
@@ -173,32 +172,14 @@ describe("ElevatedSettingInstance - aggregation", () => {
         expect(instance.getConstraints()).toEqual(["x", "y", "z"]);
     });
 
-    it("intersects INTERSECTION contributions among themselves when there are no UNION contributions", () => {
-        const instance = makeInstance();
-        const mode = ElevatedSettingConstraintMode.INTERSECTION;
-        instance.registerConstraintSource("a", { mode }).updateConstraints(["x", "y", "z"]);
-        instance.registerConstraintSource("b", { mode }).updateConstraints(["y", "z", "w"]);
+    it("intersects all contributions with the INTERSECTION strategy", () => {
+        const instance = new ElevatedSettingInstance(makeListDefinition(), {
+            combineStrategy: ElevatedSettingCombineStrategy.INTERSECTION,
+        });
+        instance.registerConstraintSource("a").updateConstraints(["x", "y", "z"]);
+        instance.registerConstraintSource("b").updateConstraints(["y", "z", "w"]);
 
         expect(instance.getConstraints()).toEqual(["y", "z"]);
-    });
-
-    it("restricts the union of UNION contributions by every INTERSECTION contribution", () => {
-        const instance = makeInstance();
-        instance.registerConstraintSource("a").updateConstraints(["x", "y", "z"]);
-        instance.registerConstraintSource("b").updateConstraints(["w"]);
-        instance
-            .registerConstraintSource("c", { mode: ElevatedSettingConstraintMode.INTERSECTION })
-            .updateConstraints(["y", "w", "v"]);
-
-        expect(instance.getConstraints()).toEqual(["y", "w"]);
-    });
-
-    it("uses the definition's default mode for sources that don't choose one", () => {
-        const instance = makeInstance({ defaultConstraintMode: ElevatedSettingConstraintMode.INTERSECTION });
-        instance.registerConstraintSource("a").updateConstraints(["x", "y"]);
-        instance.registerConstraintSource("b").updateConstraints(["y", "z"]);
-
-        expect(instance.getConstraints()).toEqual(["y"]);
     });
 
     it("withdraws cleared and unregistered contributions", () => {

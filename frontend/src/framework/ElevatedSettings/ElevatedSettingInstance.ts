@@ -2,7 +2,7 @@ import { isEqual } from "lodash-es";
 
 import { PublishSubscribeDelegate, type PublishSubscribe } from "@lib/utils/PublishSubscribeDelegate";
 
-import { ElevatedSettingConstraintMode, type ElevatedSettingDefinition } from "./ElevatedSettingDefinition";
+import type { ElevatedSettingDefinition } from "./ElevatedSettingDefinition";
 
 export enum ElevatedSettingInstanceTopic {
     VALUE = "VALUE",
@@ -23,6 +23,15 @@ export enum ElevatedSettingValueSource {
     // Restored from a persisted session or applied by a template. Never fixed up, not even on the first
     // settle - it turns into a `USER` value as soon as it is valid in the current context.
     RESTORED = "RESTORED",
+}
+
+// How the constraint sources' contributions are combined. Decided by the instance - the sources only
+// hand in the options they offer.
+export enum ElevatedSettingCombineStrategy {
+    // Any value at least one source offers - the broadest selection.
+    UNION = "union",
+    // Only values every source offers.
+    INTERSECTION = "intersection",
 }
 
 export type ElevatedSettingInstanceTopicPayloads<TValue, TConstraints> = {
@@ -47,18 +56,15 @@ export type ElevatedSettingConstraintSourceHandle<TConstraints> = {
     unregister(): void;
 };
 
-export type ElevatedSettingConstraintSourceOptions = {
-    mode?: ElevatedSettingConstraintMode;
-};
-
 export type ElevatedSettingInstanceOptions<TValue, TConstraints> = {
     value?: TValue;
     valueSource?: ElevatedSettingValueSource;
     constraintOverride?: TConstraints;
+    // Defaults to `UNION` - the only strategy in use for now.
+    combineStrategy?: ElevatedSettingCombineStrategy;
 };
 
 type ConstraintSourceState<TConstraints> = {
-    mode: ElevatedSettingConstraintMode;
     constraints: TConstraints | null;
     isPending: boolean;
 };
@@ -67,6 +73,7 @@ export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSub
     ElevatedSettingInstanceTopicPayloads<TValue, TConstraints>
 > {
     private readonly _definition: ElevatedSettingDefinition<TValue, TConstraints>;
+    private readonly _combineStrategy: ElevatedSettingCombineStrategy;
 
     private _value: TValue;
     private _valueSource: ElevatedSettingValueSource;
@@ -96,7 +103,8 @@ export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSub
         options?: ElevatedSettingInstanceOptions<TValue, TConstraints>,
     ) {
         this._definition = definition;
-        this._value = options && "value" in options ? (options.value as TValue) : definition.defaultValue;
+        this._combineStrategy = options?.combineStrategy ?? ElevatedSettingCombineStrategy.UNION;
+        this._value =options && "value" in options ? (options.value as TValue) : definition.defaultValue;
         this._valueSource = options?.valueSource ?? ElevatedSettingValueSource.USER;
         this._constraintOverride = options?.constraintOverride ?? null;
         this._aggregatedConstraints = this._constraintOverride ?? definition.initialConstraints;
@@ -168,10 +176,7 @@ export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSub
         this.recompute();
     }
 
-    registerConstraintSource(
-        sourceId: string,
-        options?: ElevatedSettingConstraintSourceOptions,
-    ): ElevatedSettingConstraintSourceHandle<TConstraints> {
+    registerConstraintSource(sourceId: string): ElevatedSettingConstraintSourceHandle<TConstraints> {
         if (this._constraintSources.has(sourceId)) {
             throw new Error(
                 `Constraint source with ID '${sourceId}' is already registered for elevated setting '${this._definition.key}'.`,
@@ -179,7 +184,6 @@ export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSub
         }
 
         const state: ConstraintSourceState<TConstraints> = {
-            mode: options?.mode ?? this._definition.defaultConstraintMode,
             constraints: null,
             isPending: false,
         };
@@ -289,42 +293,29 @@ export class ElevatedSettingInstance<TValue, TConstraints> implements PublishSub
         return false;
     }
 
-    // Union of all UNION contributions, then restricted by every INTERSECTION contribution. Without any
-    // UNION contribution, the INTERSECTION contributions are intersected among themselves.
+    // All contributions, combined with the instance's strategy. Sources without an opinion are skipped.
     private computeAggregatedConstraints(): TConstraints {
         if (this._constraintOverride !== null) {
             return this._constraintOverride;
         }
 
-        const unionContributions: TConstraints[] = [];
-        const intersectionContributions: TConstraints[] = [];
+        const contributions: TConstraints[] = [];
 
         for (const state of this._constraintSources.values()) {
-            if (state.constraints === null) {
-                continue;
-            }
-
-            if (state.mode === ElevatedSettingConstraintMode.INTERSECTION) {
-                intersectionContributions.push(state.constraints);
-            } else {
-                unionContributions.push(state.constraints);
+            if (state.constraints !== null) {
+                contributions.push(state.constraints);
             }
         }
 
-        let aggregated: TConstraints;
-        let restrictions: TConstraints[];
-
-        if (unionContributions.length > 0) {
-            aggregated = unionContributions.reduce((acc, current) => this._definition.unionConstraints(acc, current));
-            restrictions = intersectionContributions;
-        } else if (intersectionContributions.length > 0) {
-            aggregated = intersectionContributions[0];
-            restrictions = intersectionContributions.slice(1);
-        } else {
+        if (contributions.length === 0) {
             return this._definition.initialConstraints;
         }
 
-        return restrictions.reduce((acc, current) => this._definition.intersectConstraints(acc, current), aggregated);
+        if (this._combineStrategy === ElevatedSettingCombineStrategy.INTERSECTION) {
+            return contributions.reduce((acc, current) => this._definition.intersectConstraints(acc, current));
+        }
+
+        return contributions.reduce((acc, current) => this._definition.unionConstraints(acc, current));
     }
 
     private computeIsSettling(): boolean {

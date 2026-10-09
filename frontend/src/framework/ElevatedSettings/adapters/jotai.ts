@@ -3,7 +3,7 @@ import { atom } from "jotai";
 import { atomEffect } from "jotai-effect";
 import { v4 } from "uuid";
 
-import type { ElevatedSettingConstraintMode, ElevatedSettingDefinition } from "../ElevatedSettingDefinition";
+import type { ElevatedSettingDefinition } from "../ElevatedSettingDefinition";
 import {
     ElevatedSettingInstanceTopic,
     type ElevatedSettingConstraintSourceHandle,
@@ -112,7 +112,7 @@ function makeConsumerAtom<TAtomValue, TArgs extends unknown[], TResult, TElevate
             return;
         }
 
-        const handle = instance.registerConstraintSource(v4(), { mode: options.mode });
+        const handle = instance.registerConstraintSource(v4());
         set(handleAtom, handle);
 
         return () => {
@@ -199,7 +199,6 @@ export type AtomWithElevatedSettingConsumerOptions<TElevatedValue, TElevatedCons
     getConstraints: (get: Getter) => TElevatedConstraints | null;
     // While true, the consumer is marked as pending - its options are being recomputed.
     isLoading?: (get: Getter) => boolean;
-    mode?: ElevatedSettingConstraintMode;
 };
 
 /**

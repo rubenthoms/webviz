@@ -4,10 +4,7 @@ import {
     type ElevatedIntersectionValue,
 } from "@framework/ElevatedSettings/definitions/intersection";
 import { TIME_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/time";
-import type {
-    ElevatedSettingConstraintMode,
-    ElevatedSettingDefinition,
-} from "@framework/ElevatedSettings/ElevatedSettingDefinition";
+import type { ElevatedSettingDefinition } from "@framework/ElevatedSettings/ElevatedSettingDefinition";
 import { IntersectionType } from "@framework/types/intersection";
 import { isoStringToTimestampUtcMs } from "@framework/utils/timestampUtils";
 
@@ -21,9 +18,6 @@ import type { IntersectionSettingOption, IntersectionSettingValue } from "../imp
  */
 export type DpfElevatedSettingAdapter<TInternalValue, TValueConstraints, TElevatedValue, TElevatedConstraints> = {
     definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
-
-    // The mode settings of this type contribute with. Defaults to the definition's default mode.
-    constraintMode?: ElevatedSettingConstraintMode;
 
     // Not called for static settings, which have no value constraints to contribute. Return `null` when
     // this setting has no opinion on the elevated setting's options.
@@ -53,11 +47,9 @@ export type DpfElevatedSettingAdapter<TInternalValue, TValueConstraints, TElevat
 // For settings whose internal value and constraints already have the elevated setting's shape.
 export function makeIdentityDpfElevatedSettingAdapter<TValue, TConstraints>(
     definition: ElevatedSettingDefinition<TValue, TConstraints>,
-    constraintMode?: ElevatedSettingConstraintMode,
 ): DpfElevatedSettingAdapter<TValue, TConstraints, TValue, TConstraints> {
     return {
         definition,
-        constraintMode,
         mapValueConstraintsToElevatedConstraints: (valueConstraints) => valueConstraints,
         mapElevatedValueToInternalValue: (elevatedValue) => elevatedValue,
     };

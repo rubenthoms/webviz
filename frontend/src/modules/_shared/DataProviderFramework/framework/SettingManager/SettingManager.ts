@@ -864,7 +864,7 @@ export class SettingManager<
             return;
         }
 
-        const handle = instance.registerConstraintSource(this._id, { mode: this._elevatedSettingAdapter.constraintMode });
+        const handle = instance.registerConstraintSource(this._id);
         this._elevatedSettingConnection = { instance, handle };
 
         this._unsubscribeFunctionsManagerDelegate.registerUnsubscribeFunction(

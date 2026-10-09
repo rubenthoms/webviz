@@ -1,5 +1,4 @@
 import { InitialFluidContactType_api } from "@api";
-import { GRID_MODEL_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/gridModel";
 import { REALIZATION_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/realization";
 import {
     defaultContinuousDivergingColorPalettes,
@@ -119,9 +118,7 @@ SettingRegistry.registerSetting(Setting.CONTOURS, "Contours", BooleanNumberSetti
 });
 SettingRegistry.registerSetting(Setting.GRID_LAYER_K, "Grid Layer K", NumberRangeDropdownSetting);
 SettingRegistry.registerSetting(Setting.GRID_LAYER_RANGE, "Grid Ranges", GridLayerRangeSetting);
-SettingRegistry.registerSetting(Setting.GRID_NAME, "Grid Name", DropdownStringSetting, {
-    elevatedSettingAdapter: makeIdentityDpfElevatedSettingAdapter(GRID_MODEL_ELEVATED_SETTING),
-});
+SettingRegistry.registerSetting(Setting.GRID_NAME, "Grid Name", DropdownStringSetting);
 SettingRegistry.registerSetting(Setting.FLUID_CONTACT, "Fluid Contact", DropdownStringSetting, {
     customConstructorParameters: [
         {
@@ -132,9 +129,7 @@ SettingRegistry.registerSetting(Setting.FLUID_CONTACT, "Fluid Contact", Dropdown
 const INTERSECTION_EXTENSION_LENGTH_CONFIG = { min: 0, max: 5000, defaultValue: 500 };
 SettingRegistry.registerSetting(Setting.INTERSECTION, "Intersection", IntersectionSetting, {
     customConstructorParameters: [{ extensionLengthConfig: INTERSECTION_EXTENSION_LENGTH_CONFIG }],
-    elevatedSettingAdapter: makeIntersectionElevatedSettingAdapter(
-        INTERSECTION_EXTENSION_LENGTH_CONFIG.defaultValue,
-    ),
+    elevatedSettingAdapter: makeIntersectionElevatedSettingAdapter(INTERSECTION_EXTENSION_LENGTH_CONFIG.defaultValue),
 });
 SettingRegistry.registerSetting(Setting.OPACITY_PERCENT, "Color Opacity", SliderNumberSetting, {
     customConstructorParameters: [{ minMax: { min: 0, max: 100 }, step: 1 }],

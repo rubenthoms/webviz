@@ -5,7 +5,7 @@ import { v4 } from "uuid";
 import { useStableProp } from "@lib/hooks/useStableProp";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 
-import type { ElevatedSettingConstraintMode, ElevatedSettingDefinition } from "../ElevatedSettingDefinition";
+import type { ElevatedSettingDefinition } from "../ElevatedSettingDefinition";
 import {
     ElevatedSettingInstanceTopic,
     type ElevatedSettingConstraintSourceHandle,
@@ -71,7 +71,6 @@ export function useElevatedSettingConstraints<TValue, TConstraints>(
 }
 
 export type UseElevatedSettingConsumerOptions = {
-    mode?: ElevatedSettingConstraintMode;
     // While true, the consumer is marked as pending - its options are being recomputed - and the
     // `constraints` passed in are not contributed.
     isLoading?: boolean;
@@ -103,7 +102,6 @@ export function useElevatedSettingConsumer<TValue, TConstraints>(
     const [stableConstraints] = useStableProp(constraints);
     const handleRef = React.useRef<ElevatedSettingConstraintSourceHandle<TConstraints> | null>(null);
 
-    const mode = options?.mode;
     const isLoading = options?.isLoading ?? false;
 
     React.useEffect(
@@ -112,7 +110,7 @@ export function useElevatedSettingConsumer<TValue, TConstraints>(
                 return;
             }
 
-            const handle = instance.registerConstraintSource(sourceId, { mode });
+            const handle = instance.registerConstraintSource(sourceId);
             handleRef.current = handle;
 
             return function unregisterConstraintSource() {
@@ -120,7 +118,7 @@ export function useElevatedSettingConsumer<TValue, TConstraints>(
                 handleRef.current = null;
             };
         },
-        [instance, sourceId, mode],
+        [instance, sourceId],
     );
 
     // Declared after the registration effect, so it runs after it within the same commit.
@@ -139,7 +137,7 @@ export function useElevatedSettingConsumer<TValue, TConstraints>(
                 handle.updateConstraints(stableConstraints);
             }
         },
-        [instance, mode, stableConstraints, isLoading],
+        [instance, stableConstraints, isLoading],
     );
 
     return { isElevated: instance !== null, value };

@@ -1,16 +1,5 @@
 import type React from "react";
 
-// How a single constraint source's contribution is folded into an elevated setting's aggregated
-// constraints. Chosen per source (see `ElevatedSettingInstance.registerConstraintSource`) - the
-// definition only provides the default for sources that don't pick one themselves.
-export enum ElevatedSettingConstraintMode {
-    // The source offers these options. All such contributions are unioned - the broadest selection.
-    UNION = "union",
-    // The source can only handle these options, so the aggregated constraints are restricted to them -
-    // e.g. a module that must be able to display whatever value is selected.
-    INTERSECTION = "intersection",
-}
-
 export type CombineConstraintsFunction<TConstraints> = (a: TConstraints, b: TConstraints) => TConstraints;
 
 // Any value/constraint shape is supported. Array-shaped constraints get set-like union/intersection
@@ -44,9 +33,6 @@ export type ElevatedSettingOptions<TValue, TConstraints> = {
     defaultValue: TValue;
 
     initialConstraints: TConstraints;
-
-    // Mode for constraint sources that don't choose one themselves. Defaults to `UNION`.
-    defaultConstraintMode?: ElevatedSettingConstraintMode;
 
     isValueValid?: (value: TValue, constraints: TConstraints) => boolean;
 
@@ -93,7 +79,6 @@ export class ElevatedSettingDefinition<TValue, TConstraints> {
     readonly label: string;
     readonly defaultValue: TValue;
     readonly initialConstraints: TConstraints;
-    readonly defaultConstraintMode: ElevatedSettingConstraintMode;
     readonly Component: React.ComponentType<ElevatedSettingComponentProps<TValue, TConstraints>>;
 
     private readonly _unionConstraints: CombineConstraintsFunction<TConstraints>;
@@ -108,7 +93,6 @@ export class ElevatedSettingDefinition<TValue, TConstraints> {
         this.label = options.label;
         this.defaultValue = options.defaultValue;
         this.initialConstraints = options.initialConstraints;
-        this.defaultConstraintMode = options.defaultConstraintMode ?? ElevatedSettingConstraintMode.UNION;
         this.Component = options.Component;
         this._isValueValid = options.isValueValid;
         this._fixupValue = options.fixupValue;

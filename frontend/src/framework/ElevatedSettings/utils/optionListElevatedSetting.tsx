@@ -1,11 +1,7 @@
 import { ComboboxCompositions } from "@lib/components/Combobox/compositions";
 import type { ComboboxItem } from "@lib/components/Combobox/types";
 
-import type {
-    ElevatedSettingComponentProps,
-    ElevatedSettingConstraintMode,
-    ElevatedSettingOptions,
-} from "../ElevatedSettingDefinition";
+import type { ElevatedSettingComponentProps, ElevatedSettingOptions } from "../ElevatedSettingDefinition";
 
 export type OptionListElevatedSettingConfig<TValue extends string | number, TOption> = {
     key: string;
@@ -14,7 +10,6 @@ export type OptionListElevatedSettingConfig<TValue extends string | number, TOpt
     getOptionLabel: (option: TOption) => string;
     // Applied to the union of the sources' options, so they don't show up in contribution order.
     compareOptions?: (a: TOption, b: TOption) => number;
-    defaultConstraintMode?: ElevatedSettingConstraintMode;
 };
 
 // Makes the options for an elevated setting whose value is one of a list of options (identified by
@@ -58,7 +53,6 @@ export function makeOptionListElevatedSettingOptions<TValue extends string | num
         label: config.label,
         defaultValue: null,
         initialConstraints: [],
-        defaultConstraintMode: config.defaultConstraintMode,
         // Options are compared by their value, so equal-but-distinct option objects from different
         // sources (e.g. two layers' wellbore headers) are deduplicated.
         unionConstraints: (a, b) => {

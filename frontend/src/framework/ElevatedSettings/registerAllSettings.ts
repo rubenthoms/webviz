@@ -2,6 +2,4 @@
 // else that might import a single definition (e.g. the DPF setting registrations).
 import "./definitions/realization";
 import "./definitions/time";
-import "./definitions/gridModel";
-import "./definitions/gridProperty";
 import "./definitions/intersection";

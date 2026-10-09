@@ -27,7 +27,7 @@ export function ElevatedSettingIndicator(props: ElevatedSettingIndicatorProps): 
                 aria-label={tooltip}
                 className={resolveClassNames("inline-flex items-center", {
                     "text-accent-subtle": isValueValidHere,
-                    "text-danger-subtle": !isValueValidHere,
+                    "text-warning-subtle": !isValueValidHere,
                 })}
             >
                 <HubOutlined fontSize="inherit" />

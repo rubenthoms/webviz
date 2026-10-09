@@ -119,10 +119,14 @@ export function SettingManagerComponent<
                 </div>
                 <div className="gap-x-2xs py-4xs px-2xs flex w-full items-center">
                     <StatusWrapper isPending={actuallyLoading}>
-                        {props.setting.valueToRepresentation(
-                            value,
-                            props.manager.getWorkbenchSession(),
-                            props.manager.getWorkbenchSettings(),
+                        {isValid || actuallyLoading ? (
+                            props.setting.valueToRepresentation(
+                                value,
+                                props.manager.getWorkbenchSession(),
+                                props.manager.getWorkbenchSettings(),
+                            )
+                        ) : (
+                            <i className="text-warning-subtle">Dashboard value not available here</i>
                         )}
                     </StatusWrapper>
                 </div>

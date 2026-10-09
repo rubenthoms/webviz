@@ -3,6 +3,8 @@ import { atom } from "jotai";
 import { atomEffect } from "jotai-effect";
 import { v4 } from "uuid";
 
+import { isPersistableFixableValueValid, Source, type PersistableFixableAtom } from "@framework/utils/atomUtils";
+
 import type { ElevatedSettingDefinition } from "../ElevatedSettingDefinition";
 import {
     ElevatedSettingInstanceTopic,
@@ -283,6 +285,75 @@ export function makeElevatedSettingAtoms<
 
     return {
         valueAtom: makeOverrideAtom(consumerAtom, instanceAtom, options.mapElevatedValue),
+        isElevatedAtom: atom((get) => get(instanceAtom) !== null),
+    };
+}
+
+type MapElevatedValueToPersistableFixableValue<TValue, TElevatedValue> = (
+    elevatedValue: TElevatedValue,
+    get: Getter,
+) => TValue;
+
+// Optional when the elevated value already has the module's value type.
+type ElevatedPersistableFixableValueMapping<TValue, TElevatedValue> = [TElevatedValue] extends [TValue]
+    ? { mapElevatedValue?: MapElevatedValueToPersistableFixableValue<TValue, TElevatedValue> }
+    : { mapElevatedValue: MapElevatedValueToPersistableFixableValue<TValue, TElevatedValue> };
+
+export type MakeElevatedPersistableFixableAtomsOptions<TValue, TElevatedValue, TElevatedConstraints> = {
+    definition: ElevatedSettingDefinition<TElevatedValue, TElevatedConstraints>;
+    // The options this module offers - `null` when it has no opinion. Not called while the base atom's
+    // dependencies are loading (the module is pending then), blocked or failed (no opinion). Leave out
+    // for a setting that only follows the elevated value without contributing options.
+    getConstraints?: (get: Getter) => TElevatedConstraints | null;
+} & ElevatedPersistableFixableValueMapping<TValue, TElevatedValue>;
+
+/**
+ * `makeElevatedSettingAtoms` for a `persistableFixableAtom`. The base atom's own state does the rest:
+ * the module is pending while the atom's dependencies are loading, and the elevated value is validated
+ * with the atom's own `isValidFunction`. `mapElevatedValue` only maps the value itself.
+ *
+ * Keep persisting the base atom rather than `valueAtom` - the elevated value is persisted by the
+ * dashboard.
+ */
+export function makeElevatedPersistableFixableAtoms<TValue, TElevatedValue, TElevatedConstraints>(
+    baseAtom: PersistableFixableAtom<TValue>,
+    options: MakeElevatedPersistableFixableAtomsOptions<TValue, TElevatedValue, TElevatedConstraints>,
+): ElevatedSettingAtoms<PersistableFixableAtom<TValue>> {
+    const instanceAtom = makeElevatedSettingInstanceAtom(options.definition);
+
+    const { getConstraints } = options;
+    const sourceAtom = getConstraints
+        ? makeConsumerAtom(baseAtom, instanceAtom, {
+              definition: options.definition,
+              isLoading: (get) => get(baseAtom).isLoading,
+              getConstraints: (get) => {
+                  const { isBlocked, depsHaveError } = get(baseAtom);
+                  return isBlocked || depsHaveError ? null : getConstraints(get);
+              },
+          })
+        : baseAtom;
+
+    // The conditional mapping option can't be narrowed for generic value types here.
+    const mapElevatedValue =
+        (options as { mapElevatedValue?: MapElevatedValueToPersistableFixableValue<TValue, TElevatedValue> })
+            .mapElevatedValue ?? ((elevatedValue: TElevatedValue) => elevatedValue as unknown as TValue);
+
+    const valueAtom = makeOverrideAtom(sourceAtom, instanceAtom, (elevatedValue, get) => {
+        const { isLoading, isBlocked, depsHaveError } = get(baseAtom);
+        const value = mapElevatedValue(elevatedValue, get);
+
+        return {
+            value,
+            isValidInContext: isPersistableFixableValueValid(baseAtom, get, value),
+            isLoading,
+            isBlocked,
+            depsHaveError,
+            _source: Source.USER,
+        };
+    });
+
+    return {
+        valueAtom: valueAtom as PersistableFixableAtom<TValue>,
         isElevatedAtom: atom((get) => get(instanceAtom) !== null),
     };
 }

@@ -320,9 +320,7 @@ export class IntersectionSetting implements CustomSettingImplementation<ValueTyp
                         }
                         value={props.value?.uuid}
                         onValueChange={handleSelectionChange}
-                        // While controlled by the dashboard's intersection, only the source follows it -
-                        // the type stays editable, so this layer can switch away to stop following it.
-                        disabled={props.disabled || props.isControlledByElevatedSetting}
+                        disabled={props.disabled}
                     />
                     <span>Extension</span>
                     <NumberInput

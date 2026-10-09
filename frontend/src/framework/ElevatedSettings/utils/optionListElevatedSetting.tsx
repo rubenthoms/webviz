@@ -1,6 +1,4 @@
-import { ComboboxCompositions } from "@lib/components/Combobox/compositions";
-import type { ComboboxItem } from "@lib/components/Combobox/types";
-
+import { ElevatedOptionListSelect } from "../components/ElevatedOptionListSelect";
 import type { ElevatedSettingComponentProps, ElevatedSettingOptions } from "../ElevatedSettingDefinition";
 
 export type OptionListElevatedSettingConfig<TValue extends string | number, TOption> = {
@@ -13,8 +11,8 @@ export type OptionListElevatedSettingConfig<TValue extends string | number, TOpt
 };
 
 // Makes the options for an elevated setting whose value is one of a list of options (identified by
-// `getOptionValue`), rendered as a combobox - the common case of realizations, grid models,
-// wellbores, ... Only a helper for that one shape: register the result with
+// `getOptionValue`), rendered by `ElevatedOptionListSelect` - the common case of realizations, grid
+// models, wellbores, ... Only a helper for that one shape: register the result with
 // `ElevatedSettingRegistry.registerElevatedSetting`, spreading it to override any part if needed.
 export function makeOptionListElevatedSettingOptions<TValue extends string | number, TOption>(
     config: OptionListElevatedSettingConfig<TValue, TOption>,
@@ -25,27 +23,9 @@ export function makeOptionListElevatedSettingOptions<TValue extends string | num
         return constraints.some((option) => getOptionValue(option) === value);
     }
 
+    // Binds the option accessors - the panel only passes the common component props.
     function OptionListComponent(props: ElevatedSettingComponentProps<TValue | null, readonly TOption[]>) {
-        const items: ComboboxItem<TValue>[] = props.constraints.map((option) => ({
-            value: getOptionValue(option),
-            label: getOptionLabel(option),
-        }));
-
-        // Keep an invalid value visible instead of rendering an empty selection.
-        if (props.value !== null && !hasOption(props.constraints, props.value)) {
-            items.unshift({ value: props.value, label: `${props.value} (not available)`, disabled: true });
-        }
-
-        // Prev/next buttons skip disabled items - such as an unavailable value kept visible above.
-        return (
-            <ComboboxCompositions.WithBrowseButtons
-                items={items}
-                value={props.value}
-                onValueChange={(value) => props.onValueChange(value)}
-                loading={props.isSettling}
-                placeholder="No value"
-            />
-        );
+        return <ElevatedOptionListSelect {...props} getOptionValue={getOptionValue} getOptionLabel={getOptionLabel} />;
     }
 
     return {

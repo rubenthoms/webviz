@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 
 import {
-    atomWithElevatedSettingOverride,
+    makeElevatedPersistableFixableAtoms,
     makeElevatedSettingAtoms,
 } from "@framework/ElevatedSettings/adapters/jotai";
 import { REALIZATION_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/realization";
@@ -37,11 +37,7 @@ export const { valueAtom: highlightedRealizationAtom } = makeElevatedSettingAtom
  * module's own (clicked) timestamp. Read-only - the module doesn't contribute time options, as raw time
  * series would flood the elevated time with every sample date. Persist `activeTimestampUtcMsAtom`.
  */
-export const effectiveActiveTimestampUtcMsAtom = atomWithElevatedSettingOverride(activeTimestampUtcMsAtom, {
-    definition: TIME_ELEVATED_SETTING,
-    mapElevatedValue: (elevatedTime, get) => ({
-        ...get(activeTimestampUtcMsAtom),
-        value: elevatedTime,
-        isValidInContext: true,
-    }),
-});
+export const { valueAtom: effectiveActiveTimestampUtcMsAtom } = makeElevatedPersistableFixableAtoms(
+    activeTimestampUtcMsAtom,
+    { definition: TIME_ELEVATED_SETTING },
+);

@@ -161,7 +161,7 @@ function ElevatedSettingField(props: ElevatedSettingFieldProps): React.ReactNode
     }
 
     return (
-        <Setting.Field label={definition.label} annotations={annotations}>
+        <Setting.Field label={definition.label} annotations={annotations} loadingOverlay={isSettling ?? false}>
             <div className="gap-x-2xs flex min-h-8 items-center">
                 <div className="min-w-0 grow">
                     <definition.Component

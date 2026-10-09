@@ -1,14 +1,6 @@
-import {
-    INTERSECTION_ELEVATED_SETTING,
-    type ElevatedIntersectionOption,
-    type ElevatedIntersectionValue,
-} from "@framework/ElevatedSettings/definitions/intersection";
 import { TIME_ELEVATED_SETTING } from "@framework/ElevatedSettings/definitions/time";
 import type { ElevatedSettingDefinition } from "@framework/ElevatedSettings/ElevatedSettingDefinition";
-import { IntersectionType } from "@framework/types/intersection";
 import { isoStringToTimestampUtcMs } from "@framework/utils/timestampUtils";
-
-import type { IntersectionSettingOption, IntersectionSettingValue } from "../implementations/IntersectionSetting";
 
 /**
  * Connects a DPF setting type to an elevated setting. While the elevated setting is active on the
@@ -87,50 +79,6 @@ export function makeTimePointDpfElevatedSettingAdapter(): DpfElevatedSettingAdap
             }
 
             return timePoints.find((option) => isoStringToTimestampUtcMs(option) === elevatedValue) ?? null;
-        },
-    };
-}
-
-// The elevated intersection covers all intersection types (drilled wellbores, planned wellbores and
-// polylines). A setting only follows it while it has picked the same type of intersection itself - its
-// component stays editable, so it can switch to another type to stop following. The extension length of
-// wellbores is kept local.
-export function makeIntersectionElevatedSettingAdapter(
-    defaultExtensionLength: number,
-): DpfElevatedSettingAdapter<
-    IntersectionSettingValue | null,
-    IntersectionSettingOption[],
-    ElevatedIntersectionValue,
-    readonly ElevatedIntersectionOption[]
-> {
-    return {
-        definition: INTERSECTION_ELEVATED_SETTING,
-        keepsComponentEditableWhileControlled: true,
-        followsElevatedValue: (elevatedValue, localValue) => localValue?.type === elevatedValue.type,
-        mapValueConstraintsToElevatedConstraints: (valueConstraints) =>
-            valueConstraints.map((option) => ({ type: option.type, uuid: option.uuid, name: option.name })),
-        mapElevatedValueToInternalValue: (elevatedValue, valueConstraints, localValue) => {
-            const option = valueConstraints.find(
-                (candidate) => candidate.type === elevatedValue.type && candidate.uuid === elevatedValue.uuid,
-            );
-            if (!option) {
-                return null;
-            }
-
-            if (option.type === IntersectionType.CUSTOM_POLYLINE) {
-                return { type: IntersectionType.CUSTOM_POLYLINE, name: option.name, uuid: option.uuid };
-            }
-
-            // Drilled or planned wellbore
-            return {
-                type: option.type,
-                name: option.name,
-                uuid: option.uuid,
-                extensionLength:
-                    localValue && localValue.type !== IntersectionType.CUSTOM_POLYLINE
-                        ? localValue.extensionLength
-                        : defaultExtensionLength,
-            };
         },
     };
 }

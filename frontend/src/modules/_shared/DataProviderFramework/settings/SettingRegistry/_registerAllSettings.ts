@@ -39,11 +39,7 @@ import { WellboreDepthFilterSetting } from "../implementations/WellboreDepthFilt
 import { Setting } from "../settingsDefinitions";
 
 import { SettingRegistry } from "./_SettingRegistry";
-import {
-    makeIdentityDpfElevatedSettingAdapter,
-    makeIntersectionElevatedSettingAdapter,
-    makeTimePointDpfElevatedSettingAdapter,
-} from "./elevatedSettingAdapters";
+import { makeIdentityDpfElevatedSettingAdapter, makeTimePointDpfElevatedSettingAdapter } from "./elevatedSettingAdapters";
 
 const FLUID_CONTACT_LABELS: Record<InitialFluidContactType_api, string> = {
     [InitialFluidContactType_api.FGL]: "Free gas level",
@@ -129,7 +125,6 @@ SettingRegistry.registerSetting(Setting.FLUID_CONTACT, "Fluid Contact", Dropdown
 const INTERSECTION_EXTENSION_LENGTH_CONFIG = { min: 0, max: 5000, defaultValue: 500 };
 SettingRegistry.registerSetting(Setting.INTERSECTION, "Intersection", IntersectionSetting, {
     customConstructorParameters: [{ extensionLengthConfig: INTERSECTION_EXTENSION_LENGTH_CONFIG }],
-    elevatedSettingAdapter: makeIntersectionElevatedSettingAdapter(INTERSECTION_EXTENSION_LENGTH_CONFIG.defaultValue),
 });
 SettingRegistry.registerSetting(Setting.OPACITY_PERCENT, "Color Opacity", SliderNumberSetting, {
     customConstructorParameters: [{ minMax: { min: 0, max: 100 }, step: 1 }],

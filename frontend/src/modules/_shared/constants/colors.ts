@@ -4,6 +4,12 @@ export const PHASE_COLORS = {
     water: "#0c24ab", // blue
 };
 
+export const PHASE_COLORS_RGB = {
+    oil: [230, 60, 60],
+    gas: [60, 200, 90],
+    water: [60, 120, 230],
+};
+
 export const FLOW_COLORS = {
     oil_production: PHASE_COLORS.oil, // green
     gas_production: PHASE_COLORS.gas, // red

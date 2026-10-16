@@ -11,6 +11,7 @@ const gridCellFluxSettings = [
     Setting.SHOW_GRID_POINTS,
     Setting.SHOW_GRID_PILLARS,
     Setting.SHOW_CELL_INDICES,
+    Setting.OPACITY_PERCENT,
 ] as const;
 type GridCellFluxLayerSettings = typeof gridCellFluxSettings;
 
@@ -24,10 +25,12 @@ export function makeGridCellFluxLayer(
     const showGridPoints = getSetting(Setting.SHOW_GRID_POINTS) ?? false;
     const showGridPillars = getSetting(Setting.SHOW_GRID_PILLARS) ?? false;
     const showCellIndices = getSetting(Setting.SHOW_CELL_INDICES) ?? false;
+    const opacityPercent = getSetting(Setting.OPACITY_PERCENT) ?? 30;
 
     if (!data) {
         return null;
     }
+    console.log(data);
 
     return new GridCellFluxLayer({
         id: id,
@@ -38,5 +41,6 @@ export function makeGridCellFluxLayer(
         showPillarPoints: showGridPoints,
         showPillars: showGridPillars,
         showCellIndices: showCellIndices,
+        opacity: opacityPercent / 100,
     });
 }

@@ -1,4 +1,9 @@
-import { getGridLayerCornerGeometryOptions, getGridLayerCellPropertiesOptions, getGridModelsInfoOptions, getGridPillarGeometryOptions } from "@api";
+import {
+    getGridLayerCornerGeometryOptions,
+    getGridLayerCellPropertiesOptions,
+    getGridModelsInfoOptions,
+    getGridPillarGeometryOptions,
+} from "@api";
 import { makeCacheBustingQueryParam } from "@framework/utils/queryUtils";
 import { sortTimeOrIntervalArray } from "@lib/utils/arrays";
 import {
@@ -14,7 +19,10 @@ import type {
 import type { SetupBindingsContext } from "@modules/_shared/DataProviderFramework/interfacesAndTypes/customSettingsHandler";
 import type { MakeSettingTypesMap } from "@modules/_shared/DataProviderFramework/interfacesAndTypes/utils";
 import { Setting } from "@modules/_shared/DataProviderFramework/settings/settingsDefinitions";
-import type { GridCellFluxData, GridCellFluxPhaseFlux } from "@modules/_shared/DataProviderFramework/visualization/utils/types";
+import type {
+    GridCellFluxData,
+    GridCellFluxPhaseFlux,
+} from "@modules/_shared/DataProviderFramework/visualization/utils/types";
 import { reconstructCellCorners } from "@modules_shared/Grid3d/gridCellCornerReconstruction";
 import {
     transformGridLayerCellProperties,
@@ -39,11 +47,8 @@ const gridCellFluxSettings = [
     Setting.GRID_LAYER_K,
     Setting.TIME_OR_INTERVAL,
     Setting.FLUX_PHASES_SHOWN,
-    Setting.FLUX_DIRECTIONS_SHOWN,
-    Setting.SHOW_GRID_POINTS,
-    Setting.SHOW_GRID_PILLARS,
-    Setting.SHOW_CELL_INDICES,
 ] as const;
+
 export type GridCellFluxSettings = typeof gridCellFluxSettings;
 type SettingsWithTypes = MakeSettingTypesMap<GridCellFluxSettings>;
 
@@ -51,24 +56,21 @@ type StoredData = {
     availableGridDimensions: { i: number; j: number; k: number };
 };
 
-export class RealizationGridCellFluxProvider
-    implements CustomDataProviderImplementation<GridCellFluxSettings, GridCellFluxData, StoredData>
-{
+export class RealizationGridCellFluxFlowProvider implements CustomDataProviderImplementation<
+    GridCellFluxSettings,
+    GridCellFluxData,
+    StoredData
+> {
     settings = gridCellFluxSettings;
 
     getDefaultName() {
-        return "Grid Cell Flux (debug)";
+        return "Flow visualization";
     }
 
-    getDefaultSettingsValues() {
-        return {
-            [Setting.SHOW_GRID_POINTS]: true,
-            [Setting.SHOW_GRID_PILLARS]: true,
-            [Setting.SHOW_CELL_INDICES]: true,
-        };
-    }
-
-    doSettingsChangesRequireDataRefetch(prevSettings: SettingsWithTypes | null, newSettings: SettingsWithTypes): boolean {
+    doSettingsChangesRequireDataRefetch(
+        prevSettings: SettingsWithTypes | null,
+        newSettings: SettingsWithTypes,
+    ): boolean {
         if (prevSettings === null) {
             return true;
         }
@@ -198,7 +200,12 @@ export class RealizationGridCellFluxProvider
         };
     }
 
-    setupBindings({ setting, storedData, makeSharedResult, queryClient }: SetupBindingsContext<GridCellFluxSettings, StoredData>) {
+    setupBindings({
+        setting,
+        storedData,
+        makeSharedResult,
+        queryClient,
+    }: SetupBindingsContext<GridCellFluxSettings, StoredData>) {
         setting(Setting.ENSEMBLE).bindValueConstraints({
             read(read) {
                 return {

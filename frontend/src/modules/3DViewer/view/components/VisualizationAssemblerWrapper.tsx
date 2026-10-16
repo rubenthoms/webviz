@@ -7,7 +7,6 @@ import {
 import { makeIntersectionRealizationGridBoundingBox } from "@modules/3DViewer/DataProviderFramework/boundingBoxes/makeIntersectionRealizationGridBoundingBox";
 import { makeIntersectionSeismicBoundingBox } from "@modules/3DViewer/DataProviderFramework/boundingBoxes/makeIntersectionSeismicBoundingBox";
 import { makeSeismicSlicesBoundingBox } from "@modules/3DViewer/DataProviderFramework/boundingBoxes/makeSeismicSlicesBoundingBox";
-import { RealizationGridCellFluxProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridCellFluxProvider";
 import { RealizationGridProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridProvider";
 import { CustomDataProviderType } from "@modules/3DViewer/DataProviderFramework/customDataProviderTypes";
 import { makeDrilledWellTrajectoriesLayer3D } from "@modules/3DViewer/DataProviderFramework/visualization/makeDrilledWellTrajectoriesLayer3D";
@@ -26,6 +25,7 @@ import { DrilledWellboreTrajectoriesProvider } from "@modules/_shared/DataProvid
 import { FaultPolygonsProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/FaultPolygonsProvider";
 import { IntersectionRealizationGridProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/IntersectionRealizationGridProvider";
 import { PlannedWellboreTrajectoriesProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/PlannedWellboreTrajectoriesProvider";
+import { RealizationGridCellFluxProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/RealizationGridCellFluxProvider";
 import { RealizationPolygonsProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/RealizationPolygonsProvider";
 import { IntersectionSeismicProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/seismicProviders/IntersectionSeismicProvider";
 import { SeismicSlicesProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/seismicProviders/SeismicSlicesProvider";
@@ -55,6 +55,7 @@ import { makeDepthSurfaceLayer } from "@modules/_shared/DataProviderFramework/vi
 import { makeDrilledWellborePicksLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeDrilledWellborePicksLayer";
 import { makeGridCellFluxLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeGridCellFluxLayer";
 import { makeInitialFluidContactSurfaceLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeInitialFluidContactSurfaceLayer";
+import { makePhaseFlowLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makePhaseFlowLayer";
 import { makePlannedWellTrajectoriesLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makePlannedWellTrajectoriesLayer";
 import { makePolygonsLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makePolygonsLayer";
 import { makeRealizationGridLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeRealizationGridLayer";
@@ -81,15 +82,11 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers<
     InitialFluidContactSurfaceSettings,
     SurfaceData,
     SurfaceStoredData
->(
-    DataProviderType.INITIAL_FLUID_CONTACT_SURFACE,
-    InitialFluidContactSurfaceProvider,
-    {
-        transformToVisualization: makeInitialFluidContactSurfaceLayer,
-        transformToBoundingBox: makeSurfaceLayerBoundingBox,
-        transformToAnnotations: makeDepthColorScaleAnnotation,
-    },
-);
+>(DataProviderType.INITIAL_FLUID_CONTACT_SURFACE, InitialFluidContactSurfaceProvider, {
+    transformToVisualization: makeInitialFluidContactSurfaceLayer,
+    transformToBoundingBox: makeSurfaceLayerBoundingBox,
+    transformToAnnotations: makeDepthColorScaleAnnotation,
+});
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(DataProviderType.FAULT_POLYGONS, FaultPolygonsProvider, {
     transformToVisualization: makePolygonsLayer,
     transformToBoundingBox: makePolygonDataBoundingBox,
@@ -112,13 +109,23 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     },
 );
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
-    CustomDataProviderType.REALIZATION_GRID_CELL_FLUX,
+    DataProviderType.REALIZATION_GRID_CELL_FLUX,
     RealizationGridCellFluxProvider,
     {
         transformToVisualization: makeGridCellFluxLayer,
         transformToBoundingBox: makeGridCellFluxBoundingBox,
     },
 );
+
+VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
+    DataProviderType.REALIZATION_GRID_CELL_FLUX_FLOW_PROVIDER,
+    RealizationGridCellFluxProvider,
+    {
+        transformToVisualization: makePhaseFlowLayer,
+        transformToBoundingBox: makeGridCellFluxBoundingBox,
+    },
+);
+
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
     DataProviderType.DRILLED_WELLBORE_PICKS,
     DrilledWellborePicksProvider,

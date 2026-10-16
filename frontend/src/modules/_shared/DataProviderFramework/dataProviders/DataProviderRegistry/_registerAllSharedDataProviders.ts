@@ -1,9 +1,12 @@
+import { RealizationGridCellFluxFlowProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridCellFluxFlowProvider";
+
 import { DataProviderType } from "../dataProviderTypes";
 import { DrilledWellborePicksProvider } from "../implementations/DrilledWellborePicksProvider";
 import { DrilledWellboreTrajectoriesProvider } from "../implementations/DrilledWellboreTrajectoriesProvider";
 import { FaultPolygonsProvider } from "../implementations/FaultPolygonsProvider";
 import { IntersectionRealizationGridProvider } from "../implementations/IntersectionRealizationGridProvider";
 import { PlannedWellboreTrajectoriesProvider } from "../implementations/PlannedWellboreTrajectoriesProvider";
+import { RealizationGridCellFluxProvider } from "../implementations/RealizationGridCellFluxProvider";
 import { RealizationPolygonsProvider } from "../implementations/RealizationPolygonsProvider";
 import { IntersectionSeismicProvider } from "../implementations/seismicProviders/IntersectionSeismicProvider";
 import {
@@ -61,3 +64,9 @@ DataProviderRegistry.registerDataProvider(DataProviderType.ATTRIBUTE_TIME_STEP_S
 DataProviderRegistry.registerDataProvider(DataProviderType.ATTRIBUTE_INTERVAL_SURFACE, AttributeSurfaceProvider, [
     { surfaceType: AttributeSurfaceType.ATTRIBUTE_INTERVAL },
 ]);
+
+DataProviderRegistry.registerDataProvider(DataProviderType.REALIZATION_GRID_CELL_FLUX, RealizationGridCellFluxProvider);
+DataProviderRegistry.registerDataProvider(
+    DataProviderType.REALIZATION_GRID_CELL_FLUX_FLOW_PROVIDER,
+    RealizationGridCellFluxFlowProvider,
+);

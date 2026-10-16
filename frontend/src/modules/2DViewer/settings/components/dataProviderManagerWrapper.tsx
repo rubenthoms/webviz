@@ -171,6 +171,22 @@ export function DataProviderManagerWrapper(props: LayerManagerComponentWrapperPr
                     ),
                 );
                 return;
+            case "realization-grid-cell-flux":
+                groupDelegate.prependChild(
+                    DataProviderRegistry.makeDataProvider(
+                        DataProviderType.REALIZATION_GRID_CELL_FLUX,
+                        props.dataProviderManager,
+                    ),
+                );
+                return;
+            case "flow-visualization":
+                groupDelegate.prependChild(
+                    DataProviderRegistry.makeDataProvider(
+                        DataProviderType.REALIZATION_GRID_CELL_FLUX_FLOW_PROVIDER,
+                        props.dataProviderManager,
+                    ),
+                );
+                return;
             case "ensemble":
                 groupDelegate.appendChild(new SharedSetting(Setting.ENSEMBLE, null, props.dataProviderManager));
                 return;
@@ -404,6 +420,16 @@ const ACTIONS: ActionGroup[] = [
                         identifier: "realization-grid",
                         icon: <Icon data={grid_layer} fontSize="small" />,
                         label: "Grid Model layer",
+                    },
+                    {
+                        identifier: "realization-grid-cell-flux",
+                        icon: <Icon data={grid_layer} fontSize="small" />,
+                        label: "Grid Model Cell Flux",
+                    },
+                    {
+                        identifier: "flow-visualization",
+                        icon: <Icon data={grid_layer} fontSize="small" />,
+                        label: "Flow visualization",
                     },
                 ],
             },

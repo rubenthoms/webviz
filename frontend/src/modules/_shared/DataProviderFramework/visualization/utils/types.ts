@@ -1,3 +1,4 @@
+import type { Phase } from "@modules/_shared/types/grid";
 import type { GridMappedProperty_trans, GridSurface_trans } from "@modules/_shared/utils/queryDataTransforms";
 
 export type RealizationGridData = {
@@ -33,5 +34,5 @@ export type GridCellFluxData = {
 
     activeUint8Arr: Uint8Array; // length nx*ny
 
-    phaseFlux: Partial<Record<"oil" | "gas" | "water", GridCellFluxPhaseFlux>>;
+    phaseFlux: Partial<Record<Phase, GridCellFluxPhaseFlux>>;
 };

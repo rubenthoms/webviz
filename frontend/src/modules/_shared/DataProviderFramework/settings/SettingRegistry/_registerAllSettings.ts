@@ -1,5 +1,8 @@
 import { InitialFluidContactType_api } from "@api";
-import { defaultContinuousDivergingColorPalettes, defaultContinuousSequentialColorPalettes } from "@framework/utils/colorPalettes";
+import {
+    defaultContinuousDivergingColorPalettes,
+    defaultContinuousSequentialColorPalettes,
+} from "@framework/utils/colorPalettes";
 import { ColorScale, ColorScaleGradientType, ColorScaleType } from "@lib/utils/ColorScale";
 
 import { BooleanNumberSetting } from "../implementations/BooleanNumberSetting";
@@ -191,3 +194,5 @@ SettingRegistry.registerSetting(Setting.FLOW_FILTER_TYPE, "Flow Data Filter", Ra
         },
     ],
 });
+
+SettingRegistry.registerSetting(Setting.__TEST__GRID_INDEX, "Grid Index", DropdownNumberSetting);

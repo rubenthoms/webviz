@@ -3,7 +3,10 @@ import { LineLayer, ScatterplotLayer, SolidPolygonLayer, TextLayer } from "@deck
 import type { ReportBoundingBoxAction } from "@webviz/subsurface-viewer/dist/layers/utils/layerTools";
 
 import type { BBox } from "@lib/utils/bbox";
-import type { GridCellFluxData, GridCellFluxPhaseFlux } from "@modules/_shared/DataProviderFramework/visualization/utils/types";
+import type {
+    GridCellFluxData,
+    GridCellFluxPhaseFlux,
+} from "@modules/_shared/DataProviderFramework/visualization/utils/types";
 
 type Phase = "oil" | "gas" | "water";
 type Direction = "i" | "j" | "k";
@@ -55,6 +58,18 @@ const HEX_WIREFRAME_EDGES: readonly [number, number][] = [
     [1, 5],
     [2, 6],
     [3, 7], // verticals
+
+    // [0, 3], // Top diagonal
+    // [4, 7], // Base diagonal
+    // [0, 5],
+    // [0, 6],
+    // [1, 7],
+    // [2, 7],
+
+    // TEST
+    // [0, 2],
+    // [0, 4],
+    // [0, 6],
 ];
 
 const I_PLUS_FACE_CORNERS: readonly number[] = [1, 3, 5, 7];
@@ -95,7 +110,11 @@ function buildPillarLines(data: GridCellFluxData): LineDatum[] {
         for (let i = 0; i <= nx; i++) {
             const idx = (j * (nx + 1) + i) * 6;
             lines.push({
-                source: [pillarsFloat32Arr[idx] + originUtmX, pillarsFloat32Arr[idx + 1] + originUtmY, -pillarsFloat32Arr[idx + 2]],
+                source: [
+                    pillarsFloat32Arr[idx] + originUtmX,
+                    pillarsFloat32Arr[idx + 1] + originUtmY,
+                    -pillarsFloat32Arr[idx + 2],
+                ],
                 target: [
                     pillarsFloat32Arr[idx + 3] + originUtmX,
                     pillarsFloat32Arr[idx + 4] + originUtmY,
@@ -113,6 +132,10 @@ function buildWireframeEdges(data: GridCellFluxData): LineDatum[] {
     const lines: LineDatum[] = [];
 
     for (let cellIndex = 0; cellIndex < nx * ny; cellIndex++) {
+        // if (cellIndex > 0) continue;
+
+        // if (cellIndex % 2 === 0) continue;
+
         if (!activeUint8Arr[cellIndex]) {
             continue;
         }
@@ -288,11 +311,19 @@ function buildPillarPoints(data: GridCellFluxData): PointDatum[] {
         for (let i = 0; i <= nx; i++) {
             const idx = (j * (nx + 1) + i) * 6;
             points.push({
-                position: [pillarsFloat32Arr[idx] + originUtmX, pillarsFloat32Arr[idx + 1] + originUtmY, -pillarsFloat32Arr[idx + 2]],
+                position: [
+                    pillarsFloat32Arr[idx] + originUtmX,
+                    pillarsFloat32Arr[idx + 1] + originUtmY,
+                    -pillarsFloat32Arr[idx + 2],
+                ],
                 color: [0, 180, 255, 220],
             });
             points.push({
-                position: [pillarsFloat32Arr[idx + 3] + originUtmX, pillarsFloat32Arr[idx + 4] + originUtmY, -pillarsFloat32Arr[idx + 5]],
+                position: [
+                    pillarsFloat32Arr[idx + 3] + originUtmX,
+                    pillarsFloat32Arr[idx + 4] + originUtmY,
+                    -pillarsFloat32Arr[idx + 5],
+                ],
                 color: [255, 0, 120, 220],
             });
         }
@@ -317,7 +348,11 @@ function estimateDefaultArrowLengthRange(data: GridCellFluxData): [number, numbe
         }
         const cellCenter = averageCorners(cellCornersFloat32Arr, cellIndex, [0, 1, 2, 3, 4, 5, 6, 7]);
         const faceCenter = averageCorners(cellCornersFloat32Arr, cellIndex, I_PLUS_FACE_CORNERS);
-        const dist = Math.hypot(faceCenter[0] - cellCenter[0], faceCenter[1] - cellCenter[1], faceCenter[2] - cellCenter[2]);
+        const dist = Math.hypot(
+            faceCenter[0] - cellCenter[0],
+            faceCenter[1] - cellCenter[1],
+            faceCenter[2] - cellCenter[2],
+        );
         if (dist > 1e-9) {
             distSum += dist;
             sampleCount++;

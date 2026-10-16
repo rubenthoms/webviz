@@ -3,6 +3,7 @@ import type React from "react";
 import { makeDrilledWellTrajectoriesLayer2D } from "@modules/2DViewer/DataProviderFramework/visualization/makeDrilledWellTrajectoriesLayer2D";
 import { makePlannedWellTrajectoriesLayer2D } from "@modules/2DViewer/DataProviderFramework/visualization/makePlannedWellTrajectoriesLayer2D";
 import { makeWellTrajectoriesHoverVisualizationFunctions } from "@modules/2DViewer/DataProviderFramework/visualization/makeWellTrajectoriesHoverVisualizationFunctions";
+import { RealizationGridCellFluxFlowProvider } from "@modules/3DViewer/DataProviderFramework/customDataProviderImplementations/RealizationGridCellFluxFlowProvider";
 import {
     DpfSubsurfaceViewerWrapper,
     type DpfSubsurfaceViewerWrapperProps,
@@ -12,6 +13,7 @@ import { DrilledWellborePicksProvider } from "@modules/_shared/DataProviderFrame
 import { DrilledWellboreTrajectoriesProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/DrilledWellboreTrajectoriesProvider";
 import { FaultPolygonsProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/FaultPolygonsProvider";
 import { PlannedWellboreTrajectoriesProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/PlannedWellboreTrajectoriesProvider";
+import { RealizationGridCellFluxProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/RealizationGridCellFluxProvider";
 import { RealizationPolygonsProvider } from "@modules/_shared/DataProviderFramework/dataProviders/implementations/RealizationPolygonsProvider";
 import {
     AttributeSurfaceProvider,
@@ -38,6 +40,7 @@ import { useVisualizationAssemblerProduct } from "@modules/_shared/DataProviderF
 import { makeColorScaleAnnotation } from "@modules/_shared/DataProviderFramework/visualization/annotations/makeColorScaleAnnotation";
 import { makeDepthColorScaleAnnotation } from "@modules/_shared/DataProviderFramework/visualization/annotations/makeDepthColorScaleAnnotation";
 import { makeSeismicColorScaleAnnotation } from "@modules/_shared/DataProviderFramework/visualization/annotations/makeSeismicColorScaleAnnotation";
+import { makeGridCellFluxBoundingBox } from "@modules/_shared/DataProviderFramework/visualization/boundingBoxes/makeGridCellFluxBoundingBox";
 import { makePolygonDataBoundingBox } from "@modules/_shared/DataProviderFramework/visualization/boundingBoxes/makePolygonDataBoundingBox";
 import { makeRealizationGridBoundingBox } from "@modules/_shared/DataProviderFramework/visualization/boundingBoxes/makeRealizationGridBoundingBox";
 import { makeSurfaceLayerBoundingBox } from "@modules/_shared/DataProviderFramework/visualization/boundingBoxes/makeSurfaceLayerBoundingBox";
@@ -45,7 +48,9 @@ import { makeDrilledWellborePicksBoundingBox } from "@modules/_shared/DataProvid
 import { makeWellTrajectoriesBoundingBox } from "@modules/_shared/DataProviderFramework/visualization/deckgl/boundingBoxes/makeWellTrajectoriesBoundingBox";
 import { makeAttributeSurfaceLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeAttributeSurfaceLayer";
 import { makeDepthSurfaceLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeDepthSurfaceLayer";
+import { makeGridCellFluxLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeGridCellFluxLayer";
 import { makeInitialFluidContactSurfaceLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeInitialFluidContactSurfaceLayer";
+import { makePhaseFlowLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makePhaseFlowLayer";
 import { makePolygonsLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makePolygonsLayer";
 import { makeRealizationGridLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeRealizationGridLayer";
 import { makeSeismicSurfaceLayer } from "@modules/_shared/DataProviderFramework/visualization/deckgl/makeSeismicSurfaceLayer";
@@ -75,15 +80,11 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers<
     InitialFluidContactSurfaceSettings,
     SurfaceData,
     SurfaceStoredData
->(
-    DataProviderType.INITIAL_FLUID_CONTACT_SURFACE,
-    InitialFluidContactSurfaceProvider,
-    {
-        transformToVisualization: makeInitialFluidContactSurfaceLayer,
-        transformToBoundingBox: makeSurfaceLayerBoundingBox,
-        transformToAnnotations: makeDepthColorScaleAnnotation,
-    },
-);
+>(DataProviderType.INITIAL_FLUID_CONTACT_SURFACE, InitialFluidContactSurfaceProvider, {
+    transformToVisualization: makeInitialFluidContactSurfaceLayer,
+    transformToBoundingBox: makeSurfaceLayerBoundingBox,
+    transformToAnnotations: makeDepthColorScaleAnnotation,
+});
 
 VISUALIZATION_ASSEMBLER.registerDataProviderTransformers<SeismicSurfaceSettings, SurfaceData, SurfaceStoredData>(
     DataProviderType.SEISMIC_3D_SURFACE,
@@ -176,6 +177,23 @@ VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
         transformToVisualization: makePlannedWellTrajectoriesLayer2D,
         transformToBoundingBox: makeWellTrajectoriesBoundingBox,
         transformToHoverVisualization: makeWellTrajectoriesHoverVisualizationFunctions,
+    },
+);
+VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
+    DataProviderType.REALIZATION_GRID_CELL_FLUX,
+    RealizationGridCellFluxProvider,
+    {
+        transformToVisualization: makeGridCellFluxLayer,
+        transformToBoundingBox: makeGridCellFluxBoundingBox,
+    },
+);
+
+VISUALIZATION_ASSEMBLER.registerDataProviderTransformers(
+    DataProviderType.REALIZATION_GRID_CELL_FLUX_FLOW_PROVIDER,
+    RealizationGridCellFluxFlowProvider,
+    {
+        transformToVisualization: makePhaseFlowLayer,
+        transformToBoundingBox: makeGridCellFluxBoundingBox,
     },
 );
 

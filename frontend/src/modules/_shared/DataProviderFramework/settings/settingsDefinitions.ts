@@ -80,6 +80,10 @@ export enum Setting {
     REPRESENTATION = "representation",
     FLOW_FILTER_TYPE = "flowFilterType",
     FLOW_FILTER = "flowFilter",
+    __TEST__GRID_INDEX = "gridIndex",
+
+    // ! Dev testing, do not include in PR
+    // __TEST__CELL_START_POS = "__test__cellStartPos",
 }
 
 /**
@@ -448,6 +452,17 @@ export type SettingTypeDefinitions = {
             };
         } | null;
     };
+
+    [Setting.__TEST__GRID_INDEX]: {
+        internalValue: number | null;
+        externalValue: number | null;
+        valueConstraints: number[];
+    };
+    // [Setting.__TEST__CELL_START_POS]: {
+    //     internalValue: [x: number, y: number, z: number] | null;
+    //     externalValue: [x: number, y: number, z: number] | null;
+    //     valueConstraints: null;
+    // };
 };
 
 export type Settings = ReadonlyArray<Setting> & { __brand?: "Settings" };

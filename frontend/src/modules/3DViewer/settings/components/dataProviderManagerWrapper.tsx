@@ -130,7 +130,15 @@ export function DataProviderManagerWrapper(props: LayerManagerComponentWrapperPr
             case "realization-grid-cell-flux":
                 groupDelegate.prependChild(
                     DataProviderRegistry.makeDataProvider(
-                        CustomDataProviderType.REALIZATION_GRID_CELL_FLUX,
+                        DataProviderType.REALIZATION_GRID_CELL_FLUX,
+                        props.dataProviderManager,
+                    ),
+                );
+                return;
+            case "flow-visualization":
+                groupDelegate.prependChild(
+                    DataProviderRegistry.makeDataProvider(
+                        DataProviderType.REALIZATION_GRID_CELL_FLUX_FLOW_PROVIDER,
                         props.dataProviderManager,
                     ),
                 );
@@ -297,6 +305,11 @@ const ACTIONS: ActionGroup[] = [
                         identifier: "realization-grid-cell-flux",
                         icon: <Icon data={grid_layer} fontSize="small" />,
                         label: "Grid Model Cell Flux",
+                    },
+                    {
+                        identifier: "flow-visualization",
+                        icon: <Icon data={grid_layer} fontSize="small" />,
+                        label: "Flow visualization",
                     },
                 ],
             },

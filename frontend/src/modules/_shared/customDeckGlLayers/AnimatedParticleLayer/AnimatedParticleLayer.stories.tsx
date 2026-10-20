@@ -1,7 +1,4 @@
-import React from "react";
-
 import { OrbitView } from "@deck.gl/core";
-import { TextLayer } from "@deck.gl/layers";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { BoundingBox3D } from "@webviz/subsurface-viewer";
 import SubsurfaceViewer from "@webviz/subsurface-viewer";
@@ -28,18 +25,9 @@ const meta: Meta<AnimatedParticleLayerProps> = {
         const layers = [
             new AxesLayer({
                 id: "axes",
-
                 bounds,
+                ZIncreasingDownwards: true,
             }),
-            // new TextLayer({
-            //     id: "test",
-            //     data: [
-            //         {
-            //             text: "Hello",
-            //             position: [0, 0, 0],
-            //         },
-            //     ],
-            // }),
             new AnimatedParticleLayer({
                 id: "animated-particle-layer",
                 ...args,
@@ -53,12 +41,13 @@ const meta: Meta<AnimatedParticleLayerProps> = {
                     layers={layers}
                     views={{
                         layout: [1, 1],
+
                         viewports: [
                             {
                                 id: "v1",
                                 name: "v1",
                                 viewType: OrbitView,
-                                layerIds: ["axes"],
+                                layerIds: ["axes", "animated-particle-layer"],
                             },
                         ],
                     }}

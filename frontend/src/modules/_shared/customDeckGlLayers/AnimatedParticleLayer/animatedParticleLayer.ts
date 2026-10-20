@@ -2,13 +2,10 @@
  * A layer that animates particles moving around a grid.
  */
 
-import type { Accessor, Color, DefaultProps, LayerContext, UpdateParameters } from "@deck.gl/core";
-import { _mergeShaders, Layer } from "@deck.gl/core";
+import type { Color, DefaultProps, LayerContext, UpdateParameters } from "@deck.gl/core";
+import { Layer, project32 } from "@deck.gl/core";
 import type { RenderPass } from "@luma.gl/core";
-import { Shader, Buffer as LumaBuffer } from "@luma.gl/core";
-import { Model, Geometry, BufferTransform, ShaderInputs } from "@luma.gl/engine";
-import { random } from "@luma.gl/shadertools";
-import { TextureShader } from "pixi.js";
+import { Model, Geometry } from "@luma.gl/engine";
 
 export type AnimatedParticleLayerProps = {
     numParticles: number;
@@ -28,46 +25,38 @@ export class AnimatedParticleLayer extends Layer<AnimatedParticleLayerProps> {
     static layerName = "AnimatedParticleLayer";
     static defaultProps: DefaultProps<AnimatedParticleLayerProps> = {
         numParticles: 1_000,
+        grid: [],
+        color: [255, 0, 0, 255],
     };
 
     declare state: {
+        // TODO: Clean up state objects
         particleCount: number;
         particles: Float32Array[];
 
-        // TODO: Check need for these
         dataLoaded: boolean;
-
         renderModel?: Model;
     };
 
     initializeState(context: LayerContext): void {
-        // const { gl } = this.context;
-
-        // if()
-
         this.setState({ dataLoaded: false });
-        // this.createGridCellBuffers();
         this.setupParticles();
-
-        //     // this.context.device.info.shadingLanguage
-        //     this.getAttributeManager({
-        //     })
     }
 
-    getShaders(shaders: any) {
-        return {
-            ...super.getShaders(shaders),
-            inject: {},
-        };
+    override getShaders(shaders?: any) {
+        return super.getShaders({
+            ...shaders,
+            modules: [project32],
+        });
     }
 
-    updateState(params: UpdateParameters<AnimatedParticleLayer<TData>>): void {
+    updateState(params: UpdateParameters<AnimatedParticleLayer>): void {
         // TODO
     }
 
-    // private initParticles(numParticles: number) {
-    //     // const particles = new
-    // }
+    finalizeState(context: LayerContext): void {
+        // TODO
+    }
 
     draw(opts: {
         renderPass: RenderPass;
@@ -77,17 +66,16 @@ export class AnimatedParticleLayer extends Layer<AnimatedParticleLayerProps> {
         context: LayerContext;
     }): void {
         // TODO
-    }
+        const { renderModel } = this.state;
 
-    private getModel() {
-        // return new Model
+        if (!renderModel) return;
+
+        renderModel.draw(opts.renderPass);
     }
 
     private createGridCellBuffers() {
         const device = this.context.device;
         const buffer = new Float32Array(this.props.grid.length * CELL_TOTAL_SIZE);
-
-        console.log("Cell byte size", CELL_TOTAL_SIZE);
 
         // Flatten cell data structure to
         for (let i = 0; i < this.props.grid.length; i++) {
@@ -124,64 +112,53 @@ export class AnimatedParticleLayer extends Layer<AnimatedParticleLayerProps> {
         const device = this.context.device;
         const gridBuffer = this.createGridCellBuffers();
 
-        // --- This one was based on line-layer, maybe not relevant?
-        // const particleCellIndices = device.createBuffer(new Float32Array(this.props.numParticles));
-        // const particlePositions = device.createBuffer(
-        //     // Particle positions are UVW; relative to the cells corners
-        //     new Float32Array(this.props.numParticles * 3),
-        // );
-
-        // const transform = new BufferTransform(device, {
-        //     attributes: {
-        //         position: particlePositions,
-        //         cellIndex: particleCellIndices,
-        //     },
-        //     bufferLayout: [
-        //         { name: "position", format: "float32x3" },
-        //         { name: "cellIndex", format: "float32" },
-        //     ],
-        //     feedback
-        // });
-
-        // -----------
-
         // Particles are geometry points
         const pointGeometry = new Geometry({
             topology: "point-list",
+            vertexCount: 1,
+
             attributes: {
                 positions: { size: 3, value: new Float32Array([0, 0, 0]) },
+                // gridIndex: { size: 1, value: new Float32Array([0]) },
             },
         });
 
         const renderModel = new Model(device, {
+            ...this.getShaders({}),
             id: `${this.props.id}-render`,
-            modules: [random],
+            // modules: [random, this.getShaders],
             vs: vertexShader,
+            fs: fragmentShader,
             geometry: pointGeometry,
+
+            // TODO: clean up these
             // shaderInputs: new ShaderInputs({
             //     grid: {name: "grid", }
             //     // grid: gridBuffer,
             // }),
 
-            instanceCount: this.props.numParticles,
+            // instanceCount: this.props.numParticles,
             // bindings: {
             //     grid: gridBuffer,
             // },
-            // TODO: Is this correct???
             // uniforms: { grid: gridBuffer },
-            bindings: { gridData: gridBuffer },
-            parameters: {
-                // TODO: Check what these do...
-                // depthWriteEnabled: false,
-                // depthCompare: "always",
-                // blend: true,
-                // blendColorOperation: "add",
-                // blendColorSrcFactor: "src-alpha",
-                // blendColorDstFactor: "one",
-                // blendAlphaOperation: "add",
-                // blendAlphaSrcFactor: "one",
-                // blendAlphaDstFactor: "one",
-            },
+            // bindings: { gridData: gridBuffer },
+            // parameters: {
+            //     depthWriteEnabled: false,
+            //     depthCompare: "always",
+            //     blend: true,
+            //     blendColorOperation: "add",
+            //     blendColorSrcFactor: "src-alpha",
+            //     blendColorDstFactor: "one",
+            //     blendAlphaOperation: "add",
+            //     blendAlphaSrcFactor: "one",
+            //     blendAlphaDstFactor: "one",
+            // },
+        });
+
+        this.setState({
+            renderModel: renderModel,
+            gridBuffer: gridBuffer,
         });
 
         return {
@@ -189,15 +166,6 @@ export class AnimatedParticleLayer extends Layer<AnimatedParticleLayerProps> {
         };
     }
 }
-
-// function generateParticleCloud(numberOfParticles: number): Float32Array {
-//     // Each particle needs 4 positional values: u, v, w, and cell-index
-//     // Real world position is then based on the
-//     // const particlePositionData=
-// }
-
-//
-// function generatePositions();
 
 export type GridCell = {
     corners: number[][];
@@ -213,18 +181,42 @@ export type GridCell = {
 // }
 // `;
 
-const vertexShader = /*glsl*/ `
+// Partially copied from src/modules/_shared/customDeckGlLayers/WellsLayer/_private/shaders/vertexShader.glsl
+const vertexShader = /*glsl*/ `\
 #version 300 es
-
-// struct GridData
-
-layout(std430, binding = 0) readonly buffer GridData
 
 in vec3 positions;
 
-vec3 random_scale = vec3(12.9898, 78.233, 151.7182);
+out vec4 projectedPosition;
 
 void main() {
-        
+    vec4 position_commonspace = vec4(project_position(positions), 0.0);
+
+    geometry.position = position_commonspace;
+
+    // ! FIXME: When I do position like this, nothing appears
+    gl_Position = project_common_position_to_clipspace(position_commonspace);
+
+    // This renders the point correctly, so likely just some incorrect use of projection? 
+    //    gl_Position = vec4(0.0, 0.0, 0.0, 1.0); // Center of the screen in clip space
+    
+    
+    gl_PointSize = 12.0; // Adjust point size as needed
+    
+    DECKGL_FILTER_GL_POSITION(gl_Position, geometry);
+    vec4 color = vec4(0.0f);
+    DECKGL_FILTER_COLOR(color, geometry);
+}
+`;
+
+const fragmentShader = /*glsl*/ `\
+#version 300 es
+
+precision highp float;
+
+out vec4 fragColor;
+
+void main() {
+    fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red color with full opacity
 }
 `;

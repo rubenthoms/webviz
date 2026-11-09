@@ -267,7 +267,11 @@ export async function hideDevOverlays(page: Page): Promise<void> {
     if (!RECORDING) {
         return;
     }
-    await injectRecordingStyle(page, "__pw_hide_dev_overlays_style__", `.tsqd-parent-container { display: none !important; }`);
+    await injectRecordingStyle(
+        page,
+        "__pw_hide_dev_overlays_style__",
+        `.tsqd-parent-container { display: none !important; }`,
+    );
 }
 
 /**
@@ -461,25 +465,20 @@ export async function smoothType(page: Page, locator: Locator, value: string): P
 
 /**
  * Where in the layout a dragged module should be dropped. `"center"` drops onto the middle of the
- * canvas (replacing an empty layout, or nesting into whatever box is under the centre); the four
- * side positions aim at the layout's edge drop zones so the module is split off to that side of the
- * existing content (e.g. `"right"` places it beside the current module, `"bottom"` beneath it).
+ * canvas, which only accepts a drop while the layout is empty; the four side positions aim at the
+ * drop zone of the module on that side, splitting it (e.g. `"right"` places the new module to the right
+ * of the current one, `"bottom"` beneath it).
  */
 export type ModuleDropPosition = "center" | "left" | "right" | "top" | "bottom";
 
 /**
- * How far (px) inside the layout edge to aim for the side drop positions. The target must clear the
- * layout's 25px box margin (`layoutBoxMargin`) — a single module's drop zones stop at
- * `edge - margin`, so a smaller inset lands just outside the zone and the drop silently never
- * commits — while staying within the ~50px edge band (`edgeWeight`) so it splits off the whole
- * layout to that side rather than nesting into a child box nearer the centre.
+ * How far (px) inside the layout edge to aim for the side drop positions: beyond the layout's thin
+ * outer-edge strip (which docks along the whole side), but well within the outer quarter of the
+ * module there, whose drop zone splits that module.
  */
 const DROP_EDGE_INSET_PX = 45;
 
-/**
- * The top/bottom edges need a touch more clearance than left/right: aiming ~15px further in lands
- * reliably inside the bottom/top drop zone (a 45px inset still misses it and the drop never commits).
- */
+/** Same as `DROP_EDGE_INSET_PX`, for the top and bottom edges. */
 const DROP_EDGE_INSET_VERTICAL_PX = 60;
 
 /** Resolve the absolute (x, y) drop target within `layoutBox` for a given drop position. */
@@ -490,8 +489,8 @@ function resolveDropTarget(
     const centerX = layoutBox.x + layoutBox.width / 2;
     const centerY = layoutBox.y + layoutBox.height / 2;
     // For a side drop, aim the cross-axis at the centre of the first row/column rather than the layout
-    // centre: once the canvas holds stacked modules, the centre sits on the gutter between them, which
-    // resolves to the parent container (no side edge there) and nests the module instead of splitting.
+    // centre: once the canvas holds stacked modules, the centre sits on the sash between them, which is
+    // not a drop target.
     const firstRowY = layoutBox.y + layoutBox.height / 4;
     const firstColX = layoutBox.x + layoutBox.width / 4;
     switch (dropPosition) {
@@ -511,23 +510,15 @@ function resolveDropTarget(
 /**
  * Drag a module from the modules list onto the dashboard layout.
  *
- * Module placement uses native pointer events (the modules list item publishes a "new module"
- * event on `pointerdown`, and the layout component handles `pointermove`/`pointerup` on the
- * document). We reproduce that gesture with Playwright's mouse API:
- *  1. press on the list item,
- *  2. move past the drag threshold so dragging starts,
- *  3. move into the layout area,
- *  4. DWELL there so the layout's ~500ms drop-preview timer fires (this is what inserts the new
- *     module into the layout; without it the release is a no-op),
- *  5. release to create the module instance.
+ * Modules list items are native HTML5 drag sources, and the (dockview) layout shows its drop targets on
+ * `dragover`, so Playwright's `dragTo` reproduces the gesture.
  *
- * `dropPosition` chooses where in the layout the module lands: the layout splits off a new region on
- * whichever edge the pointer dwells over, so aiming at an edge (rather than the centre) drops the
- * module beside/above/below the existing content instead of nesting into its middle.
+ * `dropPosition` chooses where in the layout the module lands: aiming near an edge drops it into that
+ * edge's drop zone (splitting the module there), while `"center"` only works for an empty layout - a
+ * module's center is not a drop target.
  *
- * The gesture is retried until the module instance actually appears in the layout, because the
- * drop-preview timer can be reset by closely-spaced synthetic pointer moves and occasionally needs
- * another attempt to commit.
+ * The gesture is retried until the module instance actually appears in the layout, in case the list
+ * or layout is still settling when the drag starts.
  */
 export async function dragModuleOntoLayout(
     page: Page,
@@ -551,41 +542,20 @@ export async function dragModuleOntoLayout(
         await smoothScrollIntoView(moduleItem, "center");
         await moduleItem.scrollIntoViewIfNeeded();
 
-        const itemBox = await moduleItem.boundingBox();
         const layoutBox = await layout.boundingBox();
-        if (!itemBox || !layoutBox) {
-            throw new Error("Could not resolve bounding boxes for module item or layout drop target");
+        if (!layoutBox) {
+            throw new Error("Could not resolve the bounding box of the layout drop target");
         }
 
-        const startX = itemBox.x + itemBox.width / 2;
-        const startY = itemBox.y + itemBox.height / 2;
         const { x: targetX, y: targetY } = resolveDropTarget(layoutBox, dropPosition);
-        // Nudge the second dwell toward the layout centre so it stays inside the same edge zone even
-        // when the target sits close to a boundary.
-        const jiggleX = targetX + (targetX > layoutBox.x + layoutBox.width / 2 ? -3 : 3);
-        const jiggleY = targetY + (targetY > layoutBox.y + layoutBox.height / 2 ? -3 : 3);
 
-        await page.mouse.move(startX, startY);
-        await page.mouse.down();
-        try {
-            // Exceed the drag threshold (MANHATTAN_LENGTH) so the layout starts tracking the drag.
-            await page.mouse.move(startX + 16, startY + 16, { steps: 8 });
-            // Move into the layout area, slowly enough to be visible while recording.
-            await page.mouse.move(targetX, targetY, { steps: RECORDING ? 40 : 20 });
-            // Dwell on the target so the layout's drop-preview timer (~500ms) fires while the
-            // pointer is stationary inside the canvas.
-            await page.waitForTimeout(700);
-            // A tiny jiggle + second dwell makes the preview commit reliably.
-            await page.mouse.move(jiggleX, jiggleY, { steps: 3 });
-            await page.waitForTimeout(700);
-            await page.mouse.up();
-            // Keep the tracked cursor position in sync so the next glide measures the right distance.
-            lastMousePosition.set(page, { x: jiggleX, y: jiggleY });
-        } catch (error) {
-            // Make sure we never leave the mouse button pressed between retries.
-            await page.mouse.up().catch(() => undefined);
-            throw error;
-        }
+        await moduleItem.dragTo(layout, {
+            targetPosition: { x: targetX - layoutBox.x, y: targetY - layoutBox.y },
+            // Slow enough to be visible while recording
+            steps: RECORDING ? 40 : 20,
+        });
+        // Keep the tracked cursor position in sync so the next glide measures the right distance.
+        lastMousePosition.set(page, { x: targetX, y: targetY });
 
         await expect(droppedModule).toBeVisible({ timeout: 5_000 });
     }).toPass({ timeout: 60_000, intervals: [1_000] });
@@ -607,11 +577,7 @@ function moduleHeader(page: Page, moduleTitle: string | RegExp): Locator {
 }
 
 /** Maximize a module to fill the dashboard, or restore it, with the button in its header. */
-export async function setModuleMaximized(
-    page: Page,
-    moduleTitle: string | RegExp,
-    maximized: boolean,
-): Promise<void> {
+export async function setModuleMaximized(page: Page, moduleTitle: string | RegExp, maximized: boolean): Promise<void> {
     // The header buttons have no accessible name; MUI icons carry a data-testid.
     const [clickIcon, resultIcon] = maximized
         ? ["OpenInFullIcon", "CloseFullscreenIcon"]
@@ -921,9 +887,7 @@ export async function createSessionAndSelectEnsemble(
     await pace(page);
 
     markStep("Apply selected ensembles");
-    const applyNarration = narrate(
-        "We select the ensembles and apply them to load them into the session.",
-    );
+    const applyNarration = narrate("We select the ensembles and apply them to load them into the session.");
 
     await smoothClick(page, page.getByText(testCase.ensembleName).first());
 
@@ -975,8 +939,13 @@ export async function connectDataChannel(
     await expect(async () => {
         // Clean up a content selector left open by a previous attempt.
         if (await selector.isVisible().catch(() => false)) {
-            await selector.getByRole("button", { name: "Cancel" }).click().catch(() => undefined);
-            await expect(selector).toBeHidden({ timeout: 2_000 }).catch(() => undefined);
+            await selector
+                .getByRole("button", { name: "Cancel" })
+                .click()
+                .catch(() => undefined);
+            await expect(selector)
+                .toBeHidden({ timeout: 2_000 })
+                .catch(() => undefined);
         }
 
         await smoothMoveToLocator(page, origin);

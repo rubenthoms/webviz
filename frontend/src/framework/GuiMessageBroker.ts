@@ -1,8 +1,6 @@
 import React from "react";
 
 import { isDevMode } from "@lib/utils/devMode";
-import type { Size2D } from "@lib/utils/geometry";
-import type { Vec2 } from "@lib/utils/vec2";
 
 import type { EnsembleLoadingErrorInfoMap, EnsembleLoadingWarningInfoMap } from "./internal/EnsembleSetLoader";
 import type { SessionPersistenceAction } from "./internal/WorkbenchSession/WorkbenchSessionManager";
@@ -51,8 +49,6 @@ export enum GuiState {
 }
 
 export enum GuiEvent {
-    ModuleHeaderPointerDown = "moduleHeaderPointerDown",
-    NewModulePointerDown = "newModulePointerDown",
     RemoveModuleInstanceRequest = "removeModuleInstanceRequest",
     EditDataChannelConnectionsForModuleInstanceRequest = "editDataChannelConnectionsForModuleInstanceRequest",
     ShowDataChannelConnectionsRequest = "showDataChannelConnectionsRequest",
@@ -70,18 +66,6 @@ export enum GuiEvent {
 }
 
 export type GuiEventPayloads = {
-    [GuiEvent.ModuleHeaderPointerDown]: {
-        moduleInstanceId: string;
-        elementPosition: Vec2;
-        elementSize: Size2D;
-        pointerPosition: Vec2;
-    };
-    [GuiEvent.NewModulePointerDown]: {
-        moduleName: string;
-        elementPosition: Vec2;
-        elementSize: Size2D;
-        pointerPosition: Vec2;
-    };
     [GuiEvent.RemoveModuleInstanceRequest]: {
         moduleInstanceId: string;
     };

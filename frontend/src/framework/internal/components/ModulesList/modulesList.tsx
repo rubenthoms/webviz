@@ -129,7 +129,6 @@ export const ModulesList = React.memo(function ModulesList(props: ModulesListPro
                                             isSerializable={mod.canBeSerialized()}
                                             description={mod.getDescription()}
                                             drawPreviewFunc={mod.getDrawPreviewFunc()}
-                                            guiMessageBroker={props.workbench.getGuiMessageBroker()}
                                             onDraggingStart={handleDraggingStart}
                                             onShowDetails={handleShowDetails}
                                             onHover={handleItemHover}

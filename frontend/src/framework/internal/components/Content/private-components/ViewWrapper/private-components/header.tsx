@@ -47,8 +47,9 @@ export type HeaderProps = {
     isMaximized?: boolean;
     isMinimized?: boolean;
     moduleInstance: ModuleInstance<any, any>;
-    isDragged: boolean;
-    onPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
+    /** Makes the title a drag handle for moving the module in the layout */
+    onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
+    onDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
 };
 
 const COMPACT_WIDTH_THRESHOLD_PX = 320;
@@ -191,15 +192,16 @@ export const Header: React.FC<HeaderProps> = (props) => {
                 },
             )}
             onDoubleClick={handleDoubleClick}
+            data-module-header
         >
             <ModuleLoadingBar moduleInstance={props.moduleInstance} />
 
             <ModuleTitle
                 workbench={props.workbench}
                 moduleInstance={props.moduleInstance}
-                isDragged={props.isDragged}
                 isSnapshotMode={isSnapshot}
-                onPointerDown={props.onPointerDown}
+                onDragStart={props.onDragStart}
+                onDragEnd={props.onDragEnd}
             />
 
             {!isCompact ? (
@@ -512,28 +514,25 @@ function ModuleLoadingBar(props: ModuleLoadingBarProps) {
 type ModuleTitleProps = {
     workbench: Workbench;
     moduleInstance: ModuleInstance<any, any>;
-    isDragged: boolean;
     isSnapshotMode?: boolean;
-    onPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
+    onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
+    onDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
 };
 
 function ModuleTitle(props: ModuleTitleProps) {
     const title = useModuleInstanceTopicValue(props.moduleInstance, ModuleInstanceTopic.TITLE);
     const devToolsVisible = useGuiValue(props.workbench.getGuiMessageBroker(), GuiState.DevToolsVisible);
 
-    function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-        if (props.isSnapshotMode) return;
-
-        props.onPointerDown?.(e);
-    }
+    const isDraggable = props.onDragStart !== undefined && !props.isSnapshotMode;
 
     return (
         <div
             className={resolveClassNames("py-3xs text-body-sm font-bolder gap-x-sm flex min-w-0 grow items-center", {
-                "cursor-grabbing": props.isDragged,
-                "cursor-move": !props.isDragged && !props.isSnapshotMode,
+                "cursor-move": isDraggable,
             })}
-            onPointerDown={handlePointerDown}
+            draggable={isDraggable}
+            onDragStart={isDraggable ? props.onDragStart : undefined}
+            onDragEnd={isDraggable ? props.onDragEnd : undefined}
         >
             <span
                 className="min-w-0 grow overflow-hidden text-ellipsis whitespace-nowrap"

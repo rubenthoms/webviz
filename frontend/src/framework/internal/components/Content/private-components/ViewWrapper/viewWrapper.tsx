@@ -1,17 +1,12 @@
 import React from "react";
 
-import { GuiEvent, GuiState, useGuiValue } from "@framework/GuiMessageBroker";
+import { GuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { useDashboard } from "@framework/internal/components/DashboardContext";
 import { DashboardTopic } from "@framework/internal/Dashboard";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import type { Workbench } from "@framework/Workbench";
-import { pointRelativeToDomRect } from "@lib/utils/geometry";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
-import type { Vec2 } from "@lib/utils/vec2";
-import { subtractVec2, vec2FromPointerEvent } from "@lib/utils/vec2";
-
-import { ViewWrapperPlaceholder } from "../viewWrapperPlaceholder";
 
 import { ChannelReceiverNodesWrapper } from "./private-components/channelReceiverNodesWrapper";
 import { Header } from "./private-components/header";
@@ -19,24 +14,15 @@ import { ViewContent } from "./private-components/viewContent";
 
 type ViewWrapperProps = {
     isMaximized?: boolean;
-    isMinimized?: boolean;
     moduleInstance: ModuleInstance<any, any>;
     workbench: Workbench;
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-    isDragged: boolean;
-    dragPosition: Vec2;
-    changingLayout: boolean;
+    onHeaderDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
+    onHeaderDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
 };
 
+/** Renders a module (header and view) filling its parent, which is sized by the layout. */
 export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
     const { dashboard } = useDashboard();
-    const [prevWidth, setPrevWidth] = React.useState<number>(props.width);
-    const [prevHeight, setPrevHeight] = React.useState<number>(props.height);
-    const [prevX, setPrevX] = React.useState<number>(props.x);
-    const [prevY, setPrevY] = React.useState<number>(props.y);
 
     const activeModuleInstanceId = usePublishSubscribeTopicValue(dashboard, DashboardTopic.ACTIVE_MODULE_INSTANCE_ID);
     const isActive = props.moduleInstance.getId() === activeModuleInstanceId;
@@ -50,40 +36,7 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
         GuiState.DataChannelConnectionLayerVisible,
     );
 
-    const timeRef = React.useRef<number | null>(null);
     const pointerDownRef = React.useRef<boolean>(false);
-
-    if (props.width !== prevWidth && !props.changingLayout) {
-        setPrevWidth(props.width);
-    }
-
-    if (props.height !== prevHeight && !props.changingLayout) {
-        setPrevHeight(props.height);
-    }
-
-    if (props.x !== prevX && !props.changingLayout) {
-        setPrevX(props.x);
-    }
-
-    if (props.y !== prevY && !props.changingLayout) {
-        setPrevY(props.y);
-    }
-
-    const handleHeaderPointerDown = React.useCallback(
-        function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-            if (ref.current) {
-                const point = vec2FromPointerEvent(e.nativeEvent);
-                const rect = ref.current.getBoundingClientRect();
-                guiMessageBroker.publishEvent(GuiEvent.ModuleHeaderPointerDown, {
-                    moduleInstanceId: props.moduleInstance.getId(),
-                    elementPosition: subtractVec2(point, pointRelativeToDomRect(point, rect)),
-                    elementSize: { width: rect.width, height: rect.height },
-                    pointerPosition: point,
-                });
-            }
-        },
-        [props.moduleInstance, guiMessageBroker],
-    );
 
     function handleModuleClick() {
         if (dataChannelConnectionsLayerVisible) {
@@ -94,7 +47,6 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
     }
 
     function handlePointerDown() {
-        timeRef.current = Date.now();
         pointerDownRef.current = true;
     }
 
@@ -106,95 +58,38 @@ export const ViewWrapper: React.FC<ViewWrapperProps> = (props) => {
         handleModuleClick();
     }
 
-    function makeHeader() {
-        return (
-            <Header
-                workbench={props.workbench}
-                isMaximized={props.isMaximized}
-                isMinimized={props.isMinimized}
-                moduleInstance={props.moduleInstance}
-                isDragged={props.isDragged}
-                onPointerDown={handleHeaderPointerDown}
-            />
-        );
-    }
-
     return (
-        <>
-            {props.isDragged && (
-                <>
-                    <ViewWrapperPlaceholder width={props.width} height={props.height} x={props.x} y={props.y} />
-                </>
-            )}
-            {/* ! Show a placeholder while dragging modules around, since resizing module content while dragging might be costly */}
-            {props.changingLayout && (
-                <div
-                    className={resolveClassNames("absolute box-border", {
-                        "px-4xs py-4xs": !props.isMinimized,
-                    })}
-                    style={{
-                        width: props.width,
-                        height: props.height,
-                        left: props.isDragged ? props.dragPosition.x : props.x,
-                        top: props.isDragged ? props.dragPosition.y : props.y,
-                        opacity: props.isDragged ? 0.5 : 1,
-                        zIndex: props.isDragged ? 1 : 0,
-                    }}
-                >
-                    <div className="border-neutral-subtle bg-surface shadow-elevation-raised box-border flex h-full w-full flex-col border-2">
-                        {makeHeader()}
-                    </div>
-                </div>
-            )}
+        <div ref={ref} className="px-4xs py-4xs box-border h-full w-full contain-content">
             <div
-                ref={ref}
-                className={resolveClassNames("absolute box-border contain-content", {
-                    "px-4xs py-4xs": !props.isMinimized,
-                    invisible: props.changingLayout,
-                })}
-                style={{
-                    width: prevWidth,
-                    height: prevHeight,
-                    left: prevX,
-                    top: prevY,
-                }}
+                className="border-neutral-subtle shadow-elevation-raised bg-surface relative box-border flex h-full w-full flex-col border p-0"
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
             >
                 <div
                     className={resolveClassNames(
-                        "border-neutral-subtle shadow-elevation-raised bg-surface relative box-border flex h-full w-full flex-col border",
+                        "z-elevated pointer-events-none absolute inset-0 box-border h-full w-full bg-transparent outline-2",
                         {
-                            "cursor-grabbing select-none": props.isDragged,
-                            "p-0": !props.isMinimized,
+                            "outline-accent-strong": isActive,
+                            "outline-transparent": !isActive,
                         },
                     )}
-                    onPointerDown={handlePointerDown}
-                    onPointerUp={handlePointerUp}
-                >
-                    <div
-                        className={resolveClassNames(
-                            "z-elevated pointer-events-none absolute inset-0 box-border h-full w-full bg-transparent outline-2",
-                            {
-                                "outline-accent-strong": isActive,
-                                "outline-transparent": !isActive,
-                            },
-                        )}
+                />
+                <Header
+                    workbench={props.workbench}
+                    isMaximized={props.isMaximized}
+                    moduleInstance={props.moduleInstance}
+                    onDragStart={props.onHeaderDragStart}
+                    onDragEnd={props.onHeaderDragEnd}
+                />
+                <div className="h-0 grow overflow-auto" onClick={handleModuleClick}>
+                    <ViewContent workbench={props.workbench} moduleInstance={props.moduleInstance} />
+                    <ChannelReceiverNodesWrapper
+                        forwardedRef={ref}
+                        moduleInstance={props.moduleInstance}
+                        workbench={props.workbench}
                     />
-                    {makeHeader()}
-                    <div
-                        className={resolveClassNames("h-0 grow overflow-auto", {
-                            hidden: props.changingLayout || props.isMinimized,
-                        })}
-                        onClick={handleModuleClick}
-                    >
-                        <ViewContent workbench={props.workbench} moduleInstance={props.moduleInstance} />
-                        <ChannelReceiverNodesWrapper
-                            forwardedRef={ref}
-                            moduleInstance={props.moduleInstance}
-                            workbench={props.workbench}
-                        />
-                    </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 };

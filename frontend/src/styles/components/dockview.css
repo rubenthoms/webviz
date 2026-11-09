@@ -1,0 +1,46 @@
+/* Dockview theme for the module layout, mapped to EDS tokens. Tabs are hidden, so only the group surface,
+   sashes (resize handles) and drop overlays are styled. */
+.dockview-theme-webviz {
+    color-scheme: light;
+
+    --dv-group-view-background-color: transparent;
+    --dv-tabs-and-actions-container-background-color: transparent;
+    --dv-tabs-and-actions-container-height: 0px;
+    --dv-tabs-and-actions-container-font-size: inherit;
+    --dv-tab-font-size: inherit;
+    --dv-tab-margin: 0;
+    --dv-separator-border: transparent;
+    --dv-paneview-active-outline-color: var(--eds-color-border-accent-strong);
+    --dv-icon-hover-background-color: transparent;
+    --dv-tabs-container-scrollbar-color: transparent;
+    --dv-scrollbar-background-color: transparent;
+
+    --dv-border-radius: 0px;
+    --dv-tab-border-radius: 0px;
+    --dv-sash-border-radius: 0px;
+    --dv-dropdown-border-radius: 0px;
+    --dv-spacing-padding: 0px;
+
+    /* Resize handles: invisible until hovered, then shown as an accent line */
+    --dv-sash-color: transparent;
+    --dv-active-sash-color: var(--eds-color-bg-accent-fill-emphasis-default);
+    --dv-active-sash-transition-duration: 0.1s;
+    --dv-active-sash-transition-delay: 0.3s;
+
+    /* Drop overlays */
+    --dv-drag-over-background-color: color-mix(
+        in oklab,
+        var(--eds-color-bg-accent-fill-emphasis-default) 35%,
+        transparent
+    );
+    --dv-drag-over-border-color: var(--eds-color-bg-accent-fill-emphasis-default);
+    --dv-drag-over-border: 2px solid var(--eds-color-bg-accent-fill-emphasis-default);
+    --dv-edge-dock-indicator-color: var(--eds-color-bg-accent-fill-emphasis-default);
+
+    --dv-overlay-z-index: 999;
+    --dv-transition-duration: 0.1s;
+
+    --dv-floating-box-shadow: none;
+    --dv-floating-border: none;
+    --dv-floating-group-border: none;
+}

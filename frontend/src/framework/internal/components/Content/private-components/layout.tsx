@@ -1,10 +1,7 @@
 import React from "react";
 
 import { WebAssetOff } from "@mui/icons-material";
-import { v4 } from "uuid";
 
-import type { LayoutBox } from "@framework/components/LayoutBox";
-import { LayoutBoxComponents, makeLayoutBoxes } from "@framework/components/LayoutBox";
 import {
     GuiEvent,
     GuiState,
@@ -16,24 +13,11 @@ import {
 import { useDashboard } from "@framework/internal/components/DashboardContext";
 import { DashboardTopic, type LayoutElement } from "@framework/internal/Dashboard";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
-import type { ModuleInstance } from "@framework/ModuleInstance";
 import { type Workbench } from "@framework/Workbench";
 import { Button } from "@lib/components/Button";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Paragraph } from "@lib/components/Typography/compositions";
-import { useElementSize } from "@lib/hooks/useElementSize";
-import type { Rect2D, Size2D } from "@lib/utils/geometry";
-import { MANHATTAN_LENGTH, addMarginToRect, pointRelativeToDomRect, rectContainsPoint } from "@lib/utils/geometry";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
-import { convertRemToPixels } from "@lib/utils/screenUnitConversions";
-import type { Vec2 } from "@lib/utils/vec2";
-import {
-    multiplyElementwiseVec2,
-    point2Distance,
-    scaleVec2NonUniform,
-    subtractVec2,
-    vec2FromPointerEvent,
-} from "@lib/utils/vec2";
 
 import { useActiveSession } from "../../ActiveSessionBoundary";
 import {
@@ -41,444 +25,123 @@ import {
     SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT,
 } from "../../SettingsContentPanels/";
 
+import { DockviewModuleLayout, type ModuleDragHandlers } from "./dockviewLayout/dockviewModuleLayout";
 import { ViewWrapper } from "./ViewWrapper";
-import { ViewWrapperPlaceholder } from "./viewWrapperPlaceholder";
+import { Header } from "./ViewWrapper/private-components/header";
 
 type LayoutProps = {
     workbench: Workbench;
 };
 
-function convertLayoutRectToRealRect(element: LayoutElement, size: Size2D): Rect2D {
-    return {
-        x: Math.round(element.relX * size.width),
-        y: Math.round(element.relY * size.height),
-        width: Math.round(element.relWidth * size.width),
-        height: Math.round(element.relHeight * size.height),
-    };
-}
-
 export const Layout: React.FC<LayoutProps> = (props) => {
     const { dashboard, isActive: isActiveDashboard } = useDashboard();
-    const [draggedModuleInstanceId, setDraggedModuleInstanceId] = React.useState<string | null>(null);
-    const [position, setPosition] = React.useState<Vec2>({ x: 0, y: 0 });
-    const [pointer, setPointer] = React.useState<Vec2>({ x: -1, y: -1 });
-    const [tempLayoutBoxId, setTempLayoutBoxId] = React.useState<string | null>(null);
-    const ref = React.useRef<HTMLDivElement>(null);
-    const mainRef = React.useRef<HTMLDivElement>(null);
-    const layoutDivSize = useElementSize(ref);
-    const layoutBoxRef = React.useRef<LayoutBox | null>(null);
     const moduleInstances = usePublishSubscribeTopicValue(dashboard, DashboardTopic.MODULE_INSTANCES);
+    const layout = usePublishSubscribeTopicValue(dashboard, DashboardTopic.LAYOUT);
     const guiMessageBroker = props.workbench.getGuiMessageBroker();
     const isSwitchingDashboard = useGuiValue(guiMessageBroker, GuiState.IsSwitchingDashboard);
+    const activeSession = useActiveSession();
+    const isSnapshot = usePublishSubscribeTopicValue(activeSession, PrivateWorkbenchSessionTopic.IS_SNAPSHOT);
 
-    // We use a temporary layout while dragging elements around
-    const [tempLayout, setTempLayout] = React.useState<LayoutElement[] | null>(null);
-    const trueLayout = usePublishSubscribeTopicValue(dashboard, DashboardTopic.LAYOUT);
-    const layout = tempLayout ?? trueLayout;
+    const maximizedModuleInstanceId = layout.find((element) => element.maximized)?.moduleInstanceId ?? null;
 
-    React.useEffect(() => {
-        if (!isActiveDashboard) {
-            return;
-        }
-
-        let pointerDownPoint: Vec2 | null = null;
-        let pointerDownElementPosition: Vec2 | null = null;
-        let pointerDownElementId: string | null = null;
-        let pointerDownElementSize: Size2D | null = null;
-        let relativePointerPosition: Vec2 = { x: 0, y: 0 };
-        let relativePointerToElementDiff: Vec2 = { x: 0, y: 0 };
-        let dragging = false;
-        let moduleInstanceId: string | null = null;
-        let moduleName: string | null = null;
-        let originalLayout: LayoutElement[] = dashboard.getLayout();
-        let currentLayout: LayoutElement[] = dashboard.getLayout();
-        let originalLayoutBox = makeLayoutBoxes(originalLayout);
-        let currentLayoutBox = originalLayoutBox;
-        layoutBoxRef.current = currentLayoutBox;
-        let lastTimeStamp = 0;
-        let lastMovePosition: Vec2 = { x: 0, y: 0 };
-        let delayTimer: ReturnType<typeof setTimeout> | null = null;
-        let isNewModule = false;
-
-        function adjustLayout() {
-            if (currentLayoutBox && moduleInstanceId) {
-                const preview = currentLayoutBox.previewLayout(
-                    relativePointerPosition,
-                    layoutDivSize,
-                    moduleInstanceId,
-                    isNewModule,
-                );
-                if (preview) {
-                    currentLayout = preview.toLayout();
-                    currentLayoutBox = preview;
-                }
-
-                setTempLayout(currentLayout);
-                layoutBoxRef.current = currentLayoutBox;
-
-                const draggedElementSize = calcSizeOfDraggedElement();
-
-                setPosition(
-                    subtractVec2(
-                        relativePointerPosition,
-                        multiplyElementwiseVec2(relativePointerToElementDiff, {
-                            x: draggedElementSize.width,
-                            y: 1,
-                        }),
-                    ),
-                );
-            }
-            delayTimer = null;
-        }
-
-        function handlePointerUp(e: Event) {
-            if (!pointerDownPoint) {
+    React.useEffect(
+        function subscribeToRemoveModuleInstanceRequests() {
+            if (!isActiveDashboard) {
                 return;
             }
-            if (dragging) {
-                if (delayTimer) {
-                    clearTimeout(delayTimer);
-                    adjustLayout();
-                }
-                if (isNewModule && moduleName) {
-                    const layoutElement = currentLayout.find((el) => el.moduleInstanceId === pointerDownElementId);
-                    if (layoutElement) {
-                        const instance = dashboard.makeAndAddModuleInstance(moduleName);
-                        dashboard.setLayout(currentLayout);
-                        layoutElement.moduleInstanceId = instance.getId();
-                        layoutElement.moduleName = instance.getName();
-                    }
-                }
-                setDraggedModuleInstanceId(null);
-                if (isNewModule) {
-                    setTempLayoutBoxId(null);
-                }
-                currentLayoutBox = makeLayoutBoxes(currentLayout);
-                originalLayoutBox = currentLayoutBox;
-                layoutBoxRef.current = currentLayoutBox;
-                setTempLayout(null);
-                dashboard.setLayout(currentLayout);
-                setPosition({ x: 0, y: 0 });
-                setPointer({ x: -1, y: -1 });
 
-                e.stopPropagation();
-                e.preventDefault();
-            }
-            pointerDownPoint = null;
-            pointerDownElementPosition = null;
-            pointerDownElementId = null;
-            moduleInstanceId = null;
-            dragging = false;
-            originalLayout = currentLayout;
-            removeDraggingEventListeners();
-        }
-
-        function calcSizeOfDraggedElement(): Size2D {
-            const layoutElement = currentLayout.find((element) => element.moduleInstanceId === pointerDownElementId);
-            if (!layoutElement) {
-                return { width: 0, height: 0 };
-            }
-            const rect = convertLayoutRectToRealRect(layoutElement, layoutDivSize);
-            return { width: rect.width, height: rect.height };
-        }
-
-        function handlePointerMove(e: PointerEvent) {
-            if (
-                !pointerDownPoint ||
-                !ref.current ||
-                !pointerDownElementId ||
-                !pointerDownElementPosition ||
-                !pointerDownElementSize
+            function handleRemoveModuleInstanceRequest(
+                payload: GuiEventPayloads[GuiEvent.RemoveModuleInstanceRequest],
             ) {
-                return;
-            }
-
-            // Prevent any scrolling on touch devices
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (!dragging) {
-                if (point2Distance(vec2FromPointerEvent(e), pointerDownPoint) > MANHATTAN_LENGTH) {
-                    setDraggedModuleInstanceId(pointerDownElementId);
-                    moduleInstanceId = pointerDownElementId;
-                    const rect = ref.current.getBoundingClientRect();
-                    setPosition(pointRelativeToDomRect(pointerDownElementPosition, rect));
-                    relativePointerPosition = pointRelativeToDomRect(pointerDownPoint, rect);
-                    dragging = true;
-                    const factorX = pointerDownElementSize.width === 0 ? 1 : 1 / pointerDownElementSize.width;
-                    relativePointerToElementDiff = scaleVec2NonUniform(
-                        subtractVec2(pointerDownPoint, pointerDownElementPosition),
-                        factorX,
-                        1,
-                    );
-                    lastTimeStamp = e.timeStamp;
-                    lastMovePosition = vec2FromPointerEvent(e);
-                }
-            } else {
-                if (!pointerDownElementId || !pointerDownPoint) {
+                if (!dashboard.getModuleInstance(payload.moduleInstanceId)) {
                     return;
                 }
-                const rect = ref.current.getBoundingClientRect();
-                const draggedElementSize = calcSizeOfDraggedElement();
-                relativePointerPosition = subtractVec2(vec2FromPointerEvent(e), rect);
-                setPosition(
-                    subtractVec2(
-                        relativePointerPosition,
-                        multiplyElementwiseVec2(relativePointerToElementDiff, {
-                            x: draggedElementSize.width,
-                            y: 1,
-                        }),
-                    ),
-                );
-                setPointer(subtractVec2(vec2FromPointerEvent(e), rect));
-                const speed = point2Distance(vec2FromPointerEvent(e), lastMovePosition) / (e.timeStamp - lastTimeStamp);
-                lastTimeStamp = e.timeStamp;
-                lastMovePosition = vec2FromPointerEvent(e);
-
-                if (!rectContainsPoint(addMarginToRect(rect, 25), vec2FromPointerEvent(e))) {
-                    currentLayout = originalLayout;
-                    currentLayoutBox = originalLayoutBox;
-                    setTempLayout(null);
-                    layoutBoxRef.current = currentLayoutBox;
-                    if (delayTimer) {
-                        clearTimeout(delayTimer);
-                        delayTimer = null;
-                    }
-                    return;
-                }
-
-                if (delayTimer && speed > 0.5) {
-                    clearTimeout(delayTimer);
-                    delayTimer = null;
-                }
-                if (delayTimer === null) {
-                    delayTimer = setTimeout(adjustLayout, 500);
-                }
+                // The layout follows: the dashboard drops the module's layout element, and dockview gives its space
+                // to the neighbours
+                dashboard.removeModuleInstance(payload.moduleInstanceId);
             }
-        }
 
-        function handleButtonClick(e: KeyboardEvent) {
-            if (e.key === "Escape") {
-                if (delayTimer) {
-                    clearTimeout(delayTimer);
-                }
-                setTempLayout(null);
-                currentLayout = originalLayout;
-                pointerDownPoint = null;
-                pointerDownElementPosition = null;
-                pointerDownElementId = null;
-                pointerDownElementSize = null;
-                setDraggedModuleInstanceId(null);
-                moduleInstanceId = null;
-                dragging = false;
-                originalLayout = currentLayout;
-                currentLayoutBox = makeLayoutBoxes(currentLayout);
-                originalLayoutBox = currentLayoutBox;
-                isNewModule = false;
-                setTempLayoutBoxId(null);
-                removeDraggingEventListeners();
+            return guiMessageBroker.subscribeToEvent(
+                GuiEvent.RemoveModuleInstanceRequest,
+                handleRemoveModuleInstanceRequest,
+            );
+        },
+        [guiMessageBroker, dashboard, isActiveDashboard],
+    );
+
+    const handleLayoutChange = React.useCallback(
+        function handleLayoutChange(newLayout: LayoutElement[]) {
+            // Dockview only knows the geometry; keep the maximized/minimized flags
+            const currentLayout = dashboard.getLayout();
+            dashboard.setLayout(
+                newLayout.map((element) => {
+                    const current = currentLayout.find((el) => el.moduleInstanceId === element.moduleInstanceId);
+                    return { ...element, maximized: current?.maximized, minimized: current?.minimized };
+                }),
+            );
+        },
+        [dashboard],
+    );
+
+    const handleNewModuleDrop = React.useCallback(
+        function handleNewModuleDrop(moduleName: string) {
+            if (isSnapshot) {
+                return null;
             }
-        }
+            const instance = dashboard.makeAndAddModuleInstance(moduleName);
+            return { moduleInstanceId: instance.getId(), moduleName: instance.getName() };
+        },
+        [dashboard, isSnapshot],
+    );
 
-        function handleRemoveModuleInstanceRequest(payload: GuiEventPayloads[GuiEvent.RemoveModuleInstanceRequest]) {
-            if (delayTimer) {
-                clearTimeout(delayTimer);
+    const renderModule = React.useCallback(
+        function renderModule(moduleInstanceId: string, dragHandlers: ModuleDragHandlers) {
+            const moduleInstance = moduleInstances.find((instance) => instance.getId() === moduleInstanceId);
+            if (!moduleInstance) {
+                return null;
             }
-            if (dragging) {
-                return;
-            }
-            dashboard.removeModuleInstance(payload.moduleInstanceId);
-            currentLayoutBox.removeLayoutElement(payload.moduleInstanceId);
-            currentLayout = currentLayoutBox.toLayout();
-            originalLayout = currentLayout;
-            originalLayoutBox = currentLayoutBox;
-            dashboard.setLayout(currentLayout);
-        }
+            return (
+                <ViewWrapper
+                    moduleInstance={moduleInstance}
+                    workbench={props.workbench}
+                    isMaximized={moduleInstanceId === maximizedModuleInstanceId}
+                    onHeaderDragStart={dragHandlers.onDragStart}
+                    onHeaderDragEnd={dragHandlers.onDragEnd}
+                />
+            );
+        },
+        [moduleInstances, props.workbench, maximizedModuleInstanceId],
+    );
 
-        function addDraggingEventListeners() {
-            /* eslint-disable @eslint-react/web-api-no-leaked-event-listener -- false positive; removed in removeDraggingEventListeners */
-            document.addEventListener("pointerup", handlePointerUp);
-            document.addEventListener("pointermove", handlePointerMove);
-            document.addEventListener("keydown", handleButtonClick);
-            document.addEventListener("pointercancel", handlePointerUp);
-            document.addEventListener("blur-sm", handlePointerUp);
-            /* eslint-enable @eslint-react/web-api-no-leaked-event-listener */
-        }
+    const minimizedModuleInstances = maximizedModuleInstanceId
+        ? moduleInstances.filter((instance) => instance.getId() !== maximizedModuleInstanceId)
+        : [];
 
-        function removeDraggingEventListeners() {
-            document.removeEventListener("pointerup", handlePointerUp);
-            document.removeEventListener("pointermove", handlePointerMove);
-            document.removeEventListener("keydown", handleButtonClick);
-            document.removeEventListener("pointercancel", handlePointerUp);
-            document.removeEventListener("blur-sm", handlePointerUp);
-        }
-
-        function handleModuleHeaderPointerDown(payload: GuiEventPayloads[GuiEvent.ModuleHeaderPointerDown]) {
-            pointerDownPoint = payload.pointerPosition;
-            pointerDownElementPosition = payload.elementPosition;
-            pointerDownElementSize = payload.elementSize;
-            pointerDownElementId = payload.moduleInstanceId;
-            isNewModule = false;
-            addDraggingEventListeners();
-        }
-
-        function handleNewModulePointerDown(payload: GuiEventPayloads[GuiEvent.NewModulePointerDown]) {
-            pointerDownPoint = payload.pointerPosition;
-            pointerDownElementPosition = payload.elementPosition;
-            pointerDownElementSize = payload.elementSize;
-            pointerDownElementId = v4();
-            setTempLayoutBoxId(pointerDownElementId);
-            isNewModule = true;
-            moduleName = payload.moduleName;
-            addDraggingEventListeners();
-        }
-
-        const removeModuleHeaderPointerDownSubscriber = guiMessageBroker.subscribeToEvent(
-            GuiEvent.ModuleHeaderPointerDown,
-            handleModuleHeaderPointerDown,
-        );
-        const removeNewModulePointerDownSubscriber = guiMessageBroker.subscribeToEvent(
-            GuiEvent.NewModulePointerDown,
-            handleNewModulePointerDown,
-        );
-        const removeRemoveModuleInstanceRequestSubscriber = guiMessageBroker.subscribeToEvent(
-            GuiEvent.RemoveModuleInstanceRequest,
-            handleRemoveModuleInstanceRequest,
-        );
-
-        return () => {
-            removeModuleHeaderPointerDownSubscriber();
-            removeNewModulePointerDownSubscriber();
-            removeRemoveModuleInstanceRequestSubscriber();
-            removeDraggingEventListeners();
-
-            if (delayTimer) {
-                clearTimeout(delayTimer);
-            }
-        };
-    }, [layoutDivSize, moduleInstances, guiMessageBroker, dashboard, isActiveDashboard]);
-
-    function makeTempViewWrapperPlaceholder() {
-        if (!tempLayoutBoxId) {
-            return null;
-        }
-        const layoutElement = layout.find((element) => element.moduleInstanceId === tempLayoutBoxId);
-        if (!layoutElement) {
-            return null;
-        }
-        const rect = convertLayoutRectToRealRect(layoutElement, layoutDivSize);
-        return (
-            <ViewWrapperPlaceholder
-                key={tempLayoutBoxId}
-                width={rect.width}
-                height={rect.height}
-                x={rect.x}
-                y={rect.y}
-            />
-        );
-    }
-
-    const maximizedLayouts = React.useMemo(() => layout.filter((l) => l.maximized), [layout]);
-    const minimizedLayouts = React.useMemo(() => layout.filter((l) => !l.maximized), [layout]);
-
-    // TODO: Support multiple expanded modules? Probably fits together with minimizing...
-    if (maximizedLayouts.length > 1) throw Error("Multiple expanded modules not supported");
-
-    const minimizedLayoutsHeight = convertRemToPixels(2);
-    const minimizedLayoutsMinWidth = convertRemToPixels(16);
-
-    let rows = minimizedLayouts.length;
-    let elementsPerRow = 1;
-    let elementsInLastRow = 1;
-
-    // Only worry about minimized module positions if we have more than 2 minimized
-    if (minimizedLayouts.length && layoutDivSize.width > minimizedLayoutsMinWidth * 2) {
-        elementsPerRow = Math.floor(layoutDivSize.width / minimizedLayoutsMinWidth);
-        elementsInLastRow = minimizedLayouts.length % elementsPerRow || elementsPerRow;
-        rows = Math.ceil(minimizedLayouts.length / elementsPerRow);
-    }
-
-    function computeModuleLayoutProps(moduleInstance: ModuleInstance<any, any>) {
-        const moduleId = moduleInstance.getId();
-        const layoutElement = layout.find((element) => element.moduleInstanceId === moduleId);
-
-        if (!layoutElement) return null;
-
-        // Standard tiling layout.
-        // ! Always uses the tiled layout if we're adjusting the layout
-        if (!maximizedLayouts.length || draggedModuleInstanceId) {
-            const rect = convertLayoutRectToRealRect(layoutElement, layoutDivSize);
-
-            return { width: rect.width, height: rect.height, x: rect.x, y: rect.y };
-        }
-
-        // Maximized view. One module takes up all the space, other ones are minimized
-        // Positions is computed, so old tile-layout is stored
-        if (layoutElement?.maximized) {
-            return {
-                x: 0,
-                y: minimizedLayoutsHeight * rows,
-                height: layoutDivSize.height - minimizedLayoutsHeight * rows,
-                width: layoutDivSize.width,
-                isMaximized: true,
-            };
-        } else {
-            const idx = minimizedLayouts.findIndex((l) => l.moduleInstanceId === moduleId);
-
-            const col = idx % elementsPerRow;
-            const row = Math.floor(idx / elementsPerRow);
-            const isLastRow = idx >= minimizedLayouts.length - elementsInLastRow;
-
-            const adjustedWidth = layoutDivSize.width / elementsPerRow;
-            const lastRowAdjustedWidth = layoutDivSize.width / elementsInLastRow;
-
-            const width = isLastRow ? lastRowAdjustedWidth : adjustedWidth;
-
-            return {
-                x: col * width,
-                y: row * minimizedLayoutsHeight,
-                height: minimizedLayoutsHeight,
-                width,
-                isMinimized: true,
-            };
-        }
-    }
+    const showEmptyLayout = moduleInstances.length === 0 && !isSwitchingDashboard;
 
     return (
-        <div ref={mainRef} className="flex h-full w-full max-w-full flex-col">
-            <div ref={ref} data-testid="module-layout" className="relative grow">
-                {layoutBoxRef.current && draggedModuleInstanceId !== null && (
-                    <LayoutBoxComponents
-                        active={draggedModuleInstanceId}
-                        layoutBox={layoutBoxRef.current}
-                        realSize={layoutDivSize}
-                        zIndex={1}
-                        pointer={pointer}
-                    />
-                )}
-
-                {moduleInstances.map((instance) => {
-                    const layoutProps = computeModuleLayoutProps(instance);
-                    const isDragged = draggedModuleInstanceId === instance.getId();
-
-                    if (!layoutProps) return null;
-
-                    return (
-                        <ViewWrapper
-                            key={instance.getId()}
-                            moduleInstance={instance}
-                            workbench={props.workbench}
-                            isDragged={isDragged}
-                            dragPosition={position}
-                            changingLayout={draggedModuleInstanceId !== null}
-                            {...layoutProps}
-                        />
-                    );
-                })}
-                {makeTempViewWrapperPlaceholder()}
-                {moduleInstances.length === 0 && draggedModuleInstanceId === null && !isSwitchingDashboard && (
-                    <EmptyLayout workbench={props.workbench} />
-                )}
+        <div className="flex h-full w-full max-w-full flex-col">
+            {minimizedModuleInstances.length > 0 && (
+                // While a module is maximized, the others are shown as headers only; their views stay mounted in
+                // the (hidden) dockview groups
+                <div className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
+                    {minimizedModuleInstances.map((instance) => (
+                        <div key={instance.getId()} className="border-neutral-subtle border">
+                            <Header workbench={props.workbench} moduleInstance={instance} isMinimized />
+                        </div>
+                    ))}
+                </div>
+            )}
+            <div data-testid="module-layout" className="relative min-h-0 grow">
+                <DockviewModuleLayout
+                    layout={layout}
+                    onLayoutChange={handleLayoutChange}
+                    renderModule={renderModule}
+                    onNewModuleDrop={handleNewModuleDrop}
+                    maximizedModuleInstanceId={maximizedModuleInstanceId}
+                    readOnly={isSnapshot}
+                    emptyContent={showEmptyLayout ? <EmptyLayout workbench={props.workbench} /> : null}
+                />
                 {isSwitchingDashboard && (
                     // Covers the outgoing dashboard's content the instant a tab switch is
                     // requested (before the still-synchronous switch itself runs and blocks the

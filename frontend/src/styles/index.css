@@ -6,6 +6,7 @@
 
 @import "tailwindcss";
 @import "@equinor/eds-tokens/css/variables.css";
+@import "dockview-react/dist/styles/dockview.css";
 
 /* Theme (tokens) */
 @import "./theme/foundation.css";
@@ -38,6 +39,7 @@
 /* Temporary override for Plotly.js, to be removed once we migrate to echarts */
 @import "./components/plot.css";
 @import "./components/setting-wrapper.css";
+@import "./components/dockview.css";
 
 /* Base styles */
 @import "./base/app.css";

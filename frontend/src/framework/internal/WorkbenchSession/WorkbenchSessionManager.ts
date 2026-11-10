@@ -11,7 +11,7 @@ import {
 import { ConfirmationService } from "@framework/ConfirmationService";
 import { EnsembleFingerprintStore } from "@framework/EnsembleFingerprintStore";
 import type { GuiMessageBroker } from "@framework/GuiMessageBroker";
-import { GuiEvent, GuiState, RightDrawerContent } from "@framework/GuiMessageBroker";
+import { GuiEvent, GuiState, requestSettingsPanel, SettingsPanel } from "@framework/GuiMessageBroker";
 import type { Template } from "@framework/TemplateRegistry";
 import { toastManager } from "@framework/toastManager";
 import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
@@ -44,7 +44,6 @@ import { localStorageKeyForSessionId } from "./utils/localStorageHelpers";
 import { buildWorkbenchUrl, readWorkbenchUrlLocation, UrlError, type WorkbenchUrlLocation } from "./utils/url";
 import type { WorkbenchSessionDataContainer } from "./utils/WorkbenchSessionDataContainer";
 
-const SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT = 15;
 
 export enum SessionPersistenceAction {
     SAVE = "save",
@@ -310,13 +309,9 @@ export class WorkbenchSessionManager implements PublishSubscribe<WorkbenchSessio
 
             await this.setActiveSession(snapshot);
 
-            if (this._guiMessageBroker.getState(GuiState.RightDrawerContent) === RightDrawerContent.ModulesList) {
-                this._guiMessageBroker.setState(
-                    GuiState.RightDrawerContent,
-                    RightDrawerContent.RealizationFilterSettings,
-                );
-                this._guiMessageBroker.setState(GuiState.RightSettingsPanelWidthInPercent, 0);
-            }
+            // Modules and realization filters cannot be changed in snapshots
+            requestSettingsPanel(this._guiMessageBroker, SettingsPanel.ModulesList, "hide");
+            requestSettingsPanel(this._guiMessageBroker, SettingsPanel.RealizationFilterSettings, "hide");
 
             return true;
         } catch (error: any) {
@@ -585,13 +580,7 @@ export class WorkbenchSessionManager implements PublishSubscribe<WorkbenchSessio
 
             const activeDashboard = session.getActiveDashboard();
             if (activeDashboard && activeDashboard.getLayout().length === 0) {
-                this._guiMessageBroker.setState(GuiState.RightDrawerContent, RightDrawerContent.ModulesList);
-                if (this._guiMessageBroker.getState(GuiState.RightSettingsPanelWidthInPercent) === 0) {
-                    this._guiMessageBroker.setState(
-                        GuiState.RightSettingsPanelWidthInPercent,
-                        SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT,
-                    );
-                }
+                requestSettingsPanel(this._guiMessageBroker, SettingsPanel.ModulesList);
             }
 
             this._activeSession = session;

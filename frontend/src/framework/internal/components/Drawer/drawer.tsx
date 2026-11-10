@@ -7,6 +7,12 @@ import { MenuCompositions } from "@lib/components/Menu/compositions";
 import { TextInput } from "@lib/components/TextInput";
 import { Tooltip } from "@lib/components/Tooltip";
 
+/**
+ * Set where drawers are shown in a container that already shows their title and close button, like the settings
+ * dock's tabs. The header is then only shown for the drawer's actions, next to its title.
+ */
+export const DrawerHasExternalHeaderContext = React.createContext(false);
+
 export type DrawerFilterItem<T extends string | number> = {
     icon: React.ReactNode;
     label: React.ReactNode;
@@ -60,17 +66,19 @@ export function Drawer<T extends string | number>(props: DrawerProps<T>) {
         [onFilterItemSelectionChange, props.filterItems],
     );
 
+    const hasExternalHeader = React.useContext(DrawerHasExternalHeaderContext);
+
     const showFilter = props.filterItems && props.filterItems.length > 0;
-    const showHeader = props.icon || props.title || props.onClose || props.actions;
+    const showHeader = hasExternalHeader ? !!props.actions : props.icon || props.title || props.onClose || props.actions;
 
     return (
         <div className={`bg-surface flex h-full min-h-0 flex-col ${props.visible ? "" : "hidden"}`}>
             {showHeader && (
                 <div className="bg-canvas py-3xs px-2xs border-neutral-subtle gap-x-xs flex items-center justify-center border-b">
-                    <span className="icon-font-size-small contents">{props.icon}</span>
+                    {!hasExternalHeader && <span className="icon-font-size-small contents">{props.icon}</span>}
                     <span className="text-header-xs font-bolder grow p-0">{props.title}</span>
                     {props.actions}
-                    {props.onClose && (
+                    {props.onClose && !hasExternalHeader && (
                         <Tooltip content="Close">
                             <Button variant="ghost" tone="neutral" iconOnly onClick={props.onClose} size="small">
                                 <Close fontSize="inherit" />

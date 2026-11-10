@@ -6,7 +6,6 @@ import { GuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { ActiveSessionBoundary } from "@framework/internal/components/ActiveSessionBoundary";
 import { LoadingOverlay } from "@framework/internal/components/LoadingOverlay";
 import { SelectEnsemblesDialog } from "@framework/internal/components/SelectEnsemblesDialog";
-import { SettingsContentPanels } from "@framework/internal/components/SettingsContentPanels";
 import { TopBar } from "@framework/internal/components/TopBar/topBar";
 import { WorkbenchSessionManagerTopic } from "@framework/internal/WorkbenchSession/WorkbenchSessionManager";
 import { Workbench } from "@framework/Workbench";
@@ -25,12 +24,12 @@ import { InitialEnsemblesLoadingErrorInfoDialog } from "../InitialEnsemblesLoadi
 import { InitialEnsemblesLoadingWarningInfoDialog } from "../InitialEnsemblesLoadingWarningInfoDialog";
 import { MultiSessionsRecoveryDialog } from "../MultiSessionsRecoveryDialog";
 import { PersistenceManagementDialog } from "../PersistenceManagementDialog";
-import { RightSideBar } from "../RightSideBar";
 import { SaveSessionDialog } from "../SaveSessionDialog";
 import { SessionErrorDialog } from "../SessionErrorDialog";
 import { StartPage } from "../StartPage/StartPage";
 import { TemplatesDialog } from "../TemplatesDialog/templatesDialog";
 import { TutorialsDialog } from "../TutorialsDialog/tutorialsDialog";
+import { WorkbenchSettingsDock } from "../WorkbenchSettingsDock";
 
 export function WorkbenchWrapper() {
     // Workbench must be kept as a state in order to keep it when any framework code is changed in dev mode.
@@ -93,10 +92,7 @@ export function WorkbenchWrapper() {
                     <CreateSnapshotDialog workbench={workbench} />
                     <ActiveSessionRecoveryDialog workbench={workbench} />
                     <div className="min-h-0 grow">
-                        <div className="flex h-full w-full flex-row">
-                            <SettingsContentPanels workbench={workbench} />
-                            <RightSideBar workbench={workbench} />
-                        </div>
+                        <WorkbenchSettingsDock workbench={workbench} />
                     </div>
                     <BottomBar workbench={workbench} />
                 </ActiveDashboardBoundary>

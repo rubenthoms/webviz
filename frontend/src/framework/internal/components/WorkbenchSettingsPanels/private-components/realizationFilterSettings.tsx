@@ -5,7 +5,7 @@ import { isEqual } from "lodash-es";
 
 import type { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
 import type { GuiEventPayloads } from "@framework/GuiMessageBroker";
-import { GuiEvent, GuiState, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
+import { GuiEvent, GuiState, SettingsPanel, useGuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { Drawer } from "@framework/internal/components/Drawer";
 import type { EnsembleRealizationFilterSelections } from "@framework/internal/components/EnsembleRealizationFilter";
 import { EnsembleRealizationFilter } from "@framework/internal/components/EnsembleRealizationFilter";
@@ -27,7 +27,9 @@ export const RealizationFilterSettings = React.memo(function RealizationFilterSe
     props: RealizationFilterSettingsProps,
 ) {
     const guiMessageBroker = props.workbench.getGuiMessageBroker();
-    const rightSettingsPanelWidth = useGuiValue(guiMessageBroker, GuiState.RightSettingsPanelWidthInPercent);
+    const isPanelVisible = useGuiValue(guiMessageBroker, GuiState.VisibleSettingsPanels).includes(
+        SettingsPanel.RealizationFilterSettings,
+    );
     const ensembleSet = usePublishSubscribeTopicValue(
         props.workbench.getSessionManager().getActiveSession(),
         WorkbenchSessionTopic.ENSEMBLE_SET,
@@ -95,8 +97,8 @@ export const RealizationFilterSettings = React.memo(function RealizationFilterSe
         ],
     );
 
-    // Set no active filter if the settings panel is closed
-    if (rightSettingsPanelWidth < 5 && activeFilterEnsembleIdent !== null) {
+    // Set no active filter if the settings panel is not visible
+    if (!isPanelVisible && activeFilterEnsembleIdent !== null) {
         setActiveFilterEnsembleIdent(null);
     }
 

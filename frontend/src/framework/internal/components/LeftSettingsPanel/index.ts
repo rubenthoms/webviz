@@ -1,1 +1,0 @@
-export { LeftSettingsPanel } from "./leftSettingsPanel";

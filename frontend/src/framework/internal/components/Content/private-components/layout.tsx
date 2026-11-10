@@ -5,8 +5,8 @@ import { WebAssetOff } from "@mui/icons-material";
 import {
     GuiEvent,
     GuiState,
-    RightDrawerContent,
-    useGuiState,
+    requestSettingsPanel,
+    SettingsPanel,
     useGuiValue,
     type GuiEventPayloads,
 } from "@framework/GuiMessageBroker";
@@ -20,10 +20,6 @@ import { Paragraph } from "@lib/components/Typography/compositions";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 
 import { useActiveSession } from "../../ActiveSessionBoundary";
-import {
-    SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT,
-    SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT,
-} from "../../SettingsContentPanels/";
 
 import { DockviewModuleLayout, type ModuleDragHandlers } from "./dockviewLayout/dockviewModuleLayout";
 import { ViewWrapper } from "./ViewWrapper";
@@ -161,19 +157,12 @@ type EmptyLayoutProps = {
 
 function EmptyLayout(props: EmptyLayoutProps) {
     const guiMessageBroker = props.workbench.getGuiMessageBroker();
-    const [rightDrawerContent, setRightDrawerContent] = useGuiState(guiMessageBroker, GuiState.RightDrawerContent);
-    const [rightSettingsPanelWidth, setRightSettingsPanelWidth] = useGuiState(
-        guiMessageBroker,
-        GuiState.RightSettingsPanelWidthInPercent,
-    );
+    const visibleSettingsPanels = useGuiValue(guiMessageBroker, GuiState.VisibleSettingsPanels);
     const activeSession = useActiveSession();
     const isSnapshot = usePublishSubscribeTopicValue(activeSession, PrivateWorkbenchSessionTopic.IS_SNAPSHOT);
 
     function openModulesList() {
-        setRightDrawerContent(RightDrawerContent.ModulesList);
-        if (rightSettingsPanelWidth <= SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT) {
-            setRightSettingsPanelWidth(SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT);
-        }
+        requestSettingsPanel(guiMessageBroker, SettingsPanel.ModulesList);
     }
 
     function makeContent() {
@@ -192,7 +181,7 @@ function EmptyLayout(props: EmptyLayoutProps) {
                 <Paragraph size="sm" tone="neutral" layoutClassName="text-center">
                     Drag modules here from the modules list.
                 </Paragraph>
-                {rightDrawerContent !== RightDrawerContent.ModulesList && (
+                {!visibleSettingsPanels.includes(SettingsPanel.ModulesList) && (
                     <Button onClick={openModulesList}>Open Modules List</Button>
                 )}
             </>

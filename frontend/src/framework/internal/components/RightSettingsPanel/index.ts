@@ -1,1 +1,0 @@
-export { RightSettingsPanel } from "./rightSettingsPanel";

@@ -2,7 +2,7 @@ import React from "react";
 
 import { Block } from "@mui/icons-material";
 
-import { GuiState, useGuiState } from "@framework/GuiMessageBroker";
+import { GuiState, requestSettingsPanel, SettingsPanel, useGuiValue } from "@framework/GuiMessageBroker";
 import { useDashboard } from "@framework/internal/components/DashboardContext";
 import { DashboardTopic } from "@framework/internal/Dashboard";
 import { useStatusControllerStateValue } from "@framework/internal/ModuleInstanceStatusControllerInternal";
@@ -20,10 +20,7 @@ type ActionRequiredOverlayBarProps = {
 
 export function ActionRequiredOverlayBar(props: ActionRequiredOverlayBarProps): React.ReactNode {
     const { dashboard } = useDashboard();
-    const [isLeftSettingsPanelCollapsed, setLeftSettingsPanelIsCollapsed] = useGuiState(
-        props.workbench.getGuiMessageBroker(),
-        GuiState.LeftSettingsPanelIsCollapsed,
-    );
+    const visibleSettingsPanels = useGuiValue(props.workbench.getGuiMessageBroker(), GuiState.VisibleSettingsPanels);
 
     const hotStatusMessages = useStatusControllerStateValue(
         props.moduleInstance.getStatusController(),
@@ -33,7 +30,8 @@ export function ActionRequiredOverlayBar(props: ActionRequiredOverlayBarProps): 
 
     const messages = hotStatusMessages.filter((entry) => entry.type === StatusMessageType.ActionRequired);
     const isActiveModuleWithSettingsOpen =
-        props.moduleInstance.getId() === activeModuleInstanceId && !isLeftSettingsPanelCollapsed;
+        props.moduleInstance.getId() === activeModuleInstanceId &&
+        visibleSettingsPanels.includes(SettingsPanel.ModuleSettings);
 
     if (messages.length === 0 || isActiveModuleWithSettingsOpen) {
         return null;
@@ -41,7 +39,7 @@ export function ActionRequiredOverlayBar(props: ActionRequiredOverlayBarProps): 
 
     function handleGoToSettings() {
         dashboard.setActiveModuleInstanceId(props.moduleInstance.getId());
-        setLeftSettingsPanelIsCollapsed(false);
+        requestSettingsPanel(props.workbench.getGuiMessageBroker(), SettingsPanel.ModuleSettings);
     }
 
     return (

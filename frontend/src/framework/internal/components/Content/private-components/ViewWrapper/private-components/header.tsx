@@ -15,12 +15,8 @@ import {
     Warning,
 } from "@mui/icons-material";
 
-import { GuiEvent, GuiState, RightDrawerContent, useGuiValue, useSetGuiState } from "@framework/GuiMessageBroker";
+import { GuiEvent, GuiState, requestSettingsPanel, SettingsPanel, useGuiValue } from "@framework/GuiMessageBroker";
 import { useDashboard } from "@framework/internal/components/DashboardContext";
-import {
-    SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT,
-    SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT,
-} from "@framework/internal/components/SettingsContentPanels";
 import { ChannelManagerNotificationTopic } from "@framework/internal/DataChannels/ChannelManager";
 import { useStatusControllerStateValue } from "@framework/internal/ModuleInstanceStatusControllerInternal";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
@@ -94,21 +90,12 @@ export const Header: React.FC<HeaderProps> = (props) => {
         [guiMessageBroker, moduleInstanceId],
     );
 
-    const setRightSettingsPanelWidth = useSetGuiState(guiMessageBroker, GuiState.RightSettingsPanelWidthInPercent);
-    const setRightDrawerContent = useSetGuiState(guiMessageBroker, GuiState.RightDrawerContent);
-
     const showLog = React.useCallback(
         function showLog() {
-            if (
-                guiMessageBroker.getState(GuiState.RightSettingsPanelWidthInPercent) <=
-                SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT
-            ) {
-                setRightSettingsPanelWidth(SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT);
-            }
             dashboard.setActiveModuleInstanceId(moduleInstanceId);
-            setRightDrawerContent(RightDrawerContent.ModuleInstanceLog);
+            requestSettingsPanel(guiMessageBroker, SettingsPanel.ModuleInstanceLog);
         },
-        [guiMessageBroker, setRightSettingsPanelWidth, dashboard, moduleInstanceId, setRightDrawerContent],
+        [guiMessageBroker, dashboard, moduleInstanceId],
     );
 
     const headerRef = React.useRef<HTMLDivElement>(null);
@@ -713,23 +700,14 @@ function StatusIndicator(props: StatusIndicatorProps): React.ReactNode {
     const isLoading = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "loading");
     const statusMessages = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "hotMessageCache");
     const log = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "log");
-    const setRightDrawerContent = useSetGuiState(guiMessageBroker, GuiState.RightDrawerContent);
-    const setRightSettingsPanelWidth = useSetGuiState(guiMessageBroker, GuiState.RightSettingsPanelWidthInPercent);
 
     function handleShowLogClick(e: BaseUIEvent<React.MouseEvent<HTMLButtonElement, MouseEvent>>) {
         e.preventDefault();
         e.stopPropagation();
 
-        if (
-            guiMessageBroker.getState(GuiState.RightSettingsPanelWidthInPercent) <=
-            SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT
-        ) {
-            setRightSettingsPanelWidth(SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT);
-        }
-
         popoverActionRef.current?.close();
         dashboard.setActiveModuleInstanceId(props.moduleInstance.getId());
-        setRightDrawerContent(RightDrawerContent.ModuleInstanceLog);
+        requestSettingsPanel(guiMessageBroker, SettingsPanel.ModuleInstanceLog);
     }
 
     function makeHotStatusMessages(): React.ReactNode {

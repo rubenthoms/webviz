@@ -6,23 +6,26 @@ import type { EnsembleLoadingErrorInfoMap, EnsembleLoadingWarningInfoMap } from 
 import type { SessionPersistenceAction } from "./internal/WorkbenchSession/WorkbenchSessionManager";
 import type { UnsavedChangesAction } from "./types/unsavedChangesAction";
 
-export enum RightDrawerContent {
+/** The panels of the settings dock around the module layout */
+export enum SettingsPanel {
+    ModuleSettings = "ModuleSettings",
+    SyncSettings = "SyncSettings",
+    ModulesList = "ModulesList",
     RealizationFilterSettings = "RealizationFilterSettings",
     ModuleInstanceLog = "ModuleInstanceLog",
-    ModulesList = "ModulesList",
-    TemplatesList = "TemplatesList",
     ColorPaletteSettings = "ColorPaletteSettings",
 }
 
+export type SettingsPanelRequest = { panel: SettingsPanel; action: "show" | "hide" };
+
 export enum GuiState {
-    RightDrawerContent = "rightDrawerContent",
-    LeftSettingsPanelIsCollapsed = "leftSettingsPanelIsCollapsed",
-    LeftSettingsPanelWidthInPercent = "leftSettingsPanelWidthInPercent",
+    /** Queued requests to show/hide settings panels; consumed by the settings dock once it is mounted */
+    SettingsPanelRequests = "settingsPanelRequests",
+    /** Settings panels the user can currently see, i.e. the active tab of a shown group */
+    VisibleSettingsPanels = "visibleSettingsPanels",
     DataChannelConnectionLayerVisible = "dataChannelConnectionLayerVisible",
     DevToolsVisible = "devToolsVisible",
     EditDataChannelConnections = "editDataChannelConnections",
-    RightSettingsPanelIsCollapsed = "rightSettingsPanelIsCollapsed",
-    RightSettingsPanelWidthInPercent = "rightSettingsPanelWidthInPercent",
     AppInitialized = "appInitialized",
     NumberOfUnsavedRealizationFilters = "numberOfUnsavedRealizationFilters",
     NumberOfEffectiveRealizationFilters = "numberOfEffectiveRealizationFilters",
@@ -61,7 +64,6 @@ export enum GuiEvent {
     DataChannelNodeHover = "dataChannelNodeHover",
     DataChannelNodeUnhover = "dataChannelNodeUnhover",
     UnsavedRealizationFilterSettingsAction = "unsavedRealizationFilterSettingsAction",
-    RequestRightSettingsPanelClose = "requestRightSettingsPanelClose",
     SessionPersistenceError = "sessionPersistenceError",
 }
 
@@ -99,14 +101,11 @@ export type GuiEventPayloads = {
 };
 
 type GuiStateValueTypes = {
-    [GuiState.RightDrawerContent]: RightDrawerContent | undefined;
-    [GuiState.LeftSettingsPanelIsCollapsed]: boolean;
-    [GuiState.LeftSettingsPanelWidthInPercent]: number;
+    [GuiState.SettingsPanelRequests]: SettingsPanelRequest[];
+    [GuiState.VisibleSettingsPanels]: SettingsPanel[];
     [GuiState.DataChannelConnectionLayerVisible]: boolean;
     [GuiState.DevToolsVisible]: boolean;
     [GuiState.EditDataChannelConnections]: boolean;
-    [GuiState.RightSettingsPanelIsCollapsed]: boolean;
-    [GuiState.RightSettingsPanelWidthInPercent]: number;
     [GuiState.AppInitialized]: boolean;
     [GuiState.NumberOfUnsavedRealizationFilters]: number;
     [GuiState.NumberOfEffectiveRealizationFilters]: number;
@@ -133,13 +132,10 @@ type GuiStateValueTypes = {
 };
 
 const defaultStates: Map<GuiState, any> = new Map();
-defaultStates.set(GuiState.RightDrawerContent, undefined);
-defaultStates.set(GuiState.LeftSettingsPanelIsCollapsed, false);
-defaultStates.set(GuiState.LeftSettingsPanelWidthInPercent, 30);
+defaultStates.set(GuiState.SettingsPanelRequests, []);
+defaultStates.set(GuiState.VisibleSettingsPanels, []);
 defaultStates.set(GuiState.DataChannelConnectionLayerVisible, false);
 defaultStates.set(GuiState.DevToolsVisible, isDevMode());
-defaultStates.set(GuiState.RightSettingsPanelIsCollapsed, false);
-defaultStates.set(GuiState.RightSettingsPanelWidthInPercent, 0);
 defaultStates.set(GuiState.AppInitialized, false);
 defaultStates.set(GuiState.NumberOfUnsavedRealizationFilters, 0);
 defaultStates.set(GuiState.NumberOfEffectiveRealizationFilters, 0);
@@ -164,15 +160,7 @@ defaultStates.set(GuiState.EnsembleLoadingWarningInfoDialogOpen, false);
 defaultStates.set(GuiState.IsActionBarVisible, true);
 defaultStates.set(GuiState.IsSwitchingDashboard, false);
 
-const persistentStates: GuiState[] = [
-    GuiState.LeftSettingsPanelIsCollapsed,
-    GuiState.LeftSettingsPanelWidthInPercent,
-    GuiState.DevToolsVisible,
-    GuiState.RightSettingsPanelIsCollapsed,
-    GuiState.RightSettingsPanelWidthInPercent,
-    GuiState.RightDrawerContent,
-    GuiState.IsActionBarVisible,
-];
+const persistentStates: GuiState[] = [GuiState.DevToolsVisible, GuiState.IsActionBarVisible];
 
 export class GuiMessageBroker {
     private _eventListeners: Map<GuiEvent, Set<(event: any) => void>>;
@@ -379,4 +367,19 @@ export function useSetGuiState<T extends GuiState>(
         },
         [guiMessageBroker, state],
     );
+}
+
+/**
+ * Asks the settings dock to show or hide a settings panel. Requests are queued, so they also work before the dock is
+ * mounted (e.g. while a session is being loaded).
+ */
+export function requestSettingsPanel(
+    guiMessageBroker: GuiMessageBroker,
+    panel: SettingsPanel,
+    action: SettingsPanelRequest["action"] = "show",
+): void {
+    guiMessageBroker.setState(GuiState.SettingsPanelRequests, [
+        ...guiMessageBroker.getState(GuiState.SettingsPanelRequests),
+        { panel, action },
+    ]);
 }

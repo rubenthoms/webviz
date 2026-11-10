@@ -30,7 +30,6 @@ export function makeGridCellFluxLayer(
     if (!data) {
         return null;
     }
-    console.log(data);
 
     return new GridCellFluxLayer({
         id: id,

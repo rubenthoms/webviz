@@ -6,6 +6,7 @@ import {
 } from "@api";
 import { makeCacheBustingQueryParam } from "@framework/utils/queryUtils";
 import { sortTimeOrIntervalArray } from "@lib/utils/arrays";
+import { DEFAULT_PARTICLE_DENSITIES } from "@modules/_shared/customDeckGlLayers/AnimatedParticleLayer/constants";
 import {
     getAvailableEnsembleIdentsForField,
     getAvailableRealizationsForEnsembleIdent,
@@ -47,9 +48,11 @@ const gridCellFluxSettings = [
     Setting.GRID_LAYER_K,
     Setting.TIME_OR_INTERVAL,
     Setting.PHASE,
-    // TODO: just her to toggle debug, remove later
-    Setting.SHOW_CELL_INDICES,
+    Setting.VELOCITY_SCALE,
+    Setting.PARTICLE_AMOUNT,
     Setting.SHOW_GRID_LINES,
+    // TODO: just here to show debug info, remove later
+    Setting.SHOW_CELL_INDICES,
     Setting.SHOW_CELL_VELOCITY,
 ] as const;
 
@@ -234,6 +237,10 @@ export class RealizationGridCellFluxFlowProvider implements CustomDataProviderIm
             },
         });
 
+        setting(Setting.PARTICLE_AMOUNT).bindValueConstraints({
+            resolve: () => DEFAULT_PARTICLE_DENSITIES,
+        });
+
         const gridData = makeSharedResult({
             debugName: "RealizationGridCellFluxData",
             read(read) {
@@ -337,5 +344,12 @@ export class RealizationGridCellFluxFlowProvider implements CustomDataProviderIm
                 return { i: dims.i_count, j: dims.j_count, k: dims.k_count };
             },
         });
+    }
+
+    getDefaultSettingsValues() {
+        return {
+            [Setting.PARTICLE_AMOUNT]: 500_000,
+            [Setting.VELOCITY_SCALE]: 5,
+        };
     }
 }

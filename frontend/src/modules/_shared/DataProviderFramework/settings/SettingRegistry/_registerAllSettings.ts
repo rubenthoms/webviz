@@ -147,7 +147,7 @@ SettingRegistry.registerSetting(Setting.PHASE, "Phase", RadioGroupSetting, {
         {
             staticOptions: [
                 { value: "oil", label: "Oil" },
-                { value: "gase", label: "Gas" },
+                { value: "gas", label: "Gas" },
                 { value: "water", label: "Water" },
             ],
             layout: "horizontal",
@@ -213,6 +213,10 @@ SettingRegistry.registerSetting(Setting.FLOW_FILTER_TYPE, "Flow Data Filter", Ra
             layout: "horizontal",
         },
     ],
+});
+SettingRegistry.registerSetting(Setting.PARTICLE_AMOUNT, "Particle Density", DropdownNumberSetting);
+SettingRegistry.registerSetting(Setting.VELOCITY_SCALE, "Velocity Scale", InputNumberSetting, {
+    customConstructorParameters: [{ min: 0, max: 10 }],
 });
 
 SettingRegistry.registerSetting(Setting.__TEST__GRID_INDEX, "Grid Index", DropdownNumberSetting);

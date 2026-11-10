@@ -1,8 +1,7 @@
-// import type { Position } from "@deck.gl/core";
-
 import type { Position } from "@deck.gl/core";
 
-import { FACE_CORNERS, type FaceData, type Faces } from "./types";
+import { FACE_CORNERS } from "./constants";
+import { type FaceData, type Faces } from "./types";
 
 export function flattenFaceData<TData>(faceData: FaceData<TData>) {
     return [faceData["I"], faceData["J"], faceData["K"], faceData["-I"], faceData["-J"], faceData["-K"]];

@@ -1,16 +1,25 @@
-import type { CompositeLayerProps, DefaultProps, Layer, LayersList, UpdateParameters } from "@deck.gl/core";
+import type {
+    CompositeLayerProps,
+    DefaultProps,
+    Layer,
+    LayerContext,
+    LayersList,
+    UpdateParameters,
+} from "@deck.gl/core";
 import { CompositeLayer } from "@deck.gl/core";
 import { range } from "lodash-es";
 
-import { cross, fromArray, length, subtract, type Vec3 } from "@lib/utils/vec3";
+import { cross, fromArray, length, subtract } from "@lib/utils/vec3";
 
+import { PHASE_COLORS_RGB } from "../constants/colors";
 import type { GridCellFluxData, GridCellFluxPhaseFlux } from "../DataProviderFramework/visualization/utils/types";
 import type { Direction, Phase } from "../types/grid";
 
 import { AnimatedParticleLayer } from "./AnimatedParticleLayer";
+import { FACE_VELOCITY_VECTOR } from "./AnimatedParticleLayer/constants";
 import type { GridCellLayerProps } from "./AnimatedParticleLayer/GridCellLayer";
 import { GridCellLayer } from "./AnimatedParticleLayer/GridCellLayer";
-import { FACE_VELOCITY_VECTOR, type FaceData, type GridCell } from "./AnimatedParticleLayer/types";
+import { type FaceData, type GridCell } from "./AnimatedParticleLayer/types";
 import { makeFaceData, mapFaceData } from "./AnimatedParticleLayer/utils";
 
 export enum SubLayerId {
@@ -24,11 +33,9 @@ export enum SubLayerId {
 
 export type GridPhaseFluxFlowLayerProps = CompositeLayerProps & {
     data: GridCellFluxData | null;
-    // phasesShown: Partial<FluxPhasesShownSetting>;
     phase: Phase;
-    // numParticles: 1000;
     velocityScale: number;
-
+    numParticles: number;
     debug?: GridCellLayerProps["debug"];
 };
 
@@ -47,98 +54,54 @@ const J_MINUS_FACE_CORNERS: readonly number[] = [0, 1, 4, 5];
 const K_PLUS_FACE_CORNERS: readonly number[] = [0, 1, 2, 3]; // base ring -- "K+" = into the layer below
 const K_MINUS_FACE_CORNERS: readonly number[] = [4, 5, 6, 7]; // base ring -- "K-" = into the layer above
 
-type ParticleData = {
-    cell: number | null;
-    age: number;
-
-    // Relative cell position
-    u: number;
-    v: number;
-    w: number;
-};
-
 export class GridPhaseFluxFlowLayer extends CompositeLayer<GridPhaseFluxFlowLayerProps> {
     static defaultProps: DefaultProps<GridPhaseFluxFlowLayerProps> = {
-        velocityScale: 1,
+        velocityScale: AnimatedParticleLayer.defaultProps.velocityScale,
+        numParticles: AnimatedParticleLayer.defaultProps.numParticles,
     };
 
     declare state: {
-        // World pos
-        cellCenters: Vec3[];
-        // For 2D, z value is ignored
-        // cellPhaseVelocities: Record<Phase, Vec3[]>;
-        // cellPhaseVelocities: Record<Phase, Vec3>[];
-
-        cellOilVelocities: Vec3[];
-        cellGasVelocities: Vec3[];
-        cellWaterVelocities: Vec3[];
-
-        cellIndices: number[];
-
-        // maxVelocity: number
-
         cellData: GridCell[];
         velocities: FaceData<number[]>[];
-
-        particles: ParticleData[];
-
-        // DEBUG_POLYGONS: { polygon: number[][]; color: number[] }[];
-        DEBUG_POLYGONS: { polygon: number[][]; color: number[] }[];
-        DEBUG_CENTERS: Vec3[];
     };
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    initializeState(context: LayerContext): void {
+        this.computeCellData();
+    }
 
     updateState({
         props,
+        oldProps,
         changeFlags,
     }: UpdateParameters<Layer<GridPhaseFluxFlowLayerProps & Required<CompositeLayerProps>>>): void {
-        if (!changeFlags.dataChanged) return;
+        if (changeFlags.dataChanged || props.phase !== oldProps.phase) {
+            this.computeCellData();
+        }
+    }
 
-        if (!props.data) {
+    computeCellData() {
+        if (!this.props.data) {
             this.setState({
                 cellVelocities: [],
-                cellIndices: [],
+                cellData: [],
             });
             return;
         }
 
-        const { nx, ny, activeUint8Arr, cellCornersFloat32Arr, phaseFlux } = props.data;
-        // const visiblePhase = phaseFlux[props.phase];
+        const { nx, ny, activeUint8Arr, cellCornersFloat32Arr, phaseFlux } = this.props.data;
 
-        // const centerPoints = computeCellCenters(props.data);
-
-        // const cellCenterPoints: Vec3[] = [];
-        // const particles: ParticleData[] = [];
-
-        // TODO: Handle inactive cells...
         const cellData: Partial<GridCell>[] = [];
         const velocities: FaceData<number[]>[] = [];
-        // const phaseVelocities: Record<Phase, Vec3>[] = [];
-
-        // const oilVelocities = [];
-        // const gasVelocities = [];
-        // const waterVelocities = [];
-
-        // const particles = range()
-        // const DEBUG_POLYGONS: { polygon: number[][]; color: number[] }[] = [];
-        // const DEBUG_CENTERS: Vec3[] = [];
 
         for (let cellIndex = 0; cellIndex < nx * ny; cellIndex++) {
-            // TODO
+            // TODO: Handle inactive cells more properly. The main issue is just figuring out the correct neighbor index
             // Inactive cells have been excluded from the simulation, and can be ignored
             // if (!activeUint8Arr[cellIndex]) {
             //     continue;
             // }
 
-            const cellNeighborIndices = getCellNeighborIndices(cellIndex, nx, ny, props.data.k, activeUint8Arr);
-            // TODO: Check for faults / inactive neighbors
-            //
-
-            // const iFacePlus = getFace("i", cellIndex);
-            // const jFacePlus = getFlux("j", cellIndex);
-            // const iFaceMinus = getFlux("i", cellNeighborIndices.iMinus) * -1;
-            // const jFaceMinus = getFlux("j", cellNeighborIndices.jMinus) * -1;
-
-            // const cellCenter = getCellCenter(cellCornersFloat32Arr, cellIndex);
+            const cellNeighborIndices = getCellNeighborIndices(cellIndex, nx, ny, this.props.data.k, activeUint8Arr);
 
             const faceCorners = getCellFaces(cellCornersFloat32Arr, cellIndex);
 
@@ -146,12 +109,12 @@ export class GridPhaseFluxFlowLayer extends CompositeLayer<GridPhaseFluxFlowLaye
                 velocities.push(makeFaceData([0, 0, 0]));
             } else {
                 const faceFluxes: FaceData<number> = {
-                    I: getFlux(phaseFlux, props.phase, "i", cellIndex),
-                    J: getFlux(phaseFlux, props.phase, "j", cellIndex),
+                    I: getFlux(phaseFlux, this.props.phase, "i", cellIndex),
+                    J: getFlux(phaseFlux, this.props.phase, "j", cellIndex),
                     K: 0,
                     // ! Positive values flows **inwards**, so we flip these
-                    "-I": getFlux(phaseFlux, props.phase, "i", cellNeighborIndices["-I"]) * -1,
-                    "-J": getFlux(phaseFlux, props.phase, "j", cellNeighborIndices["-J"]) * -1,
+                    "-I": getFlux(phaseFlux, this.props.phase, "i", cellNeighborIndices["-I"]) * -1,
+                    "-J": getFlux(phaseFlux, this.props.phase, "j", cellNeighborIndices["-J"]) * -1,
                     "-K": 0,
                 };
 
@@ -159,6 +122,7 @@ export class GridPhaseFluxFlowLayer extends CompositeLayer<GridPhaseFluxFlowLaye
                     const corners = faceCorners[face];
                     const faceArea = computeFaceArea(corners);
 
+                    // TODO: The velocities are just the local u/v/w speeds; when assuming uniform cells, the vector is only ever one component...
                     return FACE_VELOCITY_VECTOR[face].map((c) => (c * flux) / faceArea);
                 });
 
@@ -182,15 +146,20 @@ export class GridPhaseFluxFlowLayer extends CompositeLayer<GridPhaseFluxFlowLaye
             new AnimatedParticleLayer({
                 ...this.getSubLayerProps({ id: "particles" }),
                 data: this.state.cellData,
-                numParticles: 100_000,
-                maxAge: 4,
-                size: 3,
-                flat: true,
 
-                // expose as settings
-                velocityScale: 5,
+                numParticles: this.props.numParticles,
+                velocityScale: this.props.velocityScale,
+                maxAge: 5,
+                size: 12,
+                flat: true, // Cells are generally thin, so flat looks better
+
+                color: PHASE_COLORS_RGB[this.props.phase],
 
                 getFaceVelocities: (d, { index }) => this.state.velocities[index],
+
+                updateTriggers: {
+                    getFaceVelocities: this.state.velocities,
+                },
             }),
             new GridCellLayer({
                 ...this.getSubLayerProps({ id: "cell-visualizer" }),

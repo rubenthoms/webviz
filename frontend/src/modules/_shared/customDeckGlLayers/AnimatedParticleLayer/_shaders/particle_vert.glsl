@@ -7,6 +7,7 @@ in float instanceAge;
 flat out vec4 vColor;
 
 in vec3 instancePositions;
+in vec3 instanceVelocity;
 in int instanceCellIndex;
 
 // flat out vec3 DEB_particle_color;
@@ -47,39 +48,19 @@ void main() {
         corners[6].xyz * (one_minus_u * v * w) +
         corners[7].xyz * (u * v * w);
 
+    float speedDiff = clamp(length(instanceVelocity) / animatedCellParticles.maxVelocity, 0.0, 1.0);
+    
     gl_Position = project_position_to_clipspace(interpolatedPos, posLow, vec3(0.0), geometry.position);
-    // gl_PointSize = max(project_size_to_pixel(animatedCellParticles.size), 3.0);
-    // gl_PointSize = project_size_to_pixel(animatedCellParticles.size);
-    // gl_PointSize = animatedCellParticles.size;
-    gl_PointSize = animatedCellParticles.size / gl_Position.w;
+    gl_PointSize = mix(1.0, animatedCellParticles.size, speedDiff) / gl_Position.w;
 
 
     DECKGL_FILTER_GL_POSITION(gl_Position, geometry);
-    
-    vec4 color = vec4(0.0f);
-    DECKGL_FILTER_COLOR(color, geometry);
-    
-    // float alpha = 1.0 - instanceAge / animatedCellParticles.maxAge;
-    float alpha = 1.0;
-    
-    vColor = vec4(1.0, 0.0, 0.0, alpha);
 
-    // Debug colors based on cell index
-    // if        (instanceCellIndex == 0) {
-    //     vColor = vec4(1.0, 0.0, 0.0, alpha);
-    // } else if (instanceCellIndex == 1) {
-    //     vColor = vec4(0.0, 1.0, 0.0, alpha);
-    // } else if (instanceCellIndex == 2) {
-    //     vColor = vec4(0.0, 0.0, 1.0, alpha);
-    // } else if (instanceCellIndex == 3) {
-    //     vColor = vec4(1.0, 1.0, 0.0, alpha);
-    // } else if (instanceCellIndex == 4) {
-    //     vColor = vec4(1.0, 0.0, 1.0, alpha);
-    // } else if (instanceCellIndex == 5) {
-    //     vColor = vec4(0.0, 1.0, 1.0, alpha);
-    // } else if (instanceCellIndex == 6) {
-    //     vColor = vec4(0.0, 0.0, 0.0, alpha);
-    // } else if (instanceCellIndex == 7) {
-    //     vColor = vec4(0.5, 0.5, 0.5, alpha);
-    // }
+    vColor = animatedCellParticles.color;
+
+    // ALPHA ON SPEED?
+    float alpha = clamp(speedDiff, 0.7, 1.0);
+    vColor.a *= alpha;
+
+    DECKGL_FILTER_COLOR(vColor, geometry);
 }

@@ -5,10 +5,9 @@ import { LineLayer, SolidPolygonLayer, TextLayer } from "@deck.gl/layers";
 
 import { applyAccessor } from "@framework/utils/deckgl";
 import { length, fromArray } from "@lib/utils/vec3";
-import { positionAtLengthAlong } from "@modules/_shared/utils/polylineHoverUtils";
 
-import type { Faces, FaceData } from "./types";
-import { FACE_CORNERS, FACES } from "./types";
+import { FACES } from "./constants";
+import type { FaceData } from "./types";
 import { getFaceCenter, makeFaceData } from "./utils";
 
 export type GridCellLayerProps<TData = any> = {
@@ -182,42 +181,12 @@ export class GridCellLayer<TData> extends CompositeLayer<GridCellLayerProps<TDat
                         getFillColor: [...DEBUG_DIRECTION_COLORS[face], 255],
 
                         getPolygon: (d: TData, ctx: AccessorContext<TData>) => {
-                            /*
-                            const corners = applyAccessor(this.props.getCorners, d, ctx);
-                            const faceVelocity = applyAccessor(this.props.getFaceVelocities, d, ctx)[face];
-
-                            const faceCenter = getFaceCenter(corners, face);
-                            const cellCenter = getCellCenter(corners);
-
-                            const outwardDir = [faceCenter[0] - cellCenter[0], faceCenter[1] - cellCenter[1], 0];
-
-                            const dx = cellCenter[0] - faceCenter[0];
-                            const dy = cellCenter[1] - faceCenter[1];
-                            const dz = cellCenter[2]! - faceCenter[2]!;
-
-                            const arrowPosition = [
-                                faceCenter[0] + dx * 0.5,
-                                faceCenter[1] + dy * 0.5,
-                                faceCenter[2]! + dz * 0.5,
-                            ] as Position;
-
-                            // console.log(position);
-
-                            const arrowLength = length(fromArray(faceVelocity)) * this.props.velocityScale;
-                            // const arrowLength = 100;
-                            */
-
                             const cellCenter = getCellCenter(applyAccessor(this.props.getCorners, d));
                             const faceCenter = getFaceCenter(applyAccessor(this.props.getCorners, d), face);
                             const faceVelocities = applyAccessor(this.props.getFaceVelocities, d, ctx);
 
-                            if (ctx.index === 1503) {
-                                console.log(face, faceVelocities);
-                            }
-
                             const velocityVector = faceVelocities[face];
                             const arrowPosition = offsetPosition(faceCenter, DEBUG_VEL_ARROW_CENTER_OFFSET[face]);
-                            // const outwardDir =
                             const outwardDir = [faceCenter[0] - cellCenter[0], faceCenter[1] - cellCenter[1], 0];
 
                             const velocitySign = Math.sign(
@@ -253,8 +222,6 @@ const HEX_WIREFRAME_EDGES: readonly [number, number][] = [
 ];
 
 function buildWireframeEdges(corners: Position[]): LineDatum[] {
-    // const { nx, ny, cellCornersFloat32Arr, activeUint8Arr } = data;
-    // const lines: LineDatum[] = [];
     const lines: LineDatum[] = [];
 
     for (const [aIndex, bIndex] of HEX_WIREFRAME_EDGES) {

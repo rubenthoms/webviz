@@ -1,4 +1,4 @@
-import type { Accessor, AccessorContext, AccessorFunction, Layer, PickingInfo } from "@deck.gl/core";
+import type { Accessor, AccessorContext, AccessorFunction, Color, Layer, PickingInfo } from "@deck.gl/core";
 /**
  * Subsurface uses the modelMatrix prop to enable vertical scaling on layers, which causes the coordinates to no longer match the real world
  * coordinates (aka "normal" space). Built-in subsurface-comp layers will revert this when picking, but our custom layers do not. Use this
@@ -38,4 +38,8 @@ export function applyAccessor<In, Out>(
     }
 
     return accessor;
+}
+
+export function normalizeColor(color: Color): [number, number, number, number] {
+    return [color[0] / 255, color[1] / 255, color[2] / 255, (color[3] ?? 255) / 255];
 }

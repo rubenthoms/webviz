@@ -18,8 +18,9 @@ import type { DynamicTextureProps, SwapBuffers } from "@luma.gl/engine";
 import { DynamicTexture, Model, Swap, BufferTransform } from "@luma.gl/engine";
 import { range } from "lodash-es";
 
-import { applyAccessor } from "@framework/utils/deckgl";
+import { applyAccessor, normalizeColor } from "@framework/utils/deckgl";
 import { randomInteger } from "@framework/utils/numberUtils";
+import { fromArray, length } from "@lib/utils/vec3";
 
 import fragmentShader from "./_shaders/particle_frag.glsl?raw";
 import transformVertexShader from "./_shaders/particle_transform_vert.glsl?raw";
@@ -44,6 +45,12 @@ export type AnimatedParticleLayerProps<TData = GridCell> = LayerProps & {
     getFaceVelocities: Accessor<TData, FaceData<number[]>>;
     getNeighborCells: Accessor<TData, FaceData<number>>;
 };
+
+// TODO:
+// - Trails
+// - More proper update-state
+// - Accept precomputed grid buffer data
+// - Two-vector offset positions to reduce local jitter
 
 export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParticleLayerProps<TData>> {
     static layerName = "AnimatedParticleLayer";
@@ -84,6 +91,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
         gridFaceVelocitiesTexture: DynamicTexture;
         gridNeighborIndexTexture: DynamicTexture;
 
+        instanceVelocityBuffer: Buffer;
         // TODO: Temp test without randomization
         initialStartPositionBuffer: Buffer;
         initialStartCellIndexBuffer: Buffer;
@@ -91,6 +99,8 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
         //
         dataLoaded: boolean;
         lastTimeMs: number;
+
+        maxVelocity: number;
     };
 
     getNumInstances(): number {
@@ -117,9 +127,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
         });
     }
 
-    updateState({ props, oldProps }: UpdateParameters<AnimatedParticleLayer<TData>>): void {
-        // TODO
-
+    updateState({ props, oldProps, changeFlags }: UpdateParameters<AnimatedParticleLayer<TData>>): void {
         if (props.paused !== oldProps.paused) {
             this.setState({ isPaused: props.paused });
             if (!props.paused) {
@@ -127,20 +135,34 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
                 this.requestStep();
             }
         }
+
+        if (props.numParticles > oldProps.numParticles) {
+            this.setupTransformFeedback();
+            this.setupParticles();
+        }
+
+        if (changeFlags.dataChanged) {
+            this.createGridCellBuffers();
+        } else if (changeFlags.updateTriggersChanged) {
+            if (changeFlags.updateTriggersChanged["getFaceVelocities"]) {
+                this.createGridCellBuffers();
+            }
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     finalizeState(_context: LayerContext): void {
-        // TODO
-
-        this.state.model?.destroy();
-        this.state.transform?.destroy();
-        this.state.positionBuffers?.destroy();
-        this.state.cellIndexBuffers?.destroy();
-        this.state.ageBuffers?.destroy();
+        this.state.model.destroy();
+        this.state.transform.destroy();
+        this.state.positionBuffers.destroy();
+        this.state.cellIndexBuffers.destroy();
+        this.state.ageBuffers.destroy();
         this.state.gridCornerPosTexture.destroy();
         this.state.gridFaceVelocitiesTexture.destroy();
         this.state.gridNeighborIndexTexture.destroy();
+        this.state.instanceVelocityBuffer.destroy();
+        this.state.initialStartPositionBuffer.destroy();
+        this.state.initialStartCellIndexBuffer.destroy();
 
         this.setState({ dataLoaded: false });
     }
@@ -164,6 +186,8 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
             deltaTime: deltaTime,
             size: this.props.size,
             velocityScale: this.props.velocityScale,
+            maxVelocity: this.state.maxVelocity ?? 1,
+            color: normalizeColor(this.props.color),
         };
     }
 
@@ -174,12 +198,13 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
         parameters: any;
         context: LayerContext;
     }): void {
-        const { model, positionBuffers, cellIndexBuffers, ageBuffers } = this.state;
+        const { model, positionBuffers, cellIndexBuffers, ageBuffers, instanceVelocityBuffer } = this.state;
         const { shaderModuleProps = {} } = opts;
 
         if (!model || !this.state.dataLoaded) return;
 
         model.setAttributes({
+            instanceVelocity: instanceVelocityBuffer,
             instancePositions: positionBuffers.current,
             instanceCellIndex: cellIndexBuffers.current,
             instanceAge: ageBuffers.current,
@@ -227,7 +252,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
     private runTransform() {
         if (!this.state.dataLoaded) return;
 
-        const { transform, positionBuffers, cellIndexBuffers, ageBuffers } = this.state;
+        const { transform, positionBuffers, cellIndexBuffers, ageBuffers, instanceVelocityBuffer } = this.state;
 
         transform.model.setAttributes({
             instanceStartPositions: this.state.initialStartPositionBuffer,
@@ -255,6 +280,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
                 newPositions: positionBuffers.next,
                 newCellIndex: cellIndexBuffers.next,
                 newAge: ageBuffers.next,
+                instanceVelocity: instanceVelocityBuffer,
             },
         });
 
@@ -264,12 +290,19 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
     }
 
     private createGridCellBuffers() {
+        // Clean up old buffers
+        this.state.gridCornerPosTexture?.destroy();
+        this.state.gridFaceVelocitiesTexture?.destroy();
+        this.state.gridNeighborIndexTexture?.destroy();
+
         const { device } = this.context;
         const { data: grid } = this.props;
 
         // Each pixel stores three values: R=X,G=Y,B=Z,A=_
         const safeGridLength = Math.max(grid.length, 1);
         const gridTextureSize = Math.ceil(Math.sqrt(safeGridLength));
+
+        let maxVelocity = 0;
 
         const cellPositionTextureData: TypedArray[] = range(0, 8).map(() => {
             const slice = new Float32Array(gridTextureSize * gridTextureSize * 4);
@@ -317,6 +350,12 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
                 faceVelocityTextureData[i][offset + 1] = velocitiesFlattened[i][1];
                 faceVelocityTextureData[i][offset + 2] = velocitiesFlattened[i][2];
                 faceVelocityTextureData[i][offset + 3] = 0; // padding
+
+                const velocityMagnitude = length(fromArray(velocitiesFlattened[i]));
+
+                if (velocityMagnitude > maxVelocity) {
+                    maxVelocity = velocityMagnitude;
+                }
             }
 
             for (let i = 0; i < 2; i++) {
@@ -376,6 +415,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
         });
 
         this.setState({
+            maxVelocity: maxVelocity,
             gridTextureSize: gridTextureSize,
             gridCornerPosTexture: cellCornerTexture,
             gridFaceVelocitiesTexture: cellVelocitiesTexture,
@@ -401,6 +441,8 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
 
                 { name: "instanceStartPositions", format: "float32x3", stepMode: "instance" },
                 { name: "instanceStartCellIndex", format: "sint32", stepMode: "instance" },
+
+                { name: "instanceVelocity", format: "float32x3", stepMode: "instance" },
             ],
         });
 
@@ -414,6 +456,15 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
     }
 
     private setupTransformFeedback() {
+        // Clean up old buffers, if any existed
+        this.state.positionBuffers?.destroy();
+        this.state.cellIndexBuffers?.destroy();
+        this.state.ageBuffers?.destroy();
+        this.state.transform?.destroy();
+        this.state.instanceVelocityBuffer?.destroy();
+        this.state.initialStartPositionBuffer?.destroy();
+        this.state.initialStartCellIndexBuffer?.destroy();
+
         const { device } = this.context;
         const { numParticles } = this.props;
 
@@ -482,7 +533,7 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
                 { name: "instanceStartPositions", format: "float32x3", stepMode: "instance" },
                 { name: "instanceStartCellIndex", format: "sint32", stepMode: "instance" },
             ],
-            outputs: ["newPositions", "newCellIndex", "newAge"],
+            outputs: ["newPositions", "newCellIndex", "newAge", "instanceVelocity"],
             modules: shaderModules,
         });
 
@@ -490,8 +541,8 @@ export class AnimatedParticleLayer<TData = GridCell> extends Layer<AnimatedParti
             positionBuffers: positionBuffers,
             cellIndexBuffers: cellIndexBuffers,
             ageBuffers: ageBuffers,
-
             transform: transform,
+            instanceVelocityBuffer: device.createBuffer(new Float32Array(numParticles * 3)),
         });
     }
 }

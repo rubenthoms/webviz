@@ -16,6 +16,8 @@ flat out int newCellIndex;
 in float oldAge;
 out float newAge;
 
+out vec3 instanceVelocity;
+
 float randFloat(vec2 seed) {
     return fract(sin(dot(seed.xy, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -63,7 +65,7 @@ void main() {
     newAge = oldAge + animatedCellParticles.deltaTime;
     newPositions = oldPositions + interpolatedVelocity * animatedCellParticles.velocityScale *  animatedCellParticles.deltaTime;
 
-    // newPositions = oldPositions + interpolatedVelocity * 0.016;
+    instanceVelocity = interpolatedVelocity;
 
     newCellIndex = oldCellIndex;
 
@@ -113,5 +115,7 @@ void main() {
         newCellIndex = instanceStartCellIndex;
         newPositions = instanceStartPositions;
 
+        // TODO: The re-spawn causes a single frame where the velocity is 0, which causes some flickering on particles that stay at "high" velocity for their entire life 
+        instanceVelocity = vec3(0.0);
     }
 }

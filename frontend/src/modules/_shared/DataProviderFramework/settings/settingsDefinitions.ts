@@ -87,6 +87,8 @@ export enum Setting {
     REPRESENTATION = "representation",
     FLOW_FILTER_TYPE = "flowFilterType",
     FLOW_FILTER = "flowFilter",
+    PARTICLE_AMOUNT = "particleDensity",
+    VELOCITY_SCALE = "velocityScale",
     __TEST__GRID_INDEX = "gridIndex",
 
     // ! Dev testing, do not include in PR
@@ -129,7 +131,6 @@ export type SettingTypeDefinitions = {
     [Setting.PHASE]: {
         internalValue: string | null;
         externalValue: string | null;
-        // valueConstraints: ["oil", "water", "gas"];
         valueConstraints: { value: string; label: string }[] | null;
     };
     [Setting.FLUX_PHASES_SHOWN]: {
@@ -484,6 +485,17 @@ export type SettingTypeDefinitions = {
                 [key in InjectionPhase]: number;
             };
         } | null;
+    };
+
+    [Setting.PARTICLE_AMOUNT]: {
+        internalValue: number | null;
+        externalValue: number | null;
+        valueConstraints: number[];
+    };
+    [Setting.VELOCITY_SCALE]: {
+        internalValue: number | null;
+        externalValue: number | null;
+        valueConstraints: [number, number];
     };
 
     [Setting.__TEST__GRID_INDEX]: {

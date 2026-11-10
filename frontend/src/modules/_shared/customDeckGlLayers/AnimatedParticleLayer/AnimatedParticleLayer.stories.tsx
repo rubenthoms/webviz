@@ -376,8 +376,7 @@ export const RealWorldCoordinate: Story = {
     parameters: {
         docs: {
             description: {
-                story: "The `Dialog.Header` wraps the title area and draws a bottom border to separate it from the Body.",
-                component: "The diakgapoa wapas",
+                story: "Using Real-world coordinates causes precision issues on lower levels, so movement is notably jittery when zooming in",
             },
         },
     },

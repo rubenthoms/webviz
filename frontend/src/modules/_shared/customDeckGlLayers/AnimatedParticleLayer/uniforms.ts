@@ -8,6 +8,8 @@ uniform animatedCellParticlesUniforms {
     float maxAge;
     float size;
     float velocityScale;
+    float maxVelocity;
+    vec4 color;
 } animatedCellParticles;
 `;
 
@@ -18,6 +20,8 @@ export type AnimatedCellParticleUniformProps = {
     maxAge: number;
     size: number;
     velocityScale: number;
+    maxVelocity: number;
+    color: [number, number, number, number];
 };
 
 export const animatedCellParticleUniforms = {
@@ -33,5 +37,7 @@ export const animatedCellParticleUniforms = {
         maxAge: "f32",
         size: "f32",
         velocityScale: "f32",
+        maxVelocity: "f32",
+        color: "vec4<f32>",
     },
 } as const satisfies ShaderModule<AnimatedCellParticleUniformProps>;

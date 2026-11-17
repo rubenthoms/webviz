@@ -42,7 +42,11 @@ class GroupTreeAccess:
         try:
             pa_table: pa.Table = await table_loader.get_single_realization_async(realization)
         except ServiceLayerException as e:
-            enhanced_message = f"Failed to load group tree table data for case '{self._case_uuid}', ensemble '{self._ensemble_name}', realization '{realization}': {e.message}"
+            enhanced_message = (
+                "Failed to load group tree table data for ensemble "
+                f"'{{{{ensemble:{self._case_uuid}::{self._ensemble_name}}}}}', "
+                f"realization '{realization}': {e.message}"
+            )
             raise type(e)(enhanced_message, e.service) from e
 
         _validate_group_tree_table(pa_table)

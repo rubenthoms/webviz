@@ -31,6 +31,7 @@ import "./WellLogViewer/registerModule";
     if (isDevMode() || debugFlagIsEnabled(SHOW_DEBUG_MODULES_FLAG)) {
         await import("./Map/registerModule");
         await import("./DbgPerformanceTest/registerModule");
+        await import("./DbgQueryErrors/registerModule");
         await import("./MyModule/registerModule");
         await import("./DbgWorkbenchSpy/registerModule");
     }

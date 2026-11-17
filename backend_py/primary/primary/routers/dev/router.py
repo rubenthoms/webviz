@@ -21,7 +21,19 @@ from webviz_services.user_grid3d_service.user_grid3d_service import (
     IJKIndexFilter,
     SinglePropertyTime,
 )
-from webviz_services.service_exceptions import Service, ServiceUnavailableError, ServiceRequestError
+from webviz_services.service_exceptions import (
+    AuthorizationError,
+    InvalidDataError,
+    InvalidParameterError,
+    MultipleDataMatchesError,
+    NoDataError,
+    Service,
+    ServiceLayerException,
+    ServiceRateLimitError,
+    ServiceRequestError,
+    ServiceTimeoutError,
+    ServiceUnavailableError,
+)
 from webviz_services.utils.otel_span_tracing import start_otel_span_async
 from webviz_services.utils.task_meta_tracker import TaskState, get_task_meta_tracker_for_user
 from webviz_services.platform.message_bus import MessageBusSingleton, MessageBus
@@ -37,8 +49,32 @@ router = APIRouter()
 
 
 ErrorTypes = Literal[
-    "TypeError", "ValueError", "ServiceUnavailableError", "NestedValueError", "HttpException", "NoError"
+    "TypeError",
+    "ValueError",
+    "ServiceUnavailableError",
+    "NestedValueError",
+    "HttpException",
+    "NoError",
+    "AuthorizationError",
+    "InvalidDataError",
+    "InvalidParameterError",
+    "MultipleDataMatchesError",
+    "NoDataError",
+    "ServiceRateLimitError",
+    "ServiceRequestError",
+    "ServiceTimeoutError",
 ]
+
+_SERVICE_ERROR_TYPES: dict[str, type[ServiceLayerException]] = {
+    "AuthorizationError": AuthorizationError,
+    "InvalidDataError": InvalidDataError,
+    "InvalidParameterError": InvalidParameterError,
+    "MultipleDataMatchesError": MultipleDataMatchesError,
+    "NoDataError": NoDataError,
+    "ServiceRateLimitError": ServiceRateLimitError,
+    "ServiceRequestError": ServiceRequestError,
+    "ServiceTimeoutError": ServiceTimeoutError,
+}
 
 
 @router.get("/provoke_error/{error_type}")
@@ -64,6 +100,10 @@ async def get_provoke_error(
 
 
 def _my_provoking_function(error_type: ErrorTypes, status_code: int) -> None:
+    service_error_type = _SERVICE_ERROR_TYPES.get(error_type)
+    if service_error_type is not None:
+        raise service_error_type(f"Dummy {error_type} for query status testing", Service.SUMO)
+
     if error_type == "TypeError":
         raise TypeError("This is a dummy type error")
 

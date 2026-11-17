@@ -76,10 +76,10 @@ function ToastList() {
                     {TOAST_TYPE_TO_ICON[toast.type]}
                 </span>
             )}
-            <ToastBase.Content className="toast__content text-header-sm font-heading gap-x-sm flex items-center">
+            <ToastBase.Content className="toast__content text-header-sm font-heading gap-x-sm flex items-center px-sm">
                 <ToastBase.Title
                     render={(subProps) => (
-                        <span {...subProps} className="px-sm py-sm whitespace-nowrap">
+                        <span {...subProps} className="py-sm whitespace-nowrap">
                             {toast.title}
                         </span>
                     )}
@@ -88,7 +88,7 @@ function ToastList() {
                     <ToastBase.Action
                         render={(subProps) => (
                             <Button
-                                variant="ghost"
+                                variant="contained"
                                 tone="accent"
                                 {...subProps}
                                 layoutClassName={resolveClassNames(subProps.className, "ml-auto")}

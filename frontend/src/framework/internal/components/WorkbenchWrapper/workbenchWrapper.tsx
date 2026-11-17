@@ -8,7 +8,9 @@ import { LoadingOverlay } from "@framework/internal/components/LoadingOverlay";
 import { SelectEnsemblesDialog } from "@framework/internal/components/SelectEnsemblesDialog";
 import { SettingsContentPanels } from "@framework/internal/components/SettingsContentPanels";
 import { TopBar } from "@framework/internal/components/TopBar/topBar";
+import { QueryStatusManager } from "@framework/internal/QueryStatusManager";
 import { WorkbenchSessionManagerTopic } from "@framework/internal/WorkbenchSession/WorkbenchSessionManager";
+import { toastManager } from "@framework/toastManager";
 import { Workbench } from "@framework/Workbench";
 import "../../../../modules/registerAllModules";
 import "../../../../templates/registerAllTemplates";
@@ -62,6 +64,18 @@ export function WorkbenchWrapper() {
             };
         },
         [registerActiveWorkbench, workbench],
+    );
+
+    React.useEffect(
+        function subscribeToQueryStatus() {
+            function getEnsembleSet() {
+                return workbench.getSessionManager().getActiveSessionOrNull()?.getEnsembleSet() ?? null;
+            }
+
+            const manager = new QueryStatusManager(queryClient, toastManager, getEnsembleSet);
+            return manager.subscribe();
+        },
+        [queryClient, workbench],
     );
 
     let content: React.ReactNode;

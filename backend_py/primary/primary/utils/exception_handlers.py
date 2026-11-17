@@ -9,10 +9,27 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.utils import is_body_allowed_for_status_code
 from opentelemetry import trace
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.status import HTTP_422_UNPROCESSABLE_CONTENT, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+    HTTP_422_UNPROCESSABLE_CONTENT,
+    HTTP_429_TOO_MANY_REQUESTS,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
+    HTTP_504_GATEWAY_TIMEOUT,
+)
 
 from webviz_core_utils.result_with_warning import UnhandledWarningError
 from webviz_services.service_exceptions import ServiceLayerException
+
+_SERVICE_EXCEPTION_STATUS_CODES: dict[type[ServiceLayerException], int] = {
+    AuthorizationError: HTTP_403_FORBIDDEN,
+    NoDataError: HTTP_404_NOT_FOUND,
+    InvalidParameterError: HTTP_422_UNPROCESSABLE_CONTENT,
+    ServiceRateLimitError: HTTP_429_TOO_MANY_REQUESTS,
+    ServiceUnavailableError: HTTP_503_SERVICE_UNAVAILABLE,
+    ServiceTimeoutError: HTTP_504_GATEWAY_TIMEOUT,
+}
 
 # Setup a dedicated logger for exceptions in the primary module
 # Use an unconventional logger name to clearly separate exception logs from other logs
@@ -121,8 +138,14 @@ def service_layer_exception_handler(request: Request, exc: ServiceLayerException
     exc_traceback_str = _format_exception_for_log(exc)
     EXCEPTIONS_LOGGER.error(f"[EXC] Service exception in {route} -> {exc_name}: {str(exc)}\n{exc_traceback_str}")
 
+    status_code = HTTP_500_INTERNAL_SERVER_ERROR
+    for exception_type, mapped_status_code in _SERVICE_EXCEPTION_STATUS_CODES.items():
+        if isinstance(exc, exception_type):
+            status_code = mapped_status_code
+            break
+
     return JSONResponse(
-        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+        status_code=status_code,
         content={
             "error": {
                 "type": exc.get_error_type_str(),

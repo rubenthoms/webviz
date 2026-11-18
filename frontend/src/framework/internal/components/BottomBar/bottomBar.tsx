@@ -1,6 +1,7 @@
 import type { Workbench } from "@framework/Workbench";
 
-import { DashboardsPanel } from "./_panels/Dashboards/dashboardsPanel";
+import { DashboardsPanel } from "./_panels/dashboards/dashboardsPanel";
+import { StatusPanel } from "./_panels/status/status";
 
 export type BottomBarProps = {
     workbench: Workbench;
@@ -8,8 +9,9 @@ export type BottomBarProps = {
 
 export function BottomBar(props: BottomBarProps) {
     return (
-        <div className="border-t-neutral-subtle bg-surface/30 shadow-elevation-raised flex border-t-2">
+        <div className="border-t-neutral-subtle bg-surface/30 shadow-elevation-raised gap-x-sm flex items-center border-t-2">
             <DashboardsPanel workbench={props.workbench} />
+            <StatusPanel workbench={props.workbench} />
         </div>
     );
 }

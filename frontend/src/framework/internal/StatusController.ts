@@ -15,8 +15,11 @@ export type StatusInformation<T> = {
     additionalInfo?: T;
 };
 
+export type StatusGroupKey = string[];
+
 export type Status = {
     id: string;
+    groupKey: StatusGroupKey;
     type: StatusType;
     subType: StatusSubTypeMap[StatusType];
     information: StatusInformation<any>;
@@ -31,30 +34,42 @@ export type StatusControllerTopicPayloads = {
 };
 
 export class StatusController implements PublishSubscribe<StatusControllerTopicPayloads> {
-    private readonly _pubSub = new PublishSubscribeDelegate();
+    private readonly _pubSubDelegate = new PublishSubscribeDelegate();
     private _statusArray: Status[] = [];
 
     getPublishSubscribeDelegate() {
-        return this._pubSub;
+        return this._pubSubDelegate;
     }
 
     makeSnapshotGetter<T extends StatusControllerTopic.STATUS_CHANGED>(
         topic: T,
     ): () => StatusControllerTopicPayloads[T] {
         return () => {
-            return this._statusArray;
+            if (topic === StatusControllerTopic.STATUS_CHANGED) {
+                return this._statusArray;
+            }
+            throw new Error(`Unsupported topic: ${topic}`);
         };
-    }
-
-    addStatus(status: Status) {
-        this._statusArray.push(status);
     }
 
     getStatusArray(): readonly Status[] {
         return this._statusArray;
     }
 
+    addStatus(status: Status) {
+        this._statusArray = [...this._statusArray, status];
+        this._pubSubDelegate.notifySubscribers(StatusControllerTopic.STATUS_CHANGED);
+    }
+
     removeStatus(id: string) {
-        this._statusArray = this._statusArray.filter((status) => status.id !== id);
+        this._statusArray = [...this._statusArray.filter((status) => status.id !== id)];
+        this._pubSubDelegate.notifySubscribers(StatusControllerTopic.STATUS_CHANGED);
+    }
+
+    removeStatusGroup(groupKey: StatusGroupKey) {
+        this._statusArray = [
+            ...this._statusArray.filter((status) => !status.groupKey.every((key, index) => key === groupKey[index])),
+        ];
+        this._pubSubDelegate.notifySubscribers(StatusControllerTopic.STATUS_CHANGED);
     }
 }

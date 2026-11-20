@@ -1,12 +1,10 @@
 import React from "react";
 
-import type { BaseUIEvent, PopoverRootActions } from "@base-ui/react";
 import {
     Block,
     Close,
     CloseFullscreen,
     Error,
-    History,
     Input,
     Link,
     MoreVert,
@@ -15,18 +13,15 @@ import {
     Warning,
 } from "@mui/icons-material";
 
-import { GuiEvent, GuiState, RightDrawerContent, useGuiValue, useSetGuiState } from "@framework/GuiMessageBroker";
+import { GuiEvent, GuiState, useGuiValue } from "@framework/GuiMessageBroker";
 import { useDashboard } from "@framework/internal/components/DashboardContext";
-import {
-    SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT,
-    SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT,
-} from "@framework/internal/components/SettingsContentPanels";
 import { ChannelManagerNotificationTopic } from "@framework/internal/DataChannels/ChannelManager";
-import { useStatusControllerStateValue } from "@framework/internal/ModuleInstanceStatusControllerInternal";
+import { ModuleInstanceStatusManagerTopic } from "@framework/internal/ModuleInstanceStatusManager";
+import { countStatusEntries, makeDisplayedStatusEntries } from "@framework/internal/statusEntryUtils";
 import { PrivateWorkbenchSessionTopic } from "@framework/internal/WorkbenchSession/PrivateWorkbenchSession";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import { ModuleInstanceTopic, useModuleInstanceTopicValue } from "@framework/ModuleInstance";
-import { StatusMessageType } from "@framework/ModuleInstanceStatusController";
+import { StatusCategory } from "@framework/ModuleInstanceStatus";
 import { SyncSettingsMeta } from "@framework/SyncSettings";
 import type { Workbench } from "@framework/Workbench";
 import { Badge } from "@lib/components/Badge";
@@ -41,6 +36,8 @@ import { Typography } from "@lib/components/Typography";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
+
+import { StatusCategoryIcon } from "./statusCategoryIcon";
 
 export type HeaderProps = {
     workbench: Workbench;
@@ -62,10 +59,9 @@ export const Header: React.FC<HeaderProps> = (props) => {
     const moduleInstanceId = props.moduleInstance.getId();
     const guiMessageBroker = props.workbench.getGuiMessageBroker();
 
-    const hotStatusMessages = useStatusControllerStateValue(
-        props.moduleInstance.getStatusController(),
-        "hotMessageCache",
-    );
+    const statusManager = props.moduleInstance.getStatusManager();
+    const statusEntries = usePublishSubscribeTopicValue(statusManager, ModuleInstanceStatusManagerTopic.STATUSES);
+    const isLoading = usePublishSubscribeTopicValue(statusManager, ModuleInstanceStatusManagerTopic.LOADING);
 
     const persistedSettingsInvalid = useModuleInstanceTopicValue(
         props.moduleInstance,
@@ -78,8 +74,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
 
     const invalidPersistedState = persistedSettingsInvalid || persistedViewInvalid;
 
-    const isLoading = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "loading");
-
     const channelManager = props.moduleInstance.getChannelManager();
     const receivers = usePublishSubscribeTopicValue(channelManager, ChannelManagerNotificationTopic.RECEIVERS_CHANGE);
 
@@ -91,23 +85,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
             });
         },
         [guiMessageBroker, moduleInstanceId],
-    );
-
-    const setRightSettingsPanelWidth = useSetGuiState(guiMessageBroker, GuiState.RightSettingsPanelWidthInPercent);
-    const setRightDrawerContent = useSetGuiState(guiMessageBroker, GuiState.RightDrawerContent);
-
-    const showLog = React.useCallback(
-        function showLog() {
-            if (
-                guiMessageBroker.getState(GuiState.RightSettingsPanelWidthInPercent) <=
-                SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT
-            ) {
-                setRightSettingsPanelWidth(SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT);
-            }
-            dashboard.setActiveModuleInstanceId(moduleInstanceId);
-            setRightDrawerContent(RightDrawerContent.ModuleInstanceLog);
-        },
-        [guiMessageBroker, setRightSettingsPanelWidth, dashboard, moduleInstanceId, setRightDrawerContent],
     );
 
     const headerRef = React.useRef<HTMLDivElement>(null);
@@ -154,10 +131,11 @@ export const Header: React.FC<HeaderProps> = (props) => {
         e.stopPropagation();
     }
 
-    const hasErrors = hotStatusMessages.some((entry) => entry.type === StatusMessageType.Error);
-    const numErrors = hotStatusMessages.filter((m) => m.type === StatusMessageType.Error).length;
-    const numWarnings = hotStatusMessages.filter((m) => m.type === StatusMessageType.Warning).length;
-    const numActionRequired = hotStatusMessages.filter((m) => m.type === StatusMessageType.ActionRequired).length;
+    const displayedStatusEntries = makeDisplayedStatusEntries(statusEntries, isLoading);
+    const { numErrors, numWarnings, numActionRequired } = countStatusEntries(displayedStatusEntries);
+    const hasErrors = numErrors > 0;
+    // Acknowledging a warning hides its banner, but the shown data is still affected by it
+    const hasWarnings = displayedStatusEntries.some((entry) => entry.category === StatusCategory.WARNING);
 
     const sharedActionProps: HeaderActionsProps = {
         workbench: props.workbench,
@@ -176,7 +154,6 @@ export const Header: React.FC<HeaderProps> = (props) => {
         numWarnings,
         numActionRequired,
         hasDataReceiver: receivers.length > 0,
-        onShowLog: showLog,
         onEditConnections: editConnections,
     };
 
@@ -187,7 +164,8 @@ export const Header: React.FC<HeaderProps> = (props) => {
                 "px-xs gap-4xs bg-neutral shadow-elevation-raised py-4xs text-body-lg border-neutral-subtle relative flex touch-none items-center border select-none",
                 {
                     "bg-danger-canvas!": hasErrors || invalidPersistedState,
-                    "bg-neutral-subtle!": !hasErrors && !invalidPersistedState && props.isMinimized,
+                    "bg-warning-canvas!": !hasErrors && !invalidPersistedState && hasWarnings,
+                    "bg-neutral-subtle!": !hasErrors && !invalidPersistedState && !hasWarnings && props.isMinimized,
                 },
             )}
             onDoubleClick={handleDoubleClick}
@@ -401,7 +379,6 @@ type CompactHeaderActionsProps = HeaderActionsProps & {
     numWarnings: number;
     numActionRequired: number;
     hasDataReceiver: boolean;
-    onShowLog: () => void;
     onEditConnections: () => void;
 };
 
@@ -451,17 +428,10 @@ function CompactHeaderActions(props: CompactHeaderActionsProps): React.ReactNode
                             ))}
                         </Menu.SubmenuItem>
                     )}
-                    {props.numErrors > 0 || props.numWarnings > 0 || props.numActionRequired > 0 ? (
+                    {(props.numErrors > 0 || props.numWarnings > 0 || props.numActionRequired > 0) && (
                         <Menu.Item
                             icon={makeStatusIcon(props.numErrors, props.numWarnings, props.numActionRequired)}
                             text={makeStatusText(props.numErrors, props.numWarnings, props.numActionRequired)}
-                            onClick={props.onShowLog}
-                        />
-                    ) : (
-                        <Menu.Item
-                            icon={<History fontSize="inherit" />}
-                            text="Show module log"
-                            onClick={props.onShowLog}
                         />
                     )}
                     {props.hasDataReceiver && !props.isSnapshotMode && (
@@ -496,7 +466,10 @@ type ModuleLoadingBarProps = {
 };
 
 function ModuleLoadingBar(props: ModuleLoadingBarProps) {
-    const isLoading = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "loading");
+    const isLoading = usePublishSubscribeTopicValue(
+        props.moduleInstance.getStatusManager(),
+        ModuleInstanceStatusManagerTopic.LOADING,
+    );
 
     return (
         <div
@@ -706,61 +679,19 @@ type StatusIndicatorProps = {
 };
 
 function StatusIndicator(props: StatusIndicatorProps): React.ReactNode {
-    const popoverActionRef = React.useRef<PopoverRootActions | null>(null);
+    const statusManager = props.moduleInstance.getStatusManager();
+    const statusEntries = usePublishSubscribeTopicValue(statusManager, ModuleInstanceStatusManagerTopic.STATUSES);
+    const isLoading = usePublishSubscribeTopicValue(statusManager, ModuleInstanceStatusManagerTopic.LOADING);
 
-    const guiMessageBroker = props.workbench.getGuiMessageBroker();
-    const { dashboard } = useDashboard();
+    const displayedEntries = makeDisplayedStatusEntries(statusEntries, isLoading);
+    const { numErrors, numWarnings, numActionRequired } = countStatusEntries(displayedEntries);
+    const numUnacknowledged = numErrors + numWarnings + numActionRequired;
 
-    const isLoading = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "loading");
-    const statusMessages = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "hotMessageCache");
-    const log = useStatusControllerStateValue(props.moduleInstance.getStatusController(), "log");
-    const setRightDrawerContent = useSetGuiState(guiMessageBroker, GuiState.RightDrawerContent);
-    const setRightSettingsPanelWidth = useSetGuiState(guiMessageBroker, GuiState.RightSettingsPanelWidthInPercent);
-
-    function handleShowLogClick(e: BaseUIEvent<React.MouseEvent<HTMLButtonElement, MouseEvent>>) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (
-            guiMessageBroker.getState(GuiState.RightSettingsPanelWidthInPercent) <=
-            SETTINGS_PANEL_MIN_VISIBLE_WIDTH_PERCENT
-        ) {
-            setRightSettingsPanelWidth(SETTINGS_PANEL_DEFAULT_VISIBLE_WIDTH_PERCENT);
-        }
-
-        popoverActionRef.current?.close();
-        dashboard.setActiveModuleInstanceId(props.moduleInstance.getId());
-        setRightDrawerContent(RightDrawerContent.ModuleInstanceLog);
-    }
-
-    function makeHotStatusMessages(): React.ReactNode {
-        return (
-            <ul className="gap-y-2xs p-2xs flex flex-col">
-                {statusMessages.map((entry) => (
-                    <li
-                        key={`${entry.message}-${entry.source}-${entry.datetimeMs}
-                        datetimeMs}`}
-                        className="px-3xs py-4xs"
-                    >
-                        <Typography
-                            as="span"
-                            size="xs"
-                            title={entry.message}
-                            tone="neutral"
-                            layoutClassName="gap-x-2xs flex items-center"
-                        >
-                            {entry.type === StatusMessageType.Error && <Error fontSize="inherit" color="error" />}
-                            {entry.type === StatusMessageType.Warning && <Warning fontSize="inherit" color="warning" />}
-                            {entry.type === StatusMessageType.ActionRequired && (
-                                <Block fontSize="inherit" color="error" />
-                            )}
-                            {entry.message}
-                        </Typography>
-                    </li>
-                ))}
-            </ul>
-        );
-    }
+    const hasActionRequired = displayedEntries.some((entry) => entry.category === StatusCategory.ACTION_REQUIRED);
+    const hasWarnings = displayedEntries.some((entry) => entry.category === StatusCategory.WARNING);
+    const hasErrors = displayedEntries.some(
+        (entry) => entry.category === StatusCategory.DATA_ERROR || entry.category === StatusCategory.RETRYABLE_ERROR,
+    );
 
     const stateIndicators: React.ReactNode[] = [];
 
@@ -773,52 +704,42 @@ function StatusIndicator(props: StatusIndicatorProps): React.ReactNode {
             </Tooltip>,
         );
     }
-    const numErrors = statusMessages.filter((message) => message.type === StatusMessageType.Error).length;
-    const numWarnings = statusMessages.filter((message) => message.type === StatusMessageType.Warning).length;
-    const numActionRequired = statusMessages.filter(
-        (message) => message.type === StatusMessageType.ActionRequired,
-    ).length;
 
-    let badgeTitle = "";
-    if (numActionRequired > 0) {
-        badgeTitle += `${numActionRequired} action${numActionRequired > 1 ? "s" : ""} required`;
-    }
+    if (displayedEntries.length > 0) {
+        const badgeTitle =
+            numUnacknowledged > 0
+                ? makeStatusText(numErrors, numWarnings, numActionRequired)
+                : "All statuses acknowledged";
 
-    if (numErrors > 0) {
-        badgeTitle += `${badgeTitle.length > 0 ? ", " : ""}${numErrors} error${numErrors > 1 ? "s" : ""}`;
-    }
-
-    if (numWarnings > 0) {
-        badgeTitle += `${badgeTitle.length > 0 ? ", " : ""}${numWarnings} warning${numWarnings > 1 ? "s" : ""}`;
-    }
-
-    if (numErrors > 0 || numWarnings > 0 || numActionRequired > 0) {
         stateIndicators.push(
-            <Popover.Root key="state-indicator-warning" actionsRef={popoverActionRef}>
-                <Popover.Trigger variant="ghost" size="small" iconOnly tone="neutral">
+            <Popover.Root key="state-indicator-warning">
+                <Popover.Trigger variant="ghost" size="small" iconOnly tone="neutral" aria-label={badgeTitle}>
                     <Tooltip content={badgeTitle} side="bottom">
-                        <Badge badgeContent={numActionRequired + numErrors + numWarnings} invisible={props.isMinimized}>
+                        <Badge
+                            badgeContent={numUnacknowledged}
+                            invisible={props.isMinimized || numUnacknowledged === 0}
+                        >
                             <div className="gap-x-4xs flex items-center whitespace-nowrap">
                                 <Block
                                     fontSize="inherit"
                                     color="error"
-                                    style={{ display: numActionRequired === 0 ? "none" : "block" }}
+                                    style={{ display: hasActionRequired ? "block" : "none" }}
                                 />
                                 <Error
                                     fontSize="inherit"
                                     color="error"
-                                    style={{ display: numErrors === 0 ? "none" : "block" }}
+                                    style={{ display: hasErrors ? "block" : "none" }}
                                     className={resolveClassNames({
-                                        "-ml-xs": numActionRequired > 0,
+                                        "-ml-xs": hasActionRequired,
                                     })}
                                 />
                                 <div className="overflow-hidden">
                                     <Warning
                                         fontSize="inherit"
                                         color="warning"
-                                        style={{ display: numWarnings === 0 ? "none" : "block" }}
+                                        style={{ display: hasWarnings ? "block" : "none" }}
                                         className={resolveClassNames({
-                                            "-ml-xs": numErrors > 0 || numActionRequired > 0,
+                                            "-ml-xs": hasErrors || hasActionRequired,
                                         })}
                                     />
                                 </div>
@@ -828,36 +749,39 @@ function StatusIndicator(props: StatusIndicatorProps): React.ReactNode {
                 </Popover.Trigger>
                 <Popover.Popup side="bottom">
                     <Popover.Content>
-                        {makeHotStatusMessages()}
-                        {log.length > 0 && (
-                            <>
-                                <Separator orientation="horizontal" />
-                                <Button
-                                    variant="ghost"
-                                    tone="neutral"
-                                    size="small"
-                                    onClick={handleShowLogClick}
-                                    layoutClassName="w-full"
-                                >
-                                    <History fontSize="inherit" /> Show complete log
-                                </Button>
-                            </>
-                        )}
+                        <ul className="gap-y-2xs p-2xs flex flex-col">
+                            {displayedEntries.map((entry) => (
+                                <li key={entry.id} className="px-3xs py-4xs flex flex-col">
+                                    <Typography
+                                        as="span"
+                                        size="xs"
+                                        title={entry.message}
+                                        tone="neutral"
+                                        layoutClassName="gap-x-2xs flex items-center"
+                                    >
+                                        <StatusCategoryIcon category={entry.category} />
+                                        {entry.message}
+                                        {entry.acknowledged && " (acknowledged)"}
+                                    </Typography>
+                                    {entry.additionalInfo && (
+                                        <Typography as="span" size="xs" tone="neutral">
+                                            {makeAdditionalInfoText(entry.additionalInfo)}
+                                        </Typography>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
                     </Popover.Content>
                 </Popover.Popup>
             </Popover.Root>,
         );
     }
 
-    if (stateIndicators.length === 0) {
-        stateIndicators.push(
-            <Tooltip content="Show complete log for this module" key="header-module-log">
-                <Button onPointerDown={handleShowLogClick} variant="ghost" tone="neutral" size="small" iconOnly>
-                    <History fontSize="inherit" />
-                </Button>
-            </Tooltip>,
-        );
-    }
-
     return <>{stateIndicators}</>;
+}
+
+function makeAdditionalInfoText(additionalInfo: Readonly<Record<string, string | number>>): string {
+    return Object.entries(additionalInfo)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(" · ");
 }

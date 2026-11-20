@@ -8,6 +8,7 @@ import { useDashboard } from "@framework/internal/components/DashboardContext";
 import { DebugProfiler } from "@framework/internal/components/DebugProfiler";
 import { ErrorBoundary } from "@framework/internal/components/ErrorBoundary";
 import { HydrateQueryClientAtom } from "@framework/internal/components/HydrateQueryClientAtom";
+import { ModuleInstanceReactContext } from "@framework/internal/ModuleInstanceReactContext";
 import { ImportStatus } from "@framework/Module";
 import type { ModuleInstance } from "@framework/ModuleInstance";
 import {
@@ -21,8 +22,8 @@ import { Button } from "@lib/components/Button";
 import { CircularProgress } from "@lib/components/CircularProgress";
 import { Paragraph } from "@lib/components/Typography/compositions";
 
-import { ActionRequiredOverlayBar } from "./actionRequiredOverlayBar";
 import { CrashView } from "./crashView";
+import { StatusBanners } from "./statusBanners";
 
 type ViewContentProps = {
     moduleInstance: ModuleInstance<any, any>;
@@ -152,7 +153,7 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
     return (
         <ErrorBoundary moduleInstance={props.moduleInstance}>
             <div className="relative h-full w-full">
-                <ActionRequiredOverlayBar workbench={props.workbench} moduleInstance={props.moduleInstance} />
+                <StatusBanners workbench={props.workbench} moduleInstance={props.moduleInstance} />
                 <div className="px-2xs py-2xs h-full w-full">
                     <DebugProfiler
                         id={`${props.moduleInstance.getId()}-view`}
@@ -163,18 +164,20 @@ export const ViewContent = React.memo((props: ViewContentProps) => {
                         <Provider store={atomStore}>
                             <HydrateQueryClientAtom>
                                 <ApplyInterfaceEffectsToView moduleInstance={props.moduleInstance}>
-                                    {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
-                                    <View
-                                        viewContext={props.moduleInstance.getContext()}
-                                        workbenchSession={props.workbench.getSessionManager().getActiveSession()}
-                                        syncSettingsService={dashboard.getSyncSettingsService()}
-                                        hoverService={dashboard.getHoverService()}
-                                        workbenchSettings={props.workbench
-                                            .getSessionManager()
-                                            .getActiveSession()
-                                            .getWorkbenchSettings()}
-                                        initialSettings={props.moduleInstance.getInitialSettings() || undefined}
-                                    />
+                                    <ModuleInstanceReactContext.Provider value={props.moduleInstance}>
+                                        {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
+                                        <View
+                                            viewContext={props.moduleInstance.getContext()}
+                                            workbenchSession={props.workbench.getSessionManager().getActiveSession()}
+                                            syncSettingsService={dashboard.getSyncSettingsService()}
+                                            hoverService={dashboard.getHoverService()}
+                                            workbenchSettings={props.workbench
+                                                .getSessionManager()
+                                                .getActiveSession()
+                                                .getWorkbenchSettings()}
+                                            initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                                        />
+                                    </ModuleInstanceReactContext.Provider>
                                 </ApplyInterfaceEffectsToView>
                             </HydrateQueryClientAtom>
                         </Provider>

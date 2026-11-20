@@ -4,12 +4,9 @@ import type { DeltaEnsemble } from "@framework/DeltaEnsemble";
 import { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
 import type { RegularEnsemble } from "@framework/RegularEnsemble";
-import type { ViewStatusWriter } from "@framework/StatusWriter";
+import { useStatusWriter } from "@framework/StatusWriter";
 import { isEnsembleIdentOfType } from "@framework/utils/ensembleIdentUtils";
-import {
-    propagateAllApiErrorsToStatusWriter,
-    propagateQueryErrorsToStatusWriter,
-} from "@modules/_shared/utils/propagateApiErrorToStatusWriter";
+import { reportApiErrors, reportQueryErrors } from "@modules/_shared/utils/reportErrors";
 
 import {
     resampleFrequencyAtom,
@@ -28,10 +25,10 @@ import {
 } from "../atoms/queryAtoms";
 
 export function useMakeViewStatusWriterMessages(
-    statusWriter: ViewStatusWriter,
     parameterDisplayName: string | null,
     ensemblesWithoutParameter: (RegularEnsemble | DeltaEnsemble)[],
 ) {
+    const statusWriter = useStatusWriter();
     const ensembleSet = useAtomValue(EnsembleSetAtom);
     const resampleFrequency = useAtomValue(resampleFrequencyAtom);
     const vectorSpecifications = useAtomValue(vectorSpecificationsAtom);
@@ -47,10 +44,10 @@ export function useMakeViewStatusWriterMessages(
     statusWriter.setLoading(isQueryFetching);
 
     // Query errors
-    propagateQueryErrorsToStatusWriter(vectorRealizationsQueries, statusWriter);
-    propagateQueryErrorsToStatusWriter(vectorStatisticsQueries, statusWriter);
-    propagateAllApiErrorsToStatusWriter(vectorHistoricalQueries?.errors ?? [], statusWriter);
-    propagateAllApiErrorsToStatusWriter(vectorObservationsQueries?.errors ?? [], statusWriter);
+    reportQueryErrors(statusWriter, vectorRealizationsQueries);
+    reportQueryErrors(statusWriter, vectorStatisticsQueries);
+    reportApiErrors(statusWriter, vectorHistoricalQueries?.errors ?? []);
+    reportApiErrors(statusWriter, vectorObservationsQueries?.errors ?? []);
 
     // Warnings reported by the back-end alongside the realization data
     // Realization and statistics queries can report the same warning, so de-duplicate the messages

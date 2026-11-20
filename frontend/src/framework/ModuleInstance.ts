@@ -13,6 +13,7 @@ import type { Dashboard } from "./internal/Dashboard";
 import { ChannelManager, ChannelManagerNotificationTopic } from "./internal/DataChannels/ChannelManager";
 import { ModuleInstanceSerializer } from "./internal/ModuleInstanceSerializer";
 import { ModuleInstanceStatusControllerInternal } from "./internal/ModuleInstanceStatusControllerInternal";
+import { ModuleInstanceStatusManager } from "./internal/ModuleInstanceStatusManager";
 import type {
     ImportStatus,
     Module,
@@ -89,6 +90,7 @@ export class ModuleInstance<
     private _subscribers: Map<keyof ModuleInstanceTopicValueTypes, Set<() => void>> = new Map();
     private _initialSettings: InitialSettings | null = null;
     private _statusController: ModuleInstanceStatusControllerInternal = new ModuleInstanceStatusControllerInternal();
+    private _statusManager = new ModuleInstanceStatusManager();
 
     // ChannelManager should be elevated to Dashboard level and shared among module instances in the dashboard
     private _channelManager: ChannelManager;
@@ -470,6 +472,10 @@ export class ModuleInstance<
 
     getStatusController(): ModuleInstanceStatusControllerInternal {
         return this._statusController;
+    }
+
+    getStatusManager(): ModuleInstanceStatusManager {
+        return this._statusManager;
     }
 
     private setModuleInstanceState(moduleInstanceState: ModuleInstanceLifeCycleState): void {

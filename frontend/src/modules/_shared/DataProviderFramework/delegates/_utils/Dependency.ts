@@ -1,7 +1,7 @@
 import { CancelledError } from "@tanstack/react-query";
 
 import { GenericStatusMessageStore } from "@framework/GenericStatusMessageStore";
-import type { PublishSubscribeStatusMessageStore, StatusWriter } from "@framework/types/statusWriter";
+import type { GenericStatusWriter, PublishSubscribeStatusMessageStore } from "@framework/types/statusWriter";
 import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
 
 import { GLOBAL_SETTING_LABELS, type GlobalSettings } from "../../framework/DataProviderManager/DataProviderManager";
@@ -210,7 +210,7 @@ export class Dependency<
         return this._statusStore.getMessages();
     }
 
-    getStatusWriter(): StatusWriter {
+    getStatusWriter(): GenericStatusWriter {
         return this._statusStore;
     }
 

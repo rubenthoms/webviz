@@ -10,7 +10,6 @@ import type { Parameter } from "@framework/EnsembleParameters";
 import { ParameterIdent } from "@framework/EnsembleParameters";
 import type { ModuleSettingsProps } from "@framework/Module";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-import { useSettingsStatusWriter } from "@framework/StatusWriter";
 import { SyncSettingKey } from "@framework/SyncSettings";
 import { timestampUtcMsToCompactIsoString } from "@framework/utils/timestampUtils";
 import { useEnsembleRealizationFilterFunc, useEnsembleSet } from "@framework/WorkbenchSession";
@@ -77,7 +76,6 @@ import { useMakeSettingsStatusWriterMessages } from "./hooks/useMakeSettingsStat
 
 export function Settings(props: ModuleSettingsProps<Interfaces>) {
     const ensembleSet = useEnsembleSet(props.workbenchSession);
-    const statusWriter = useSettingsStatusWriter(props.settingsContext);
     const selectedTimestampUtcMs = props.settingsContext.useViewToSettingsInterfaceValue("selectedTimestampUtcMs");
 
     const [resampleFrequency, setResamplingFrequency] = useAtom(resampleFrequencyAtom);
@@ -105,7 +103,7 @@ export function Settings(props: ModuleSettingsProps<Interfaces>) {
 
     const vectorSelectorRef = React.useRef<HTMLInputElement>(null);
 
-    const { handlePanelAnnotationsChange } = useMakeSettingsStatusWriterMessages(statusWriter, selectedVectorTags);
+    const { handlePanelAnnotationsChange } = useMakeSettingsStatusWriterMessages(selectedVectorTags);
 
     // Receive global parameter string and update local state if different
     useSyncSetting({

@@ -1,7 +1,7 @@
 import { CancelledError, type UseQueryResult } from "@tanstack/react-query";
 
 import type { SettingsStatusWriter, ViewStatusWriter } from "@framework/StatusWriter";
-import type { StatusWriter as DpfStatusWriter } from "@framework/types/statusWriter";
+import type { GenericStatusWriter } from "@framework/types/statusWriter";
 import { ApiErrorHelper } from "@framework/utils/ApiErrorHelper";
 
 function createErrorMessageFromHelper(
@@ -63,7 +63,7 @@ export function propagateQueryErrorsToStatusWriter(
     return queryResults.map((res) => propagateQueryError(res, statusWriter)).filter((error) => error) as string[];
 }
 
-export function handleOptionalDpfQueryError(err: unknown, statusWriter: DpfStatusWriter): null {
+export function handleOptionalDpfQueryError(err: unknown, statusWriter: GenericStatusWriter): null {
     if (err instanceof CancelledError) {
         throw err;
     }

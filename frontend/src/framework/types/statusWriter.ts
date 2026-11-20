@@ -25,7 +25,7 @@ export type StatusMessage = {
  * A status-writer is a simple interface that accepts status-messages of different levels
  * of importance. Messages are usually strings, but other data-types can also be used
  */
-export interface StatusWriter<MessageType = string> {
+export interface GenericStatusWriter<MessageType = string> {
     /**
      * Registers an info-level message
      */

@@ -18,6 +18,7 @@ import { CircularProgress } from "@lib/components/CircularProgress";
 import { usePublishSubscribeTopicValue } from "@lib/utils/PublishSubscribeDelegate";
 import { resolveClassNames } from "@lib/utils/resolveClassNames";
 
+import { ModuleInstanceReactContext } from "../../../ModuleInstanceReactContext";
 import { useActiveSession } from "../../ActiveSessionBoundary";
 import { ApplyInterfaceEffectsToSettings } from "../../ApplyInterfaceEffects/applyInterfaceEffects";
 import { useDashboard } from "../../DashboardContext";
@@ -120,17 +121,19 @@ export const ModuleSettings: React.FC<ModuleSettingsProps> = (props) => {
                 <Provider store={atomStore}>
                     <HydrateQueryClientAtom>
                         <ApplyInterfaceEffectsToSettings moduleInstance={props.moduleInstance}>
-                            {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
-                            <Settings
-                                settingsContext={props.moduleInstance.getContext()}
-                                workbenchSession={props.workbench.getSessionManager().getActiveSession()}
-                                syncSettingsService={dashboard.getSyncSettingsService()}
-                                workbenchSettings={props.workbench
-                                    .getSessionManager()
-                                    .getActiveSession()
-                                    .getWorkbenchSettings()}
-                                initialSettings={props.moduleInstance.getInitialSettings() || undefined}
-                            />
+                            <ModuleInstanceReactContext.Provider value={props.moduleInstance}>
+                                {/* eslint-disable-next-line @eslint-react/static-components -- Legacy */}
+                                <Settings
+                                    settingsContext={props.moduleInstance.getContext()}
+                                    workbenchSession={props.workbench.getSessionManager().getActiveSession()}
+                                    syncSettingsService={dashboard.getSyncSettingsService()}
+                                    workbenchSettings={props.workbench
+                                        .getSessionManager()
+                                        .getActiveSession()
+                                        .getWorkbenchSettings()}
+                                    initialSettings={props.moduleInstance.getInitialSettings() || undefined}
+                                />
+                            </ModuleInstanceReactContext.Provider>
                         </ApplyInterfaceEffectsToSettings>
                     </HydrateQueryClientAtom>
                 </Provider>

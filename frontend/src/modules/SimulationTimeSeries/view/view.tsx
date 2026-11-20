@@ -7,7 +7,6 @@ import type { DeltaEnsemble } from "@framework/DeltaEnsemble";
 import { HoverTopic, useHoverValue, usePublishHoverValue } from "@framework/HoverService";
 import type { ModuleViewProps } from "@framework/Module";
 import type { RegularEnsemble } from "@framework/RegularEnsemble";
-import { useViewStatusWriter } from "@framework/StatusWriter";
 import { useColorSet, useContinuousColorScale } from "@framework/WorkbenchSettings";
 import { useElementSize } from "@lib/hooks/useElementSize";
 import { ColorScaleGradientType } from "@lib/utils/ColorScale";
@@ -31,8 +30,6 @@ import { SubplotOwner } from "./utils/PlotBuilder";
 export const View = ({ viewContext, workbenchSettings, hoverService }: ModuleViewProps<Interfaces>) => {
     const wrapperDivRef = React.useRef<HTMLDivElement>(null);
     const wrapperDivSize = useElementSize(wrapperDivRef);
-
-    const statusWriter = useViewStatusWriter(viewContext);
 
     const colorByParameter = viewContext.useSettingsToViewInterfaceValue("colorByParameter");
     const parameterIdent = viewContext.useSettingsToViewInterfaceValue("parameterIdent");
@@ -86,7 +83,7 @@ export const View = ({ viewContext, workbenchSettings, hoverService }: ModuleVie
         ensemblesWithoutParameter.push(...selectedDeltaEnsembles);
     }
 
-    useMakeViewStatusWriterMessages(statusWriter, parameterDisplayName, ensemblesWithoutParameter);
+    useMakeViewStatusWriterMessages(parameterDisplayName, ensemblesWithoutParameter);
     usePublishToDataChannels(viewContext, subplotOwner, vectorHexColorMap);
 
     const resampleFrequencyWarningMessage = useMakeResampleFrequencyWarningMessage();
@@ -151,7 +148,11 @@ export const View = ({ viewContext, workbenchSettings, hoverService }: ModuleVie
                 return <ContentWarning>{resampleFrequencyWarningMessage}</ContentWarning>;
             }
             if (hasQueryErrors) {
-                return <ContentError>One or more queries have an error state. See the log for details.</ContentError>;
+                return (
+                    <ContentError>
+                        One or more queries have an error state. See the status messages for details.
+                    </ContentError>
+                );
             }
             if (!plotBuilder) {
                 return (

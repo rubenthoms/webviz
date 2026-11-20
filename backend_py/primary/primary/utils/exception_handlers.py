@@ -21,7 +21,15 @@ from starlette.status import (
 )
 
 from webviz_core_utils.result_with_warning import UnhandledWarningError
-from webviz_services.service_exceptions import ServiceLayerException
+from webviz_services.service_exceptions import (
+    AuthorizationError,
+    InvalidParameterError,
+    NoDataError,
+    ServiceLayerException,
+    ServiceRateLimitError,
+    ServiceTimeoutError,
+    ServiceUnavailableError,
+)
 
 _SERVICE_EXCEPTION_STATUS_CODES: dict[type[ServiceLayerException], int] = {
     AuthorizationError: HTTP_403_FORBIDDEN,

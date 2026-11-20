@@ -4,12 +4,12 @@ import { useAtomValue } from "jotai";
 
 import type { DeltaEnsembleIdent } from "@framework/DeltaEnsembleIdent";
 import { EnsembleSetAtom } from "@framework/GlobalAtoms";
+import { StatusCategory } from "@framework/ModuleInstanceStatus";
 import type { RegularEnsembleIdent } from "@framework/RegularEnsembleIdent";
-import type { SettingsStatusWriter } from "@framework/StatusWriter";
+import { useStatusWriter } from "@framework/StatusWriter";
 import type { SettingAnnotation } from "@lib/components/Setting";
-import { useFlagActionRequiredToStatusWriter } from "@modules/_shared/hooks/useAddStatusWriterMessages";
-import { propagateQueryErrorsToStatusWriter } from "@modules/_shared/utils/propagateApiErrorToStatusWriter";
 import { propagateQueryWarningsToStatusWriter } from "@modules/_shared/utils/propagateWarningsToStatusWriter";
+import { reportQueryErrors } from "@modules/_shared/utils/reportErrors";
 import { joinStringArrayToHumanReadableString } from "@modules/SimulationTimeSeries/utils/stringUtils";
 
 import { selectedVectorNamesAtom } from "../atoms/baseAtoms";
@@ -18,36 +18,36 @@ import { selectedEnsembleIdentsAtom } from "../atoms/persistableFixableAtoms";
 import { vectorListQueriesAtom } from "../atoms/queryAtoms";
 
 /**
- * Single place for all `statusWriter` writes for the SimulationTimeSeries settings:
- * - Propagates vector list query errors.
+ * Single place for all status writes for the SimulationTimeSeries settings:
+ * - Reports vector list query errors and warnings.
  * - Exposes `handlePanelAnnotationsChange` for `Setting.Panel`'s `onAnnotationsChange`, so every
  *   field's error annotations are reported as ActionRequired without each field wiring it manually.
  * - Warns when a selected vector does not exist in one of the selected ensembles.
  */
-export function useMakeSettingsStatusWriterMessages(
-    statusWriter: SettingsStatusWriter,
-    selectedVectorTags: string[],
-): {
+export function useMakeSettingsStatusWriterMessages(selectedVectorTags: string[]): {
     handlePanelAnnotationsChange: (annotations: SettingAnnotation[]) => void;
 } {
+    const statusWriter = useStatusWriter();
+    const annotationsStatusWriter = useStatusWriter({ resetOnRender: false });
     const vectorListQueries = useAtomValue(vectorListQueriesAtom);
     const ensembleSet = useAtomValue(EnsembleSetAtom);
     const ensembleVectorListsHelper = useAtomValue(ensembleVectorListsHelperAtom);
     const selectedEnsembleIdents = useAtomValue(selectedEnsembleIdentsAtom).value ?? [];
     const selectedVectorNames = useAtomValue(selectedVectorNamesAtom);
-    const flagActionRequiredToStatusWriter = useFlagActionRequiredToStatusWriter(statusWriter);
 
-    propagateQueryErrorsToStatusWriter(vectorListQueries, statusWriter);
+    reportQueryErrors(statusWriter, vectorListQueries);
 
     propagateQueryWarningsToStatusWriter(vectorListQueries, statusWriter);
 
-    // Set warning for vector names not existing in a selected ensemble
     const handlePanelAnnotationsChange = React.useCallback(
         function handlePanelAnnotationsChange(annotations: SettingAnnotation[]) {
-            const invalidFieldValueMessages = annotations.filter((a) => a.type === "error").map((a) => a.message);
-            flagActionRequiredToStatusWriter(invalidFieldValueMessages);
+            annotationsStatusWriter.set(
+                annotations
+                    .filter((annotation) => annotation.type === "error")
+                    .map((annotation) => ({ category: StatusCategory.ACTION_REQUIRED, message: annotation.message })),
+            );
         },
-        [flagActionRequiredToStatusWriter],
+        [annotationsStatusWriter],
     );
 
     function warnIfVectorsMissingInEnsemble(

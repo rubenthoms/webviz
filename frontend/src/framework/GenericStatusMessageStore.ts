@@ -1,14 +1,14 @@
 import { PublishSubscribeDelegate } from "@lib/utils/PublishSubscribeDelegate";
 
 import type {
+    GenericStatusWriter,
     PublishSubscribeStatusMessageStore,
     StatusMessage,
     StatusMessageStoreTopicPayload,
-    StatusWriter,
 } from "./types/statusWriter";
 import { StatusMessageType, StatusMessageStoreTopic } from "./types/statusWriter";
 
-export class GenericStatusMessageStore implements StatusWriter, PublishSubscribeStatusMessageStore {
+export class GenericStatusMessageStore implements GenericStatusWriter, PublishSubscribeStatusMessageStore {
     private readonly _source: string;
 
     private _pubSubDelegate = new PublishSubscribeDelegate<StatusMessageStoreTopicPayload>();

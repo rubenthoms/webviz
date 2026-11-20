@@ -93,10 +93,10 @@ function StatusBanner(props: StatusBannerProps): React.ReactNode {
     return (
         <div
             className={resolveClassNames(
-                "px-xs gap-x-xs py-4xs text-body-lg shadow-elevation-raised flex shrink-0 items-center justify-between border-b backdrop-blur-xs",
+                "px-xs gap-x-xs py-4xs text-body-lg shadow-elevation-raised flex shrink-0 items-center justify-between border-b",
                 {
-                    "bg-warning/60 border-b-warning-subtle": isWarning,
-                    "bg-danger/60 border-b-danger-subtle": !isWarning,
+                    "bg-warning border-b-warning-subtle": isWarning,
+                    "bg-danger border-b-danger-subtle": !isWarning,
                 },
             )}
         >
